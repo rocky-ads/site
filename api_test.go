@@ -9,12 +9,52 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/rocky-ads/site/config"
 )
 
 var baseURL = "http://localhost:" + config.ServerPort
+
+// Shared HTTP client with persistent cookie jar for CSRF token caching
+var testClient *http.Client
+var testClientOnce sync.Once
+
+func getTestClient() *http.Client {
+	testClientOnce.Do(func() {
+		jar, err := cookiejar.New(nil)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to create cookie jar: %v", err))
+		}
+		testClient = &http.Client{
+			Jar: jar,
+		}
+		// Initialize CSRF token by making a GET request to /health
+		baseURLParsed, _ := url.Parse(baseURL)
+		getReq, _ := http.NewRequest("GET", baseURL+"/health", nil)
+		getResp, err := testClient.Do(getReq)
+		if err == nil {
+			getResp.Body.Close()
+			// Handle Secure cookie issue for HTTP testing
+			for _, cookie := range getResp.Cookies() {
+				if cookie.Name == "_csrf" && cookie.Secure {
+					testCookie := &http.Cookie{
+						Name:     cookie.Name,
+						Value:    cookie.Value,
+						Path:     cookie.Path,
+						Domain:   cookie.Domain,
+						HttpOnly: cookie.HttpOnly,
+						SameSite: cookie.SameSite,
+						Secure:   false,
+					}
+					jar.SetCookies(baseURLParsed, []*http.Cookie{testCookie})
+				}
+			}
+		}
+	})
+	return testClient
+}
 
 // Helper functions to get large expected result arrays at test time
 // These fetch from the API to ensure exact matches with current seed data
@@ -195,14 +235,8 @@ func getRequest(t *testing.T, url string) (*http.Response, map[string]interface{
 }
 
 func postFormRequest(t *testing.T, requestURL string, body map[string]interface{}) (*http.Response, map[string]interface{}) {
-	// Create HTTP client with cookie jar to persist cookies
-	jar, err := cookiejar.New(nil)
-	if err != nil {
-		t.Fatalf("Failed to create cookie jar: %v", err)
-	}
-	client := &http.Client{
-		Jar: jar,
-	}
+	// Use shared HTTP client with persistent cookie jar
+	client := getTestClient()
 
 	// Parse base URL for cookie jar
 	baseURLParsed, err := url.Parse(baseURL)
@@ -210,31 +244,29 @@ func postFormRequest(t *testing.T, requestURL string, body map[string]interface{
 		t.Fatalf("Failed to parse base URL: %v", err)
 	}
 
-	// First, get a CSRF token by making a GET request to the health endpoint
-	// This ensures the CSRF middleware processes the request and sets the token
-	// Using /health is simpler and less likely to break than API endpoints
-	getReq, err := http.NewRequest("GET", baseURL+"/health", nil)
-	if err != nil {
-		t.Fatalf("Failed to create GET request for CSRF token: %v", err)
-	}
-	getResp, err := client.Do(getReq)
-	if err != nil {
-		t.Fatalf("Failed to get CSRF token: %v", err)
-	}
-	getResp.Body.Close()
-
-	// Extract CSRF token from cookie jar (jar stores cookies automatically)
+	// Extract CSRF token from cookie jar (cached from first GET request)
 	var csrfToken string
-	cookies := jar.Cookies(baseURLParsed)
+	cookies := client.Jar.Cookies(baseURLParsed)
 	for _, cookie := range cookies {
 		if cookie.Name == "_csrf" {
 			csrfToken = cookie.Value
 			break
 		}
 	}
+
+	// If CSRF token is missing, fetch it by making a GET request to /health
 	if csrfToken == "" {
-		// Fallback: try to get from response cookies and manually add to jar
-		// The cookie jar might filter out Secure cookies over HTTP, so we add it manually
+		getReq, err := http.NewRequest("GET", baseURL+"/health", nil)
+		if err != nil {
+			t.Fatalf("Failed to create GET request for CSRF token: %v", err)
+		}
+		getResp, err := client.Do(getReq)
+		if err != nil {
+			t.Fatalf("Failed to get CSRF token: %v", err)
+		}
+		getResp.Body.Close()
+
+		// Extract CSRF token from response cookies
 		for _, cookie := range getResp.Cookies() {
 			if cookie.Name == "_csrf" {
 				csrfToken = cookie.Value
@@ -247,16 +279,16 @@ func postFormRequest(t *testing.T, requestURL string, body map[string]interface{
 					Domain:   cookie.Domain,
 					HttpOnly: cookie.HttpOnly,
 					SameSite: cookie.SameSite,
-					// Explicitly don't set Secure flag for HTTP testing
-					Secure: false,
+					Secure:   false,
 				}
-				jar.SetCookies(baseURLParsed, []*http.Cookie{testCookie})
+				client.Jar.SetCookies(baseURLParsed, []*http.Cookie{testCookie})
 				break
 			}
 		}
 	}
+
 	if csrfToken == "" {
-		t.Fatalf("Failed to get CSRF token from cookie. Cookies in jar: %v, Response cookies: %v", cookies, getResp.Cookies())
+		t.Fatalf("Failed to get CSRF token from cookie. Cookies in jar: %v", cookies)
 	}
 
 	// Create multipart form data
@@ -313,7 +345,7 @@ func postFormRequest(t *testing.T, requestURL string, body map[string]interface{
 
 	// Ensure cookies from jar are included for the request URL
 	// The jar should handle this automatically, but we ensure the CSRF cookie is included
-	jarCookies := jar.Cookies(reqURL)
+	jarCookies := client.Jar.Cookies(reqURL)
 	for _, cookie := range jarCookies {
 		if cookie.Name == "_csrf" {
 			req.AddCookie(cookie)
@@ -442,6 +474,22 @@ func TestGetAllValues(t *testing.T) {
 			expectedResult: []string{"ACE", "ACECA", "TWO-LITRE"},
 		},
 		{
+			name:           "With filter - make value with spaces",
+			category:       "Agricultural%20Equipment",
+			field:          "year",
+			queryParams:    "?make=JOHN%20DEERE",
+			expectedStatus: 200,
+			expectedResult: nil, // Don't check exact match, just verify it works
+		},
+		{
+			name:           "Car & Truck Parts - part_category filtered by part_category with spaces",
+			category:       "Car%20%26%20Truck%20Parts",
+			field:          "part_subcategory",
+			queryParams:    "?part_category=Exhaust%20%26%20Emission",
+			expectedStatus: 200,
+			expectedResult: nil, // Don't check exact match, just verify it works
+		},
+		{
 			name:           "Invalid category",
 			category:       "InvalidCategory",
 			field:          "make",
@@ -486,15 +534,17 @@ func TestGetAllValues(t *testing.T) {
 					}
 				}
 
-				// Check for exact match
-				if len(actualValues) != len(tt.expectedResult) {
-					t.Errorf("Expected %d values, got %d. Expected: %v, Got: %v", len(tt.expectedResult), len(actualValues), tt.expectedResult, actualValues)
-				} else {
-					// Compare each value (order matters for exact match)
-					for i, expected := range tt.expectedResult {
-						if i >= len(actualValues) || actualValues[i] != expected {
-							t.Errorf("Expected values[%d] to be '%s', got '%s'. Expected: %v, Got: %v", i, expected, actualValues[i], tt.expectedResult, actualValues)
-							break
+				// Check for exact match (skip if expectedResult is nil)
+				if tt.expectedResult != nil {
+					if len(actualValues) != len(tt.expectedResult) {
+						t.Errorf("Expected %d values, got %d. Expected: %v, Got: %v", len(tt.expectedResult), len(actualValues), tt.expectedResult, actualValues)
+					} else {
+						// Compare each value (order matters for exact match)
+						for i, expected := range tt.expectedResult {
+							if i >= len(actualValues) || actualValues[i] != expected {
+								t.Errorf("Expected values[%d] to be '%s', got '%s'. Expected: %v, Got: %v", i, expected, actualValues[i], tt.expectedResult, actualValues)
+								break
+							}
 						}
 					}
 				}
@@ -520,6 +570,8 @@ func TestGetAnyValues(t *testing.T) {
 		{"Car & Truck Parts - any engine values", "Car%20%26%20Truck%20Parts", "engine", "", 200, getCarTruckPartsAnyEngineValues()},
 		{"Car & Truck Parts - any part_category values", "Car%20%26%20Truck%20Parts", "part_category", "", 200, getCarTruckPartsAnyPartCategoryValues()},
 		{"With filter chain", "Car%20%26%20Truck%20Parts", "part_category", "?make=AC&year=1953&model=ACE&engine=2.0L%20L6", 200, []string{"Brakes & Wheel Hub"}},
+		{"With filter using part_category with spaces", "Car%20%26%20Truck%20Parts", "part_subcategory", "?part_category=Exhaust%20%26%20Emission", 200, nil},
+		{"Agricultural Equipment - filter by make with spaces", "Agricultural%20Equipment", "year", "?make=JOHN%20DEERE", 200, nil},
 	}
 
 	for _, tt := range tests {
@@ -579,6 +631,9 @@ func TestGetAdValues(t *testing.T) {
 		{"Cars & Trucks - ad values for year with multiple year filter", "Cars%20%26%20Trucks", "year", map[string]interface{}{"ad_ids": []int{984, 985}, "year": []string{"2020", "1975"}}, 200, []string{"1975", "2020"}},
 		{"Cars & Trucks - ad values for model", "Cars%20%26%20Trucks", "model", map[string]interface{}{"ad_ids": []int{984}}, 200, []string{"CIVIC"}},
 		{"Cars & Trucks - ad values with filter", "Cars%20%26%20Trucks", "engine", map[string]interface{}{"ad_ids": []int{984, 985}, "make": []string{"HONDA"}}, 200, []string{"2.0L L4"}},
+		{"Agricultural Equipment - ad values for make with spaces", "Agricultural%20Equipment", "make", map[string]interface{}{"ad_ids": []int{1}}, 200, []string{"JOHN DEERE"}},
+		{"Car & Truck Parts - ad values for part_category with spaces", "Car%20%26%20Truck%20Parts", "part_category", map[string]interface{}{"ad_ids": []int{11}}, 200, []string{"Exhaust & Emission"}},
+		{"Car & Truck Parts - ad values with filter using value with spaces", "Car%20%26%20Truck%20Parts", "part_subcategory", map[string]interface{}{"ad_ids": []int{11}, "part_category": []string{"Exhaust & Emission"}}, 200, nil},
 		{"Empty ad_ids", "Cars%20%26%20Trucks", "make", map[string]interface{}{"ad_ids": []int{}}, 200, []string{}},
 		{"Ad_ids from different category", "Cars%20%26%20Trucks", "make", map[string]interface{}{"ad_ids": []int{1}}, 200, []string{}},
 	}
