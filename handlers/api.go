@@ -1,118 +1,144 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/rocky-ads/site/cache"
 	"github.com/rocky-ads/site/models"
 	"github.com/rocky-ads/site/services"
 
-	"github.com/gorilla/mux"
+	"github.com/gofiber/fiber/v2"
 )
 
-func getCategoryID(w http.ResponseWriter, r *http.Request) (int, bool) {
-	vars := mux.Vars(r)
-	categoryName := vars["category"]
-	categoryID, err := cache.GetCategoryIDByName(categoryName)
+func getCategoryID(c *fiber.Ctx) (int, *fiber.Error) {
+	categoryName := c.Params("category")
+	// Fiber automatically URL-decodes path parameters, but ensure it's decoded correctly
+	decodedName, err := url.PathUnescape(categoryName)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Category not found: %s", categoryName), http.StatusNotFound)
-		return 0, false
+		// If PathUnescape fails, try the original (Fiber may have already decoded it)
+		decodedName = categoryName
 	}
-	return categoryID, true
+	categoryID, err := cache.GetCategoryIDByName(decodedName)
+	if err != nil {
+		return 0, fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("Category not found: %s", decodedName))
+	}
+	return categoryID, nil
 }
 
-func getSpecField(w http.ResponseWriter, r *http.Request, categoryID int) (models.SpecField, bool) {
-	vars := mux.Vars(r)
-	fieldName := vars["field"]
+func getSpecField(c *fiber.Ctx, categoryID int) (models.SpecField, *fiber.Error) {
+	fieldName := c.Params("field")
 	specField, err := cache.GetSpecField(categoryID, fieldName)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return models.SpecField{}, false
+		return models.SpecField{}, fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
-	return specField, true
+	return specField, nil
 }
 
-func getAdID(w http.ResponseWriter, r *http.Request) (int, bool) {
-	vars := mux.Vars(r)
-	adIDStr := vars["id"]
+func getAdID(c *fiber.Ctx) (int, *fiber.Error) {
+	adIDStr := c.Params("id")
 	adID, err := strconv.Atoi(adIDStr)
 	if err != nil {
-		http.Error(w, "Invalid ad ID", http.StatusBadRequest)
-		return 0, false
+		return 0, fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
 	}
-	return adID, true
+	return adID, nil
 }
 
-func writeJSONResponse(w http.ResponseWriter, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
+// getQueryValues converts Fiber's query map (map[string]string) to url.Values (map[string][]string)
+func getQueryValues(c *fiber.Ctx) models.FieldValues {
+	queries := c.Queries()
+	fv := make(models.FieldValues)
+	for k, v := range queries {
+		fv[k] = []string{v}
+	}
+	return fv
 }
 
-func GetAllValuesHandler(w http.ResponseWriter, r *http.Request) {
-	categoryID, ok := getCategoryID(w, r)
-	if !ok {
-		return
+// getFormValues parses form-urlencoded POST data and returns url.Values
+func getFormValues(c *fiber.Ctx) (models.FieldValues, error) {
+	// Check content type
+	contentType := string(c.Request().Header.ContentType())
+	if contentType != "application/x-www-form-urlencoded" {
+		// If no content type or different type, try to parse as form-urlencoded anyway
+		// Some clients might not send the header
 	}
 
-	specField, ok := getSpecField(w, r, categoryID)
-	if !ok {
-		return
+	// Parse the body as form-urlencoded
+	body := c.Body()
+	if len(body) == 0 {
+		// If body is empty, return empty FieldValues
+		return make(models.FieldValues), nil
 	}
 
-	fv := models.FieldValues(r.URL.Query())
+	parsed, err := url.ParseQuery(string(body))
+	if err != nil {
+		return nil, err
+	}
+
+	return models.FieldValues(parsed), nil
+}
+
+func GetAllValuesHandler(c *fiber.Ctx) error {
+	categoryID, fiberErr := getCategoryID(c)
+	if fiberErr != nil {
+		return fiberErr
+	}
+
+	specField, fiberErr := getSpecField(c, categoryID)
+	if fiberErr != nil {
+		return fiberErr
+	}
+
+	fv := getQueryValues(c)
 
 	values, err := services.GetAllValues(specField, fv, categoryID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}
 
-	writeJSONResponse(w, values)
+	return c.JSON(values)
 }
 
-func GetAnyValuesHandler(w http.ResponseWriter, r *http.Request) {
-	categoryID, ok := getCategoryID(w, r)
-	if !ok {
-		return
+func GetAnyValuesHandler(c *fiber.Ctx) error {
+	categoryID, fiberErr := getCategoryID(c)
+	if fiberErr != nil {
+		return fiberErr
 	}
 
-	specField, ok := getSpecField(w, r, categoryID)
-	if !ok {
-		return
+	specField, fiberErr := getSpecField(c, categoryID)
+	if fiberErr != nil {
+		return fiberErr
 	}
 
-	fv := models.FieldValues(r.URL.Query())
+	fv := getQueryValues(c)
 
 	values, err := services.GetAnyValues(specField, fv, categoryID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}
 
-	writeJSONResponse(w, values)
+	return c.JSON(values)
 }
 
-func GetAdValuesHandler(w http.ResponseWriter, r *http.Request) {
-	categoryID, ok := getCategoryID(w, r)
-	if !ok {
-		return
+func GetAdValuesHandler(c *fiber.Ctx) error {
+	categoryID, fiberErr := getCategoryID(c)
+	if fiberErr != nil {
+		return fiberErr
 	}
 
-	specField, ok := getSpecField(w, r, categoryID)
-	if !ok {
-		return
+	specField, fiberErr := getSpecField(c, categoryID)
+	if fiberErr != nil {
+		return fiberErr
 	}
 
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Invalid form data", http.StatusBadRequest)
-		return
+	formValues, err := getFormValues(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid form data")
 	}
 
 	var adIDs []int
-	if adIDsVals := r.PostForm["ad_ids"]; len(adIDsVals) > 0 {
+	if adIDsVals := formValues["ad_ids"]; len(adIDsVals) > 0 {
 		adIDs = make([]int, 0, len(adIDsVals))
 		for _, val := range adIDsVals {
 			if id, err := strconv.Atoi(val); err == nil {
@@ -122,7 +148,7 @@ func GetAdValuesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fv := make(models.FieldValues)
-	for k, v := range r.PostForm {
+	for k, v := range formValues {
 		if k != "ad_ids" {
 			fv[k] = v
 		}
@@ -130,61 +156,57 @@ func GetAdValuesHandler(w http.ResponseWriter, r *http.Request) {
 
 	values, err := services.GetAdValues(adIDs, specField, fv, categoryID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}
 
-	writeJSONResponse(w, values)
+	return c.JSON(values)
 }
 
-func GetChainsHandler(w http.ResponseWriter, r *http.Request) {
-	categoryID, ok := getCategoryID(w, r)
-	if !ok {
-		return
+func GetChainsHandler(c *fiber.Ctx) error {
+	categoryID, fiberErr := getCategoryID(c)
+	if fiberErr != nil {
+		return fiberErr
 	}
 
 	chains, err := services.GetCategoryChains(categoryID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}
 
-	writeJSONResponse(w, chains)
+	return c.JSON(chains)
 }
 
 // GetAdFilterValuesHandler handles GET /api/ads/:id/filter-values
-func GetAdFilterValuesHandler(w http.ResponseWriter, r *http.Request) {
-	adID, ok := getAdID(w, r)
-	if !ok {
-		return
+func GetAdFilterValuesHandler(c *fiber.Ctx) error {
+	adID, fiberErr := getAdID(c)
+	if fiberErr != nil {
+		return fiberErr
 	}
 
 	fv, err := services.LoadFilterValues(adID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}
 
-	writeJSONResponse(w, fv)
+	return c.JSON(fv)
 }
 
-func SearchHandler(w http.ResponseWriter, r *http.Request) {
-	categoryID, ok := getCategoryID(w, r)
-	if !ok {
-		return
+func SearchHandler(c *fiber.Ctx) error {
+	categoryID, fiberErr := getCategoryID(c)
+	if fiberErr != nil {
+		return fiberErr
 	}
 
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Invalid form data", http.StatusBadRequest)
-		return
+	// Try to get form values first, fall back to query values if body is empty
+	fv, err := getFormValues(c)
+	if err != nil || len(fv) == 0 {
+		// If form parsing failed or no form data, use query parameters
+		fv = getQueryValues(c)
 	}
-
-	fv := models.FieldValues(r.PostForm)
 
 	adIDs, err := services.Search(fv, categoryID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}
 
 	response := map[string]interface{}{
@@ -192,19 +214,18 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		"count":  len(adIDs),
 	}
 
-	writeJSONResponse(w, response)
+	return c.JSON(response)
 }
 
-func GetFirstSpecFieldsHandler(w http.ResponseWriter, r *http.Request) {
-	categoryID, ok := getCategoryID(w, r)
-	if !ok {
-		return
+func GetFirstSpecFieldsHandler(c *fiber.Ctx) error {
+	categoryID, fiberErr := getCategoryID(c)
+	if fiberErr != nil {
+		return fiberErr
 	}
 
 	fields, err := services.FirstSpecFields(categoryID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}
 
 	response := make([]map[string]string, len(fields))
@@ -215,19 +236,18 @@ func GetFirstSpecFieldsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSONResponse(w, response)
+	return c.JSON(response)
 }
 
-func GetLastSpecFieldHandler(w http.ResponseWriter, r *http.Request) {
-	categoryID, ok := getCategoryID(w, r)
-	if !ok {
-		return
+func GetLastSpecFieldHandler(c *fiber.Ctx) error {
+	categoryID, fiberErr := getCategoryID(c)
+	if fiberErr != nil {
+		return fiberErr
 	}
 
 	field, err := services.LastSpecField(categoryID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}
 
 	response := map[string]string{
@@ -235,5 +255,5 @@ func GetLastSpecFieldHandler(w http.ResponseWriter, r *http.Request) {
 		"display_name": field.DisplayName,
 	}
 
-	writeJSONResponse(w, response)
+	return c.JSON(response)
 }

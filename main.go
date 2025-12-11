@@ -1,19 +1,19 @@
 package main
 
 import (
-	"net/http"
-
 	"github.com/rocky-ads/site/cache"
+	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/handlers"
 	"github.com/rocky-ads/site/logger"
 
-	"github.com/gorilla/mux"
+	"github.com/gofiber/fiber/v2"
 )
 
 func main() {
 	// Initialize logger
-	if err := logger.Init("info", "text", ""); err != nil {
+	if err := logger.Init(config.LogLevel, config.LogFormat,
+		config.LogFile); err != nil {
 		logger.Fatal("Failed to initialize logger", "error", err)
 	}
 
@@ -30,30 +30,29 @@ func main() {
 	}
 	logger.Info("Caches initialized successfully")
 
-	// Set up router
-	r := mux.NewRouter()
+	// Set up Fiber app
+	app := fiber.New()
 
 	// API routes
-	api := r.PathPrefix("/api").Subrouter()
+	api := app.Group("/api")
 
 	// Category-specific routes
-	categoryRouter := api.PathPrefix("/categories/{category}").Subrouter()
-	categoryRouter.HandleFunc("/values/{field}", handlers.GetAllValuesHandler).Methods("GET")
-	categoryRouter.HandleFunc("/any-values/{field}", handlers.GetAnyValuesHandler).Methods("GET")
-	categoryRouter.HandleFunc("/ad-values/{field}", handlers.GetAdValuesHandler).Methods("POST")
-	categoryRouter.HandleFunc("/chains", handlers.GetChainsHandler).Methods("GET")
-	categoryRouter.HandleFunc("/first-spec-fields", handlers.GetFirstSpecFieldsHandler).Methods("GET")
-	categoryRouter.HandleFunc("/last-spec-field", handlers.GetLastSpecFieldHandler).Methods("GET")
-	categoryRouter.HandleFunc("/search", handlers.SearchHandler).Methods("POST")
+	categoryRouter := api.Group("/categories/:category")
+	categoryRouter.Get("/values/:field", handlers.GetAllValuesHandler)
+	categoryRouter.Get("/any-values/:field", handlers.GetAnyValuesHandler)
+	categoryRouter.Post("/ad-values/:field", handlers.GetAdValuesHandler)
+	categoryRouter.Get("/chains", handlers.GetChainsHandler)
+	categoryRouter.Get("/first-spec-fields", handlers.GetFirstSpecFieldsHandler)
+	categoryRouter.Get("/last-spec-field", handlers.GetLastSpecFieldHandler)
+	categoryRouter.Post("/search", handlers.SearchHandler)
 
 	// Ad routes
-	api.HandleFunc("/ads/{id}/filter-values", handlers.GetAdFilterValuesHandler).Methods("GET")
+	api.Get("/ads/:id/filter-values", handlers.GetAdFilterValuesHandler)
 
 	// Health check
-	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	}).Methods("GET")
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.SendString("OK")
+	})
 
 	// Start server
 	port := ":8080"
@@ -68,7 +67,7 @@ func main() {
 	logger.Info("  POST /api/categories/:category/search")
 	logger.Info("  GET  /api/ads/:id/filter-values")
 
-	if err := http.ListenAndServe(port, r); err != nil {
+	if err := app.Listen(port); err != nil {
 		logger.Fatal("Server failed to start", "error", err)
 	}
 }
