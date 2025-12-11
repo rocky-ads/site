@@ -1,0 +1,46 @@
+[
+  {
+    "name": "make",
+    "display_name": "Make",
+    "is_spec_field": true
+  },
+  {
+    "name": "year",
+    "display_name": "Year",
+    "is_spec_field": true
+  },
+  {
+    "name": "model",
+    "display_name": "Model",
+    "is_spec_field": true
+  },
+  {
+    "name": "engine",
+    "display_name": "Engine",
+    "is_spec_field": true
+  },
+  {
+    "name": "part_category",
+    "display_name": "Part Category",
+    "is_spec_field": true
+  },
+  {
+    "name": "part_subcategory",
+    "display_name": "Part Subcategory",
+    "is_spec_field": true
+  },
+  {
+    "name": "breed",
+    "display_name": "Breed",
+    "is_spec_field": true
+  },
+  {
+    "name": "location",
+    "display_name": "Location"
+  },
+  {
+    "name": "price",
+    "display_name": "Price"
+  }
+]
+

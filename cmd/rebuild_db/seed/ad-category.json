@@ -1,0 +1,386 @@
+[
+  {
+    "name": "Cars & Trucks",
+    "seed_ad_file": "ad-car.json",
+    "chains": [
+      {
+        "fields": [
+          {
+            "field_name": "location",
+            "is_required": false
+          }
+        ]
+      },
+      {
+        "spec_table": "spec_vehicle",
+        "chain_file": "spec-vehicle.json",
+        "fields": [
+          {
+            "field_name": "make",
+            "is_required": true
+          },
+          {
+            "field_name": "year",
+            "is_required": true
+          },
+          {
+            "field_name": "model",
+            "is_required": true
+          },
+          {
+            "field_name": "engine",
+            "is_required": true
+          }
+        ]
+      },
+      {
+        "fields": [
+          {
+            "field_name": "price",
+            "is_required": true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Car & Truck Parts",
+    "seed_ad_file": "ad-car-part.json",
+    "chains": [
+      {
+        "fields": [
+          {
+            "field_name": "location",
+            "is_required": false
+          }
+        ]
+      },
+      {
+        "spec_table": "spec_vehicle",
+        "chain_file": "spec-vehicle.json",
+        "fields": [
+          {
+            "field_name": "make",
+            "is_required": true
+          },
+          {
+            "field_name": "year",
+            "is_required": true
+          },
+          {
+            "field_name": "model",
+            "is_required": true
+          },
+          {
+            "field_name": "engine",
+            "is_required": true
+          }
+        ]
+      },
+      {
+        "spec_table": "spec_part",
+        "chain_file": "spec-part-vehicle.json",
+        "fields": [
+          {
+            "field_name": "part_category",
+            "is_required": true
+          },
+          {
+            "field_name": "part_subcategory",
+            "is_required": true
+          }
+        ]
+      },
+      {
+        "fields": [
+          {
+            "field_name": "price",
+            "is_required": true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Motorcycles",
+    "seed_ad_file": "ad-motorcycle.json",
+    "chains": [
+      {
+        "fields": [
+          {
+            "field_name": "location",
+            "is_required": false
+          }
+        ]
+      },
+      {
+        "spec_table": "spec_vehicle",
+        "chain_file": "spec-motorcycle.json",
+        "fields": [
+          {
+            "field_name": "make",
+            "is_required": true
+          },
+          {
+            "field_name": "year",
+            "is_required": true
+          },
+          {
+            "field_name": "model",
+            "is_required": true
+          },
+          {
+            "field_name": "engine",
+            "is_required": true
+          }
+        ]
+      },
+      {
+        "fields": [
+          {
+            "field_name": "price",
+            "is_required": true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Motorcycle Parts",
+    "seed_ad_file": "ad-motorcycle-part.json",
+    "chains": [
+      {
+        "fields": [
+          {
+            "field_name": "location",
+            "is_required": false
+          }
+        ]
+      },
+      {
+        "spec_table": "spec_vehicle",
+        "chain_file": "spec-motorcycle.json",
+        "fields": [
+          {
+            "field_name": "make",
+            "is_required": true
+          },
+          {
+            "field_name": "year",
+            "is_required": true
+          },
+          {
+            "field_name": "model",
+            "is_required": true
+          },
+          {
+            "field_name": "engine",
+            "is_required": true
+          }
+        ]
+      },
+      {
+        "spec_table": "spec_part",
+        "chain_file": "spec-part-motorcycle.json",
+        "fields": [
+          {
+            "field_name": "part_category",
+            "is_required": true
+          },
+          {
+            "field_name": "part_subcategory",
+            "is_required": true
+          }
+        ]
+      },
+      {
+        "fields": [
+          {
+            "field_name": "price",
+            "is_required": true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Bicycles",
+    "seed_ad_file": "ad-bicycle.json",
+    "chains": [
+      {
+        "fields": [
+          {
+            "field_name": "location",
+            "is_required": false
+          }
+        ]
+      },
+      {
+        "spec_table": "spec_bicycle",
+        "chain_file": "spec-bicycle.json",
+        "fields": [
+          {
+            "field_name": "make",
+            "is_required": true
+          },
+          {
+            "field_name": "model",
+            "is_required": true
+          }
+        ]
+      },
+      {
+        "fields": [
+          {
+            "field_name": "price",
+            "is_required": true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Bicycle Parts",
+    "seed_ad_file": "ad-bicycle-part.json",
+    "chains": [
+      {
+        "fields": [
+          {
+            "field_name": "location",
+            "is_required": false
+          }
+        ]
+      },
+      {
+        "spec_table": "spec_bicycle",
+        "chain_file": "spec-bicycle.json",
+        "fields": [
+          {
+            "field_name": "make",
+            "is_required": true
+          },
+          {
+            "field_name": "model",
+            "is_required": true
+          }
+        ]
+      },
+      {
+        "spec_table": "spec_part",
+        "chain_file": "spec-part-bicycle.json",
+        "fields": [
+          {
+            "field_name": "part_category",
+            "is_required": true
+          },
+          {
+            "field_name": "part_subcategory",
+            "is_required": true
+          }
+        ]
+      },
+      {
+        "fields": [
+          {
+            "field_name": "price",
+            "is_required": true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Agricultural Equipment",
+    "seed_ad_file": "ad-agricultural.json",
+    "chains": [
+      {
+        "fields": [
+          {
+            "field_name": "location",
+            "is_required": false
+          }
+        ]
+      },
+      {
+        "spec_table": "spec_ag",
+        "chain_file": "spec-ag.json",
+        "fields": [
+          {
+            "field_name": "make",
+            "is_required": true
+          },
+          {
+            "field_name": "year",
+            "is_required": true
+          },
+          {
+            "field_name": "model",
+            "is_required": true
+          }
+        ]
+      },
+      {
+        "fields": [
+          {
+            "field_name": "price",
+            "is_required": true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Agricultural Equipment Parts",
+    "seed_ad_file": "ad-agricultural-part.json",
+    "chains": [
+      {
+        "fields": [
+          {
+            "field_name": "location",
+            "is_required": false
+          }
+        ]
+      },
+      {
+        "spec_table": "spec_ag",
+        "chain_file": "spec-ag.json",
+        "fields": [
+          {
+            "field_name": "make",
+            "is_required": true
+          },
+          {
+            "field_name": "year",
+            "is_required": true
+          },
+          {
+            "field_name": "model",
+            "is_required": true
+          }
+        ]
+      },
+      {
+        "spec_table": "spec_part",
+        "chain_file": "spec-part-ag.json",
+        "fields": [
+          {
+            "field_name": "part_category",
+            "is_required": true
+          },
+          {
+            "field_name": "part_subcategory",
+            "is_required": true
+          }
+        ]
+      },
+      {
+        "fields": [
+          {
+            "field_name": "price",
+            "is_required": true
+          }
+        ]
+      }
+    ]
+  }
+]
