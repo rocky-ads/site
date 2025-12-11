@@ -13,15 +13,9 @@ import (
 
 func getCategoryID(c *fiber.Ctx) (int, *fiber.Error) {
 	categoryName := c.Params("category")
-	// Fiber automatically URL-decodes path parameters, but ensure it's decoded correctly
-	decodedName, err := url.PathUnescape(categoryName)
+	categoryID, err := services.GetCategoryIDByName(categoryName)
 	if err != nil {
-		// If PathUnescape fails, try the original (Fiber may have already decoded it)
-		decodedName = categoryName
-	}
-	categoryID, err := services.GetCategoryIDByName(decodedName)
-	if err != nil {
-		return 0, fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("Category not found: %s", decodedName))
+		return 0, fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("Category not found: %s", categoryName))
 	}
 	return categoryID, nil
 }
@@ -44,38 +38,23 @@ func getAdID(c *fiber.Ctx) (int, *fiber.Error) {
 	return adID, nil
 }
 
-// getQueryValues converts Fiber's query map (map[string]string) to url.Values (map[string][]string)
+// getQueryValues parses the raw query string to get all values (including duplicates)
 func getQueryValues(c *fiber.Ctx) models.FieldValues {
-	queries := c.Queries()
-	fv := make(models.FieldValues)
-	for k, v := range queries {
-		fv[k] = []string{v}
+	queryString := c.Request().URI().QueryString()
+	if len(queryString) == 0 {
+		return make(models.FieldValues)
 	}
-	return fv
+	parsed, err := url.ParseQuery(string(queryString))
+	if err != nil {
+		// If parsing fails, return empty FieldValues
+		return make(models.FieldValues)
+	}
+	return models.FieldValues(parsed)
 }
 
-// getFormValues parses form-urlencoded POST data and returns url.Values
+// getFormValues extracts form-urlencoded POST data from Fiber context
 func getFormValues(c *fiber.Ctx) (models.FieldValues, error) {
-	// Check content type
-	contentType := string(c.Request().Header.ContentType())
-	if contentType != "application/x-www-form-urlencoded" {
-		// If no content type or different type, try to parse as form-urlencoded anyway
-		// Some clients might not send the header
-	}
-
-	// Parse the body as form-urlencoded
-	body := c.Body()
-	if len(body) == 0 {
-		// If body is empty, return empty FieldValues
-		return make(models.FieldValues), nil
-	}
-
-	parsed, err := url.ParseQuery(string(body))
-	if err != nil {
-		return nil, err
-	}
-
-	return models.FieldValues(parsed), nil
+	return models.FieldValues(c.FormParams()), nil
 }
 
 func GetAllValuesHandler(c *fiber.Ctx) error {

@@ -473,6 +473,7 @@ func TestGetAdValues(t *testing.T) {
 	}{
 		{"Cars & Trucks - ad values for make", "Cars%20%26%20Trucks", "make", map[string]interface{}{"ad_ids": []int{984, 985}}, 200, []string{"FORD", "HONDA"}},
 		{"Cars & Trucks - ad values for year", "Cars%20%26%20Trucks", "year", map[string]interface{}{"ad_ids": []int{984}}, 200, []string{"2020"}},
+		{"Cars & Trucks - ad values for year with multiple year filter", "Cars%20%26%20Trucks", "year", map[string]interface{}{"ad_ids": []int{984, 985}, "year": []string{"2020", "1975"}}, 200, []string{"1975", "2020"}},
 		{"Cars & Trucks - ad values for model", "Cars%20%26%20Trucks", "model", map[string]interface{}{"ad_ids": []int{984}}, 200, []string{"CIVIC"}},
 		{"Cars & Trucks - ad values with filter", "Cars%20%26%20Trucks", "engine", map[string]interface{}{"ad_ids": []int{984, 985}, "make": []string{"HONDA"}}, 200, []string{"2.0L L4"}},
 		{"Empty ad_ids", "Cars%20%26%20Trucks", "make", map[string]interface{}{"ad_ids": []int{}}, 200, []string{}},
