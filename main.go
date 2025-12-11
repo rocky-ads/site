@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/rocky-ads/site/cache"
 	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/handlers"
@@ -22,13 +21,6 @@ func main() {
 		logger.Fatal("Failed to open database", "error", err)
 	}
 	defer db.Close()
-
-	// Initialize caches
-	logger.Info("Initializing caches...")
-	if err := cache.Init(); err != nil {
-		logger.Fatal("Failed to initialize caches", "error", err)
-	}
-	logger.Info("Caches initialized successfully")
 
 	// Set up Fiber app
 	app := fiber.New()

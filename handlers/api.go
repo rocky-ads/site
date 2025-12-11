@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/rocky-ads/site/cache"
 	"github.com/rocky-ads/site/models"
 	"github.com/rocky-ads/site/services"
 
@@ -20,7 +19,7 @@ func getCategoryID(c *fiber.Ctx) (int, *fiber.Error) {
 		// If PathUnescape fails, try the original (Fiber may have already decoded it)
 		decodedName = categoryName
 	}
-	categoryID, err := cache.GetCategoryIDByName(decodedName)
+	categoryID, err := services.GetCategoryIDByName(decodedName)
 	if err != nil {
 		return 0, fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("Category not found: %s", decodedName))
 	}
@@ -29,7 +28,7 @@ func getCategoryID(c *fiber.Ctx) (int, *fiber.Error) {
 
 func getSpecField(c *fiber.Ctx, categoryID int) (models.SpecField, *fiber.Error) {
 	fieldName := c.Params("field")
-	specField, err := cache.GetSpecField(categoryID, fieldName)
+	specField, err := services.GetSpecField(categoryID, fieldName)
 	if err != nil {
 		return models.SpecField{}, fiber.NewError(fiber.StatusNotFound, err.Error())
 	}

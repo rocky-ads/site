@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rocky-ads/site/cache"
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/models"
 )
@@ -33,7 +32,7 @@ func fv2fi(fv models.FieldValues) models.FieldValuesByIDs {
 	fi := make(models.FieldValuesByIDs)
 	for fieldName, values := range fv {
 		if len(values) > 0 {
-			if fieldID, ok := cache.FieldIDCache[fieldName]; ok {
+			if fieldID, err := GetFieldIDByName(fieldName); err == nil {
 				fi[fieldID] = values
 			}
 		}

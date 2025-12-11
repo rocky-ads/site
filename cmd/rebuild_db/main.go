@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/rocky-ads/site/cache"
 	"github.com/rocky-ads/site/cmd/rebuild_db/seed"
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/logger"
@@ -72,13 +71,6 @@ func main() {
 	} else {
 		logger.Info("Seed data (schema and spec data only) loaded successfully")
 	}
-
-	// Initialize caches
-	logger.Info("Initializing caches...")
-	if err := cache.Init(); err != nil {
-		logger.Fatal("Failed to initialize caches", "error", err)
-	}
-	logger.Info("Caches initialized successfully")
 
 	logger.Info("Database rebuild complete!")
 }
