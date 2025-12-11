@@ -13,9 +13,14 @@ import (
 
 func getCategoryID(c *fiber.Ctx) (int, *fiber.Error) {
 	categoryName := c.Params("category")
-	categoryID, err := services.GetCategoryIDByName(categoryName)
+	// Fiber's Params() returns URL-encoded values, must decode before lookup
+	decodedName, err := url.PathUnescape(categoryName)
 	if err != nil {
-		return 0, fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("Category not found: %s", categoryName))
+		return 0, fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Invalid category name encoding: %s", err.Error()))
+	}
+	categoryID, err := services.GetCategoryIDByName(decodedName)
+	if err != nil {
+		return 0, fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("Category not found: %s", decodedName))
 	}
 	return categoryID, nil
 }
@@ -38,7 +43,6 @@ func getAdID(c *fiber.Ctx) (int, *fiber.Error) {
 	return adID, nil
 }
 
-// getQueryValues parses the raw query string to get all values (including duplicates)
 func getQueryValues(c *fiber.Ctx) models.FieldValues {
 	queryString := c.Request().URI().QueryString()
 	if len(queryString) == 0 {
@@ -46,15 +50,17 @@ func getQueryValues(c *fiber.Ctx) models.FieldValues {
 	}
 	parsed, err := url.ParseQuery(string(queryString))
 	if err != nil {
-		// If parsing fails, return empty FieldValues
 		return make(models.FieldValues)
 	}
 	return models.FieldValues(parsed)
 }
 
-// getFormValues extracts form-urlencoded POST data from Fiber context
-func getFormValues(c *fiber.Ctx) (models.FieldValues, error) {
-	return models.FieldValues(c.FormParams()), nil
+func getFormValues(c *fiber.Ctx) models.FieldValues {
+	form, _ := c.MultipartForm()
+	if form == nil {
+		return make(models.FieldValues)
+	}
+	return models.FieldValues(form.Value)
 }
 
 func GetAllValuesHandler(c *fiber.Ctx) error {
@@ -110,10 +116,7 @@ func GetAdValuesHandler(c *fiber.Ctx) error {
 		return fiberErr
 	}
 
-	formValues, err := getFormValues(c)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid form data")
-	}
+	formValues := getFormValues(c)
 
 	var adIDs []int
 	if adIDsVals := formValues["ad_ids"]; len(adIDsVals) > 0 {
@@ -154,7 +157,6 @@ func GetChainsHandler(c *fiber.Ctx) error {
 	return c.JSON(chains)
 }
 
-// GetAdFilterValuesHandler handles GET /api/ads/:id/filter-values
 func GetAdFilterValuesHandler(c *fiber.Ctx) error {
 	adID, fiberErr := getAdID(c)
 	if fiberErr != nil {
@@ -175,10 +177,8 @@ func SearchHandler(c *fiber.Ctx) error {
 		return fiberErr
 	}
 
-	// Try to get form values first, fall back to query values if body is empty
-	fv, err := getFormValues(c)
-	if err != nil || len(fv) == 0 {
-		// If form parsing failed or no form data, use query parameters
+	fv := getFormValues(c)
+	if len(fv) == 0 {
 		fv = getQueryValues(c)
 	}
 

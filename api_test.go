@@ -4,14 +4,17 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"mime/multipart"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"strconv"
-	"strings"
 	"testing"
+
+	"github.com/rocky-ads/site/config"
 )
 
-const baseURL = "http://localhost:8080"
+var baseURL = "http://localhost:" + config.ServerPort
 
 // Helper functions to get large expected result arrays at test time
 // These fetch from the API to ensure exact matches with current seed data
@@ -192,32 +195,132 @@ func getRequest(t *testing.T, url string) (*http.Response, map[string]interface{
 }
 
 func postFormRequest(t *testing.T, requestURL string, body map[string]interface{}) (*http.Response, map[string]interface{}) {
-	// Convert body map to form data
-	formData := url.Values{}
+	// Create HTTP client with cookie jar to persist cookies
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("Failed to create cookie jar: %v", err)
+	}
+	client := &http.Client{
+		Jar: jar,
+	}
+
+	// Parse base URL for cookie jar
+	baseURLParsed, err := url.Parse(baseURL)
+	if err != nil {
+		t.Fatalf("Failed to parse base URL: %v", err)
+	}
+
+	// First, get a CSRF token by making a GET request to the health endpoint
+	// This ensures the CSRF middleware processes the request and sets the token
+	// Using /health is simpler and less likely to break than API endpoints
+	getReq, err := http.NewRequest("GET", baseURL+"/health", nil)
+	if err != nil {
+		t.Fatalf("Failed to create GET request for CSRF token: %v", err)
+	}
+	getResp, err := client.Do(getReq)
+	if err != nil {
+		t.Fatalf("Failed to get CSRF token: %v", err)
+	}
+	getResp.Body.Close()
+
+	// Extract CSRF token from cookie jar (jar stores cookies automatically)
+	var csrfToken string
+	cookies := jar.Cookies(baseURLParsed)
+	for _, cookie := range cookies {
+		if cookie.Name == "_csrf" {
+			csrfToken = cookie.Value
+			break
+		}
+	}
+	if csrfToken == "" {
+		// Fallback: try to get from response cookies and manually add to jar
+		// The cookie jar might filter out Secure cookies over HTTP, so we add it manually
+		for _, cookie := range getResp.Cookies() {
+			if cookie.Name == "_csrf" {
+				csrfToken = cookie.Value
+				// Create a copy without Secure flag for HTTP testing
+				// Go's cookie jar filters Secure cookies when scheme is HTTP
+				testCookie := &http.Cookie{
+					Name:     cookie.Name,
+					Value:    cookie.Value,
+					Path:     cookie.Path,
+					Domain:   cookie.Domain,
+					HttpOnly: cookie.HttpOnly,
+					SameSite: cookie.SameSite,
+					// Explicitly don't set Secure flag for HTTP testing
+					Secure: false,
+				}
+				jar.SetCookies(baseURLParsed, []*http.Cookie{testCookie})
+				break
+			}
+		}
+	}
+	if csrfToken == "" {
+		t.Fatalf("Failed to get CSRF token from cookie. Cookies in jar: %v, Response cookies: %v", cookies, getResp.Cookies())
+	}
+
+	// Create multipart form data
+	var bodyBuffer bytes.Buffer
+	writer := multipart.NewWriter(&bodyBuffer)
+
 	for k, v := range body {
 		switch val := v.(type) {
 		case []int:
 			for _, id := range val {
-				formData.Add(k, strconv.Itoa(id))
+				fieldWriter, err := writer.CreateFormField(k)
+				if err != nil {
+					t.Fatalf("Failed to create form field %s: %v", k, err)
+				}
+				fieldWriter.Write([]byte(strconv.Itoa(id)))
 			}
 		case []string:
 			for _, s := range val {
-				formData.Add(k, s)
+				fieldWriter, err := writer.CreateFormField(k)
+				if err != nil {
+					t.Fatalf("Failed to create form field %s: %v", k, err)
+				}
+				fieldWriter.Write([]byte(s))
 			}
 		case string:
-			formData.Add(k, val)
+			fieldWriter, err := writer.CreateFormField(k)
+			if err != nil {
+				t.Fatalf("Failed to create form field %s: %v", k, err)
+			}
+			fieldWriter.Write([]byte(val))
 		case int:
-			formData.Add(k, strconv.Itoa(val))
+			fieldWriter, err := writer.CreateFormField(k)
+			if err != nil {
+				t.Fatalf("Failed to create form field %s: %v", k, err)
+			}
+			fieldWriter.Write([]byte(strconv.Itoa(val)))
 		}
 	}
 
-	req, err := http.NewRequest("POST", requestURL, strings.NewReader(formData.Encode()))
+	writer.Close()
+
+	// Parse request URL to ensure cookies are sent correctly
+	reqURL, err := url.Parse(requestURL)
+	if err != nil {
+		t.Fatalf("Failed to parse request URL: %v", err)
+	}
+
+	req, err := http.NewRequest("POST", requestURL, &bodyBuffer)
 	if err != nil {
 		t.Fatalf("Failed to create POST request to %s: %v", requestURL, err)
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("X-Csrf-Token", csrfToken)
 
-	client := &http.Client{}
+	// Ensure cookies from jar are included for the request URL
+	// The jar should handle this automatically, but we ensure the CSRF cookie is included
+	jarCookies := jar.Cookies(reqURL)
+	for _, cookie := range jarCookies {
+		if cookie.Name == "_csrf" {
+			req.AddCookie(cookie)
+			break
+		}
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("Failed to make POST request to %s: %v", requestURL, err)
@@ -1252,12 +1355,12 @@ func TestSearch(t *testing.T) {
 func TestEdgeCases(t *testing.T) {
 	t.Run("Invalid form data", func(t *testing.T) {
 		url := baseURL + "/api/categories/Cars%20%26%20Trucks/search"
-		// Send malformed form data - ParseForm is lenient but should handle gracefully
-		req, err := http.NewRequest("POST", url, bytes.NewBufferString("invalid%form=data"))
+		// Send malformed multipart form data - should handle gracefully
+		req, err := http.NewRequest("POST", url, bytes.NewBufferString("invalid multipart form data"))
 		if err != nil {
 			t.Fatalf("Failed to create request: %v", err)
 		}
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Content-Type", "multipart/form-data; boundary=----WebKitFormBoundary")
 
 		client := &http.Client{}
 		resp, err := client.Do(req)
@@ -1274,13 +1377,78 @@ func TestEdgeCases(t *testing.T) {
 	})
 
 	t.Run("Search without Content-Type header", func(t *testing.T) {
-		url := baseURL + "/api/categories/Cars%20%26%20Trucks/search?make=HONDA"
-		req, err := http.NewRequest("POST", url, nil)
+		jar, err := cookiejar.New(nil)
+		if err != nil {
+			t.Fatalf("Failed to create cookie jar: %v", err)
+		}
+		client := &http.Client{Jar: jar}
+
+		baseURLParsed, err := url.Parse(baseURL)
+		if err != nil {
+			t.Fatalf("Failed to parse base URL: %v", err)
+		}
+
+		// Get CSRF token via GET /health
+		getReq, err := http.NewRequest("GET", baseURL+"/health", nil)
+		if err != nil {
+			t.Fatalf("Failed to create GET request for CSRF token: %v", err)
+		}
+		getResp, err := client.Do(getReq)
+		if err != nil {
+			t.Fatalf("Failed to get CSRF token: %v", err)
+		}
+		getResp.Body.Close()
+
+		var csrfToken string
+		cookies := jar.Cookies(baseURLParsed)
+		for _, cookie := range cookies {
+			if cookie.Name == "_csrf" {
+				csrfToken = cookie.Value
+				break
+			}
+		}
+		if csrfToken == "" {
+			// Fallback: try to get from response cookies and manually add to jar
+			for _, cookie := range getResp.Cookies() {
+				if cookie.Name == "_csrf" {
+					csrfToken = cookie.Value
+					testCookie := &http.Cookie{
+						Name:     cookie.Name,
+						Value:    cookie.Value,
+						Path:     cookie.Path,
+						Domain:   cookie.Domain,
+						HttpOnly: cookie.HttpOnly,
+						SameSite: cookie.SameSite,
+						Secure:   false,
+					}
+					jar.SetCookies(baseURLParsed, []*http.Cookie{testCookie})
+					break
+				}
+			}
+		}
+		if csrfToken == "" {
+			t.Fatalf("Failed to get CSRF token from cookie")
+		}
+
+		requestURL := baseURL + "/api/categories/Cars%20%26%20Trucks/search?make=HONDA"
+		req, err := http.NewRequest("POST", requestURL, nil)
 		if err != nil {
 			t.Fatalf("Failed to create request: %v", err)
 		}
+		req.Header.Set("X-Csrf-Token", csrfToken)
 
-		client := &http.Client{}
+		reqURL, err := url.Parse(requestURL)
+		if err != nil {
+			t.Fatalf("Failed to parse request URL: %v", err)
+		}
+		jarCookies := jar.Cookies(reqURL)
+		for _, cookie := range jarCookies {
+			if cookie.Name == "_csrf" {
+				req.AddCookie(cookie)
+				break
+			}
+		}
+
 		resp, err := client.Do(req)
 		if err != nil {
 			t.Fatalf("Failed to make request: %v", err)

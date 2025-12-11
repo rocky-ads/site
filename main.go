@@ -1,34 +1,55 @@
 package main
 
 import (
+	"time"
+
 	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/handlers"
 	"github.com/rocky-ads/site/logger"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
+	flogger "github.com/gofiber/fiber/v2/middleware/logger"
 )
 
 func main() {
-	// Initialize logger
 	if err := logger.Init(config.LogLevel, config.LogFormat,
 		config.LogFile); err != nil {
 		logger.Fatal("Failed to initialize logger", "error", err)
 	}
 
-	// Open existing database (assumes it's already been built with cmd/rebuild_db)
+	// Assumes database is already built with cmd/rebuild_db
 	if err := db.Init("project.db"); err != nil {
 		logger.Fatal("Failed to open database", "error", err)
 	}
 	defer db.Close()
 
-	// Set up Fiber app
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: handlers.ErrorHandler,
+		BodyLimit:    config.ServerBodyLimit, // Total request body size (for multiple files)
+		ReadTimeout:  30 * time.Second,       // Prevent long-running requests
+		WriteTimeout: 30 * time.Second,       // Prevent long-running responses
+	})
 
-	// API routes
+	// Must be early in middleware chain
+	app.Use(handlers.ConfigureHelmet())
+
+	app.Use(limiter.New(limiter.Config{
+		Max:        config.ServerRateLimitMax,
+		Expiration: config.ServerRateLimitExp,
+	}))
+
+	app.Use(handlers.JWTMiddleware)
+	app.Use(handlers.CSRFMiddleware)
+
+	app.Use(flogger.New(flogger.Config{
+		Output: logger.Writer(),
+		Format: "${status} | ${latency} | ${ip} | ${method} | ${path}\n",
+	}))
+
 	api := app.Group("/api")
 
-	// Category-specific routes
 	categoryRouter := api.Group("/categories/:category")
 	categoryRouter.Get("/values/:field", handlers.GetAllValuesHandler)
 	categoryRouter.Get("/any-values/:field", handlers.GetAnyValuesHandler)
@@ -38,16 +59,13 @@ func main() {
 	categoryRouter.Get("/last-spec-field", handlers.GetLastSpecFieldHandler)
 	categoryRouter.Post("/search", handlers.SearchHandler)
 
-	// Ad routes
 	api.Get("/ads/:id/filter-values", handlers.GetAdFilterValuesHandler)
 
-	// Health check
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.SendString("OK")
 	})
 
-	// Start server
-	port := ":8080"
+	port := ":" + config.ServerPort
 	logger.Info("Server starting", "port", port)
 	logger.Info("API endpoints:")
 	logger.Info("  GET  /api/categories/:category/values/:field")
