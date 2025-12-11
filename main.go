@@ -1,30 +1,34 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/rocky-ads/site/cache"
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/handlers"
+	"github.com/rocky-ads/site/logger"
 
 	"github.com/gorilla/mux"
 )
 
 func main() {
+	// Initialize logger
+	if err := logger.Init("info", "text", ""); err != nil {
+		logger.Fatal("Failed to initialize logger", "error", err)
+	}
+
 	// Open existing database (assumes it's already been built with cmd/rebuild_db)
 	if err := db.Init("project.db"); err != nil {
-		log.Fatalf("Failed to open database: %v", err)
+		logger.Fatal("Failed to open database", "error", err)
 	}
 	defer db.Close()
 
 	// Initialize caches
-	fmt.Println("Initializing caches...")
+	logger.Info("Initializing caches...")
 	if err := cache.Init(); err != nil {
-		log.Fatalf("Failed to initialize caches: %v", err)
+		logger.Fatal("Failed to initialize caches", "error", err)
 	}
-	fmt.Println("Caches initialized successfully")
+	logger.Info("Caches initialized successfully")
 
 	// Set up router
 	r := mux.NewRouter()
@@ -53,18 +57,18 @@ func main() {
 
 	// Start server
 	port := ":8080"
-	fmt.Printf("Server starting on port %s\n", port)
-	fmt.Println("API endpoints:")
-	fmt.Println("  GET  /api/categories/:category/values/:field")
-	fmt.Println("  GET  /api/categories/:category/any-values/:field")
-	fmt.Println("  POST /api/categories/:category/ad-values/:field")
-	fmt.Println("  GET  /api/categories/:category/chains")
-	fmt.Println("  GET  /api/categories/:category/first-spec-fields")
-	fmt.Println("  GET  /api/categories/:category/last-spec-field")
-	fmt.Println("  POST /api/categories/:category/search")
-	fmt.Println("  GET  /api/ads/:id/filter-values")
+	logger.Info("Server starting", "port", port)
+	logger.Info("API endpoints:")
+	logger.Info("  GET  /api/categories/:category/values/:field")
+	logger.Info("  GET  /api/categories/:category/any-values/:field")
+	logger.Info("  POST /api/categories/:category/ad-values/:field")
+	logger.Info("  GET  /api/categories/:category/chains")
+	logger.Info("  GET  /api/categories/:category/first-spec-fields")
+	logger.Info("  GET  /api/categories/:category/last-spec-field")
+	logger.Info("  POST /api/categories/:category/search")
+	logger.Info("  GET  /api/ads/:id/filter-values")
 
 	if err := http.ListenAndServe(port, r); err != nil {
-		log.Fatalf("Server failed to start: %v", err)
+		logger.Fatal("Server failed to start", "error", err)
 	}
 }

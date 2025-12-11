@@ -3,12 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/rocky-ads/site/cache"
 	"github.com/rocky-ads/site/cmd/rebuild_db/seed"
 	"github.com/rocky-ads/site/db"
+	"github.com/rocky-ads/site/logger"
 )
 
 // initDatabaseWithSchema initializes the database and loads the schema
@@ -42,38 +42,43 @@ func main() {
 	includeTestAds := flag.Bool("test-ads", false, "Include test ads in seed data")
 	flag.Parse()
 
+	// Initialize logger
+	if err := logger.Init("info", "text", ""); err != nil {
+		logger.Fatal("Failed to initialize logger", "error", err)
+	}
+
 	// Remove existing database if it exists
 	if _, err := os.Stat(*dbPath); err == nil {
-		fmt.Printf("Removing existing database: %s\n", *dbPath)
+		logger.Info("Removing existing database", "path", *dbPath)
 		if err := os.Remove(*dbPath); err != nil {
-			log.Fatalf("Failed to remove existing database: %v", err)
+			logger.Fatal("Failed to remove existing database", "error", err)
 		}
 	}
 
 	// Initialize database connection and schema
-	fmt.Println("Initializing database...")
+	logger.Info("Initializing database...")
 	if err := initDatabaseWithSchema(*dbPath); err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		logger.Fatal("Failed to initialize database", "error", err)
 	}
 	defer db.Close()
 
 	// Load seed data
-	fmt.Println("Loading seed data...")
+	logger.Info("Loading seed data...")
 	if err := seed.LoadAll(*includeTestAds); err != nil {
-		log.Fatalf("Failed to load seed data: %v", err)
+		logger.Fatal("Failed to load seed data", "error", err)
 	}
 	if *includeTestAds {
-		fmt.Println("Seed data (including test ads) loaded successfully")
+		logger.Info("Seed data (including test ads) loaded successfully")
 	} else {
-		fmt.Println("Seed data (schema and spec data only) loaded successfully")
+		logger.Info("Seed data (schema and spec data only) loaded successfully")
 	}
 
 	// Initialize caches
-	fmt.Println("Initializing caches...")
+	logger.Info("Initializing caches...")
 	if err := cache.Init(); err != nil {
-		log.Fatalf("Failed to initialize caches: %v", err)
+		logger.Fatal("Failed to initialize caches", "error", err)
 	}
-	fmt.Println("Caches initialized successfully")
+	logger.Info("Caches initialized successfully")
 
-	fmt.Println("Database rebuild complete!")
+	logger.Info("Database rebuild complete!")
 }

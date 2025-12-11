@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/rocky-ads/site/db"
+	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/models"
 )
 
@@ -235,7 +236,7 @@ func loadVehicleChain(categoryID int, filename string, specTable string) error {
 								categoryID, make, modelStr,
 							)
 							if err != nil {
-								fmt.Printf("Error inserting spec combination: %v\n", err)
+								logger.Error("Error inserting spec combination", "error", err)
 							}
 						}
 					}
@@ -249,7 +250,7 @@ func loadVehicleChain(categoryID int, filename string, specTable string) error {
 								categoryID, make, year, modelStr,
 							)
 							if err != nil {
-								fmt.Printf("Error inserting spec combination: %v\n", err)
+								logger.Error("Error inserting spec combination", "error", err)
 							}
 						}
 					}
@@ -263,7 +264,7 @@ func loadVehicleChain(categoryID int, filename string, specTable string) error {
 								categoryID, make, year, model, engineStr,
 							)
 							if err != nil {
-								fmt.Printf("Error inserting spec combination: %v\n", err)
+								logger.Error("Error inserting spec combination", "error", err)
 							}
 						}
 					}
