@@ -38,6 +38,11 @@ func setupApp() *fiber.App {
 		Format: "${status} | ${latency} | ${ip} | ${method} | ${path}\n",
 	}))
 
+	app.Static("/", "./static")
+	app.Get("/.well-known/appspecific/com.chrome.devtools.json", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusNoContent)
+	})
+
 	api := app.Group("/api")
 
 	categoryRouter := api.Group("/categories/:category")
