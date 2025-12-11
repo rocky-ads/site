@@ -13,18 +13,8 @@ import (
 	flogger "github.com/gofiber/fiber/v2/middleware/logger"
 )
 
-func main() {
-	if err := logger.Init(config.LogLevel, config.LogFormat,
-		config.LogFile); err != nil {
-		logger.Fatal("Failed to initialize logger", "error", err)
-	}
-
-	// Assumes database is already built with cmd/rebuild_db
-	if err := db.Init("project.db"); err != nil {
-		logger.Fatal("Failed to open database", "error", err)
-	}
-	defer db.Close()
-
+// setupApp configures the Fiber app with middleware and routes
+func setupApp() *fiber.App {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: handlers.ErrorHandler,
 		BodyLimit:    config.ServerBodyLimit, // Total request body size (for multiple files)
@@ -64,6 +54,23 @@ func main() {
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.SendString("OK")
 	})
+
+	return app
+}
+
+func main() {
+	if err := logger.Init(config.LogLevel, config.LogFormat,
+		config.LogFile); err != nil {
+		logger.Fatal("Failed to initialize logger", "error", err)
+	}
+
+	// Assumes database is already built with cmd/rebuild_db
+	if err := db.Init("project.db"); err != nil {
+		logger.Fatal("Failed to open database", "error", err)
+	}
+	defer db.Close()
+
+	app := setupApp()
 
 	port := ":" + config.ServerPort
 	logger.Info("Server starting", "port", port)

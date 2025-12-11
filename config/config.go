@@ -95,6 +95,8 @@ var (
 
 	// Server configuration
 	ServerPort = getEnvWithDefault("PORT", "10000")
+	// Test port - used when running tests to avoid conflicts with main server
+	TestPort = getEnvWithDefault("PORT_TEST", "10001")
 
 	// Cookie security - set LOCAL_DEVELOPMENT=true to relax cookie security for local HTTP access
 	// When LOCAL_DEVELOPMENT is set, cookies will work over HTTP even if TWILIO_WEBHOOK_URL is HTTPS

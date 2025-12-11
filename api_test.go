@@ -2,20 +2,82 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"os"
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/config"
+	"github.com/rocky-ads/site/db"
+	"github.com/rocky-ads/site/logger"
 )
 
-var baseURL = "http://localhost:" + config.ServerPort
+var baseURL = "http://localhost:" + config.TestPort
+var testServer *fiber.App
+
+// TestMain starts the test server before running tests and shuts it down after
+func TestMain(m *testing.M) {
+	// Initialize logger for tests (use minimal logging)
+	if err := logger.Init("error", "text", ""); err != nil {
+		panic(fmt.Sprintf("Failed to initialize logger: %v", err))
+	}
+
+	// Initialize database
+	if err := db.Init("project.db"); err != nil {
+		panic(fmt.Sprintf("Failed to open database: %v", err))
+	}
+
+	// Setup test server
+	testServer = setupApp()
+
+	// Start server in a goroutine
+	port := ":" + config.TestPort
+	go func() {
+		if err := testServer.Listen(port); err != nil {
+			panic(fmt.Sprintf("Test server failed to start: %v", err))
+		}
+	}()
+
+	// Wait for server to be ready
+	maxAttempts := 30
+	for i := 0; i < maxAttempts; i++ {
+		resp, err := http.Get("http://localhost" + port + "/health")
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				break
+			}
+		}
+		if i == maxAttempts-1 {
+			panic("Test server failed to start within timeout")
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// Run tests
+	code := m.Run()
+
+	// Shutdown server
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := testServer.ShutdownWithContext(ctx); err != nil {
+		fmt.Printf("Error shutting down test server: %v\n", err)
+	}
+
+	// Close database
+	db.Close()
+
+	os.Exit(code)
+}
 
 // Shared HTTP client with persistent cookie jar for CSRF token caching
 var testClient *http.Client
