@@ -1,10 +1,12 @@
 package seed
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
+	"time"
 
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/logger"
@@ -29,17 +31,30 @@ var categoryFiles = make(map[string]CategoryFiles)
 
 // LoadAll loads all seed data into the database
 func LoadAll(includeTestAds bool) error {
+	startTime := time.Now()
 	if err := LoadFields(); err != nil {
 		return fmt.Errorf("loading fields: %w", err)
 	}
+	logger.Info("LoadFields completed", "duration", time.Since(startTime))
+
+	startTime = time.Now()
 	if err := LoadCategories(); err != nil {
 		return fmt.Errorf("loading categories: %w", err)
 	}
+	logger.Info("LoadCategories completed", "duration", time.Since(startTime))
+
+	startTime = time.Now()
 	if err := LoadChains(); err != nil {
 		return fmt.Errorf("loading chains: %w", err)
 	}
-	if err := LoadAds(includeTestAds); err != nil {
-		return fmt.Errorf("loading ads: %w", err)
+	logger.Info("LoadChains completed", "duration", time.Since(startTime))
+
+	if includeTestAds {
+		startTime = time.Now()
+		if err := LoadAds(includeTestAds); err != nil {
+			return fmt.Errorf("loading ads: %w", err)
+		}
+		logger.Info("LoadAds completed", "duration", time.Since(startTime))
 	}
 	return nil
 }
@@ -200,7 +215,27 @@ func loadVehicleChain(categoryID int, filename string, specTable string) error {
 		return err
 	}
 
-	// Recursively traverse the nested structure
+	type bicycleRow struct {
+		make  string
+		model string
+	}
+	type agRow struct {
+		make  string
+		year  string
+		model string
+	}
+	type vehicleRow struct {
+		make   string
+		year   string
+		model  string
+		engine string
+	}
+
+	var bicycleRows []bicycleRow
+	var agRows []agRow
+	var vehicleRows []vehicleRow
+
+	// Recursively traverse the nested structure and collect rows
 	var traverse func(map[string]interface{}, []string, int)
 	traverse = func(m map[string]interface{}, path []string, depth int) {
 		for key, value := range m {
@@ -209,7 +244,6 @@ func loadVehicleChain(categoryID int, filename string, specTable string) error {
 			case map[string]interface{}:
 				traverse(v, currentPath, depth+1)
 			case []interface{}:
-				// This is an array - could be models or engines
 				make := ""
 				year := ""
 				model := ""
@@ -224,48 +258,26 @@ func loadVehicleChain(categoryID int, filename string, specTable string) error {
 					model = currentPath[2]
 				}
 
-				// Determine structure based on path length and insert into appropriate spec table
 				pathLen := len(currentPath)
 				if specTable == "spec_bicycle" {
-					// make->[models] structure
 					if pathLen == 1 {
 						for _, modelVal := range v {
 							modelStr := fmt.Sprintf("%v", modelVal)
-							_, err := db.Exec(
-								"INSERT OR IGNORE INTO spec_bicycle (category_id, make, model) VALUES (?, ?, ?)",
-								categoryID, make, modelStr,
-							)
-							if err != nil {
-								logger.Error("Error inserting spec combination", "error", err)
-							}
+							bicycleRows = append(bicycleRows, bicycleRow{make: make, model: modelStr})
 						}
 					}
 				} else if specTable == "spec_ag" {
-					// make->year->[models] structure
 					if pathLen == 2 {
 						for _, modelVal := range v {
 							modelStr := fmt.Sprintf("%v", modelVal)
-							_, err := db.Exec(
-								"INSERT OR IGNORE INTO spec_ag (category_id, make, year, model) VALUES (?, ?, ?, ?)",
-								categoryID, make, year, modelStr,
-							)
-							if err != nil {
-								logger.Error("Error inserting spec combination", "error", err)
-							}
+							agRows = append(agRows, agRow{make: make, year: year, model: modelStr})
 						}
 					}
 				} else if specTable == "spec_vehicle" {
-					// make->year->model->[engines] structure
 					if pathLen == 3 {
 						for _, engineVal := range v {
 							engineStr := fmt.Sprintf("%v", engineVal)
-							_, err := db.Exec(
-								"INSERT OR IGNORE INTO spec_vehicle (category_id, make, year, model, engine) VALUES (?, ?, ?, ?, ?)",
-								categoryID, make, year, model, engineStr,
-							)
-							if err != nil {
-								logger.Error("Error inserting spec combination", "error", err)
-							}
+							vehicleRows = append(vehicleRows, vehicleRow{make: make, year: year, model: model, engine: engineStr})
 						}
 					}
 				}
@@ -274,6 +286,54 @@ func loadVehicleChain(categoryID int, filename string, specTable string) error {
 	}
 
 	traverse(chainData, []string{}, 1)
+
+	// Batch insert using transaction
+	var tx *sql.Tx
+	tx, err = db.Begin()
+	if err != nil {
+		return fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	if specTable == "spec_bicycle" {
+		stmt, err := tx.Prepare("INSERT OR IGNORE INTO spec_bicycle (category_id, make, model) VALUES (?, ?, ?)")
+		if err != nil {
+			return fmt.Errorf("preparing statement: %w", err)
+		}
+		defer stmt.Close()
+		for _, row := range bicycleRows {
+			if _, err := stmt.Exec(categoryID, row.make, row.model); err != nil {
+				return fmt.Errorf("inserting row: %w", err)
+			}
+		}
+	} else if specTable == "spec_ag" {
+		stmt, err := tx.Prepare("INSERT OR IGNORE INTO spec_ag (category_id, make, year, model) VALUES (?, ?, ?, ?)")
+		if err != nil {
+			return fmt.Errorf("preparing statement: %w", err)
+		}
+		defer stmt.Close()
+		for _, row := range agRows {
+			if _, err := stmt.Exec(categoryID, row.make, row.year, row.model); err != nil {
+				return fmt.Errorf("inserting row: %w", err)
+			}
+		}
+	} else if specTable == "spec_vehicle" {
+		stmt, err := tx.Prepare("INSERT OR IGNORE INTO spec_vehicle (category_id, make, year, model, engine) VALUES (?, ?, ?, ?, ?)")
+		if err != nil {
+			return fmt.Errorf("preparing statement: %w", err)
+		}
+		defer stmt.Close()
+		for _, row := range vehicleRows {
+			if _, err := stmt.Exec(categoryID, row.make, row.year, row.model, row.engine); err != nil {
+				return fmt.Errorf("inserting row: %w", err)
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("committing transaction: %w", err)
+	}
+
 	return nil
 }
 
@@ -289,16 +349,40 @@ func loadPartChain(categoryID int, filename string) error {
 		return err
 	}
 
+	// Collect all rows first
+	type partRow struct {
+		partCategory    string
+		partSubcategory string
+	}
+	var rows []partRow
 	for partCategory, subcategories := range chainData {
 		for _, partSubcategory := range subcategories {
-			_, err := db.Exec(
-				"INSERT OR IGNORE INTO spec_part (category_id, part_category, part_subcategory) VALUES (?, ?, ?)",
-				categoryID, partCategory, partSubcategory,
-			)
-			if err != nil {
-				return err
-			}
+			rows = append(rows, partRow{partCategory: partCategory, partSubcategory: partSubcategory})
 		}
+	}
+
+	// Batch insert using transaction
+	var tx *sql.Tx
+	tx, err = db.Begin()
+	if err != nil {
+		return fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare("INSERT OR IGNORE INTO spec_part (category_id, part_category, part_subcategory) VALUES (?, ?, ?)")
+	if err != nil {
+		return fmt.Errorf("preparing statement: %w", err)
+	}
+	defer stmt.Close()
+
+	for _, row := range rows {
+		if _, err := stmt.Exec(categoryID, row.partCategory, row.partSubcategory); err != nil {
+			return fmt.Errorf("inserting row: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("committing transaction: %w", err)
 	}
 
 	return nil
