@@ -2,13 +2,23 @@ package services
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/models"
 )
 
 var placeholderString string = strings.Repeat("?,", 1000)
+
+type cacheKey struct {
+	fieldID    int
+	categoryID int
+	fvKey      string
+}
+
+var allValuesCache sync.Map
 
 func placeholders(n int) string {
 	if n == 0 {
@@ -137,9 +147,26 @@ func buildAndExecuteQuery(builder func() (string, []any, error)) (values []strin
 }
 
 func GetAllValues(f models.SpecField, fv models.FieldValues, categoryID int) (values []string, err error) {
-	return buildAndExecuteQuery(func() (string, []any, error) {
+	key := cacheKey{
+		fieldID:    f.ID,
+		categoryID: categoryID,
+		fvKey:      url.Values(fv).Encode(),
+	}
+
+	if cached, found := allValuesCache.Load(key); found {
+		return cached.([]string), nil
+	}
+
+	values, err = buildAndExecuteQuery(func() (string, []any, error) {
 		return buildAllQuery(f, fv, categoryID)
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	allValuesCache.Store(key, values)
+
+	return values, nil
 }
 
 func GetAnyValues(f models.SpecField, fv models.FieldValues, categoryID int) (values []string, err error) {

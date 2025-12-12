@@ -1,0 +1,178 @@
+# Tech Stack
+
+This document outlines the technologies, frameworks, and tools used in the Rocky Ads web application.
+
+## Backend
+
+### Programming Language
+- **Go 1.25.3** - Primary programming language
+
+### Web Framework
+- **Fiber v2.52.5** - High-performance HTTP web framework built on top of fasthttp
+  - Fast HTTP server with low memory footprint
+  - Middleware support for security, logging, rate limiting
+
+### Database
+- **SQLite 3** - Embedded relational database
+  - File-based database (`project.db`)
+  - JSON column support for flexible data storage
+  - Foreign key constraints enabled
+  - Indexes optimized for search performance
+
+### Database Libraries
+- **sqlx v1.4.0** - SQL toolkit providing extensions to database/sql
+  - Named parameter support
+  - Struct scanning capabilities
+- **go-sqlite3 v1.14.32** - SQLite driver for Go
+
+### Authentication & Security
+- **golang-jwt/jwt/v5 v5.3.0** - JSON Web Token implementation
+  - HS256 signing method
+  - 24-hour token expiration
+  - Secure cookie-based storage
+- **Argon2** (via `golang.org/x/crypto`) - Password hashing
+  - Memory: 64 KB
+- **AES-GCM** (via `golang.org/x/crypto`) - Encryption for sensitive data
+  - 256-bit keys
+  - HKDF-SHA256 for key derivation
+  - Used for message and user data encryption
+
+### Security Middleware
+- **Helmet** (Fiber middleware) - Security headers
+  - Content Security Policy (CSP)
+  - X-Frame-Options: DENY
+  - HSTS (when HTTPS enabled)
+  - Referrer-Policy: strict-origin-when-cross-origin
+- **CSRF Protection** (Fiber middleware) - Double-submit cookie pattern
+- **Rate Limiting** (Fiber middleware)
+  - General: 600 requests per minute
+  - Registration: 3 attempts per 15 minutes
+
+### Logging
+- **slog** (Go standard library) - Structured logging
+  - JSON and text formats supported
+  - Color output for terminal (text format)
+  - Configurable log levels (debug, info, warn, error)
+  - File or stdout output
+
+### HTTP Client & Compression
+- **fasthttp v1.51.0** - Fast HTTP implementation (used by Fiber)
+- **brotli v1.0.5** - Brotli compression support
+- **klauspost/compress v1.17.0** - Compression algorithms
+
+## Frontend
+
+### JavaScript
+**No custom JavaScript is used in this application.** The frontend is intentionally JavaScript-free except for HTMX, which provides all necessary interactivity through HTML attributes.
+
+- **HTMX v2.0.7** - HTML-over-the-wire library (only JavaScript dependency)
+  - Server-sent events (SSE) extension v2.2.3
+  - Loaded via CDN (unpkg.com)
+  - Enables dynamic HTML updates without full page reloads
+  - All interactivity handled declaratively via HTML attributes
+  - **HATEOAS (Hypermedia As The Engine Of Application State)** - Application state is driven entirely by hypermedia (HTML links, forms, and responses) rather than client-side state management or hardcoded URLs. The server controls application flow by returning HTML with embedded links and forms that represent available state transitions.
+
+### CSS Framework
+- **Tailwind CSS** - Utility-first CSS framework
+  - Inline styles (via `unsafe-inline` CSP directive)
+
+### Static Assets
+- Static files served directly by Fiber
+- Located in `./static` directory
+
+## External Services & APIs
+
+### Object Storage
+- **MinIO** - S3-compatible object storage
+  - Presigned URLs for image access (1-hour expiry)
+  - Used for ad image storage
+
+### Communication Services
+- **Twilio** - SMS messaging service
+  - Account SID and Auth Token authentication
+- **Twilio SendGrid** - Email delivery service
+  - API key authentication
+  - Used for transactional emails
+
+### AI/ML Services
+- **Google Gemini API** - Embedding generation
+  - Model: `gemini-embedding-001`
+  - Dimensions: 3072
+  - Used for vector search functionality
+- **Grok API (x.ai)** - Chat completions
+  - Model: `grok-3-mini`
+  - Endpoint: `https://api.x.ai/v1/chat/completions`
+
+## Infrastructure & Deployment
+
+### CI/CD
+- **GitHub Actions** - Continuous integration
+  - Automated testing on push/PR to main/dev branches
+  - Go 1.25.3 setup
+  - Module caching
+  - Database rebuild with test data
+  - Test execution with required environment variables
+
+### Hosting
+- **Render** - Cloud hosting platform (referenced in configuration)
+  - Environment variable detection for Render deployments
+  - External URL configuration support
+
+## Development Tools
+
+### Testing
+- Go standard testing framework (`go test`)
+- Test database rebuild tool (`cmd/rebuild_db`)
+- Test data generation support
+
+### Build Tools
+- Go modules (`go.mod` / `go.sum`)
+- Standard Go build toolchain
+
+## Architecture Patterns
+
+### Frontend Architecture
+- **Server-Side Rendering (SSR)** - All HTML is generated server-side
+- **HTML-over-the-Wire** - Dynamic updates via HTMX without custom JavaScript
+- **Zero JavaScript Framework** - No React, Vue, Angular, or other JS frameworks
+- **Declarative Interactivity** - All UI interactions defined via HTML attributes (hx-get, hx-post, etc.)
+- **HATEOAS (Hypermedia As The Engine Of Application State)** - Core architectural principle where application state and available actions are embedded in the HTML responses themselves. The server controls application flow by returning hypermedia (links, forms) that represent valid state transitions, eliminating the need for client-side routing or API endpoint knowledge.
+
+### Application Structure
+- **Layered Architecture**
+  - Handlers (HTTP request handling)
+  - Services (business logic)
+  - Models (data structures)
+  - Database (data access layer)
+- **Middleware Chain**
+  - Security headers (Helmet)
+  - Rate limiting
+  - JWT authentication
+  - CSRF protection
+  - Request logging
+
+### Data Patterns
+- **JSON Columns** - Flexible schema for location data
+- **Normalized Database** - Categories, chains, fields, ads, values
+- **Spec Tables** - Category-specific specification tables (bicycle, ag, vehicle, part)
+- **Composite Indexes** - Optimized for search queries
+
+### Security Patterns
+- **Encryption at Rest** - AES-GCM for sensitive user data
+- **Key Derivation** - HKDF for per-user encryption keys
+- **Secure Cookies** - HTTPOnly, Secure, SameSite=Strict
+- **Token-based Auth** - JWT stored in secure cookies
+- **Double-Submit Cookie** - CSRF protection pattern
+
+## Configuration
+
+Configuration is managed through environment variables:
+- Database connection
+- MinIO credentials
+- API keys (Gemini, Grok, Twilio)
+- JWT secrets
+- Encryption keys (base64-encoded)
+- Server port and logging settings
+
+See `config/config.go` for complete configuration options.
+
