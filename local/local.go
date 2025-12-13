@@ -14,13 +14,13 @@ func SetUserID(c *fiber.Ctx, userID int) {
 	c.Locals("userID", userID)
 }
 
-func SetUserName(c *fiber.Ctx, userName string) {
-	c.Locals("userName", userName)
-}
-
 func GetUserName(c *fiber.Ctx) string {
 	userName, _ := c.Locals("userName").(string)
 	return userName
+}
+
+func SetUserName(c *fiber.Ctx, userName string) {
+	c.Locals("userName", userName)
 }
 
 // GetCSRFToken extracts the CSRF token from context (set by CSRF middleware)

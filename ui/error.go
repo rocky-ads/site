@@ -24,11 +24,10 @@ func ErrorPageContent(code int, message string) []g.Node {
 				Class("text-gray-600 dark:text-gray-400 mb-8"),
 				g.Text("Sorry, something went wrong."),
 			),
-			A(
-				Href("/"),
-				Class("inline-block px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"),
-				g.Text("Go Home"),
-			),
+			StandardButton(ButtonProps{
+				Text: "Go Home",
+				Href: "/",
+			}),
 		),
 	}
 }

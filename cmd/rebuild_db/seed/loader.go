@@ -295,7 +295,8 @@ func loadVehicleChain(categoryID int, filename string, specTable string) error {
 	}
 	defer tx.Rollback()
 
-	if specTable == "spec_bicycle" {
+	switch specTable {
+	case "spec_bicycle":
 		stmt, err := tx.Prepare("INSERT OR IGNORE INTO spec_bicycle (category_id, make, model) VALUES (?, ?, ?)")
 		if err != nil {
 			return fmt.Errorf("preparing statement: %w", err)
@@ -306,7 +307,7 @@ func loadVehicleChain(categoryID int, filename string, specTable string) error {
 				return fmt.Errorf("inserting row: %w", err)
 			}
 		}
-	} else if specTable == "spec_ag" {
+	case "spec_ag":
 		stmt, err := tx.Prepare("INSERT OR IGNORE INTO spec_ag (category_id, make, year, model) VALUES (?, ?, ?, ?)")
 		if err != nil {
 			return fmt.Errorf("preparing statement: %w", err)
@@ -317,7 +318,7 @@ func loadVehicleChain(categoryID int, filename string, specTable string) error {
 				return fmt.Errorf("inserting row: %w", err)
 			}
 		}
-	} else if specTable == "spec_vehicle" {
+	case "spec_vehicle":
 		stmt, err := tx.Prepare("INSERT OR IGNORE INTO spec_vehicle (category_id, make, year, model, engine) VALUES (?, ?, ?, ?, ?)")
 		if err != nil {
 			return fmt.Errorf("preparing statement: %w", err)
