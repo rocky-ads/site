@@ -1,6 +1,11 @@
 package handlers
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"fmt"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/rocky-ads/site/ui"
+)
 
 func ErrorHandler(c *fiber.Ctx, err error) error {
 	code := fiber.StatusInternalServerError
@@ -11,7 +16,7 @@ func ErrorHandler(c *fiber.Ctx, err error) error {
 		message = e.Message
 	}
 
-	return c.Status(code).JSON(fiber.Map{
-		"error": message,
-	})
+	c.Status(code)
+	title := fmt.Sprintf("%d - %s", code, message)
+	return renderPage(c, title, ui.ErrorPageContent(code, message))
 }

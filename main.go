@@ -43,6 +43,8 @@ func setupApp() *fiber.App {
 		return c.SendStatus(fiber.StatusNoContent)
 	})
 
+	app.Get("/", handlers.HomeHandler)
+
 	api := app.Group("/api")
 
 	categoryRouter := api.Group("/categories/:category")

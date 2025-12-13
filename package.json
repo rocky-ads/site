@@ -1,0 +1,27 @@
+{
+  "name": "site",
+  "version": "1.0.0",
+  "description": "Classified Ads without the Newspaper",
+  "main": "index.js",
+  "scripts": {
+    "build-css": "tailwindcss -i ./input.css -o ./static/css/output.css --watch",
+    "build-css-dev": "tailwindcss -i ./input.css -o ./static/css/output.css",
+    "build-css-prod": "tailwindcss -i ./input.css -o ./static/css/output.css --minify"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rocky-ads/site.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "tailwindcss": "^4.1.14",
+    "@tailwindcss/cli": "^4.1.14"
+  },
+  "bugs": {
+    "url": "https://github.com/rocky-ads/site/issues"
+  },
+  "homepage": "https://github.com/rocky-ads/site#readme"
+}

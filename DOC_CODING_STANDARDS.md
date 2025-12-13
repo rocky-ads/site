@@ -36,3 +36,23 @@ for _, user := range users {
     processUser(user)
 }
 ```
+
+## Line Length
+
+Keep lines to 80 columns or fewer when possible. This improves readability,
+especially when viewing code side-by-side or on smaller screens.
+
+- **Wrap code and comments** - Break long lines across multiple lines to fit within 80 columns
+- **Exceptions are acceptable** - Some lines may exceed 80 columns when:
+  - Breaking would significantly harm readability
+  - Long URLs or import paths cannot be meaningfully split
+  - Function signatures are clearer on multi line, with second and more lines tab-indented
+  - String literals contain structured data (JSON, SQL, etc.) that's better left intact
+
+Example of wrapping:
+```go
+// Acceptable: Long function signature on one line
+func processUserData(userID int, userName string, userEmail string,
+  userRole string, userPermissions []string) error {
+}
+```

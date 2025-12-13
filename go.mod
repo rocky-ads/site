@@ -12,6 +12,8 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	golang.org/x/crypto v0.14.0
 	golang.org/x/term v0.13.0
+	maragu.dev/gomponents v1.2.0
+	maragu.dev/gomponents-htmx v0.6.1
 )
 
 require (

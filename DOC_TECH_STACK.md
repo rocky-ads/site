@@ -76,6 +76,13 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
 - **Tailwind CSS** - Utility-first CSS framework
   - Inline styles (via `unsafe-inline` CSP directive)
 
+### HTML Generation
+- **gomponents** - Type-safe HTML generation library
+  - `maragu.dev/gomponents` - Core HTML components
+  - `maragu.dev/gomponents-htmx` - HTMX-specific attributes
+  - `maragu.dev/gomponents/components` - Pre-built component library
+  - Used for server-side HTML rendering in MPA (Multi-Page Application) architecture
+
 ### Static Assets
 - Static files served directly by Fiber
 - Located in `./static` directory
