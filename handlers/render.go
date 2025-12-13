@@ -17,5 +17,7 @@ func render(c *fiber.Ctx, component g.Node) error {
 
 func renderPage(c *fiber.Ctx, title string, body []gomponents.Node) error {
 	csrfToken := local.GetCSRFToken(c)
-	return render(c, ui.Page(title, c.Path(), csrfToken, body))
+	userID := 0
+	userName := ""
+	return render(c, ui.Page(userID, userName, title, c.Path(), csrfToken, body))
 }
