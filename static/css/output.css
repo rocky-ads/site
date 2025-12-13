@@ -418,28 +418,6 @@
     }
   }
 }
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-.max-w-content {
-  max-width: 860px;
-}
-.user-menu-position {
-  top: calc(2rem + 1rem + 0.5rem);
-  right: 1rem;
-}
-@media (min-width: 892px) {
-  .user-menu-position {
-    right: calc((100% - 860px) / 2 + 1rem);
-  }
-}
-::view-transition-group(root) {
-  animation-duration: 0.5s;
-}
 @property --tw-border-style {
   syntax: "*";
   inherits: false;
