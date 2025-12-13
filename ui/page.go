@@ -71,8 +71,9 @@ func Page(title, currentPath, csrfToken string, body []g.Node) g.Node {
 		Language: "en",
 		Head:     headNodes,
 		Body: []g.Node{
+			Class("min-h-screen bg-white dark:bg-gray-900"),
 			Div(
-				Class("max-w-content mx-auto px-4 md:px-12 py-8 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 min-h-screen"),
+				Class("w-full md:max-w-4xl md:mx-auto py-8 px-4 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900"),
 				hx.Headers(headersJSON),
 				navigation(),
 				g.Group(body),
