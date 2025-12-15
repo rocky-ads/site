@@ -58,7 +58,7 @@ func buildAllQuery(f models.SpecField, fv models.FieldValues, categoryID int) (s
 	selectField := f.Name
 
 	query := fmt.Sprintf(`SELECT COALESCE(json_group_array(value), '[]') FROM (
-		SELECT DISTINCT %s as value FROM %s WHERE %s ORDER BY %s
+		SELECT DISTINCT %s as value FROM %s WHERE %s ORDER BY %s COLLATE NOCASE
 	)`, selectField, f.SpecTable, strings.Join(whereClauses, " AND "), selectField)
 
 	return query, args, nil
@@ -93,7 +93,7 @@ func buildAdValuesQuery(f models.SpecField, fv models.FieldValues, adFilterFunc 
 	query += `
 			)
 			AND av.field_id = ?
-			ORDER BY av.value
+			ORDER BY av.value COLLATE NOCASE
 		)
 	`
 	args = append(args, f.ID)
