@@ -1,9 +1,8 @@
 package ui
 
 import (
+	"fmt"
 	"strconv"
-
-	"github.com/gofiber/fiber/v2"
 )
 
 // View types
@@ -13,13 +12,13 @@ const (
 	ViewTree
 )
 
-func ValidateView(viewStr string) (int, *fiber.Error) {
+func ValidateView(viewStr string) (int, error) {
 	view, err := strconv.Atoi(viewStr)
 	if err != nil {
-		return 0, fiber.NewError(fiber.StatusBadRequest, "Invalid view")
+		return 0, fmt.Errorf("invalid view: %w", err)
 	}
 	if view < ViewList || view > ViewTree {
-		return 0, fiber.NewError(fiber.StatusBadRequest, "Invalid view")
+		return 0, fmt.Errorf("invalid view: %d", view)
 	}
 	return view, nil
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/handlers"
 	"github.com/rocky-ads/site/logger"
+	"github.com/rocky-ads/site/services"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
@@ -57,6 +58,7 @@ func setupApp() *fiber.App {
 	categoryRouter.Post("/search", handlers.SearchHandler)
 
 	api.Get("/ads/:id/filter-values", handlers.GetAdFilterValuesHandler)
+	api.Get("/modal/category-select", handlers.CategorySelectHandler)
 
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.SendString("OK")
@@ -76,6 +78,10 @@ func main() {
 		logger.Fatal("Failed to open database", "error", err)
 	}
 	defer db.Close()
+
+	if err := services.InitCategories(); err != nil {
+		logger.Fatal("Failed to initialize categories", "error", err)
+	}
 
 	app := setupApp()
 

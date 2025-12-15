@@ -10,7 +10,7 @@ import (
 	"github.com/rocky-ads/site/ui"
 )
 
-func GetView(c *fiber.Ctx) (int, *fiber.Error) {
+func GetView(c *fiber.Ctx) (int, error) {
 	view := c.Cookies("view")
 	return ui.ValidateView(view)
 }
@@ -27,15 +27,15 @@ func SetView(c *fiber.Ctx, view int) {
 	})
 }
 
-func GetCategoryID(c *fiber.Ctx) (int, *fiber.Error) {
+func GetCategoryID(c *fiber.Ctx) (int, error) {
 	category := c.Cookies("category")
 	return services.ValidateCategory(category)
 }
 
-func SetCategory(c *fiber.Ctx, adCategory int) {
+func SetCategory(c *fiber.Ctx, category int) {
 	c.Cookie(&fiber.Cookie{
 		Name:     "category",
-		Value:    strconv.Itoa(adCategory),
+		Value:    strconv.Itoa(category),
 		MaxAge:   30 * 24 * 60 * 60, // 30 days
 		HTTPOnly: true,
 		Secure:   config.CookieSecure,

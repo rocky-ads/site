@@ -9,7 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func GetCategoryID(c *fiber.Ctx) (int, *fiber.Error) {
+func GetCategoryID(c *fiber.Ctx) (int, error) {
 	category := c.Params("category")
 	return services.ValidateCategory(category)
 }

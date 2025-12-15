@@ -9,9 +9,9 @@ import (
 )
 
 func HomeHandler(c *fiber.Ctx) error {
-	categoryID, fiberErr := cookie.GetCategoryID(c)
-	if fiberErr != nil {
-		return fiberErr
+	categoryID, err := cookie.GetCategoryID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
 	categoryName, err := services.GetCategoryNameByID(categoryID)
