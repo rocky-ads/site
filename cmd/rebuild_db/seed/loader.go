@@ -104,8 +104,8 @@ func LoadCategories() error {
 	for _, cat := range categories {
 		// Insert category
 		result, err := db.Exec(
-			"INSERT INTO categories (name, seed_ad_file) VALUES (?, ?)",
-			cat.Name, cat.SeedAdFile,
+			"INSERT INTO categories (name, seed_ad_file, image_file) VALUES (?, ?, ?)",
+			cat.Name, cat.SeedAdFile, cat.ImageFile,
 		)
 		if err != nil {
 			return fmt.Errorf("inserting category %s: %w", cat.Name, err)

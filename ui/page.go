@@ -184,7 +184,7 @@ func Page(userID int, userName, title, currentPath, csrfToken string, body []g.N
 		Body: []g.Node{
 			Class("min-h-screen bg-white dark:bg-gray-900"),
 			Div(
-				Class("w-full md:max-w-4xl md:mx-auto py-8 px-4 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900"),
+				Class("w-full md:max-w-3xl md:mx-auto py-8 px-4 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900"),
 				hx.Headers(headersJSON),
 				navigation(userID, userName, currentPath),
 				g.Group(body),

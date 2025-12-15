@@ -1,47 +1,15 @@
 package handlers
 
 import (
-	"fmt"
 	"net/url"
 	"strconv"
 
 	"github.com/rocky-ads/site/models"
+	"github.com/rocky-ads/site/param"
 	"github.com/rocky-ads/site/services"
 
 	"github.com/gofiber/fiber/v2"
 )
-
-func getCategoryID(c *fiber.Ctx) (int, *fiber.Error) {
-	categoryName := c.Params("category")
-	// Fiber's Params() returns URL-encoded values, must decode before lookup
-	decodedName, err := url.PathUnescape(categoryName)
-	if err != nil {
-		return 0, fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Invalid category name encoding: %s", err.Error()))
-	}
-	categoryID, err := services.GetCategoryIDByName(decodedName)
-	if err != nil {
-		return 0, fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("Category not found: %s", decodedName))
-	}
-	return categoryID, nil
-}
-
-func getSpecField(c *fiber.Ctx, categoryID int) (models.SpecField, *fiber.Error) {
-	fieldName := c.Params("field")
-	specField, err := services.GetSpecField(categoryID, fieldName)
-	if err != nil {
-		return models.SpecField{}, fiber.NewError(fiber.StatusNotFound, err.Error())
-	}
-	return specField, nil
-}
-
-func getAdID(c *fiber.Ctx) (int, *fiber.Error) {
-	adIDStr := c.Params("id")
-	adID, err := strconv.Atoi(adIDStr)
-	if err != nil {
-		return 0, fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
-	}
-	return adID, nil
-}
 
 func getQueryValues(c *fiber.Ctx) models.FieldValues {
 	queryString := c.Request().URI().QueryString()
@@ -64,12 +32,12 @@ func getFormValues(c *fiber.Ctx) models.FieldValues {
 }
 
 func GetAllValuesHandler(c *fiber.Ctx) error {
-	categoryID, fiberErr := getCategoryID(c)
+	categoryID, fiberErr := param.GetCategoryID(c)
 	if fiberErr != nil {
 		return fiberErr
 	}
 
-	specField, fiberErr := getSpecField(c, categoryID)
+	specField, fiberErr := param.GetSpecField(c, categoryID)
 	if fiberErr != nil {
 		return fiberErr
 	}
@@ -85,12 +53,12 @@ func GetAllValuesHandler(c *fiber.Ctx) error {
 }
 
 func GetAnyValuesHandler(c *fiber.Ctx) error {
-	categoryID, fiberErr := getCategoryID(c)
+	categoryID, fiberErr := param.GetCategoryID(c)
 	if fiberErr != nil {
 		return fiberErr
 	}
 
-	specField, fiberErr := getSpecField(c, categoryID)
+	specField, fiberErr := param.GetSpecField(c, categoryID)
 	if fiberErr != nil {
 		return fiberErr
 	}
@@ -106,12 +74,12 @@ func GetAnyValuesHandler(c *fiber.Ctx) error {
 }
 
 func GetAdValuesHandler(c *fiber.Ctx) error {
-	categoryID, fiberErr := getCategoryID(c)
+	categoryID, fiberErr := param.GetCategoryID(c)
 	if fiberErr != nil {
 		return fiberErr
 	}
 
-	specField, fiberErr := getSpecField(c, categoryID)
+	specField, fiberErr := param.GetSpecField(c, categoryID)
 	if fiberErr != nil {
 		return fiberErr
 	}
@@ -144,7 +112,7 @@ func GetAdValuesHandler(c *fiber.Ctx) error {
 }
 
 func GetChainsHandler(c *fiber.Ctx) error {
-	categoryID, fiberErr := getCategoryID(c)
+	categoryID, fiberErr := param.GetCategoryID(c)
 	if fiberErr != nil {
 		return fiberErr
 	}
@@ -158,7 +126,7 @@ func GetChainsHandler(c *fiber.Ctx) error {
 }
 
 func GetAdFilterValuesHandler(c *fiber.Ctx) error {
-	adID, fiberErr := getAdID(c)
+	adID, fiberErr := param.GetAdID(c)
 	if fiberErr != nil {
 		return fiberErr
 	}
@@ -172,7 +140,7 @@ func GetAdFilterValuesHandler(c *fiber.Ctx) error {
 }
 
 func SearchHandler(c *fiber.Ctx) error {
-	categoryID, fiberErr := getCategoryID(c)
+	categoryID, fiberErr := param.GetCategoryID(c)
 	if fiberErr != nil {
 		return fiberErr
 	}
@@ -196,7 +164,7 @@ func SearchHandler(c *fiber.Ctx) error {
 }
 
 func GetFirstSpecFieldsHandler(c *fiber.Ctx) error {
-	categoryID, fiberErr := getCategoryID(c)
+	categoryID, fiberErr := param.GetCategoryID(c)
 	if fiberErr != nil {
 		return fiberErr
 	}
@@ -218,7 +186,7 @@ func GetFirstSpecFieldsHandler(c *fiber.Ctx) error {
 }
 
 func GetLastSpecFieldHandler(c *fiber.Ctx) error {
-	categoryID, fiberErr := getCategoryID(c)
+	categoryID, fiberErr := param.GetCategoryID(c)
 	if fiberErr != nil {
 		return fiberErr
 	}

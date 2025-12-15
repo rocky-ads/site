@@ -5,6 +5,7 @@ type Category struct {
 	ID         int     `json:"id"`
 	Name       string  `json:"name"`
 	SeedAdFile string  `json:"seed_ad_file"`
+	ImageFile  string  `json:"image_file"`
 	Chains     []Chain `json:"chains"`
 }
 

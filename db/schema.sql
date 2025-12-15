@@ -2,7 +2,8 @@
 CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
-    seed_ad_file TEXT
+    seed_ad_file TEXT,
+    image_file TEXT
 );
 
 -- Chains table (represents field chains within categories)

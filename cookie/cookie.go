@@ -6,18 +6,13 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/config"
+	"github.com/rocky-ads/site/services"
 	"github.com/rocky-ads/site/ui"
 )
 
-func GetView(c *fiber.Ctx) int {
-	cookieValue := c.Cookies("view")
-
-	view, err := strconv.Atoi(cookieValue)
-	if err != nil {
-		return ui.ViewList
-	}
-
-	return view
+func GetView(c *fiber.Ctx) (int, *fiber.Error) {
+	view := c.Cookies("view")
+	return ui.ValidateView(view)
 }
 
 func SetView(c *fiber.Ctx, view int) {
@@ -32,31 +27,14 @@ func SetView(c *fiber.Ctx, view int) {
 	})
 }
 
-/*
-
-TODO: Add ad category cookie
-
-Something looks weird about func below...
-
-func GetAdCategory(c *fiber.Ctx) int {
-	cookieValue := c.Cookies("ad_category")
-
-	categoryID, err := strconv.Atoi(cookieValue)
-	if err != nil {
-		return ad.GetCategoryIDByName(config.DefaultAdCategoryName)
-	}
-
-	// Check if the category ID exists
-	if ad.IsValidCategory(categoryID) {
-		return categoryID
-	}
-
-	return ad.GetCategoryIDByName(config.DefaultAdCategoryName)
+func GetCategoryID(c *fiber.Ctx) (int, *fiber.Error) {
+	category := c.Cookies("category")
+	return services.ValidateCategory(category)
 }
 
-func SetAdCategory(c *fiber.Ctx, adCategory int) {
+func SetCategory(c *fiber.Ctx, adCategory int) {
 	c.Cookie(&fiber.Cookie{
-		Name:     "ad_category",
+		Name:     "category",
 		Value:    strconv.Itoa(adCategory),
 		MaxAge:   30 * 24 * 60 * 60, // 30 days
 		HTTPOnly: true,
@@ -65,7 +43,6 @@ func SetAdCategory(c *fiber.Ctx, adCategory int) {
 		SameSite: "Strict",
 	})
 }
-*/
 
 func SetJWT(c *fiber.Ctx, token string) {
 	c.Cookie(&fiber.Cookie{

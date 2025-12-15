@@ -122,7 +122,7 @@ func getTestClient() *http.Client {
 // These fetch from the API to ensure exact matches with current seed data
 
 func getEngineValues() []string {
-	resp, err := http.Get(baseURL + "/api/categories/Cars%20%26%20Trucks/values/engine")
+	resp, err := http.Get(baseURL + "/api/category/6/values/engine")
 	if err != nil {
 		return nil
 	}
@@ -143,7 +143,7 @@ func getEngineValues() []string {
 }
 
 func getCarsTrucksMakeValues() []string {
-	resp, err := http.Get(baseURL + "/api/categories/Cars%20%26%20Trucks/values/make")
+	resp, err := http.Get(baseURL + "/api/category/6/values/make")
 	if err != nil {
 		return nil
 	}
@@ -164,7 +164,7 @@ func getCarsTrucksMakeValues() []string {
 }
 
 func getCarsTrucksModelValues() []string {
-	resp, err := http.Get(baseURL + "/api/categories/Cars%20%26%20Trucks/values/model")
+	resp, err := http.Get(baseURL + "/api/category/6/values/model")
 	if err != nil {
 		return nil
 	}
@@ -185,7 +185,7 @@ func getCarsTrucksModelValues() []string {
 }
 
 func getCarsTrucksYearValues() []string {
-	resp, err := http.Get(baseURL + "/api/categories/Cars%20%26%20Trucks/values/year")
+	resp, err := http.Get(baseURL + "/api/category/6/values/year")
 	if err != nil {
 		return nil
 	}
@@ -219,7 +219,7 @@ func getCarTruckPartsAnyPartCategoryValues() []string {
 }
 
 func getCarTruckPartsAnyModelValues() []string {
-	resp, err := http.Get(baseURL + "/api/categories/Car%20%26%20Truck%20Parts/any-values/model")
+	resp, err := http.Get(baseURL + "/api/category/5/any-values/model")
 	if err != nil {
 		return nil
 	}
@@ -240,7 +240,7 @@ func getCarTruckPartsAnyModelValues() []string {
 }
 
 func getCarTruckPartsAnyEngineValues() []string {
-	resp, err := http.Get(baseURL + "/api/categories/Car%20%26%20Truck%20Parts/any-values/engine")
+	resp, err := http.Get(baseURL + "/api/category/5/any-values/engine")
 	if err != nil {
 		return nil
 	}
@@ -461,7 +461,7 @@ func TestHealthCheck(t *testing.T) {
 	}
 }
 
-// Test GET /api/categories/:category/values/:field
+// Test GET /api/category/:category/values/:field
 func TestGetAllValues(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -473,7 +473,7 @@ func TestGetAllValues(t *testing.T) {
 	}{
 		{
 			name:           "Cars & Trucks - make values",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			field:          "make",
 			queryParams:    "",
 			expectedStatus: 200,
@@ -481,7 +481,7 @@ func TestGetAllValues(t *testing.T) {
 		},
 		{
 			name:           "Cars & Trucks - year values",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			field:          "year",
 			queryParams:    "",
 			expectedStatus: 200,
@@ -489,7 +489,7 @@ func TestGetAllValues(t *testing.T) {
 		},
 		{
 			name:           "Cars & Trucks - model values",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			field:          "model",
 			queryParams:    "",
 			expectedStatus: 200,
@@ -497,7 +497,7 @@ func TestGetAllValues(t *testing.T) {
 		},
 		{
 			name:           "Cars & Trucks - engine values",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			field:          "engine",
 			queryParams:    "",
 			expectedStatus: 200,
@@ -505,7 +505,7 @@ func TestGetAllValues(t *testing.T) {
 		},
 		{
 			name:           "Car & Truck Parts - make values",
-			category:       "Car%20%26%20Truck%20Parts",
+			category:       "5",
 			field:          "make",
 			queryParams:    "",
 			expectedStatus: 200,
@@ -513,7 +513,7 @@ func TestGetAllValues(t *testing.T) {
 		},
 		{
 			name:           "Car & Truck Parts - part_category values",
-			category:       "Car%20%26%20Truck%20Parts",
+			category:       "5",
 			field:          "part_category",
 			queryParams:    "",
 			expectedStatus: 200,
@@ -521,7 +521,7 @@ func TestGetAllValues(t *testing.T) {
 		},
 		{
 			name:           "With filter - year filtered by make",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			field:          "year",
 			queryParams:    "?make=AC",
 			expectedStatus: 200,
@@ -529,7 +529,7 @@ func TestGetAllValues(t *testing.T) {
 		},
 		{
 			name:           "With filter - model filtered by make and year",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			field:          "model",
 			queryParams:    "?make=AC&year=1956",
 			expectedStatus: 200,
@@ -537,7 +537,7 @@ func TestGetAllValues(t *testing.T) {
 		},
 		{
 			name:           "With filter - make value with spaces",
-			category:       "Agricultural%20Equipment",
+			category:       "1",
 			field:          "year",
 			queryParams:    "?make=JOHN%20DEERE",
 			expectedStatus: 200,
@@ -545,7 +545,7 @@ func TestGetAllValues(t *testing.T) {
 		},
 		{
 			name:           "Car & Truck Parts - part_category filtered by part_category with spaces",
-			category:       "Car%20%26%20Truck%20Parts",
+			category:       "5",
 			field:          "part_subcategory",
 			queryParams:    "?part_category=Exhaust%20%26%20Emission",
 			expectedStatus: 200,
@@ -553,14 +553,14 @@ func TestGetAllValues(t *testing.T) {
 		},
 		{
 			name:           "Invalid category",
-			category:       "InvalidCategory",
+			category:       "999",
 			field:          "make",
 			queryParams:    "",
 			expectedStatus: 404,
 		},
 		{
 			name:           "Invalid field",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			field:          "invalid_field",
 			queryParams:    "",
 			expectedStatus: 404,
@@ -569,7 +569,7 @@ func TestGetAllValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			url := fmt.Sprintf("%s/api/categories/%s/values/%s%s", baseURL, tt.category, tt.field, tt.queryParams)
+			url := fmt.Sprintf("%s/api/category/%s/values/%s%s", baseURL, tt.category, tt.field, tt.queryParams)
 			resp, result := getRequest(t, url)
 
 			if resp.StatusCode != tt.expectedStatus {
@@ -616,7 +616,7 @@ func TestGetAllValues(t *testing.T) {
 	}
 }
 
-// Test GET /api/categories/:category/any-values/:field
+// Test GET /api/category/:category/any-values/:field
 func TestGetAnyValues(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -626,19 +626,19 @@ func TestGetAnyValues(t *testing.T) {
 		expectedStatus int
 		expectedResult []string // exact expected values (nil means don't check exact match)
 	}{
-		{"Car & Truck Parts - any make values", "Car%20%26%20Truck%20Parts", "make", "", 200, getCarTruckPartsAnyMakeValues()},
-		{"Car & Truck Parts - any year values", "Car%20%26%20Truck%20Parts", "year", "", 200, getCarTruckPartsAnyYearValues()},
-		{"Car & Truck Parts - any model values", "Car%20%26%20Truck%20Parts", "model", "", 200, getCarTruckPartsAnyModelValues()},
-		{"Car & Truck Parts - any engine values", "Car%20%26%20Truck%20Parts", "engine", "", 200, getCarTruckPartsAnyEngineValues()},
-		{"Car & Truck Parts - any part_category values", "Car%20%26%20Truck%20Parts", "part_category", "", 200, getCarTruckPartsAnyPartCategoryValues()},
-		{"With filter chain", "Car%20%26%20Truck%20Parts", "part_category", "?make=AC&year=1953&model=ACE&engine=2.0L%20L6", 200, []string{"Brakes & Wheel Hub"}},
-		{"With filter using part_category with spaces", "Car%20%26%20Truck%20Parts", "part_subcategory", "?part_category=Exhaust%20%26%20Emission", 200, nil},
-		{"Agricultural Equipment - filter by make with spaces", "Agricultural%20Equipment", "year", "?make=JOHN%20DEERE", 200, nil},
+		{"Car & Truck Parts - any make values", "5", "make", "", 200, getCarTruckPartsAnyMakeValues()},
+		{"Car & Truck Parts - any year values", "5", "year", "", 200, getCarTruckPartsAnyYearValues()},
+		{"Car & Truck Parts - any model values", "5", "model", "", 200, getCarTruckPartsAnyModelValues()},
+		{"Car & Truck Parts - any engine values", "5", "engine", "", 200, getCarTruckPartsAnyEngineValues()},
+		{"Car & Truck Parts - any part_category values", "5", "part_category", "", 200, getCarTruckPartsAnyPartCategoryValues()},
+		{"With filter chain", "5", "part_category", "?make=AC&year=1953&model=ACE&engine=2.0L%20L6", 200, []string{"Brakes & Wheel Hub"}},
+		{"With filter using part_category with spaces", "5", "part_subcategory", "?part_category=Exhaust%20%26%20Emission", 200, nil},
+		{"Agricultural Equipment - filter by make with spaces", "1", "year", "?make=JOHN%20DEERE", 200, nil},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			url := fmt.Sprintf("%s/api/categories/%s/any-values/%s%s", baseURL, tt.category, tt.field, tt.queryParams)
+			url := fmt.Sprintf("%s/api/category/%s/any-values/%s%s", baseURL, tt.category, tt.field, tt.queryParams)
 			resp, result := getRequest(t, url)
 
 			if resp.StatusCode != tt.expectedStatus {
@@ -678,7 +678,7 @@ func TestGetAnyValues(t *testing.T) {
 	}
 }
 
-// Test POST /api/categories/:category/ad-values/:field
+// Test POST /api/category/:category/ad-values/:field
 func TestGetAdValues(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -688,21 +688,21 @@ func TestGetAdValues(t *testing.T) {
 		expectedStatus int
 		expectedResult []string // exact expected values (nil means don't check exact match)
 	}{
-		{"Cars & Trucks - ad values for make", "Cars%20%26%20Trucks", "make", map[string]interface{}{"ad_ids": []int{984, 985}}, 200, []string{"FORD", "HONDA"}},
-		{"Cars & Trucks - ad values for year", "Cars%20%26%20Trucks", "year", map[string]interface{}{"ad_ids": []int{984}}, 200, []string{"2020"}},
-		{"Cars & Trucks - ad values for year with multiple year filter", "Cars%20%26%20Trucks", "year", map[string]interface{}{"ad_ids": []int{984, 985}, "year": []string{"2020", "1975"}}, 200, []string{"1975", "2020"}},
-		{"Cars & Trucks - ad values for model", "Cars%20%26%20Trucks", "model", map[string]interface{}{"ad_ids": []int{984}}, 200, []string{"CIVIC"}},
-		{"Cars & Trucks - ad values with filter", "Cars%20%26%20Trucks", "engine", map[string]interface{}{"ad_ids": []int{984, 985}, "make": []string{"HONDA"}}, 200, []string{"2.0L L4"}},
-		{"Agricultural Equipment - ad values for make with spaces", "Agricultural%20Equipment", "make", map[string]interface{}{"ad_ids": []int{1}}, 200, []string{"JOHN DEERE"}},
-		{"Car & Truck Parts - ad values for part_category with spaces", "Car%20%26%20Truck%20Parts", "part_category", map[string]interface{}{"ad_ids": []int{11}}, 200, []string{"Exhaust & Emission"}},
-		{"Car & Truck Parts - ad values with filter using value with spaces", "Car%20%26%20Truck%20Parts", "part_subcategory", map[string]interface{}{"ad_ids": []int{11}, "part_category": []string{"Exhaust & Emission"}}, 200, nil},
-		{"Empty ad_ids", "Cars%20%26%20Trucks", "make", map[string]interface{}{"ad_ids": []int{}}, 200, []string{}},
-		{"Ad_ids from different category", "Cars%20%26%20Trucks", "make", map[string]interface{}{"ad_ids": []int{1}}, 200, []string{}},
+		{"Cars & Trucks - ad values for make", "6", "make", map[string]interface{}{"ad_ids": []int{984, 985}}, 200, []string{"FORD", "HONDA"}},
+		{"Cars & Trucks - ad values for year", "6", "year", map[string]interface{}{"ad_ids": []int{984}}, 200, []string{"2020"}},
+		{"Cars & Trucks - ad values for year with multiple year filter", "6", "year", map[string]interface{}{"ad_ids": []int{984, 985}, "year": []string{"2020", "1975"}}, 200, []string{"1975", "2020"}},
+		{"Cars & Trucks - ad values for model", "6", "model", map[string]interface{}{"ad_ids": []int{984}}, 200, []string{"CIVIC"}},
+		{"Cars & Trucks - ad values with filter", "6", "engine", map[string]interface{}{"ad_ids": []int{984, 985}, "make": []string{"HONDA"}}, 200, []string{"2.0L L4"}},
+		{"Agricultural Equipment - ad values for make with spaces", "1", "make", map[string]interface{}{"ad_ids": []int{1}}, 200, []string{"JOHN DEERE"}},
+		{"Car & Truck Parts - ad values for part_category with spaces", "5", "part_category", map[string]interface{}{"ad_ids": []int{11}}, 200, []string{"Exhaust & Emission"}},
+		{"Car & Truck Parts - ad values with filter using value with spaces", "5", "part_subcategory", map[string]interface{}{"ad_ids": []int{11}, "part_category": []string{"Exhaust & Emission"}}, 200, nil},
+		{"Empty ad_ids", "6", "make", map[string]interface{}{"ad_ids": []int{}}, 200, []string{}},
+		{"Ad_ids from different category", "6", "make", map[string]interface{}{"ad_ids": []int{1}}, 200, []string{}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			url := fmt.Sprintf("%s/api/categories/%s/ad-values/%s", baseURL, tt.category, tt.field)
+			url := fmt.Sprintf("%s/api/category/%s/ad-values/%s", baseURL, tt.category, tt.field)
 			resp, result := postFormRequest(t, url, tt.body)
 			if resp.StatusCode != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
@@ -861,7 +861,7 @@ func getMotorcyclesChains() []interface{} {
 	}
 }
 
-// Test GET /api/categories/:category/chains
+// Test GET /api/category/:category/chains
 func TestGetChains(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -869,14 +869,14 @@ func TestGetChains(t *testing.T) {
 		expectedStatus int
 		expectedResult []interface{} // expected chains structure (nil means don't check exact match)
 	}{
-		{"Cars & Trucks - chains", "Cars%20%26%20Trucks", 200, getCarsTrucksChains()},
-		{"Car & Truck Parts - chains", "Car%20%26%20Truck%20Parts", 200, getCarTruckPartsChains()},
-		{"Motorcycles - chains", "Motorcycles", 200, getMotorcyclesChains()},
+		{"Cars & Trucks - chains", "6", 200, getCarsTrucksChains()},
+		{"Car & Truck Parts - chains", "5", 200, getCarTruckPartsChains()},
+		{"Motorcycles - chains", "8", 200, getMotorcyclesChains()},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			url := fmt.Sprintf("%s/api/categories/%s/chains", baseURL, tt.category)
+			url := fmt.Sprintf("%s/api/category/%s/chains", baseURL, tt.category)
 			resp, result := getRequest(t, url)
 
 			if resp.StatusCode != tt.expectedStatus {
@@ -980,7 +980,7 @@ func getMotorcyclesFirstSpecFields() []interface{} {
 	}
 }
 
-// Test GET /api/categories/:category/first-spec-fields
+// Test GET /api/category/:category/first-spec-fields
 func TestGetFirstSpecFields(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -988,14 +988,14 @@ func TestGetFirstSpecFields(t *testing.T) {
 		expectedStatus int
 		expectedResult []interface{} // expected first spec fields structure (nil means don't check exact match)
 	}{
-		{"Cars & Trucks - first spec fields", "Cars%20%26%20Trucks", 200, getCarsTrucksFirstSpecFields()},
-		{"Car & Truck Parts - first spec fields", "Car%20%26%20Truck%20Parts", 200, getCarTruckPartsFirstSpecFields()},
-		{"Motorcycles - first spec fields", "Motorcycles", 200, getMotorcyclesFirstSpecFields()},
+		{"Cars & Trucks - first spec fields", "6", 200, getCarsTrucksFirstSpecFields()},
+		{"Car & Truck Parts - first spec fields", "5", 200, getCarTruckPartsFirstSpecFields()},
+		{"Motorcycles - first spec fields", "8", 200, getMotorcyclesFirstSpecFields()},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			url := fmt.Sprintf("%s/api/categories/%s/first-spec-fields", baseURL, tt.category)
+			url := fmt.Sprintf("%s/api/category/%s/first-spec-fields", baseURL, tt.category)
 			resp, result := getRequest(t, url)
 
 			if resp.StatusCode != tt.expectedStatus {
@@ -1038,7 +1038,7 @@ func TestGetFirstSpecFields(t *testing.T) {
 	}
 }
 
-// Test GET /api/categories/:category/last-spec-field
+// Test GET /api/category/:category/last-spec-field
 func TestGetLastSpecField(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -1046,14 +1046,14 @@ func TestGetLastSpecField(t *testing.T) {
 		expectedStatus int
 		expectedResult map[string]interface{} // expected last spec field structure (nil means don't check exact match)
 	}{
-		{"Cars & Trucks - last spec field", "Cars%20%26%20Trucks", 200, map[string]interface{}{"name": "engine", "display_name": "Engine"}},
-		{"Car & Truck Parts - last spec field", "Car%20%26%20Truck%20Parts", 200, map[string]interface{}{"name": "part_subcategory", "display_name": "Part Subcategory"}},
-		{"Motorcycles - last spec field", "Motorcycles", 200, map[string]interface{}{"name": "engine", "display_name": "Engine"}},
+		{"Cars & Trucks - last spec field", "6", 200, map[string]interface{}{"name": "engine", "display_name": "Engine"}},
+		{"Car & Truck Parts - last spec field", "5", 200, map[string]interface{}{"name": "part_subcategory", "display_name": "Part Subcategory"}},
+		{"Motorcycles - last spec field", "8", 200, map[string]interface{}{"name": "engine", "display_name": "Engine"}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			url := fmt.Sprintf("%s/api/categories/%s/last-spec-field", baseURL, tt.category)
+			url := fmt.Sprintf("%s/api/category/%s/last-spec-field", baseURL, tt.category)
 			resp, result := getRequest(t, url)
 
 			if resp.StatusCode != tt.expectedStatus {
@@ -1196,7 +1196,7 @@ func TestGetAdFilterValues(t *testing.T) {
 	}
 }
 
-// Test POST /api/categories/:category/search
+// Test POST /api/category/:category/search
 func TestSearch(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -1209,7 +1209,7 @@ func TestSearch(t *testing.T) {
 	}{
 		{
 			name:           "Empty search",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			body:           map[string]interface{}{},
 			queryParams:    "",
 			expectedStatus: 200,
@@ -1218,7 +1218,7 @@ func TestSearch(t *testing.T) {
 		},
 		{
 			name:           "Search by make",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			body:           map[string]interface{}{"make": []string{"HONDA"}},
 			queryParams:    "",
 			expectedStatus: 200,
@@ -1227,7 +1227,7 @@ func TestSearch(t *testing.T) {
 		},
 		{
 			name:           "Search by year",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			body:           map[string]interface{}{"year": []string{"2020"}},
 			queryParams:    "",
 			expectedStatus: 200,
@@ -1236,7 +1236,7 @@ func TestSearch(t *testing.T) {
 		},
 		{
 			name:           "Search by model",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			body:           map[string]interface{}{"model": []string{"CIVIC"}},
 			queryParams:    "",
 			expectedStatus: 200,
@@ -1245,7 +1245,7 @@ func TestSearch(t *testing.T) {
 		},
 		{
 			name:           "Search by make and year",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			body:           map[string]interface{}{"make": []string{"HONDA"}, "year": []string{"2020"}},
 			queryParams:    "",
 			expectedStatus: 200,
@@ -1254,7 +1254,7 @@ func TestSearch(t *testing.T) {
 		},
 		{
 			name:           "Search by make, year, model",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			body:           map[string]interface{}{"make": []string{"HONDA"}, "year": []string{"2020"}, "model": []string{"CIVIC"}},
 			queryParams:    "",
 			expectedStatus: 200,
@@ -1263,7 +1263,7 @@ func TestSearch(t *testing.T) {
 		},
 		{
 			name:           "Search multiple makes",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			body:           map[string]interface{}{"make": []string{"HONDA", "FORD"}},
 			queryParams:    "",
 			expectedStatus: 200,
@@ -1272,7 +1272,7 @@ func TestSearch(t *testing.T) {
 		},
 		{
 			name:           "Search multiple years",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			body:           map[string]interface{}{"year": []string{"2020", "1975"}},
 			queryParams:    "",
 			expectedStatus: 200,
@@ -1281,7 +1281,7 @@ func TestSearch(t *testing.T) {
 		},
 		{
 			name:           "Car & Truck Parts - search by make",
-			category:       "Car%20%26%20Truck%20Parts",
+			category:       "5",
 			body:           map[string]interface{}{"make": []string{"AC"}},
 			queryParams:    "",
 			expectedStatus: 200,
@@ -1290,7 +1290,7 @@ func TestSearch(t *testing.T) {
 		},
 		{
 			name:           "Car & Truck Parts - search by part_category",
-			category:       "Car%20%26%20Truck%20Parts",
+			category:       "5",
 			body:           map[string]interface{}{"part_category": []string{"Brakes & Wheel Hub"}},
 			queryParams:    "",
 			expectedStatus: 200,
@@ -1299,7 +1299,7 @@ func TestSearch(t *testing.T) {
 		},
 		{
 			name:           "Car & Truck Parts - search AC 1953 ACE",
-			category:       "Car%20%26%20Truck%20Parts",
+			category:       "5",
 			body:           map[string]interface{}{"make": []string{"AC"}, "year": []string{"1953"}, "model": []string{"ACE"}},
 			queryParams:    "",
 			expectedStatus: 200,
@@ -1308,7 +1308,7 @@ func TestSearch(t *testing.T) {
 		},
 		{
 			name:           "Search via query params",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			body:           nil,
 			queryParams:    "?make=HONDA&year=2020",
 			expectedStatus: 200,
@@ -1317,7 +1317,7 @@ func TestSearch(t *testing.T) {
 		},
 		{
 			name:           "Search with no matches",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			body:           map[string]interface{}{"make": []string{"NONEXISTENT"}},
 			queryParams:    "",
 			expectedStatus: 200,
@@ -1326,7 +1326,7 @@ func TestSearch(t *testing.T) {
 		},
 		{
 			name:           "Invalid category search",
-			category:       "InvalidCategory",
+			category:       "999",
 			body:           map[string]interface{}{},
 			queryParams:    "",
 			expectedStatus: 404,
@@ -1334,7 +1334,7 @@ func TestSearch(t *testing.T) {
 		},
 		{
 			name:           "Search with empty arrays",
-			category:       "Cars%20%26%20Trucks",
+			category:       "6",
 			body:           map[string]interface{}{"make": []string{}, "year": []string{}},
 			queryParams:    "",
 			expectedStatus: 200,
@@ -1345,7 +1345,7 @@ func TestSearch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			baseURLWithPath := fmt.Sprintf("%s/api/categories/%s/search", baseURL, tt.category)
+			baseURLWithPath := fmt.Sprintf("%s/api/category/%s/search", baseURL, tt.category)
 			// Parse query params and convert to form data
 			formData := make(map[string]interface{})
 			if tt.body != nil {
@@ -1471,7 +1471,7 @@ func TestSearch(t *testing.T) {
 // Test edge cases
 func TestEdgeCases(t *testing.T) {
 	t.Run("Invalid form data", func(t *testing.T) {
-		url := baseURL + "/api/categories/Cars%20%26%20Trucks/search"
+		url := baseURL + "/api/category/6/search"
 		// Send malformed multipart form data - should handle gracefully
 		req, err := http.NewRequest("POST", url, bytes.NewBufferString("invalid multipart form data"))
 		if err != nil {
@@ -1547,7 +1547,7 @@ func TestEdgeCases(t *testing.T) {
 			t.Fatalf("Failed to get CSRF token from cookie")
 		}
 
-		requestURL := baseURL + "/api/categories/Cars%20%26%20Trucks/search?make=HONDA"
+		requestURL := baseURL + "/api/category/6/search?make=HONDA"
 		req, err := http.NewRequest("POST", requestURL, nil)
 		if err != nil {
 			t.Fatalf("Failed to create request: %v", err)

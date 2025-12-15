@@ -34,3 +34,7 @@ go.work.sum
 rebuild_db
 project.db
 site
+
+# macOS
+.DS_Store
+**/.DS_Store

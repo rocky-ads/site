@@ -47,7 +47,7 @@ func setupApp() *fiber.App {
 
 	api := app.Group("/api")
 
-	categoryRouter := api.Group("/categories/:category")
+	categoryRouter := api.Group("/category/:category")
 	categoryRouter.Get("/values/:field", handlers.GetAllValuesHandler)
 	categoryRouter.Get("/any-values/:field", handlers.GetAnyValuesHandler)
 	categoryRouter.Post("/ad-values/:field", handlers.GetAdValuesHandler)
@@ -82,13 +82,13 @@ func main() {
 	port := ":" + config.ServerPort
 	logger.Info("Server starting", "port", port)
 	logger.Info("API endpoints:")
-	logger.Info("  GET  /api/categories/:category/values/:field")
-	logger.Info("  GET  /api/categories/:category/any-values/:field")
-	logger.Info("  POST /api/categories/:category/ad-values/:field")
-	logger.Info("  GET  /api/categories/:category/chains")
-	logger.Info("  GET  /api/categories/:category/first-spec-fields")
-	logger.Info("  GET  /api/categories/:category/last-spec-field")
-	logger.Info("  POST /api/categories/:category/search")
+	logger.Info("  GET  /api/category/:category/values/:field")
+	logger.Info("  GET  /api/category/:category/any-values/:field")
+	logger.Info("  POST /api/category/:category/ad-values/:field")
+	logger.Info("  GET  /api/category/:category/chains")
+	logger.Info("  GET  /api/category/:category/first-spec-fields")
+	logger.Info("  GET  /api/category/:category/last-spec-field")
+	logger.Info("  POST /api/category/:category/search")
 	logger.Info("  GET  /api/ads/:id/filter-values")
 
 	if err := app.Listen(port); err != nil {
