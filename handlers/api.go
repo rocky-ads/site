@@ -32,9 +32,9 @@ func getFormValues(c *fiber.Ctx) models.FieldValues {
 }
 
 func GetAllValuesHandler(c *fiber.Ctx) error {
-	categoryID, fiberErr := param.GetCategoryID(c)
-	if fiberErr != nil {
-		return fiberErr
+	categoryID, err := param.GetCategoryID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
 	specField, fiberErr := param.GetSpecField(c, categoryID)
@@ -53,9 +53,9 @@ func GetAllValuesHandler(c *fiber.Ctx) error {
 }
 
 func GetAnyValuesHandler(c *fiber.Ctx) error {
-	categoryID, fiberErr := param.GetCategoryID(c)
-	if fiberErr != nil {
-		return fiberErr
+	categoryID, err := param.GetCategoryID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
 	specField, fiberErr := param.GetSpecField(c, categoryID)
@@ -74,9 +74,9 @@ func GetAnyValuesHandler(c *fiber.Ctx) error {
 }
 
 func GetAdValuesHandler(c *fiber.Ctx) error {
-	categoryID, fiberErr := param.GetCategoryID(c)
-	if fiberErr != nil {
-		return fiberErr
+	categoryID, err := param.GetCategoryID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
 	specField, fiberErr := param.GetSpecField(c, categoryID)
@@ -112,9 +112,9 @@ func GetAdValuesHandler(c *fiber.Ctx) error {
 }
 
 func GetChainsHandler(c *fiber.Ctx) error {
-	categoryID, fiberErr := param.GetCategoryID(c)
-	if fiberErr != nil {
-		return fiberErr
+	categoryID, err := param.GetCategoryID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
 	chains, err := services.GetCategoryChains(categoryID)
@@ -140,9 +140,9 @@ func GetAdFilterValuesHandler(c *fiber.Ctx) error {
 }
 
 func SearchHandler(c *fiber.Ctx) error {
-	categoryID, fiberErr := param.GetCategoryID(c)
-	if fiberErr != nil {
-		return fiberErr
+	categoryID, err := param.GetCategoryID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
 	fv := getFormValues(c)
@@ -164,9 +164,9 @@ func SearchHandler(c *fiber.Ctx) error {
 }
 
 func GetFirstSpecFieldsHandler(c *fiber.Ctx) error {
-	categoryID, fiberErr := param.GetCategoryID(c)
-	if fiberErr != nil {
-		return fiberErr
+	categoryID, err := param.GetCategoryID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
 	fields, err := services.FirstSpecFields(categoryID)
@@ -186,9 +186,9 @@ func GetFirstSpecFieldsHandler(c *fiber.Ctx) error {
 }
 
 func GetLastSpecFieldHandler(c *fiber.Ctx) error {
-	categoryID, fiberErr := param.GetCategoryID(c)
-	if fiberErr != nil {
-		return fiberErr
+	categoryID, err := param.GetCategoryID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
 	field, err := services.LastSpecField(categoryID)
