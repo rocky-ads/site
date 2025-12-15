@@ -19,7 +19,7 @@ type ButtonProps struct {
 // If Href is provided, returns an anchor element styled as a button.
 // Otherwise, returns a button element.
 func StandardButton(props ButtonProps) g.Node {
-	baseClasses := "inline-block px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+	baseClasses := "inline-block px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
 
 	var classes string
 	if props.Class != "" {

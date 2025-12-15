@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/rocky-ads/site/models"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -20,7 +21,7 @@ func SearchContainer(categoryName, categoryImage string) g.Node {
 func categorySearch(categoryName, categoryImage string) g.Node {
 	return Div(
 		categoryButton(categoryName, categoryImage),
-		searchWidget(),
+		searchWidget("", make(models.FieldValues), false),
 	)
 }
 
@@ -29,7 +30,7 @@ func categoryButton(categoryName, categoryImage string) g.Node {
 
 	return Div(
 		Div(
-			Class("flex items-center gap-5"),
+			Class("flex items-center gap-5 mb-4"),
 			Label(
 				Class("font-bold"),
 				g.Text("Category"),
@@ -51,21 +52,58 @@ func categoryButton(categoryName, categoryImage string) g.Node {
 	)
 }
 
-func searchWidget() g.Node {
+func filtersButton() g.Node {
+	return StandardButton(ButtonProps{
+		Type: "button",
+		Text: "Filters",
+		Attrs: []g.Node{
+			hx.Get("/search-widget?show-filters=true"),
+			hx.Target("#searchWidget"),
+			hx.Swap("outerHTML"),
+			hx.Include("form"),
+		},
+	})
+}
+
+func searchBox(q string) g.Node {
+	return Input(
+		Class("w-full p-2 border rounded"),
+		Type("search"),
+		ID("searchBox"),
+		Name("q"),
+		Value(q),
+		hx.Trigger("search"),
+		Placeholder("What are you looking for?"),
+	)
+}
+
+func searchFilters(q string, fv models.FieldValues) g.Node {
+	return Div(
+		Class("border rounded-lg p-4"),
+		searchBox(q),
+		//filterControls(fv),
+		//filterActions(fv),
+	)
+}
+
+func searchSimple(q string) g.Node {
+	return Div(
+		Class("flex gap-2 items-center"),
+		searchBox(q),
+		filtersButton(),
+	)
+}
+
+func searchWidget(q string, fv models.FieldValues, showFilters bool) g.Node {
 	return Form(
 		Class("flex flex-col gap-4"),
-		Method("GET"),
+		ID("search-widget"),
 		hx.Get("/api/search"),
 		hx.Target("#search-results"),
 		hx.Swap("outerHTML"),
 		hx.Include("form"),
-		ID("search-widget"),
-		Input(
-			ID("search-input"),
-			Name("q"),
-			Type("text"),
-			Placeholder("What are you looking for?"),
-		),
+		g.If(showFilters, searchFilters(q, fv)),
+		g.If(!showFilters, searchSimple(q)),
 		searchResults(),
 	)
 }

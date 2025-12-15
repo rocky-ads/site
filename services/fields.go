@@ -8,13 +8,13 @@ import (
 )
 
 var (
-	FieldIDCache   = make(map[string]int)
-	FieldCache     = make(map[string]models.Field)
-	SpecFieldCache = make(map[categoryFieldKey]models.SpecField)
+	fieldIDCache   = make(map[string]int)
+	fieldCache     = make(map[string]models.Field)
+	specFieldCache = make(map[categoryFieldKey]models.SpecField)
 )
 
 func GetFieldByName(fieldName string) (models.Field, error) {
-	if field, ok := FieldCache[fieldName]; ok {
+	if field, ok := fieldCache[fieldName]; ok {
 		return field, nil
 	}
 
@@ -26,17 +26,17 @@ func GetFieldByName(fieldName string) (models.Field, error) {
 	}
 
 	for _, f := range fields {
-		FieldCache[f.Name] = f
+		fieldCache[f.Name] = f
 	}
 
-	if field, ok := FieldCache[fieldName]; ok {
+	if field, ok := fieldCache[fieldName]; ok {
 		return field, nil
 	}
 	return models.Field{}, fmt.Errorf("field not found: %s", fieldName)
 }
 
 func GetFieldIDByName(fieldName string) (int, error) {
-	if fieldID, ok := FieldIDCache[fieldName]; ok {
+	if fieldID, ok := fieldIDCache[fieldName]; ok {
 		return fieldID, nil
 	}
 
@@ -51,10 +51,10 @@ func GetFieldIDByName(fieldName string) (int, error) {
 	}
 
 	for _, f := range fields {
-		FieldIDCache[f.Name] = f.ID
+		fieldIDCache[f.Name] = f.ID
 	}
 
-	if fieldID, ok := FieldIDCache[fieldName]; ok {
+	if fieldID, ok := fieldIDCache[fieldName]; ok {
 		return fieldID, nil
 	}
 	return 0, fmt.Errorf("field not found: %s", fieldName)
@@ -62,7 +62,7 @@ func GetFieldIDByName(fieldName string) (int, error) {
 
 func GetSpecField(categoryID int, fieldName string) (models.SpecField, error) {
 	key := categoryFieldKey{categoryID: categoryID, fieldName: fieldName}
-	if specField, ok := SpecFieldCache[key]; ok {
+	if specField, ok := specFieldCache[key]; ok {
 		return specField, nil
 	}
 
@@ -81,6 +81,6 @@ func GetSpecField(categoryID int, fieldName string) (models.SpecField, error) {
 		SpecTable: specTable,
 	}
 
-	SpecFieldCache[key] = specField
+	specFieldCache[key] = specField
 	return specField, nil
 }
