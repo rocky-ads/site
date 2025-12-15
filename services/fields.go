@@ -20,7 +20,7 @@ func GetFieldByName(fieldName string) (models.Field, error) {
 
 	var fields []models.Field
 	query := `SELECT COALESCE(json_group_array(json_object('id', id,
-		'field_name', name, 'display_name', display_name)), '[]') FROM fields`
+		'field_name', name, 'display_name', display_name)), '[]') FROM fields ORDER BY id`
 	if err := db.QueryJSON(&fields, query); err != nil {
 		return models.Field{}, fmt.Errorf("loading fields: %w", err)
 	}
@@ -45,7 +45,7 @@ func GetFieldIDByName(fieldName string) (int, error) {
 		Name string `json:"name"`
 	}
 	var fields []fieldIDData
-	query := `SELECT COALESCE(json_group_array(json_object('id', id, 'name', name)), '[]') FROM fields`
+	query := `SELECT COALESCE(json_group_array(json_object('id', id, 'name', name)), '[]') FROM fields ORDER BY id`
 	if err := db.QueryJSON(&fields, query); err != nil {
 		return 0, fmt.Errorf("loading fields: %w", err)
 	}
