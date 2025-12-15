@@ -7,10 +7,10 @@ import (
 )
 
 func HomePage(categoryName, categoryImage string) []g.Node {
-	return []g.Node{searchContainer(categoryName, categoryImage)}
+	return []g.Node{SearchContainer(categoryName, categoryImage)}
 }
 
-func searchContainer(categoryName, categoryImage string) g.Node {
+func SearchContainer(categoryName, categoryImage string) g.Node {
 	return Div(
 		ID("search-container"),
 		categorySearch(categoryName, categoryImage),

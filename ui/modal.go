@@ -20,8 +20,8 @@ func createCategoryItems(categoryID int, categories []models.Category) []g.Node 
 
 		item := Div(
 			Class(itemClass),
-			hx.Get("/switch-ad-category/"+strconv.Itoa(cat.ID)),
-			hx.Target("#searchContainer"),
+			hx.Get("/api/category/"+strconv.Itoa(cat.ID)+"/switch"),
+			hx.Target("#search-container"),
 			hx.Swap("outerHTML"),
 			Div(
 				Class("p-2 bg-gray-200 rounded-full flex items-center justify-center"),
@@ -71,5 +71,20 @@ func CategorySelectModal(categoryID int, categories []models.Category) g.Node {
 				),
 			),
 		),
+	)
+}
+
+func SearchContainerRefresh(categoryName, categoryImage string) g.Node {
+	return g.Group([]g.Node{
+		SearchContainer(categoryName, categoryImage),
+		RemoveModalOOB("category-select-modal"),
+	})
+}
+
+// RemoveModalOOB returns an out-of-band swap element to remove a modal by ID
+func RemoveModalOOB(modalID string) g.Node {
+	return Div(
+		ID(modalID),
+		hx.SwapOOB("outerHTML"),
 	)
 }

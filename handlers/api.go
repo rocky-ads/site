@@ -4,9 +4,11 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/models"
 	"github.com/rocky-ads/site/param"
 	"github.com/rocky-ads/site/services"
+	"github.com/rocky-ads/site/ui"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -202,4 +204,25 @@ func GetLastSpecFieldHandler(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(response)
+}
+
+func SwitchCategoryHandler(c *fiber.Ctx) error {
+	categoryID, err := param.GetCategoryID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, err.Error())
+	}
+
+	categoryName, err := services.GetCategoryNameByID(categoryID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, err.Error())
+	}
+
+	categoryImage, err := services.GetCategoryImageFile(categoryID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, err.Error())
+	}
+
+	cookie.SetCategoryID(c, categoryID)
+
+	return render(c, ui.SearchContainerRefresh(categoryName, categoryImage))
 }

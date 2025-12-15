@@ -56,6 +56,7 @@ func setupApp() *fiber.App {
 	categoryRouter.Get("/first-spec-fields", handlers.GetFirstSpecFieldsHandler)
 	categoryRouter.Get("/last-spec-field", handlers.GetLastSpecFieldHandler)
 	categoryRouter.Post("/search", handlers.SearchHandler)
+	categoryRouter.Get("/switch", handlers.SwitchCategoryHandler)
 
 	api.Get("/ads/:id/filter-values", handlers.GetAdFilterValuesHandler)
 	api.Get("/modal/category-select", handlers.CategorySelectHandler)

@@ -32,7 +32,7 @@ func GetCategoryID(c *fiber.Ctx) (int, error) {
 	return services.ValidateCategory(category)
 }
 
-func SetCategory(c *fiber.Ctx, category int) {
+func SetCategoryID(c *fiber.Ctx, category int) {
 	c.Cookie(&fiber.Cookie{
 		Name:     "category",
 		Value:    strconv.Itoa(category),
