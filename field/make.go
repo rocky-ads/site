@@ -6,11 +6,11 @@ import (
 	g "maragu.dev/gomponents"
 )
 
-type FieldMake struct {
+type MakeField struct {
 	SpecField
 }
 
-func (f FieldMake) FilterNode(fv Values) g.Node {
+func (f MakeField) FilterNode(fv Values) g.Node {
 
 	values, err := f.getAnyValues(fv)
 	if err != nil {
