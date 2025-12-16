@@ -24,6 +24,64 @@ func FieldSelect(name, displayName, selectedValue string, values []string) g.Nod
 	)
 }
 
+func PriceRange(displayName, minPrice, maxPrice string) g.Node {
+	return Div(
+		Label(Class("block text-sm font-medium mb-1"), g.Text(displayName+" Range")),
+		Div(
+			Class("flex gap-2 flex-nowrap"),
+			Input(
+				Type("number"),
+				Name("min_price"),
+				ID("minPriceFilter"),
+				Class("w-24 flex-shrink-0 p-2 border rounded-md"),
+				Placeholder("Min $"),
+				Min("0"),
+				Step("1"),
+				Value(minPrice),
+			),
+			Input(
+				Type("number"),
+				Name("max_price"),
+				ID("maxPriceFilter"),
+				Class("w-24 flex-shrink-0 p-2 border rounded-md"),
+				Placeholder("Max $"),
+				Min("0"),
+				Step("1"),
+				Value(maxPrice),
+			),
+		),
+	)
+}
+
+func YearRange(displayName, minYear, maxYear, maxMaxYear string) g.Node {
+	return Div(
+		Label(Class("block text-sm font-medium mb-1"), g.Text(displayName+" Range")),
+		Div(
+			Class("flex gap-2 flex-nowrap"),
+			Input(
+				Type("number"),
+				Name("min_year"),
+				ID("minYearFilter"),
+				Class("w-20 flex-shrink-0 p-2 border rounded-md"),
+				Placeholder("Min"),
+				Min("1900"),
+				Max(maxMaxYear),
+				Value(minYear),
+			),
+			Input(
+				Type("number"),
+				Name("max_year"),
+				ID("maxYearFilter"),
+				Class("w-20 flex-shrink-0 p-2 border rounded-md"),
+				Placeholder("Max"),
+				Min("1900"),
+				Max(maxMaxYear),
+				Value(maxYear),
+			),
+		),
+	)
+}
+
 func LocationRadius(location, radius string) g.Node {
 	return g.Group([]g.Node{
 		// Location input

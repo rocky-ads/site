@@ -11,10 +11,13 @@ type LocationField struct {
 }
 
 func (f LocationField) FilterNode(fv Values) g.Node {
+
 	location := fv.Get("location")
 	radius := fv.Get("radius")
+
 	if radius == "" {
 		radius = "25"
 	}
+
 	return ui.LocationRadius(location, radius)
 }

@@ -50,7 +50,7 @@ func GetAllValuesHandler(c *fiber.Ctx) error {
 
 	values, err := services.GetAllValues(specField, fv, categoryID)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	return c.JSON(values)
@@ -71,7 +71,7 @@ func GetAnyValuesHandler(c *fiber.Ctx) error {
 
 	values, err := services.GetAnyValues(specField, fv, categoryID)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	return c.JSON(values)
@@ -109,7 +109,7 @@ func GetAdValuesHandler(c *fiber.Ctx) error {
 
 	values, err := services.GetAdValues(adIDs, specField, fv, categoryID)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	return c.JSON(values)
@@ -123,7 +123,7 @@ func GetChainsHandler(c *fiber.Ctx) error {
 
 	chains, err := services.GetCategoryChains(categoryID)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	return c.JSON(chains)
@@ -137,7 +137,7 @@ func GetAdFilterValuesHandler(c *fiber.Ctx) error {
 
 	fv, err := services.LoadFilterValues(adID)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	return c.JSON(fv)
@@ -156,7 +156,7 @@ func SearchHandler(c *fiber.Ctx) error {
 
 	adIDs, err := services.Search(fv, categoryID)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	response := map[string]interface{}{
@@ -175,7 +175,7 @@ func GetFirstSpecFieldsHandler(c *fiber.Ctx) error {
 
 	fields, err := services.FirstSpecFields(categoryID)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	response := make([]map[string]string, len(fields))
@@ -197,7 +197,7 @@ func GetLastSpecFieldHandler(c *fiber.Ctx) error {
 
 	field, err := services.LastSpecField(categoryID)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	response := map[string]string{

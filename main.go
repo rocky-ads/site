@@ -5,6 +5,7 @@ import (
 
 	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/db"
+	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/handlers"
 	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/services"
@@ -80,6 +81,10 @@ func main() {
 		logger.Fatal("Failed to open database", "error", err)
 	}
 	defer db.Close()
+
+	if err := field.Init(); err != nil {
+		logger.Fatal("Failed to initialize fields", "error", err)
+	}
 
 	if err := services.InitCategories(); err != nil {
 		logger.Fatal("Failed to initialize categories", "error", err)

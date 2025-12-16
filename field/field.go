@@ -7,11 +7,11 @@ import (
 )
 
 type Field struct {
-	ID          int
-	Name        string
-	DisplayName string
-	IsRequired  bool
-	CategoryID  int
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	DisplayName string `json:"display_name"`
+	IsRequired  bool   `json:"is_required"`
+	CategoryID  int    `json:"category_id"`
 }
 
 // Values represents field values keyed by field name
@@ -22,4 +22,8 @@ type ValuesByIDs map[int][]string
 
 type Fielder interface {
 	FilterNode(fv Values) g.Node
+}
+
+func (f Field) FilterNode(fv Values) g.Node {
+	return g.Group{}
 }
