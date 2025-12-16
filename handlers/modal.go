@@ -5,6 +5,7 @@ import (
 	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/services"
 	"github.com/rocky-ads/site/ui"
+	g "maragu.dev/gomponents"
 )
 
 func CategorySelectHandler(c *fiber.Ctx) error {
@@ -18,5 +19,10 @@ func CategorySelectHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	return render(c, ui.CategorySelectModal(categoryID, categories))
+	var categoryItems []g.Node
+	for _, cat := range categories {
+		categoryItems = append(categoryItems, ui.CategoryItem(categoryID, cat.ID, cat.Name, cat.ImageFile))
+	}
+
+	return render(c, ui.CategorySelectModal(categoryItems))
 }

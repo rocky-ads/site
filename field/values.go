@@ -1,4 +1,4 @@
-package services
+package field
 
 import (
 	"fmt"
@@ -32,8 +32,8 @@ func fv2fi(fv models.FieldValues) models.FieldValuesByIDs {
 	fi := make(models.FieldValuesByIDs)
 	for fieldName, values := range fv {
 		if len(values) > 0 {
-			if fieldID, err := GetFieldIDByName(fieldName); err == nil {
-				fi[fieldID] = values
+			if field, err := GetField(fieldName); err == nil {
+				fi[field.ID] = values
 			}
 		}
 	}

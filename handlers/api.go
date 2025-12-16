@@ -9,6 +9,7 @@ import (
 	"github.com/rocky-ads/site/param"
 	"github.com/rocky-ads/site/services"
 	"github.com/rocky-ads/site/ui"
+	g "maragu.dev/gomponents"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -225,4 +226,25 @@ func SwitchCategoryHandler(c *fiber.Ctx) error {
 	cookie.SetCategoryID(c, categoryID)
 
 	return render(c, ui.SearchContainerRefresh(categoryName, categoryImage))
+}
+
+func ShowFiltersHandler(c *fiber.Ctx) error {
+	categoryID, err := cookie.GetCategoryID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, err.Error())
+	}
+
+	fields, err := field.GetFields(categoryID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	fv := getQueryValues(c)
+
+	filters := make([]g.Node, 0, len(fields))
+	for _, field := range fields {
+		filters = append(filters, field.FilterNode(fv))
+	}
+
+	return render(c, ui.SearchWidget(fv.Get("q"), filters))
 }

@@ -3,43 +3,35 @@ package ui
 import (
 	"strconv"
 
-	"github.com/rocky-ads/site/models"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
 )
 
-func createCategoryItems(categoryID int, categories []models.Category) []g.Node {
-	var cats []g.Node
-
-	for _, cat := range categories {
-		itemClass := "flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer rounded-lg transition-colors "
-		if cat.ID == categoryID {
-			itemClass += "bg-blue-50 border border-blue-200"
-		}
-
-		item := Div(
-			Class(itemClass),
-			hx.Get("/api/category/"+strconv.Itoa(cat.ID)+"/switch"),
-			hx.Target("#search-container"),
-			hx.Swap("outerHTML"),
-			Div(
-				Class("p-2 bg-gray-200 rounded-full flex items-center justify-center"),
-				Img(
-					Src("/images/category/"+cat.ImageFile),
-					Alt("Category icon"),
-					Class("w-6 h-6"),
-				),
-			),
-			Span(Class("text-gray-700 flex-1"), g.Text(cat.Name)),
-		)
-		cats = append(cats, item)
+func CategoryItem(selectedCategoryID, categoryID int, name, imageFile string) g.Node {
+	itemClass := "flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer rounded-lg transition-colors "
+	if categoryID == selectedCategoryID {
+		itemClass += "bg-blue-50 border border-blue-200"
 	}
-	return cats
+
+	return Div(
+		Class(itemClass),
+		hx.Get("/api/category/"+strconv.Itoa(categoryID)+"/switch"),
+		hx.Target("#search-container"),
+		hx.Swap("outerHTML"),
+		Div(
+			Class("p-2 bg-gray-200 rounded-full flex items-center justify-center"),
+			Img(
+				Src("/images/category/"+imageFile),
+				Alt("Category icon"),
+				Class("w-6 h-6"),
+			),
+		),
+		Span(Class("text-gray-700 flex-1"), g.Text(name)),
+	)
 }
 
-func CategorySelectModal(categoryID int, categories []models.Category) g.Node {
-	cats := createCategoryItems(categoryID, categories)
+func CategorySelectModal(categoryItems []g.Node) g.Node {
 
 	return Div(
 		ID("category-select-modal"),
@@ -67,7 +59,7 @@ func CategorySelectModal(categoryID int, categories []models.Category) g.Node {
 				Class("flex-1 overflow-y-auto p-6 pt-4"),
 				Div(
 					Class("space-y-2"),
-					g.Group(cats),
+					g.Group(categoryItems),
 				),
 			),
 		),

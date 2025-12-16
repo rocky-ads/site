@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"github.com/rocky-ads/site/models"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -21,7 +20,7 @@ func SearchContainer(categoryName, categoryImage string) g.Node {
 func categorySearch(categoryName, categoryImage string) g.Node {
 	return Div(
 		categoryButton(categoryName, categoryImage),
-		searchWidget("", make(models.FieldValues), false),
+		SearchWidget("", []g.Node{}),
 	)
 }
 
@@ -57,10 +56,9 @@ func filtersButton() g.Node {
 		Type: "button",
 		Text: "Filters",
 		Attrs: []g.Node{
-			hx.Get("/search-widget?show-filters=true"),
-			hx.Target("#searchWidget"),
+			hx.Get("/api/show-filters"),
+			hx.Target("#search-widget"),
 			hx.Swap("outerHTML"),
-			hx.Include("form"),
 		},
 	})
 }
@@ -77,12 +75,47 @@ func searchBox(q string) g.Node {
 	)
 }
 
-func searchFilters(q string, fv models.FieldValues) g.Node {
+func clearFilters() g.Node {
+	return StandardButton(ButtonProps{
+		Type: "button",
+		Text: "Clear",
+		Attrs: []g.Node{
+			hx.Get("/api/show-filters"),
+			hx.Target("#search-widget"),
+			hx.Swap("outerHTML"),
+			hx.Params("none"),
+		},
+	})
+}
+
+func applyFilters() g.Node {
+	return StandardButton(ButtonProps{
+		Type: "submit",
+		Text: "Apply",
+	})
+}
+
+func filterActions() g.Node {
+	return Div(
+		Class("flex justify-end gap-2 mt-4"),
+		clearFilters(),
+		applyFilters(),
+	)
+}
+
+func filterControls(filters []g.Node) g.Node {
+	return Div(
+		Class("grid grid-cols-2 gap-4 mt-4"),
+		g.Group(filters),
+	)
+}
+
+func searchFilters(q string, filters []g.Node) g.Node {
 	return Div(
 		Class("border rounded-lg p-4"),
 		searchBox(q),
-		//filterControls(fv),
-		//filterActions(fv),
+		filterControls(filters),
+		filterActions(),
 	)
 }
 
@@ -94,7 +127,7 @@ func searchSimple(q string) g.Node {
 	)
 }
 
-func searchWidget(q string, fv models.FieldValues, showFilters bool) g.Node {
+func SearchWidget(q string, filters []g.Node) g.Node {
 	return Form(
 		Class("flex flex-col gap-4"),
 		ID("search-widget"),
@@ -102,8 +135,8 @@ func searchWidget(q string, fv models.FieldValues, showFilters bool) g.Node {
 		hx.Target("#search-results"),
 		hx.Swap("outerHTML"),
 		hx.Include("form"),
-		g.If(showFilters, searchFilters(q, fv)),
-		g.If(!showFilters, searchSimple(q)),
+		g.If(len(filters) > 0, searchFilters(q, filters)),
+		g.If(len(filters) == 0, searchSimple(q)),
 		searchResults(),
 	)
 }
