@@ -1,7 +1,5 @@
 package user
 
-import "time"
-
 // Notification method constants
 const (
 	NotificationMethodSMS    = "sms"
@@ -19,11 +17,6 @@ const (
 
 type User struct {
 	// Core database fields
-	ID        int
-	DeletedAt *time.Time
-}
-
-// IsArchived returns true if the user has been archived
-func (u User) IsArchived() bool {
-	return u.DeletedAt != nil
+	ID   int
+	Name string
 }

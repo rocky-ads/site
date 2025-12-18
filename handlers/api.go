@@ -115,21 +115,19 @@ func GetAdValuesHandler(c *fiber.Ctx) error {
 	return c.JSON(values)
 }
 
-/*
 func GetChainsHandler(c *fiber.Ctx) error {
 	categoryID, err := param.GetCategoryID(c)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
-	chains, err := services.GetCategoryChains(categoryID)
+	chains, err := field.GetCategoryChains(categoryID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	return c.JSON(chains)
 }
-*/
 
 func GetAdFilterValuesHandler(c *fiber.Ctx) error {
 	adID, fiberErr := param.GetAdID(c)

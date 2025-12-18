@@ -53,7 +53,7 @@ func setupApp() *fiber.App {
 	categoryRouter.Get("/values/:field", handlers.GetAllValuesHandler)
 	categoryRouter.Get("/any-values/:field", handlers.GetAnyValuesHandler)
 	categoryRouter.Post("/ad-values/:field", handlers.GetAdValuesHandler)
-	//categoryRouter.Get("/chains", handlers.GetChainsHandler)
+	categoryRouter.Get("/chains", handlers.GetChainsHandler)
 	categoryRouter.Get("/first-spec-fields", handlers.GetFirstSpecFieldsHandler)
 	categoryRouter.Get("/last-spec-field", handlers.GetLastSpecFieldHandler)
 	categoryRouter.Post("/search", handlers.SearchHandler)

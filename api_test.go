@@ -308,6 +308,19 @@ func getRequest(t *testing.T, url string) (*http.Response, map[string]interface{
 		}
 	}
 
+	// Debug output for non-200 responses
+	if resp.StatusCode != http.StatusOK {
+		bodyStr := "(empty)"
+		if len(bodyBytes) > 0 {
+			bodyStr = string(bodyBytes)
+			// Truncate long responses
+			if len(bodyStr) > 500 {
+				bodyStr = bodyStr[:500] + "... (truncated)"
+			}
+		}
+		t.Logf("❌ GET %s -> %d: %s", url, resp.StatusCode, bodyStr)
+	}
+
 	// Try to decode as JSON array first (since some endpoints return arrays directly)
 	var arrResult []interface{}
 	if err := json.Unmarshal(bodyBytes, &arrResult); err == nil {
@@ -461,6 +474,19 @@ func postFormRequest(t *testing.T, requestURL string, body map[string]interface{
 		}
 	}
 
+	// Debug output for non-200 responses
+	if resp.StatusCode != http.StatusOK {
+		bodyStr := "(empty)"
+		if len(bodyRespBytes) > 0 {
+			bodyStr = string(bodyRespBytes)
+			// Truncate long responses
+			if len(bodyStr) > 500 {
+				bodyStr = bodyStr[:500] + "... (truncated)"
+			}
+		}
+		t.Logf("❌ POST %s -> %d: %s", requestURL, resp.StatusCode, bodyStr)
+	}
+
 	// Try to decode as JSON
 	var result map[string]interface{}
 	if err := json.Unmarshal(bodyRespBytes, &result); err != nil {
@@ -600,7 +626,10 @@ func TestGetAllValues(t *testing.T) {
 			resp, result := getRequest(t, url)
 
 			if resp.StatusCode != tt.expectedStatus {
-				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
+				t.Errorf("❌ Expected %d, got %d | URL: %s", tt.expectedStatus, resp.StatusCode, url)
+				if len(result) > 0 {
+					t.Logf("   Response: %+v", result)
+				}
 				return
 			}
 
@@ -669,7 +698,10 @@ func TestGetAnyValues(t *testing.T) {
 			resp, result := getRequest(t, url)
 
 			if resp.StatusCode != tt.expectedStatus {
-				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
+				t.Errorf("❌ Expected %d, got %d | URL: %s", tt.expectedStatus, resp.StatusCode, url)
+				if len(result) > 0 {
+					t.Logf("   Response: %+v", result)
+				}
 			}
 
 			if tt.expectedStatus == 200 {
@@ -732,7 +764,10 @@ func TestGetAdValues(t *testing.T) {
 			url := fmt.Sprintf("%s/api/category/%s/ad-values/%s", baseURL, tt.category, tt.field)
 			resp, result := postFormRequest(t, url, tt.body)
 			if resp.StatusCode != tt.expectedStatus {
-				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
+				t.Errorf("❌ Expected %d, got %d | URL: %s | Body: %+v", tt.expectedStatus, resp.StatusCode, url, tt.body)
+				if len(result) > 0 {
+					t.Logf("   Response: %+v", result)
+				}
 			}
 
 			if tt.expectedStatus == 200 {
@@ -907,7 +942,10 @@ func TestGetChains(t *testing.T) {
 			resp, result := getRequest(t, url)
 
 			if resp.StatusCode != tt.expectedStatus {
-				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
+				t.Errorf("❌ Expected %d, got %d | URL: %s", tt.expectedStatus, resp.StatusCode, url)
+				if len(result) > 0 {
+					t.Logf("   Response: %+v", result)
+				}
 			}
 
 			if tt.expectedStatus == 200 {
@@ -1026,20 +1064,26 @@ func TestGetFirstSpecFields(t *testing.T) {
 			resp, result := getRequest(t, url)
 
 			if resp.StatusCode != tt.expectedStatus {
-				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
+				t.Errorf("❌ Expected %d, got %d | URL: %s", tt.expectedStatus, resp.StatusCode, url)
+				if len(result) > 0 {
+					t.Logf("   Response: %+v", result)
+				}
 			}
 
 			if tt.expectedStatus == 200 {
 				arr, ok := result["array"].([]interface{})
 				if !ok {
-					t.Errorf("Response should be an array")
+					t.Errorf("❌ Expected array, got %T | URL: %s", result["array"], url)
+					t.Logf("   Result: %+v", result)
 					return
 				}
 
 				// Check expected results if provided
 				if tt.expectedResult != nil {
 					if len(arr) != len(tt.expectedResult) {
-						t.Errorf("Expected %d first spec fields, got %d", len(tt.expectedResult), len(arr))
+						t.Errorf("❌ Expected %d fields, got %d | URL: %s", len(tt.expectedResult), len(arr), url)
+						t.Logf("   Expected: %+v", tt.expectedResult)
+						t.Logf("   Got: %+v", arr)
 						return
 					}
 
@@ -1084,12 +1128,17 @@ func TestGetLastSpecField(t *testing.T) {
 			resp, result := getRequest(t, url)
 
 			if resp.StatusCode != tt.expectedStatus {
-				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
+				t.Errorf("❌ Expected %d, got %d | URL: %s", tt.expectedStatus, resp.StatusCode, url)
+				if len(result) > 0 {
+					t.Logf("   Response: %+v", result)
+				}
 			}
 
 			if tt.expectedStatus == 200 {
 				if result["name"] == nil || result["display_name"] == nil {
-					t.Errorf("Response should contain 'name' and 'display_name' fields")
+					t.Errorf("❌ Missing 'name' or 'display_name' | URL: %s", url)
+					t.Logf("   Result keys: %+v", result)
+					t.Logf("   Full result: %+v", result)
 					return
 				}
 
