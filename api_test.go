@@ -55,7 +55,7 @@ func TestMain(m *testing.M) {
 
 	// Wait for server to be ready
 	maxAttempts := 30
-	for i := 0; i < maxAttempts; i++ {
+	for i := range maxAttempts {
 		resp, err := http.Get("http://localhost" + port + "/health")
 		if err == nil {
 			resp.Body.Close()

@@ -116,7 +116,7 @@ func formatArgs(args []interface{}) []interface{} {
 			}
 
 			preview := make([]interface{}, previewCount)
-			for j := 0; j < previewCount; j++ {
+			for j := range previewCount {
 				preview[j] = val.Index(j).Interface()
 			}
 
