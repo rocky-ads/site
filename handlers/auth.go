@@ -11,7 +11,7 @@ import (
 	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/local"
-	"github.com/rocky-ads/site/models"
+	"github.com/rocky-ads/site/user"
 )
 
 // JWTMiddleware is a middleware that validates a JWT token and sets the user in the context.
@@ -47,7 +47,7 @@ type claims struct {
 }
 
 // generateToken creates a JWT token for a user
-func generateToken(u *models.User) (string, error) {
+func generateToken(u *user.User) (string, error) {
 	claims := claims{
 		UserID:   u.ID,
 		UserName: u.Name,

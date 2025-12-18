@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/cookie"
-	"github.com/rocky-ads/site/services"
 	"github.com/rocky-ads/site/ui"
 	g "maragu.dev/gomponents"
 )
@@ -14,7 +14,7 @@ func CategorySelectHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
-	categories, err := services.GetCategories()
+	categories, err := ad.GetCategories()
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}

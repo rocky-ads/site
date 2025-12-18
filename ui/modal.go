@@ -8,9 +8,9 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-func CategoryItem(selectedCategoryID, categoryID int, name, imageFile string) g.Node {
+func CategoryItem(currentCategoryID, categoryID int, name, imageFile string) g.Node {
 	itemClass := "flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer rounded-lg transition-colors "
-	if categoryID == selectedCategoryID {
+	if categoryID == currentCategoryID {
 		itemClass += "bg-blue-50 border border-blue-200"
 	}
 

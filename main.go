@@ -3,12 +3,12 @@ package main
 import (
 	"time"
 
+	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/handlers"
 	"github.com/rocky-ads/site/logger"
-	"github.com/rocky-ads/site/services"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
@@ -53,7 +53,7 @@ func setupApp() *fiber.App {
 	categoryRouter.Get("/values/:field", handlers.GetAllValuesHandler)
 	categoryRouter.Get("/any-values/:field", handlers.GetAnyValuesHandler)
 	categoryRouter.Post("/ad-values/:field", handlers.GetAdValuesHandler)
-	categoryRouter.Get("/chains", handlers.GetChainsHandler)
+	//categoryRouter.Get("/chains", handlers.GetChainsHandler)
 	categoryRouter.Get("/first-spec-fields", handlers.GetFirstSpecFieldsHandler)
 	categoryRouter.Get("/last-spec-field", handlers.GetLastSpecFieldHandler)
 	categoryRouter.Post("/search", handlers.SearchHandler)
@@ -86,8 +86,8 @@ func main() {
 		logger.Fatal("Failed to initialize fields", "error", err)
 	}
 
-	if err := services.InitCategories(); err != nil {
-		logger.Fatal("Failed to initialize categories", "error", err)
+	if err := ad.Init(); err != nil {
+		logger.Fatal("Failed to initialize ads", "error", err)
 	}
 
 	app := setupApp()

@@ -12,7 +12,7 @@ type MakeField struct {
 
 func (f MakeField) FilterNode(fv Values) g.Node {
 
-	values, err := f.getAnyValues(fv)
+	values, err := f.GetAnyValues(fv)
 	if err != nil {
 		logger.Error("Failed to get values for make field: %w", err)
 		return nil

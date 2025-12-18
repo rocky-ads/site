@@ -4,35 +4,35 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/field"
-	"github.com/rocky-ads/site/models"
 	"github.com/rocky-ads/site/param"
-	"github.com/rocky-ads/site/services"
+	"github.com/rocky-ads/site/search"
 	"github.com/rocky-ads/site/ui"
 	g "maragu.dev/gomponents"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-func getQueryValues(c *fiber.Ctx) models.FieldValues {
+func getQueryValues(c *fiber.Ctx) field.Values {
 	queryString := c.Request().URI().QueryString()
 	if len(queryString) == 0 {
-		return make(models.FieldValues)
+		return make(field.Values)
 	}
 	parsed, err := url.ParseQuery(string(queryString))
 	if err != nil {
-		return make(models.FieldValues)
+		return make(field.Values)
 	}
-	return models.FieldValues(parsed)
+	return field.Values(parsed)
 }
 
-func getFormValues(c *fiber.Ctx) models.FieldValues {
+func getFormValues(c *fiber.Ctx) field.Values {
 	form, _ := c.MultipartForm()
 	if form == nil {
-		return make(models.FieldValues)
+		return make(field.Values)
 	}
-	return models.FieldValues(form.Value)
+	return field.Values(form.Value)
 }
 
 func GetAllValuesHandler(c *fiber.Ctx) error {
@@ -48,7 +48,7 @@ func GetAllValuesHandler(c *fiber.Ctx) error {
 
 	fv := getQueryValues(c)
 
-	values, err := services.GetAllValues(specField, fv, categoryID)
+	values, err := specField.GetAllValues(fv)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -69,7 +69,7 @@ func GetAnyValuesHandler(c *fiber.Ctx) error {
 
 	fv := getQueryValues(c)
 
-	values, err := services.GetAnyValues(specField, fv, categoryID)
+	values, err := specField.GetAnyValues(fv)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -100,14 +100,14 @@ func GetAdValuesHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	fv := make(models.FieldValues)
+	fv := make(field.Values)
 	for k, v := range formValues {
 		if k != "ad_ids" {
 			fv[k] = v
 		}
 	}
 
-	values, err := services.GetAdValues(adIDs, specField, fv, categoryID)
+	values, err := specField.GetAdValues(adIDs, fv)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -115,6 +115,7 @@ func GetAdValuesHandler(c *fiber.Ctx) error {
 	return c.JSON(values)
 }
 
+/*
 func GetChainsHandler(c *fiber.Ctx) error {
 	categoryID, err := param.GetCategoryID(c)
 	if err != nil {
@@ -128,6 +129,7 @@ func GetChainsHandler(c *fiber.Ctx) error {
 
 	return c.JSON(chains)
 }
+*/
 
 func GetAdFilterValuesHandler(c *fiber.Ctx) error {
 	adID, fiberErr := param.GetAdID(c)
@@ -135,7 +137,7 @@ func GetAdFilterValuesHandler(c *fiber.Ctx) error {
 		return fiberErr
 	}
 
-	fv, err := services.LoadFilterValues(adID)
+	fv, err := ad.LoadFieldValues(adID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -149,12 +151,13 @@ func SearchHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
+	// TODO revisit this
 	fv := getFormValues(c)
 	if len(fv) == 0 {
 		fv = getQueryValues(c)
 	}
 
-	adIDs, err := services.Search(fv, categoryID)
+	adIDs, err := search.Search(categoryID, fv)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -173,16 +176,17 @@ func GetFirstSpecFieldsHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
-	fields, err := services.FirstSpecFields(categoryID)
+	fields, err := field.GetFirstSpecFields(categoryID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	response := make([]map[string]string, len(fields))
 	for i, f := range fields {
+		field := f.GetField()
 		response[i] = map[string]string{
-			"name":         f.Name,
-			"display_name": f.DisplayName,
+			"name":         field.Name,
+			"display_name": field.DisplayName,
 		}
 	}
 
@@ -195,11 +199,12 @@ func GetLastSpecFieldHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
-	field, err := services.LastSpecField(categoryID)
+	last, err := field.GetLastSpecField(categoryID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
+	field := last.GetField()
 	response := map[string]string{
 		"name":         field.Name,
 		"display_name": field.DisplayName,
@@ -214,12 +219,12 @@ func SwitchCategoryHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
-	categoryName, err := services.GetCategoryNameByID(categoryID)
+	categoryName, err := ad.GetCategoryName(categoryID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
-	categoryImage, err := services.GetCategoryImageFile(categoryID)
+	categoryImage, err := ad.GetCategoryImageFile(categoryID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}

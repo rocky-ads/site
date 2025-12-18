@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/config"
-	"github.com/rocky-ads/site/services"
 	"github.com/rocky-ads/site/ui"
 )
 
@@ -29,7 +29,7 @@ func SetView(c *fiber.Ctx, view int) {
 
 func GetCategoryID(c *fiber.Ctx) (int, error) {
 	category := c.Cookies("category")
-	return services.ValidateCategory(category)
+	return ad.ParseCategory(category)
 }
 
 func SetCategoryID(c *fiber.Ctx, category int) {

@@ -3,7 +3,6 @@ package field
 import (
 	"github.com/rocky-ads/site/ui"
 	g "maragu.dev/gomponents"
-	. "maragu.dev/gomponents/html"
 )
 
 type LocationField struct {
