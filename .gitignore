@@ -31,9 +31,9 @@ go.work.sum
 # .idea/
 # .vscode/
 
-rebuild_db
-project.db
-site
+/rebuild_db
+/project.db
+/site
 
 # macOS
 .DS_Store
