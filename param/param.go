@@ -23,10 +23,10 @@ func GetSpecField(c *fiber.Ctx, categoryID int) (field.SpecField, *fiber.Error) 
 }
 
 func GetAdID(c *fiber.Ctx) (int, *fiber.Error) {
-	adIDStr := c.Params("id")
-	adID, err := strconv.Atoi(adIDStr)
+	idStr := c.Params("id")
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return 0, fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
 	}
-	return adID, nil
+	return id, nil
 }

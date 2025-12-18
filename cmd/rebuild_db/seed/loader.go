@@ -1,16 +1,22 @@
 package seed
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
 	"time"
 
+	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/db"
+	"github.com/rocky-ads/site/encryption"
+	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/logger"
-	"github.com/rocky-ads/site/models"
+	"github.com/rocky-ads/site/password"
 )
 
 // FieldData represents a field from fields.json
@@ -18,6 +24,27 @@ type FieldData struct {
 	Name        string `json:"name"`
 	DisplayName string `json:"display_name"`
 	IsSpecField bool   `json:"is_spec_field"`
+}
+
+// categoryJSON represents a category from ad-category.json
+type categoryJSON struct {
+	Name       string      `json:"name"`
+	ImageFile  string      `json:"image_file"`
+	SeedAdFile string      `json:"seed_ad_file"`
+	Chains     []chainJSON `json:"chains"`
+}
+
+// chainJSON represents a chain within a category
+type chainJSON struct {
+	SpecTable string      `json:"spec_table"`
+	ChainFile string      `json:"chain_file"`
+	Fields    []fieldJSON `json:"fields"`
+}
+
+// fieldJSON represents a field within a chain
+type fieldJSON struct {
+	Name       string `json:"field_name"`
+	IsRequired bool   `json:"is_required"`
 }
 
 // CategoryFiles stores file information for a category
@@ -32,6 +59,12 @@ var categoryFiles = make(map[string]CategoryFiles)
 // LoadAll loads all seed data into the database
 func LoadAll(includeTestAds bool) error {
 	startTime := time.Now()
+	if err := LoadUsers(); err != nil {
+		return fmt.Errorf("loading users: %w", err)
+	}
+	logger.Info("LoadUsers completed", "duration", time.Since(startTime))
+
+	startTime = time.Now()
 	if err := LoadFields(); err != nil {
 		return fmt.Errorf("loading fields: %w", err)
 	}
@@ -57,6 +90,125 @@ func LoadAll(includeTestAds bool) error {
 		logger.Info("LoadAds completed", "duration", time.Since(startTime))
 	}
 	return nil
+}
+
+// userJSON represents a user from user.json
+type userJSON struct {
+	Name     string `json:"name"`
+	Password string `json:"password"`
+	Phone    string `json:"phone"`
+	IsAdmin  bool   `json:"is_admin,omitempty"`
+}
+
+// LocationData represents location data from ad JSON files
+type LocationData struct {
+	City      string  `json:"city"`
+	AdminArea string  `json:"admin_area"`
+	Country   string  `json:"country"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+}
+
+// Ad represents an ad for loading purposes
+type Ad struct {
+	ID          int
+	CategoryID  int
+	Title       string
+	Description string
+	Price       float64
+	CreatedAt   string
+	UserID      int
+	ImageCount  int
+	Location    LocationData
+	SpecValues  field.Values
+}
+
+// LoadUsers loads users from user.json into the users table
+func LoadUsers() error {
+	data, err := os.ReadFile("cmd/rebuild_db/seed/user.json")
+	if err != nil {
+		return err
+	}
+
+	var users []userJSON
+	if err := json.Unmarshal(data, &users); err != nil {
+		return err
+	}
+
+	for _, u := range users {
+		// Generate password hash using the password package
+		passwordHash, passwordSalt, err := password.HashPassword(u.Password)
+		if err != nil {
+			return fmt.Errorf("hashing password for user %s: %w", u.Name, err)
+		}
+
+		// Insert user with minimal fields first to get ID (needed for encryption)
+		// Use placeholder values that will be updated
+		result, err := db.Exec(
+			"INSERT INTO users (encrypted_name, name_nonce, name_hash, password_hash, password_salt, password_algo, encrypted_phone, phone_nonce, phone_hash, encrypted_email, email_nonce, email_hash, is_admin) VALUES (?, ?, ?, ?, ?, 'argon2id', ?, ?, ?, ?, ?, ?, ?)",
+			[]byte{}, []byte{}, hashString(u.Name), passwordHash, passwordSalt,
+			[]byte{}, []byte{}, hashString(u.Phone),
+			[]byte{}, []byte{}, nil, u.IsAdmin,
+		)
+		if err != nil {
+			return fmt.Errorf("inserting user %s: %w", u.Name, err)
+		}
+		userID, _ := result.LastInsertId()
+
+		// Encrypt name
+		encryptedName, nameNonce, err := encryption.Encrypt(int(userID), u.Name, config.UserEncryptionKey)
+		if err != nil {
+			return fmt.Errorf("encrypting name for user %s: %w", u.Name, err)
+		}
+		nameHash := hashString(u.Name)
+
+		// Encrypt phone
+		encryptedPhone, phoneNonce, err := encryption.Encrypt(int(userID), u.Phone, config.UserEncryptionKey)
+		if err != nil {
+			return fmt.Errorf("encrypting phone for user %s: %w", u.Name, err)
+		}
+		phoneHash := hashString(u.Phone)
+
+		// Encrypt email (empty for seed users)
+		// Set email_hash to NULL when email is empty (UNIQUE constraint allows multiple NULLs)
+		encryptedEmail, emailNonce, err := encryption.Encrypt(int(userID), "", config.UserEncryptionKey)
+		if err != nil {
+			return fmt.Errorf("encrypting email for user %s: %w", u.Name, err)
+		}
+		var emailHash interface{} = nil // NULL for empty emails
+
+		// Decode base64 strings to bytes for BYTEA storage
+		encryptedNameBytes, _ := base64.StdEncoding.DecodeString(encryptedName)
+		nameNonceBytes, _ := base64.StdEncoding.DecodeString(nameNonce)
+		encryptedPhoneBytes, _ := base64.StdEncoding.DecodeString(encryptedPhone)
+		phoneNonceBytes, _ := base64.StdEncoding.DecodeString(phoneNonce)
+		encryptedEmailBytes, _ := base64.StdEncoding.DecodeString(encryptedEmail)
+		emailNonceBytes, _ := base64.StdEncoding.DecodeString(emailNonce)
+
+		// Update user with encrypted fields
+		_, err = db.Exec(
+			`UPDATE users SET 
+				encrypted_name = ?, name_nonce = ?, name_hash = ?,
+				encrypted_phone = ?, phone_nonce = ?, phone_hash = ?,
+				encrypted_email = ?, email_nonce = ?, email_hash = ?
+			WHERE id = ?`,
+			encryptedNameBytes, nameNonceBytes, nameHash,
+			encryptedPhoneBytes, phoneNonceBytes, phoneHash,
+			encryptedEmailBytes, emailNonceBytes, emailHash,
+			userID,
+		)
+		if err != nil {
+			return fmt.Errorf("updating encrypted fields for user %s: %w", u.Name, err)
+		}
+	}
+
+	return nil
+}
+
+// hashString generates a SHA256 hash of a string for uniqueness checks
+func hashString(s string) string {
+	h := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(h[:])
 }
 
 // LoadFields loads fields.json into the fields table
@@ -91,7 +243,7 @@ func LoadCategories() error {
 		return err
 	}
 
-	var categories []models.Category
+	var categories []categoryJSON
 	if err := json.Unmarshal(data, &categories); err != nil {
 		return err
 	}
@@ -419,26 +571,26 @@ func LoadAds(includeTestAds bool) error {
 
 // adJSON represents the flat JSON structure from ad-*.json files
 type adJSON struct {
-	ID              int                 `json:"id,omitempty"`
-	CategoryID      int                 `json:"category_id,omitempty"`
-	Make            string              `json:"make,omitempty"`
-	Years           []string            `json:"years,omitempty"`
-	Models          []string            `json:"models,omitempty"`
-	Engines         []string            `json:"engines,omitempty"`
-	PartCategory    string              `json:"part_category,omitempty"`
-	PartSubcategory string              `json:"part_subcategory,omitempty"`
-	Title           string              `json:"title"`
-	Description     string              `json:"description,omitempty"`
-	Price           float64             `json:"price"`
-	CreatedAt       string              `json:"created_at"`
-	UserID          int                 `json:"user_id"`
-	ImageCount      int                 `json:"image_count"`
-	Location        models.LocationData `json:"location"`
+	ID              int          `json:"id,omitempty"`
+	CategoryID      int          `json:"category_id,omitempty"`
+	Make            string       `json:"make,omitempty"`
+	Years           []string     `json:"years,omitempty"`
+	Models          []string     `json:"models,omitempty"`
+	Engines         []string     `json:"engines,omitempty"`
+	PartCategory    string       `json:"part_category,omitempty"`
+	PartSubcategory string       `json:"part_subcategory,omitempty"`
+	Title           string       `json:"title"`
+	Description     string       `json:"description,omitempty"`
+	Price           float64      `json:"price"`
+	CreatedAt       string       `json:"created_at"`
+	UserID          int          `json:"user_id"`
+	ImageCount      int          `json:"image_count"`
+	Location        LocationData `json:"location"`
 }
 
 // convertAdJSON converts adJSON (flat structure) to Ad (with SpecValues map)
-func convertAdJSON(aj adJSON) models.Ad {
-	ad := models.Ad{
+func convertAdJSON(aj adJSON) Ad {
+	ad := Ad{
 		ID:          aj.ID,
 		CategoryID:  aj.CategoryID,
 		Title:       aj.Title,
@@ -451,7 +603,7 @@ func convertAdJSON(aj adJSON) models.Ad {
 	}
 
 	// Build SpecValues map from flat fields
-	ad.SpecValues = make(models.FieldValues)
+	ad.SpecValues = make(field.Values)
 	if aj.Make != "" {
 		ad.SpecValues["make"] = []string{aj.Make}
 	}
@@ -486,8 +638,15 @@ func loadAdsFromFile(categoryID int, filename string) error {
 		return err
 	}
 
+	// Get test user ID
+	var testUserID int
+	err = db.QueryRow("SELECT id FROM users WHERE name_hash = ?", hashString("test")).Scan(&testUserID)
+	if err != nil {
+		return fmt.Errorf("finding test user: %w", err)
+	}
+
 	// Convert adJSON to Ad
-	ads := make([]models.Ad, len(adsJSON))
+	ads := make([]Ad, len(adsJSON))
 	for i, aj := range adsJSON {
 		ads[i] = convertAdJSON(aj)
 	}
@@ -503,14 +662,26 @@ func loadAdsFromFile(categoryID int, filename string) error {
 		}
 	}
 
-	for _, ad := range ads {
-		// Serialize location as JSON
-		locationJSON, _ := json.Marshal(ad.Location)
+	for i, ad := range ads {
+		// Get or create location
+		locationID, err := getOrCreateLocation(adsJSON[i].Location)
+		if err != nil {
+			return fmt.Errorf("getting/creating location: %w", err)
+		}
 
-		// Insert ad
+		// Convert price from dollars to cents
+		priceCents := int(ad.Price * 100)
+
+		// Parse created_at timestamp
+		createdAt, err := time.Parse(time.RFC3339, ad.CreatedAt)
+		if err != nil {
+			return fmt.Errorf("parsing created_at: %w", err)
+		}
+
+		// Insert ad using test user ID and location_id
 		result, err := db.Exec(
-			"INSERT INTO ads (category_id, title, description, price, created_at, user_id, image_count, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-			categoryID, ad.Title, ad.Description, ad.Price, ad.CreatedAt, ad.UserID, ad.ImageCount, string(locationJSON),
+			"INSERT INTO ads (category_id, title, description, price, created_at, user_id, image_count, location_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+			categoryID, ad.Title, ad.Description, priceCents, createdAt, testUserID, ad.ImageCount, locationID,
 		)
 		if err != nil {
 			return fmt.Errorf("inserting ad: %w", err)
@@ -537,8 +708,32 @@ func loadAdsFromFile(categoryID int, filename string) error {
 				}
 			}
 		}
-
 	}
 
 	return nil
+}
+
+// getOrCreateLocation gets or creates a location in the locations table
+func getOrCreateLocation(loc LocationData) (int, error) {
+	// Create raw_text from location data
+	rawText := fmt.Sprintf("%s, %s, %s", loc.City, loc.AdminArea, loc.Country)
+
+	// Try to get existing location
+	var locationID int
+	err := db.QueryRow("SELECT id FROM locations WHERE raw_text = ?", rawText).Scan(&locationID)
+	if err == nil {
+		return locationID, nil
+	}
+
+	// Location doesn't exist, create it
+	result, err := db.Exec(
+		"INSERT INTO locations (raw_text, city, admin_area, country, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?)",
+		rawText, loc.City, loc.AdminArea, loc.Country, loc.Latitude, loc.Longitude,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("inserting location: %w", err)
+	}
+
+	locationIDInt64, _ := result.LastInsertId()
+	return int(locationIDInt64), nil
 }

@@ -1,5 +1,56 @@
+-- Users table
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP,
+    is_admin INTEGER NOT NULL DEFAULT 0,
+
+    -- Encrypted user name
+    encrypted_name BYTEA NOT NULL,
+    name_nonce BYTEA NOT NULL,
+    name_hash TEXT NOT NULL UNIQUE,
+
+    -- Encrypted password
+    password_hash TEXT NOT NULL,
+    password_salt TEXT NOT NULL,
+    password_algo TEXT NOT NULL DEFAULT 'argon2id',
+
+    -- Encrypted phone
+    encrypted_phone BYTEA NOT NULL,
+    phone_nonce BYTEA NOT NULL,
+    phone_hash TEXT NOT NULL UNIQUE,
+    phone_verified INTEGER NOT NULL DEFAULT 0,
+    verification_code TEXT NOT NULL DEFAULT '',
+    sms_opted_out INTEGER NOT NULL DEFAULT 0,
+
+    -- Encrypted email
+    encrypted_email BYTEA NOT NULL,
+    email_nonce BYTEA NOT NULL,
+    email_hash TEXT UNIQUE,
+
+    -- Notification settings
+    notification_method TEXT NOT NULL DEFAULT 'sms',
+    summary_notifications_enabled INTEGER DEFAULT 0,
+    summary_notifications_frequency TEXT DEFAULT 'daily'
+);
+CREATE INDEX idx_user_deleted_at ON users(deleted_at);
+CREATE INDEX idx_user_name_hash ON users(name_hash);
+CREATE INDEX idx_user_phone_hash ON users(phone_hash);
+
+-- Locations table
+CREATE TABLE locations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    raw_text TEXT UNIQUE NOT NULL CHECK (length(raw_text) > 0),
+    city TEXT NOT NULL,
+    admin_area TEXT NOT NULL,
+    country TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL
+);
+CREATE INDEX idx_location_raw_text ON locations(raw_text);
+
 -- Categories table
-CREATE TABLE IF NOT EXISTS categories (
+CREATE TABLE categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     seed_ad_file TEXT,
@@ -7,7 +58,7 @@ CREATE TABLE IF NOT EXISTS categories (
 );
 
 -- Chains table (represents field chains within categories)
-CREATE TABLE IF NOT EXISTS chains (
+CREATE TABLE chains (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     category_id INTEGER NOT NULL,
     spec_table TEXT, -- NULL if chain has no spec fields
@@ -16,103 +67,90 @@ CREATE TABLE IF NOT EXISTS chains (
     FOREIGN KEY (category_id) REFERENCES categories(id),
     UNIQUE(category_id, chain_index)
 );
+CREATE INDEX idx_chains_category ON chains(category_id);
 
 -- Fields table
-CREATE TABLE IF NOT EXISTS fields (
+CREATE TABLE fields (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     display_name TEXT NOT NULL
 );
 
 -- Chain fields table (defines fields for each chain and their relationships)
-CREATE TABLE IF NOT EXISTS chain_fields (
+CREATE TABLE chain_fields (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    chain_id INTEGER NOT NULL,
-    field_id INTEGER NOT NULL,
+    chain_id INTEGER NOT NULL REFERENCES chains(id),
+    field_id INTEGER NOT NULL REFERENCES fields(id),
     next_in_chain INTEGER NOT NULL DEFAULT 0, -- Points to field_order of next field, 0 if last
     is_required INTEGER NOT NULL DEFAULT 0,
     field_order INTEGER NOT NULL, -- Order of field within chain
-    FOREIGN KEY (chain_id) REFERENCES chains(id),
-    FOREIGN KEY (field_id) REFERENCES fields(id),
     UNIQUE(chain_id, field_id)
 );
+CREATE INDEX idx_chain_fields_chain ON chain_fields(chain_id);
+CREATE INDEX idx_chain_fields_field ON chain_fields(field_id);
 
 -- Ads table
--- Uses JSON for location to leverage SQLite JSON functions
-CREATE TABLE IF NOT EXISTS ads (
+CREATE TABLE ads (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    category_id INTEGER NOT NULL,
+    category_id INTEGER NOT NULL REFERENCES categories(id),
     title TEXT NOT NULL,
-    description TEXT,
-    price REAL NOT NULL,
-    created_at TEXT NOT NULL,
-    user_id INTEGER NOT NULL,
+    description TEXT NOT NULL,
+    price INTEGER NOT NULL, -- in cents
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP,
+    user_id INTEGER NOT NULL REFERENCES users(id),
     image_count INTEGER DEFAULT 0,
-    location TEXT, -- JSON column for location data
-    FOREIGN KEY (category_id) REFERENCES categories(id)
+    location_id INTEGER REFERENCES locations(id)
 );
+CREATE INDEX idx_ads_category ON ads(category_id);
 
 -- Ad values for spec fields (supports both single and multi-value fields, one row per value)
-CREATE TABLE IF NOT EXISTS ad_values (
+CREATE TABLE ad_values (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ad_id INTEGER NOT NULL,
-    field_id INTEGER NOT NULL,
+    ad_id INTEGER NOT NULL REFERENCES ads(id),
+    field_id INTEGER NOT NULL REFERENCES fields(id),
     value TEXT NOT NULL CHECK (value != ''),
-    FOREIGN KEY (ad_id) REFERENCES ads(id) ON DELETE CASCADE,
-    FOREIGN KEY (field_id) REFERENCES fields(id),
     UNIQUE(ad_id, field_id, value)
 );
+CREATE INDEX idx_ad_values_ad ON ad_values(ad_id);
+CREATE INDEX idx_ad_values_field ON ad_values(field_id);
+CREATE INDEX idx_ad_values_lookup ON ad_values(ad_id, field_id, value);
 
 -- Spec combinations: make->model (for Bicycles)
-CREATE TABLE IF NOT EXISTS spec_bicycle (
+CREATE TABLE spec_bicycle (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    category_id INTEGER NOT NULL,
+    category_id INTEGER NOT NULL REFERENCES categories(id),
     make TEXT NOT NULL CHECK (make != ''),
     model TEXT NOT NULL CHECK (model != ''),
-    FOREIGN KEY (category_id) REFERENCES categories(id),
     UNIQUE(category_id, make, model)
 );
 
 -- Spec combinations: make->year->model (for Agricultural Equipment)
-CREATE TABLE IF NOT EXISTS spec_ag (
+CREATE TABLE spec_ag (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    category_id INTEGER NOT NULL,
+    category_id INTEGER NOT NULL REFERENCES categories(id),
     make TEXT NOT NULL CHECK (make != ''),
     year TEXT NOT NULL CHECK (year != ''),
     model TEXT NOT NULL CHECK (model != ''),
-    FOREIGN KEY (category_id) REFERENCES categories(id),
     UNIQUE(category_id, make, year, model)
 );
 
 -- Spec combinations: make->year->model->engine (for Cars & Trucks, Motorcycles)
-CREATE TABLE IF NOT EXISTS spec_vehicle (
+CREATE TABLE spec_vehicle (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    category_id INTEGER NOT NULL,
+    category_id INTEGER NOT NULL REFERENCES categories(id),
     make TEXT NOT NULL CHECK (make != ''),
     year TEXT NOT NULL CHECK (year != ''),
     model TEXT NOT NULL CHECK (model != ''),
     engine TEXT NOT NULL CHECK (engine != ''),
-    FOREIGN KEY (category_id) REFERENCES categories(id),
     UNIQUE(category_id, make, year, model, engine)
 );
 
 -- Part combinations (part_category->part_subcategory)
-CREATE TABLE IF NOT EXISTS spec_part (
+CREATE TABLE spec_part (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    category_id INTEGER NOT NULL,
+    category_id INTEGER NOT NULL REFERENCES categories(id),
     part_category TEXT CHECK (part_category IS NULL OR part_category != ''),
     part_subcategory TEXT CHECK (part_subcategory IS NULL OR part_subcategory != ''),
-    FOREIGN KEY (category_id) REFERENCES categories(id),
     UNIQUE(category_id, part_category, part_subcategory)
 );
-
--- Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_chains_category ON chains(category_id);
-CREATE INDEX IF NOT EXISTS idx_chain_fields_chain ON chain_fields(chain_id);
-CREATE INDEX IF NOT EXISTS idx_chain_fields_field ON chain_fields(field_id);
-CREATE INDEX IF NOT EXISTS idx_ads_category ON ads(category_id);
-CREATE INDEX IF NOT EXISTS idx_ad_values_ad ON ad_values(ad_id);
-CREATE INDEX IF NOT EXISTS idx_ad_values_field ON ad_values(field_id);
--- Composite index for efficient lookups (critical for search performance)
-CREATE INDEX IF NOT EXISTS idx_ad_values_lookup ON ad_values(ad_id, field_id, value);
-

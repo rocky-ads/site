@@ -76,7 +76,8 @@ func main() {
 		logger.Fatal("Failed to initialize logger", "error", err)
 	}
 
-	// Assumes database is already built with cmd/rebuild_db
+	config.SecurityCheck()
+
 	if err := db.Init("project.db"); err != nil {
 		logger.Fatal("Failed to open database", "error", err)
 	}

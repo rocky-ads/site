@@ -16,10 +16,11 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/db"
+	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/logger"
-	"github.com/rocky-ads/site/services"
 )
 
 var baseURL = "http://localhost:" + config.TestPort
@@ -37,9 +38,12 @@ func TestMain(m *testing.M) {
 		panic(fmt.Sprintf("Failed to open database: %v", err))
 	}
 
-	// Initialize categories
-	if err := services.InitCategories(); err != nil {
-		panic(fmt.Sprintf("Failed to initialize categories: %v", err))
+	if err := ad.Init(); err != nil {
+		panic(fmt.Sprintf("Failed to initialize ads: %v", err))
+	}
+
+	if err := field.Init(); err != nil {
+		panic(fmt.Sprintf("Failed to initialize fields: %v", err))
 	}
 
 	// Setup test server
