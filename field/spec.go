@@ -190,7 +190,7 @@ func GetLastSpecField(categoryID int) (Fielder, error) {
 		return nil, err
 	}
 
-	// Find the last SpecFielder (not the last field overall, which might be price/location)
+	// Find the last SpecFielder
 	var lastSpecFielder Fielder
 	for _, f := range fields {
 		if _, ok := f.(SpecFielder); ok {

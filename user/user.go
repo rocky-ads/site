@@ -16,7 +16,6 @@ const (
 )
 
 type User struct {
-	// Core database fields
 	ID   int
 	Name string
 }

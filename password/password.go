@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 
-	"github.com/parts-pile/site/config"
+	"github.com/rocky-ads/site/config"
 	"golang.org/x/crypto/argon2"
 )
 
