@@ -46,8 +46,11 @@ func setupApp() *fiber.App {
 	})
 
 	app.Get("/", handlers.HomeHandler)
+	app.Get("/login", handlers.LoginHandler)
 
 	api := app.Group("/api")
+
+	api.Post("/login", handlers.LoginSubmitHandler)
 
 	categoryRouter := api.Group("/category/:category")
 	categoryRouter.Get("/values/:field", handlers.GetAllValuesHandler)

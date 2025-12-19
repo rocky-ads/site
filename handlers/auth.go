@@ -25,7 +25,7 @@ func JWTMiddleware(c *fiber.Ctx) error {
 	}
 
 	// Validate JWT token
-	claims, err := validateToken(tokenString)
+	claims, err := validateJWTToken(tokenString)
 	if err != nil {
 		// Invalid token, clear cookie
 		cookie.ClearJWT(c)
@@ -46,8 +46,8 @@ type claims struct {
 	jwt.RegisteredClaims
 }
 
-// generateToken creates a JWT token for a user
-func generateToken(u *user.User) (string, error) {
+// generateJWTToken creates a JWT token for a user
+func generateJWTToken(u *user.User) (string, error) {
 	claims := claims{
 		UserID:   u.ID,
 		UserName: u.Name,
@@ -63,8 +63,8 @@ func generateToken(u *user.User) (string, error) {
 	return token.SignedString(config.JWTSecret)
 }
 
-// validateToken validates a JWT token and returns the claims
-func validateToken(tokenString string) (*claims, error) {
+// validateJWTToken validates a JWT token and returns the claims
+func validateJWTToken(tokenString string) (*claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &claims{}, func(token *jwt.Token) (interface{}, error) {
 		if token.Method != jwt.SigningMethodHS256 {
 			return nil, errors.New("unexpected signing method")
@@ -93,9 +93,9 @@ func getUserName(claims *claims) string {
 	return claims.UserName
 }
 
-// validateSecret validates that JWT secret is set and sufficiently strong
+// validateJWTSecret validates that JWT secret is set and sufficiently strong
 // Minimum requirements: at least 32 bytes (256 bits) of entropy
-func validateSecret(secret []byte) error {
+func validateJWTSecret(secret []byte) error {
 	if len(secret) == 0 {
 		return fmt.Errorf("JWT_SECRET environment variable is required but not set")
 	}

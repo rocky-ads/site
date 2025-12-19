@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	g "maragu.dev/gomponents"
+	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
 )
 
@@ -30,4 +31,13 @@ func ErrorPageContent(code int, message string) []g.Node {
 			}),
 		),
 	}
+}
+
+func ErrorDiv(errMsg string) g.Node {
+	return Div(
+		ID("error"),
+		Class("text-red-500 text-sm"),
+		g.If(errMsg != "", hx.SwapOOB("true")),
+		g.If(errMsg != "", g.Text(errMsg)),
+	)
 }
