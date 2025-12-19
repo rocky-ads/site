@@ -52,7 +52,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ github.repository }}
+            rockyads/site
             ghcr.io/${{ github.repository }}
           tags: |
             type=ref,event=branch
@@ -61,14 +61,14 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix={{branch}}-
           labels: |
-            org.opencontainers.image.title=Parts Pile Site
-            org.opencontainers.image.description=Parts Pile Site
+            org.opencontainers.image.title=Rocky Ads Site
+            org.opencontainers.image.description=Rocky Ads Site
 
       - name: Build and push Docker images
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfiles/Dockerfile.site
+          file: ./dockerfiles/Dockerfile.site
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -106,7 +106,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ github.repository }}-jump-server
+            rockyads/jump-server
             ghcr.io/${{ github.repository }}-jump-server
           tags: |
             type=ref,event=branch
@@ -122,7 +122,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfiles/Dockerfile.jump-server
+          file: ./dockerfiles/Dockerfile.jump-server
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.jump-meta.outputs.tags }}
@@ -160,7 +160,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ github.repository }}-minio
+            rockyads/minio
             ghcr.io/${{ github.repository }}-minio
           tags: |
             type=ref,event=branch
@@ -176,7 +176,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfiles/Dockerfile.minio
+          file: ./dockerfiles/Dockerfile.minio
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.minio-meta.outputs.tags }}
