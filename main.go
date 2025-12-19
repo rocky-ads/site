@@ -47,6 +47,7 @@ func setupApp() *fiber.App {
 
 	app.Get("/", handlers.HomeHandler)
 	app.Get("/login", handlers.LoginHandler)
+	app.Get("/health", handlers.HandleHealth)
 
 	api := app.Group("/api")
 
@@ -65,10 +66,6 @@ func setupApp() *fiber.App {
 	api.Get("/ads/:id/filter-values", handlers.GetAdFilterValuesHandler)
 	api.Get("/modal/category-select", handlers.CategorySelectHandler)
 	api.Get("/show-filters", handlers.ShowFiltersHandler)
-
-	app.Get("/health", func(c *fiber.Ctx) error {
-		return c.SendString("OK")
-	})
 
 	return app
 }

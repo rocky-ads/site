@@ -4,8 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 
-	"github.com/parts-pile/site/config"
-	"github.com/parts-pile/site/encryption"
+	"github.com/rocky-ads/site/config"
+	"github.com/rocky-ads/site/encryption"
 )
 
 func EncryptName(userID int, name string) (encryptedName, nonce string, err error) {
