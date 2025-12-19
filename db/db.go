@@ -188,9 +188,6 @@ func Select(dest interface{}, query string, args ...interface{}) error {
 }
 
 func Ping() error {
-	if db == nil {
-		return fmt.Errorf("database not initialized")
-	}
 	return db.Ping()
 }
 

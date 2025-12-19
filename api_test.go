@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"mime/multipart"
 	"net/http"
@@ -21,6 +23,7 @@ import (
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/logger"
+	"github.com/rocky-ads/site/user"
 )
 
 var baseURL = "http://localhost:" + config.TestPort
@@ -308,19 +311,6 @@ func getRequest(t *testing.T, url string) (*http.Response, map[string]interface{
 		}
 	}
 
-	// Debug output for non-200 responses
-	if resp.StatusCode != http.StatusOK {
-		bodyStr := "(empty)"
-		if len(bodyBytes) > 0 {
-			bodyStr = string(bodyBytes)
-			// Truncate long responses
-			if len(bodyStr) > 500 {
-				bodyStr = bodyStr[:500] + "... (truncated)"
-			}
-		}
-		t.Logf("❌ GET %s -> %d: %s", url, resp.StatusCode, bodyStr)
-	}
-
 	// Try to decode as JSON array first (since some endpoints return arrays directly)
 	var arrResult []interface{}
 	if err := json.Unmarshal(bodyBytes, &arrResult); err == nil {
@@ -474,27 +464,14 @@ func postFormRequest(t *testing.T, requestURL string, body map[string]interface{
 		}
 	}
 
-	// Debug output for non-200 responses
-	if resp.StatusCode != http.StatusOK {
-		bodyStr := "(empty)"
-		if len(bodyRespBytes) > 0 {
-			bodyStr = string(bodyRespBytes)
-			// Truncate long responses
-			if len(bodyStr) > 500 {
-				bodyStr = bodyStr[:500] + "... (truncated)"
-			}
-		}
-		t.Logf("❌ POST %s -> %d: %s", requestURL, resp.StatusCode, bodyStr)
-	}
-
 	// Try to decode as JSON
 	var result map[string]interface{}
 	if err := json.Unmarshal(bodyRespBytes, &result); err != nil {
 		// Try array
 		var arrResult []interface{}
 		if err2 := json.Unmarshal(bodyRespBytes, &arrResult); err2 != nil {
-			// Not JSON, return empty map (error response)
-			return resp, map[string]interface{}{}
+			// Not JSON, return raw body as string for debugging
+			return resp, map[string]interface{}{"raw": string(bodyRespBytes)}
 		}
 		return resp, map[string]interface{}{"array": arrResult}
 	}
@@ -1650,6 +1627,482 @@ func TestEdgeCases(t *testing.T) {
 
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("Expected status 200, got %d", resp.StatusCode)
+		}
+	})
+}
+
+// Helper function to create a client with category cookie set
+func getClientWithCategoryCookie(categoryID int) (*http.Client, error) {
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		return nil, err
+	}
+	client := &http.Client{Jar: jar}
+
+	baseURLParsed, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get CSRF token via GET /health
+	getReq, err := http.NewRequest("GET", baseURL+"/health", nil)
+	if err != nil {
+		return nil, err
+	}
+	getResp, err := client.Do(getReq)
+	if err != nil {
+		return nil, err
+	}
+	getResp.Body.Close()
+
+	// Set category cookie
+	categoryCookie := &http.Cookie{
+		Name:     "category",
+		Value:    strconv.Itoa(categoryID),
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteStrictMode,
+	}
+	jar.SetCookies(baseURLParsed, []*http.Cookie{categoryCookie})
+
+	// Handle CSRF cookie (copy from response if needed)
+	for _, cookie := range getResp.Cookies() {
+		if cookie.Name == "_csrf" {
+			testCookie := &http.Cookie{
+				Name:     cookie.Name,
+				Value:    cookie.Value,
+				Path:     cookie.Path,
+				Domain:   cookie.Domain,
+				HttpOnly: cookie.HttpOnly,
+				SameSite: cookie.SameSite,
+				Secure:   false,
+			}
+			jar.SetCookies(baseURLParsed, []*http.Cookie{testCookie})
+			break
+		}
+	}
+
+	return client, nil
+}
+
+// Helper function to make GET request with cookies
+func getRequestWithCookies(t *testing.T, client *http.Client, url string) (*http.Response, string) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create GET request: %v", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("Failed to make GET request: %v", err)
+	}
+
+	bodyBytes := make([]byte, 0, 1024)
+	buf := make([]byte, 1024)
+	for {
+		n, err := resp.Body.Read(buf)
+		if n > 0 {
+			bodyBytes = append(bodyBytes, buf[:n]...)
+		}
+		if err != nil {
+			break
+		}
+	}
+	resp.Body.Close()
+
+	return resp, string(bodyBytes)
+}
+
+// Test GET /.well-known/appspecific/com.chrome.devtools.json
+func TestChromeDevToolsEndpoint(t *testing.T) {
+	resp, err := http.Get(baseURL + "/.well-known/appspecific/com.chrome.devtools.json")
+	if err != nil {
+		t.Fatalf("Failed to make request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		t.Errorf("Expected status 204, got %d", resp.StatusCode)
+	}
+}
+
+// Test GET /
+func TestHomeHandler(t *testing.T) {
+	tests := []struct {
+		name           string
+		categoryID     int
+		expectedStatus int
+	}{
+		{"Valid category", 6, 200},
+		{"Another valid category", 5, 200},
+		{"Invalid category", 999, 404},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, err := getClientWithCategoryCookie(tt.categoryID)
+			if err != nil {
+				t.Fatalf("Failed to create client: %v", err)
+			}
+
+			resp, body := getRequestWithCookies(t, client, baseURL+"/")
+
+			if resp.StatusCode != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
+				if len(body) > 500 {
+					t.Logf("Response body (truncated): %s...", body[:500])
+				} else {
+					t.Logf("Response body: %s", body)
+				}
+			}
+
+			if tt.expectedStatus == 200 {
+				// Check that it returns HTML (Fiber sets Content-Type as "text/html" without charset)
+				contentType := resp.Header.Get("Content-Type")
+				if contentType != "text/html" && contentType != "text/html; charset=utf-8" {
+					t.Errorf("Expected Content-Type text/html, got %s", contentType)
+				}
+				// Check that body contains some expected HTML elements
+				if len(body) == 0 {
+					t.Error("Expected non-empty HTML response")
+				}
+			}
+		})
+	}
+
+	// Test without category cookie
+	t.Run("No category cookie", func(t *testing.T) {
+		resp, err := http.Get(baseURL + "/")
+		if err != nil {
+			t.Fatalf("Failed to make request: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("Expected status 404 without category cookie, got %d", resp.StatusCode)
+		}
+	})
+}
+
+// Test GET /login
+func TestLoginHandler(t *testing.T) {
+	resp, err := http.Get(baseURL + "/login")
+	if err != nil {
+		t.Fatalf("Failed to make request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", resp.StatusCode)
+	}
+
+	// Check that it returns HTML (Fiber sets Content-Type as "text/html" without charset)
+	contentType := resp.Header.Get("Content-Type")
+	if contentType != "text/html" && contentType != "text/html; charset=utf-8" {
+		t.Errorf("Expected Content-Type text/html, got %s", contentType)
+	}
+
+	// Read body to verify it's HTML
+	bodyBytes := make([]byte, 0, 1024)
+	buf := make([]byte, 1024)
+	for {
+		n, err := resp.Body.Read(buf)
+		if n > 0 {
+			bodyBytes = append(bodyBytes, buf[:n]...)
+		}
+		if err != nil {
+			break
+		}
+	}
+
+	body := string(bodyBytes)
+	if len(body) == 0 {
+		t.Error("Expected non-empty HTML response")
+	}
+}
+
+// Test POST /api/login
+func TestLoginSubmitHandler(t *testing.T) {
+	// Check if test user exists - fail test if prerequisites not met
+	// Also check if encryption key is configured (needed for decryption)
+	if len(config.UserEncryptionKey) == 0 {
+		t.Fatal("USER_ENCRYPTION_KEY environment variable not set. This is required for user decryption.")
+	}
+
+	testUser, err := user.GetByName("test")
+	if err != nil {
+		// Check if it's a "not found" error vs decryption error
+		if errors.Is(err, sql.ErrNoRows) {
+			t.Fatalf("Test user not found in database. Database may need to be seeded with: ./rebuild_db -test-ads")
+		} else {
+			t.Fatalf("Failed to retrieve test user (error: %v). This might be a decryption error if USER_ENCRYPTION_KEY doesn't match the key used to seed the database.", err)
+		}
+	}
+
+	// Verify we got a valid user
+	if testUser.ID == 0 {
+		t.Fatal("Test user found but invalid (ID is 0)")
+	}
+
+	tests := []struct {
+		name           string
+		username       string
+		password       string
+		expectedStatus int
+		expectJWT      bool
+	}{
+		{"Valid login", "test", "test", 200, true},
+		{"Valid login - admin", "admin", "admin", 200, true},
+		{"Invalid username", "nonexistent", "test", 200, false},
+		{"Invalid password", "test", "wrong", 200, false},
+		{"Empty username", "", "test", 200, false},
+		{"Empty password", "test", "", 200, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := getTestClient()
+			baseURLParsed, _ := url.Parse(baseURL)
+
+			// Clear any existing auth_token cookie from previous tests
+			// Create an expired cookie to clear it
+			clearCookie := &http.Cookie{
+				Name:     "auth_token",
+				Value:    "",
+				Path:     "/",
+				MaxAge:   -1,
+				HttpOnly: true,
+				Secure:   false,
+				SameSite: http.SameSiteStrictMode,
+			}
+			client.Jar.SetCookies(baseURLParsed, []*http.Cookie{clearCookie})
+
+			// Create form data
+			formData := map[string]interface{}{
+				"username": tt.username,
+				"password": tt.password,
+			}
+
+			resp, result := postFormRequest(t, baseURL+"/api/login", formData)
+
+			if resp.StatusCode != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
+				if len(result) > 0 {
+					t.Logf("Response: %+v", result)
+				}
+			}
+
+			// Check for JWT cookie ONLY in response cookies (not jar, to avoid cookies from previous tests)
+			hasJWT := false
+			var jwtCookie *http.Cookie
+			for _, cookie := range resp.Cookies() {
+				if cookie.Name == "auth_token" {
+					hasJWT = true
+					jwtCookie = cookie
+					// Handle Secure cookie for HTTP testing (add to jar if login succeeded)
+					if cookie.Secure && tt.expectJWT {
+						testCookie := &http.Cookie{
+							Name:     cookie.Name,
+							Value:    cookie.Value,
+							Path:     cookie.Path,
+							Domain:   cookie.Domain,
+							HttpOnly: cookie.HttpOnly,
+							SameSite: cookie.SameSite,
+							Secure:   false,
+						}
+						client.Jar.SetCookies(baseURLParsed, []*http.Cookie{testCookie})
+					}
+					break
+				}
+			}
+
+			if tt.expectJWT {
+				if !hasJWT {
+					t.Error("Expected JWT cookie but it was not set")
+					// Debug: log all cookies
+					t.Logf("Response cookies: %v", resp.Cookies())
+				} else if jwtCookie != nil && jwtCookie.Value == "" {
+					t.Error("JWT cookie value is empty")
+				}
+			} else {
+				if hasJWT {
+					t.Error("Unexpected JWT cookie for failed login")
+				}
+			}
+		})
+	}
+}
+
+// Test GET /api/category/:category/switch
+func TestSwitchCategoryHandler(t *testing.T) {
+	tests := []struct {
+		name           string
+		categoryID     string
+		expectedStatus int
+	}{
+		{"Valid category", "6", 200},
+		{"Another valid category", "5", 200},
+		{"Invalid category", "999", 404},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := getTestClient()
+
+			url := fmt.Sprintf("%s/api/category/%s/switch", baseURL, tt.categoryID)
+			resp, body := getRequestWithCookies(t, client, url)
+
+			if resp.StatusCode != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
+				if len(body) > 500 {
+					t.Logf("Response body (truncated): %s...", body[:500])
+				} else {
+					t.Logf("Response body: %s", body)
+				}
+			}
+
+			if tt.expectedStatus == 200 {
+				// Check that it returns HTML (Fiber sets Content-Type as "text/html" without charset)
+				contentType := resp.Header.Get("Content-Type")
+				if contentType != "text/html" && contentType != "text/html; charset=utf-8" {
+					t.Errorf("Expected Content-Type text/html, got %s", contentType)
+				}
+
+				// Check that category cookie is set
+				hasCategoryCookie := false
+				for _, cookie := range resp.Cookies() {
+					if cookie.Name == "category" {
+						hasCategoryCookie = true
+						if cookie.Value != tt.categoryID {
+							t.Errorf("Expected category cookie value %s, got %s", tt.categoryID, cookie.Value)
+						}
+						break
+					}
+				}
+				if !hasCategoryCookie {
+					t.Error("Expected category cookie to be set")
+				}
+			}
+		})
+	}
+}
+
+// Test GET /api/modal/category-select
+func TestCategorySelectHandler(t *testing.T) {
+	tests := []struct {
+		name           string
+		categoryID     int
+		expectedStatus int
+	}{
+		{"Valid category", 6, 200},
+		{"Another valid category", 5, 200},
+		{"Invalid category", 999, 404},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, err := getClientWithCategoryCookie(tt.categoryID)
+			if err != nil {
+				t.Fatalf("Failed to create client: %v", err)
+			}
+
+			resp, body := getRequestWithCookies(t, client, baseURL+"/api/modal/category-select")
+
+			if resp.StatusCode != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
+				if len(body) > 500 {
+					t.Logf("Response body (truncated): %s...", body[:500])
+				} else {
+					t.Logf("Response body: %s", body)
+				}
+			}
+
+			if tt.expectedStatus == 200 {
+				// Check that it returns HTML (Fiber sets Content-Type as "text/html" without charset)
+				contentType := resp.Header.Get("Content-Type")
+				if contentType != "text/html" && contentType != "text/html; charset=utf-8" {
+					t.Errorf("Expected Content-Type text/html, got %s", contentType)
+				}
+				// Check that body contains some expected HTML elements
+				if len(body) == 0 {
+					t.Error("Expected non-empty HTML response")
+				}
+			}
+		})
+	}
+
+	// Test without category cookie
+	t.Run("No category cookie", func(t *testing.T) {
+		resp, err := http.Get(baseURL + "/api/modal/category-select")
+		if err != nil {
+			t.Fatalf("Failed to make request: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("Expected status 404 without category cookie, got %d", resp.StatusCode)
+		}
+	})
+}
+
+// Test GET /api/show-filters
+func TestShowFiltersHandler(t *testing.T) {
+	tests := []struct {
+		name           string
+		categoryID     int
+		queryParams    string
+		expectedStatus int
+	}{
+		{"Valid category - no query params", 6, "", 200},
+		{"Valid category - with query params", 6, "?make=HONDA&year=2020", 200},
+		{"Another valid category", 5, "", 200},
+		{"Invalid category", 999, "", 404},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, err := getClientWithCategoryCookie(tt.categoryID)
+			if err != nil {
+				t.Fatalf("Failed to create client: %v", err)
+			}
+
+			url := baseURL + "/api/show-filters" + tt.queryParams
+			resp, body := getRequestWithCookies(t, client, url)
+
+			if resp.StatusCode != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
+				if len(body) > 500 {
+					t.Logf("Response body (truncated): %s...", body[:500])
+				} else {
+					t.Logf("Response body: %s", body)
+				}
+			}
+
+			if tt.expectedStatus == 200 {
+				// Check that it returns HTML (Fiber sets Content-Type as "text/html" without charset)
+				contentType := resp.Header.Get("Content-Type")
+				if contentType != "text/html" && contentType != "text/html; charset=utf-8" {
+					t.Errorf("Expected Content-Type text/html, got %s", contentType)
+				}
+				// Check that body contains some expected HTML elements
+				if len(body) == 0 {
+					t.Error("Expected non-empty HTML response")
+				}
+			}
+		})
+	}
+
+	// Test without category cookie
+	t.Run("No category cookie", func(t *testing.T) {
+		resp, err := http.Get(baseURL + "/api/show-filters")
+		if err != nil {
+			t.Fatalf("Failed to make request: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("Expected status 404 without category cookie, got %d", resp.StatusCode)
 		}
 	})
 }
