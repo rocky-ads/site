@@ -59,6 +59,25 @@ func Placeholders(n int) string {
 	return strings.Join(ph, ",")
 }
 
+// filterValidFields returns a new Values map containing only valid spec field names for the category
+func filterValidFields(categoryID int, fv Values) Values {
+	fields, ok := categoryFields[categoryID]
+	if !ok {
+		return make(Values)
+	}
+
+	filtered := make(Values)
+	for _, f := range fields {
+		if _, ok := f.(SpecFielder); ok {
+			fieldName := f.GetField().Name
+			if values, exists := fv[fieldName]; exists {
+				filtered[fieldName] = values
+			}
+		}
+	}
+	return filtered
+}
+
 func buildAdValuesQuery(f SpecField, fv Values, adFilterFunc func() (string, []any)) (string, []any, error) {
 
 	adWhereClause, adArgs := adFilterFunc()
@@ -72,6 +91,8 @@ func buildAdValuesQuery(f SpecField, fv Values, adFilterFunc func() (string, []a
 				WHERE ` + adWhereClause
 
 	args := adArgs
+
+	fv = filterValidFields(f.CategoryID, fv)
 
 	for fieldName, values := range fv {
 		if len(values) > 0 {
@@ -102,6 +123,8 @@ func buildAllQuery(f SpecField, fv Values) (string, []any, error) {
 
 	whereClauses := []string{"category_id = ?"}
 	args := []any{f.CategoryID}
+
+	fv = filterValidFields(f.CategoryID, fv)
 
 	for fieldName, values := range fv {
 		if len(values) > 0 {
