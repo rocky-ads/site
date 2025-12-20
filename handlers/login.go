@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/cookie"
+	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/password"
 	"github.com/rocky-ads/site/ui"
@@ -11,6 +12,14 @@ import (
 
 func LoginHandler(c *fiber.Ctx) error {
 	return renderPage(c, "Login", ui.LoginPage())
+}
+
+func LogoutHandler(c *fiber.Ctx) error {
+	cookie.ClearJWT(c)
+	local.SetUserID(c, 0)
+	local.SetUserName(c, "")
+	local.SetUserIsAdmin(c, false)
+	return renderPage(c, "Logout", ui.LogoutPage())
 }
 
 func LoginSubmitHandler(c *fiber.Ctx) error {
