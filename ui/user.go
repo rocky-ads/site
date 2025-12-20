@@ -36,7 +36,9 @@ func menuHeader(userName string) g.Node {
 func UserMenu(userName string, isAdmin bool) g.Node {
 	var menuItems []g.Node
 
-	hideMenuOnClick := g.Attr("onclick", "document.getElementById('user-menu').classList.add('hidden'); document.getElementById('user-menu-backdrop').classList.add('hidden')")
+	hideMenuOnClick := g.Attr("onclick",
+		"document.getElementById('user-menu').classList.add('hidden'); "+
+			"document.getElementById('user-menu-backdrop').classList.add('hidden')")
 
 	if isAdmin {
 		menuItems = append(menuItems,
@@ -93,7 +95,7 @@ func UserMenu(userName string, isAdmin bool) g.Node {
 			ID("user-menu-backdrop"),
 			hx.SwapOOB("true"),
 			Class("fixed inset-0 bg-black/30 z-40"),
-			g.Attr("onclick", "document.getElementById('user-menu').classList.add('hidden'); document.getElementById('user-menu-backdrop').classList.add('hidden')"),
+			hideMenuOnClick,
 		),
 		Div(
 			ID("user-menu"),
