@@ -41,13 +41,15 @@ func setupApp() *fiber.App {
 	}))
 
 	app.Static("/", "./static")
-	app.Get("/.well-known/appspecific/com.chrome.devtools.json", func(c *fiber.Ctx) error {
-		return c.SendStatus(fiber.StatusNoContent)
-	})
 
 	app.Get("/", handlers.HomeHandler)
 	app.Get("/login", handlers.LoginHandler)
 	app.Get("/health", handlers.HandleHealth)
+
+	auth := app.Group("/auth", handlers.AuthRequired)
+	auth.Get("/user-menu", handlers.UserMenuHandler)
+
+	//admin := app.Group("/admin", handlers.AdminRequired)
 
 	api := app.Group("/api")
 

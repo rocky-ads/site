@@ -46,6 +46,15 @@ type User struct {
 	DeletedAt          *time.Time `json:"deleted_at"`
 }
 
+func GetByID(id int) (u User, err error) {
+	query := `SELECT * FROM users WHERE id = ? AND deleted_at IS NULL`
+	err = db.QueryRow(query, id).Scan(&u)
+	if err != nil {
+		return User{}, err
+	}
+	return u, nil
+}
+
 func GetByName(name string) (User, error) {
 	nameHash := hashString(name)
 

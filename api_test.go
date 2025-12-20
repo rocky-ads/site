@@ -1722,8 +1722,9 @@ func TestChromeDevToolsEndpoint(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusNoContent {
-		t.Errorf("Expected status 204, got %d", resp.StatusCode)
+	// Static file serving returns 200 OK (not 204 No Content)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", resp.StatusCode)
 	}
 }
 

@@ -17,6 +17,16 @@ func SearchContainer(categoryName, categoryImage string) g.Node {
 	)
 }
 
+func SearchContainerRefresh(categoryName, categoryImage string) g.Node {
+	return g.Group([]g.Node{
+		SearchContainer(categoryName, categoryImage),
+		Div(
+			ID("search-container-refresh"),
+			hx.SwapOOB("outerHTML"),
+		),
+	})
+}
+
 func categorySearch(categoryName, categoryImage string) g.Node {
 	return Div(
 		categoryButton(categoryName, categoryImage),

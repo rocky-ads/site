@@ -23,6 +23,15 @@ func SetUserName(c *fiber.Ctx, userName string) {
 	c.Locals("userName", userName)
 }
 
+func GetUserIsAdmin(c *fiber.Ctx) bool {
+	isAdmin, _ := c.Locals("userIsAdmin").(bool)
+	return isAdmin
+}
+
+func SetUserIsAdmin(c *fiber.Ctx, isAdmin bool) {
+	c.Locals("userIsAdmin", isAdmin)
+}
+
 // GetCSRFToken extracts the CSRF token from context (set by CSRF middleware)
 // The middleware should set this for all requests, but if it's empty,
 // the middleware may not be running or token generation failed
