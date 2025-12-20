@@ -67,7 +67,7 @@ func LogoutPage() []g.Node {
 			Class("text-center py-16"),
 			H2(
 				Class("text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-8"),
-				g.Text("You've been logged out."),
+				g.Text("You have been logged out"),
 			),
 			StandardButton(ButtonProps{
 				Href: "/",

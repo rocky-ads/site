@@ -36,16 +36,12 @@ func menuHeader(userName string) g.Node {
 func UserMenu(userName string, isAdmin bool) g.Node {
 	var menuItems []g.Node
 
-	hideMenuOnClick := g.Attr("onclick",
-		"document.getElementById('user-menu').classList.add('hidden'); "+
-			"document.getElementById('user-menu-backdrop').classList.add('hidden')")
-
 	if isAdmin {
 		menuItems = append(menuItems,
 			A(
 				Href("/admin"),
 				Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"),
-				hideMenuOnClick,
+				hideModalOnClick,
 				menuIcon("/images/tools.svg", "Admin"),
 				g.Text("Admin"),
 			),
@@ -56,35 +52,35 @@ func UserMenu(userName string, isAdmin bool) g.Node {
 		A(
 			Href("/ads"),
 			Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"),
-			hideMenuOnClick,
+			hideModalOnClick,
 			menuIcon("/images/bookmark-true.svg", "My Ads"),
 			g.Text("My Ads"),
 		),
 		A(
 			Href("/messages"),
 			Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"),
-			hideMenuOnClick,
+			hideModalOnClick,
 			menuIcon("/images/message.svg", "Messages"),
 			g.Text("Messages"),
 		),
 		A(
 			Href("/settings"),
 			Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"),
-			hideMenuOnClick,
+			hideModalOnClick,
 			menuIcon("/images/settings.svg", "Settings"),
 			g.Text("Settings"),
 		),
 		A(
 			Href("/about"),
 			Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"),
-			hideMenuOnClick,
+			hideModalOnClick,
 			menuIcon("/images/info.svg", "About"),
 			g.Text("About"),
 		),
 		A(
 			Href("/logout"),
 			Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"),
-			hideMenuOnClick,
+			hideModalOnClick,
 			menuIcon("/images/logout.svg", "Logout"),
 			g.Text("Logout"),
 		),
@@ -94,13 +90,13 @@ func UserMenu(userName string, isAdmin bool) g.Node {
 		Div(
 			ID("user-menu-backdrop"),
 			hx.SwapOOB("true"),
-			Class("fixed inset-0 bg-black/30 z-40"),
-			hideMenuOnClick,
+			Class("modal fixed inset-0 bg-black/30 z-40"),
+			hideModalOnClick,
 		),
 		Div(
 			ID("user-menu"),
 			hx.SwapOOB("true"),
-			Class("absolute z-50 top-full right-0 mt-2"),
+			Class("modal absolute z-50 top-full right-0 mt-2"),
 			Div(
 				Class("bg-white rounded-lg shadow-lg border border-gray-200 w-40"),
 				menuHeader(userName),
