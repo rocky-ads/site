@@ -22,7 +22,7 @@ func SearchContainerRefresh(categoryName, categoryImage string) g.Node {
 		SearchContainer(categoryName, categoryImage),
 		Div(
 			ID("search-container-refresh"),
-			hx.SwapOOB("outerHTML"),
+			hx.SwapOOB("true"),
 		),
 	})
 }

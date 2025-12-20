@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/db"
 )
 
@@ -42,6 +43,10 @@ func Init() error {
 }
 
 func ParseCategory(categoryStr string) (int, error) {
+	if categoryStr == "" {
+		// No category string provided, use default category name
+		return GetCategoryIDByName(config.DefaultAdCategoryName)
+	}
 	categoryID, err := strconv.Atoi(categoryStr)
 	if err != nil {
 		return 0, err
@@ -80,4 +85,14 @@ func GetCategories() ([]Category, error) {
 		cats[i] = categories[k]
 	}
 	return cats, nil
+}
+
+// GetCategoryIDByName returns the ID of a category by its name
+func GetCategoryIDByName(name string) (int, error) {
+	for id, cat := range categories {
+		if cat.Name == name {
+			return id, nil
+		}
+	}
+	return 0, fmt.Errorf("category not found: %s", name)
 }

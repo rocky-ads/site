@@ -12,7 +12,6 @@ const (
 	// Server configuration
 	ServerUploadLimit        = 25 * 1024 * 1024  // 25 MB per file
 	ServerBodyLimit          = 150 * 1024 * 1024 // 150 MB total request body (for multiple files + form data)
-	ServerRedirectDelay      = 1 * time.Second
 	ServerRateLimitMax       = 600
 	ServerRateLimitExp       = 1 * time.Minute
 	RegistrationRateLimitMax = 3                // Allow 3 registration attempts per IP

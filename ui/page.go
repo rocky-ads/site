@@ -62,13 +62,21 @@ func getUserInitial(userName string) string {
 
 func navLoggedIn(userName string) g.Node {
 	return Div(
+		Class("relative"),
 		Span(
 			ID("user-avatar"),
-			Class("bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-semibold text-sm cursor-pointer hover:bg-red-600 relative"),
+			Class("bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-semibold text-sm cursor-pointer hover:bg-red-600"),
 			hx.Get("/auth/user-menu"),
-			hx.Target("body"),
-			hx.Swap("beforeend"),
+			hx.Swap("none"),
 			g.Text(getUserInitial(userName)),
+		),
+		Div(
+			ID("user-menu-backdrop"),
+			Class("hidden"),
+		),
+		Div(
+			ID("user-menu"),
+			Class("hidden"),
 		),
 	)
 }
