@@ -7,7 +7,7 @@ import (
 	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/field"
-	"github.com/rocky-ads/site/handlers"
+	"github.com/rocky-ads/site/handler"
 	"github.com/rocky-ads/site/logger"
 
 	"github.com/gofiber/fiber/v2"
@@ -18,22 +18,22 @@ import (
 // setupApp configures the Fiber app with middleware and routes
 func setupApp() *fiber.App {
 	app := fiber.New(fiber.Config{
-		ErrorHandler: handlers.ErrorHandler,
+		ErrorHandler: handler.ErrorHandler,
 		BodyLimit:    config.ServerBodyLimit, // Total request body size (for multiple files)
 		ReadTimeout:  30 * time.Second,       // Prevent long-running requests
 		WriteTimeout: 30 * time.Second,       // Prevent long-running responses
 	})
 
 	// Must be early in middleware chain
-	app.Use(handlers.ConfigureHelmet())
+	app.Use(handler.ConfigureHelmet())
 
 	app.Use(limiter.New(limiter.Config{
 		Max:        config.ServerRateLimitMax,
 		Expiration: config.ServerRateLimitExp,
 	}))
 
-	app.Use(handlers.JWTMiddleware)
-	app.Use(handlers.CSRFMiddleware)
+	app.Use(handler.JWTMiddleware)
+	app.Use(handler.CSRFMiddleware)
 
 	app.Use(flogger.New(flogger.Config{
 		Output: logger.Writer(),
@@ -42,33 +42,33 @@ func setupApp() *fiber.App {
 
 	app.Static("/", "./static")
 
-	app.Get("/", handlers.HomeHandler)
-	app.Get("/login", handlers.LoginHandler)
-	app.Get("/logout", handlers.LogoutHandler)
-	app.Get("/health", handlers.HandleHealth)
+	app.Get("/", handler.HomeHandler)
+	app.Get("/login", handler.LoginHandler)
+	app.Get("/logout", handler.LogoutHandler)
+	app.Get("/health", handler.HandleHealth)
 
-	auth := app.Group("/auth", handlers.AuthRequired)
-	auth.Get("/user-menu", handlers.UserMenuHandler)
+	auth := app.Group("/auth", handler.AuthRequired)
+	auth.Get("/user-menu", handler.UserMenuHandler)
 
-	//admin := app.Group("/admin", handlers.AdminRequired)
+	//admin := app.Group("/admin", handler.AdminRequired)
 
 	api := app.Group("/api")
 
-	api.Post("/login", handlers.LoginSubmitHandler)
+	api.Post("/login", handler.LoginSubmitHandler)
 
 	categoryRouter := api.Group("/category/:category")
-	categoryRouter.Get("/values/:field", handlers.GetAllValuesHandler)
-	categoryRouter.Get("/any-values/:field", handlers.GetAnyValuesHandler)
-	categoryRouter.Post("/ad-values/:field", handlers.GetAdValuesHandler)
-	categoryRouter.Get("/chains", handlers.GetChainsHandler)
-	categoryRouter.Get("/first-spec-fields", handlers.GetFirstSpecFieldsHandler)
-	categoryRouter.Get("/last-spec-field", handlers.GetLastSpecFieldHandler)
-	categoryRouter.Post("/search", handlers.SearchHandler)
-	categoryRouter.Get("/switch", handlers.SwitchCategoryHandler)
+	categoryRouter.Get("/values/:field", handler.GetAllValuesHandler)
+	categoryRouter.Get("/any-values/:field", handler.GetAnyValuesHandler)
+	categoryRouter.Post("/ad-values/:field", handler.GetAdValuesHandler)
+	categoryRouter.Get("/chains", handler.GetChainsHandler)
+	categoryRouter.Get("/first-spec-fields", handler.GetFirstSpecFieldsHandler)
+	categoryRouter.Get("/last-spec-field", handler.GetLastSpecFieldHandler)
+	categoryRouter.Post("/search", handler.SearchHandler)
+	categoryRouter.Get("/switch", handler.SwitchCategoryHandler)
 
-	api.Get("/ads/:id/filter-values", handlers.GetAdFilterValuesHandler)
-	api.Get("/modal/category-select", handlers.CategorySelectHandler)
-	api.Get("/show-filters", handlers.ShowFiltersHandler)
+	api.Get("/ads/:id/filter-values", handler.GetAdFilterValuesHandler)
+	api.Get("/modal/category-select", handler.CategorySelectHandler)
+	api.Get("/show-filters", handler.ShowFiltersHandler)
 
 	return app
 }
