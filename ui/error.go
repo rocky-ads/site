@@ -25,7 +25,7 @@ func ErrorPageContent(code int, message string) []g.Node {
 				Class("text-gray-600 dark:text-gray-400 mb-8"),
 				g.Text("Sorry, something went wrong."),
 			),
-			StandardButton(ButtonProps{
+			standardButton(buttonProps{
 				Text: "Go Home",
 				Href: "/",
 			}),

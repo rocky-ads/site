@@ -122,7 +122,7 @@ func navigation(userID int, userName, currentPath string) g.Node {
 		Class("flex items-center justify-between mb-8 pb-4 border-b"),
 		Div(
 			Class("flex items-center gap-4"),
-			A(Href("/"), Class("text-xl font-bold"), g.Text("Rocky Ads")),
+			A(Href("/"), Class("text-xl font-bold"), g.Text(config.ServerName)),
 		),
 		indicator(),
 		g.Iff(userID != 0, func() g.Node { return navLoggedIn(userName) }),

@@ -8,25 +8,27 @@ import (
 
 func userNameInput() g.Node {
 	return Div(
-		Label(
-			Class("block text-base font-medium mb-1"),
-			g.Text("Username"),
-		),
+		label("Username"),
 		Input(
 			Class("w-full p-2 border rounded-md"),
 			Type("text"),
 			Name("username"),
-			MaxLength("16"),
+			MinLength("3"),
+			MaxLength("20"),
+			g.Attr("pattern", "^[a-zA-Z][a-zA-Z0-9]{2,19}$"),
+			g.Attr("placeholder", "JohnDoe"),
+			Required(),
+		),
+		Span(
+			Class("text-xs text-gray-500 mt-1"),
+			g.Text("3-20 characters, letters and digits only. Must start with a letter."),
 		),
 	)
 }
 
 func passwordInput() g.Node {
 	return Div(
-		Label(
-			Class("block text-base font-medium mb-1"),
-			g.Text("Password"),
-		),
+		label("Password"),
 		Input(
 			Class("w-full p-2 border rounded-md"),
 			Type("password"),
@@ -38,14 +40,14 @@ func passwordInput() g.Node {
 
 func LoginForm() g.Node {
 	return Form(
-		Class("space-y-6"),
+		Class("space-y-8"),
 		hx.Post("/api/login"),
 		hx.Swap("none"),
 		userNameInput(),
 		passwordInput(),
 		Div(
 			Class("flex items-center gap-4"),
-			StandardButton(ButtonProps{
+			standardButton(buttonProps{
 				Type: "submit",
 				Text: "Login",
 			}),
@@ -69,7 +71,7 @@ func LogoutPage() []g.Node {
 				Class("text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-8"),
 				g.Text("You have been logged out"),
 			),
-			StandardButton(ButtonProps{
+			standardButton(buttonProps{
 				Href: "/",
 				Text: "Go Home",
 			}),

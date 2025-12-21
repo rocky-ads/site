@@ -61,7 +61,7 @@ func categoryButton(categoryName, categoryImage string) g.Node {
 }
 
 func filtersButton() g.Node {
-	return StandardButton(ButtonProps{
+	return standardButton(buttonProps{
 		Type: "button",
 		Text: "Filters",
 		Attrs: []g.Node{
@@ -85,7 +85,7 @@ func searchBox(q string) g.Node {
 }
 
 func clearFilters() g.Node {
-	return StandardButton(ButtonProps{
+	return standardButton(buttonProps{
 		Type: "button",
 		Text: "Clear",
 		Attrs: []g.Node{
@@ -98,7 +98,7 @@ func clearFilters() g.Node {
 }
 
 func applyFilters() g.Node {
-	return StandardButton(ButtonProps{
+	return standardButton(buttonProps{
 		Type: "submit",
 		Text: "Apply",
 	})

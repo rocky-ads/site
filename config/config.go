@@ -94,6 +94,8 @@ var (
 
 	// Server configuration
 	ServerPort = getEnvWithDefault("PORT", "10000")
+	ServerName = getEnvWithDefault("APP_NAME", "Rocky Ads")
+
 	// Test port - used when running tests to avoid conflicts with main server
 	TestPort = getEnvWithDefault("PORT_TEST", "10001")
 
