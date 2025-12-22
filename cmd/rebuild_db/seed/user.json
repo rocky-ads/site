@@ -2,27 +2,27 @@
   {
     "name": "test",
     "password": "test",
-    "phone": "+15555555555"
+    "phone": "+15550100123"
   },
   {
     "name": "admin",
     "password": "admin",
-    "phone": "+15555555556",
+    "phone": "+15550100124",
     "is_admin": true
   },
   {
     "name": "john_doe",
     "password": "foo",
-    "phone": "+15551234567"
+    "phone": "+15550100125"
   },
   {
     "name": "jane_smith",
     "password": "foo",
-    "phone": "+15559876543"
+    "phone": "+15550100126"
   },
   {
     "name": "mike_wilson",
     "password": "foo",
-    "phone": "+15551112233"
+    "phone": "+15550100127"
   }
 ] 

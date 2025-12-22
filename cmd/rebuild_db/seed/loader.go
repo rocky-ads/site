@@ -1,16 +1,16 @@
 package seed
 
 import (
-	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
+	"github.com/nyaruka/phonenumbers"
 	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/encryption"
@@ -142,12 +142,36 @@ func LoadUsers() error {
 			return fmt.Errorf("hashing password for user %s: %w", u.Name, err)
 		}
 
+		// Parse and normalize phone number to E.164 format
+		var phoneE64 string
+		num, err := phonenumbers.Parse(u.Phone, "")
+		if err != nil {
+			// If parsing fails and number doesn't start with +, try US region
+			if !strings.HasPrefix(u.Phone, "+") {
+				num, err = phonenumbers.Parse(u.Phone, "US")
+				if err != nil {
+					return fmt.Errorf("parsing phone number for user %s: %w", u.Name, err)
+				}
+			} else {
+				return fmt.Errorf("parsing phone number for user %s: %w", u.Name, err)
+			}
+		}
+
+		// Validate the phone number format (use IsPossibleNumber for seed data to allow test numbers)
+		// Note: IsValidNumber is strict and may reject even reserved test ranges like 555-01XX
+		if !phonenumbers.IsPossibleNumber(num) {
+			return fmt.Errorf("invalid phone number format for user %s: %s", u.Name, u.Phone)
+		}
+
+		// Format in E.164 (e.g., +15551234567)
+		phoneE64 = phonenumbers.Format(num, phonenumbers.E164)
+
 		// Insert user with minimal fields first to get ID (needed for encryption)
 		// Use placeholder values that will be updated
 		result, err := db.Exec(
 			"INSERT INTO users (encrypted_name, name_nonce, name_hash, password_hash, password_salt, password_algo, encrypted_phone, phone_nonce, phone_hash, encrypted_email, email_nonce, email_hash, is_admin) VALUES (?, ?, ?, ?, ?, 'argon2id', ?, ?, ?, ?, ?, ?, ?)",
-			[]byte{}, []byte{}, hashString(u.Name), passwordHash, passwordSalt,
-			[]byte{}, []byte{}, hashString(u.Phone),
+			[]byte{}, []byte{}, db.HashString(u.Name), passwordHash, passwordSalt,
+			[]byte{}, []byte{}, db.HashString(phoneE64),
 			[]byte{}, []byte{}, nil, u.IsAdmin,
 		)
 		if err != nil {
@@ -160,14 +184,14 @@ func LoadUsers() error {
 		if err != nil {
 			return fmt.Errorf("encrypting name for user %s: %w", u.Name, err)
 		}
-		nameHash := hashString(u.Name)
+		nameHash := db.HashString(u.Name)
 
-		// Encrypt phone
-		encryptedPhone, phoneNonce, err := encryption.Encrypt(int(userID), u.Phone, config.UserEncryptionKey)
+		// Encrypt phone (using E.164 formatted number)
+		encryptedPhone, phoneNonce, err := encryption.Encrypt(int(userID), phoneE64, config.UserEncryptionKey)
 		if err != nil {
 			return fmt.Errorf("encrypting phone for user %s: %w", u.Name, err)
 		}
-		phoneHash := hashString(u.Phone)
+		phoneHash := db.HashString(phoneE64)
 
 		// Encrypt email (empty for seed users)
 		// Set email_hash to NULL when email is empty (UNIQUE constraint allows multiple NULLs)
@@ -203,12 +227,6 @@ func LoadUsers() error {
 	}
 
 	return nil
-}
-
-// hashString generates a SHA256 hash of a string for uniqueness checks
-func hashString(s string) string {
-	h := sha256.Sum256([]byte(s))
-	return hex.EncodeToString(h[:])
 }
 
 // LoadFields loads fields.json into the fields table
@@ -640,7 +658,7 @@ func loadAdsFromFile(categoryID int, filename string) error {
 
 	// Get test user ID
 	var testUserID int
-	err = db.QueryRow("SELECT id FROM users WHERE name_hash = ?", hashString("test")).Scan(&testUserID)
+	err = db.QueryRow("SELECT id FROM users WHERE name_hash = ?", db.HashString("test")).Scan(&testUserID)
 	if err != nil {
 		return fmt.Errorf("finding test user: %w", err)
 	}

@@ -1,7 +1,9 @@
 package db
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -219,4 +221,10 @@ func Close() error {
 		return db.Close()
 	}
 	return nil
+}
+
+// HashString creates a SHA256 hash of a value for database lookups
+func HashString(value string) string {
+	hash := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(hash[:])
 }

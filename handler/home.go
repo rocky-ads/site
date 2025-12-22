@@ -2,6 +2,7 @@ package handler
 
 import (
 	"github.com/rocky-ads/site/ad"
+	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/ui"
 
@@ -24,6 +25,6 @@ func HomeHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
-	return renderPage(c, "Rocky Ads - Classified ads without the newspaper",
+	return renderPage(c, config.ServerName,
 		ui.HomePage(categoryName, categoryImage))
 }

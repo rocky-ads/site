@@ -6,7 +6,7 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-func userNameInput() g.Node {
+func userNameInput(showHelp bool) g.Node {
 	return Div(
 		label("Username"),
 		Input(
@@ -19,10 +19,10 @@ func userNameInput() g.Node {
 			g.Attr("placeholder", "JohnDoe"),
 			Required(),
 		),
-		Span(
+		g.If(showHelp, Span(
 			Class("text-xs text-gray-500 mt-1"),
 			g.Text("3-20 characters, letters and digits only. Must start with a letter."),
-		),
+		)),
 	)
 }
 
@@ -43,7 +43,7 @@ func LoginForm() g.Node {
 		Class("space-y-8"),
 		hx.Post("/api/login"),
 		hx.Swap("none"),
-		userNameInput(),
+		userNameInput(false),
 		passwordInput(),
 		Div(
 			Class("flex items-center gap-4"),

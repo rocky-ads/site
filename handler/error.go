@@ -7,6 +7,10 @@ import (
 	"github.com/rocky-ads/site/ui"
 )
 
+func showError(c *fiber.Ctx, errMsg string) error {
+	return render(c, ui.ErrorDiv(errMsg))
+}
+
 func ErrorHandler(c *fiber.Ctx, err error) error {
 	code := fiber.StatusInternalServerError
 	message := "Internal Server Error"

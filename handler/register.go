@@ -1,15 +1,202 @@
 package handler
 
 import (
+	"errors"
+	"fmt"
+	"regexp"
+	"strings"
+
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
+	"github.com/nyaruka/phonenumbers"
+	"github.com/rocky-ads/site/config"
+	"github.com/rocky-ads/site/logger"
+	"github.com/rocky-ads/site/service/grok"
+	"github.com/rocky-ads/site/service/sms"
 	"github.com/rocky-ads/site/ui"
+	"github.com/rocky-ads/site/user"
 )
+
+// RegistrationRateLimiter is a strict rate limiter for registration (per IP)
+var RegistrationRateLimiter = limiter.New(limiter.Config{
+	Max:        config.RegistrationRateLimitMax,
+	Expiration: config.RegistrationRateLimitExp,
+	KeyGenerator: func(c *fiber.Ctx) string {
+		// Rate limit per IP address
+		return c.IP()
+	},
+	LimitReached: func(c *fiber.Ctx) error {
+		return c.Status(429).
+			SendString("Too many registration attempts. " +
+				"Please try again later.")
+	},
+})
 
 func RegisterHandler(c *fiber.Ctx) error {
 	logout(c)
 	return renderPage(c, "Register", ui.RegisterPage())
 }
 
-func RegisterSubmitHandler(c *fiber.Ctx) error {
-	return c.SendStatus(fiber.StatusOK)
+// validateUsername validates that a username follows conventions
+// Rules:
+// - 3 to 20 characters
+// - Only letters (a-z, A-Z) and digits (0-9)
+// - First character must be a letter (a-z, A-Z)
+func validateUsername(username string) error {
+	validPattern := regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9]{2,19}$`)
+	if !validPattern.MatchString(username) {
+		return fmt.Errorf("username must be 3-20 characters, start with a letter, and contain only letters and digits")
+	}
+	return nil
+}
+
+func validatePhone(phone string) (string, error) {
+
+	// Try parsing as international format first (handles formatting automatically)
+	num, err := phonenumbers.Parse(phone, "")
+	if err != nil {
+		// If parsing fails and number doesn't start with +, try US region
+		// Note: "US" region also validates Canadian numbers (both share +1 and NANP)
+		if !strings.HasPrefix(phone, "+") {
+			num, err = phonenumbers.Parse(phone, "US")
+			if err != nil {
+				return "", fmt.Errorf("invalid phone number format")
+			}
+		} else {
+			return "", fmt.Errorf("phone must be in international format, e.g. +12025550123")
+		}
+	}
+
+	// Parse alone doesn't guarantee validity - must also validate
+	if !phonenumbers.IsValidNumber(num) {
+		return "", fmt.Errorf("invalid phone number")
+	}
+
+	// Format in E.164 (e.g., +15551234567)
+	e164 := phonenumbers.Format(num, phonenumbers.E164)
+
+	return e164, nil
+}
+
+func screenUsername(username string) (string, error) {
+
+	systemPrompt := `Your job is to screen potential user names for a web site.
+Reject user names that the general public would find offensive or inappropriate.
+The user name is displayed on the site for other to see and interact with, so we
+want polite names.
+
+Unacceptable usernames:
+- racial slurs
+- hate speech
+- explicit sexual content
+
+If the user name is acceptable, return only: OK
+
+If the user name is unacceptable, return a short, direct error message (1-2
+sentences), and do not mention yourself, AI, or Grok in the response.`
+
+	userPrompt := `Screen the following user name for the web site: ` + username
+
+	resp, err := grok.CallGrok(systemPrompt, userPrompt)
+	if err != nil {
+		return "", fmt.Errorf(
+			"unable to complete registration with these credentials. Please try different information.")
+	}
+	if resp != "OK" {
+		return "", fmt.Errorf(resp)
+	}
+	return resp, nil
+}
+
+// RegisterStep1Handler handles the first step submission and sends SMS
+func RegisterStep1Handler(c *fiber.Ctx) error {
+	username := c.FormValue("username")
+	phone := c.FormValue("phone")
+
+	if err := validateUsername(username); err != nil {
+		return showError(c, err.Error())
+	}
+
+	phoneE64, err := validatePhone(phone)
+	if err != nil {
+		return showError(c, err.Error())
+	}
+
+	// Validate required checkbox
+	offers := c.FormValue("offers")
+	if offers != "true" {
+		return showError(c, "You must agree to receive informational text messages to continue.")
+	}
+
+	// TODO timing attack protection
+
+	// Check for existing username
+	if _, err := user.GetByName(username); err == nil {
+		return showError(c,
+			"Unable to complete registration with these credentials. Please try different information.")
+	}
+
+	// Check for existing phone
+	if _, err := user.GetByPhoneE64(phoneE64); err == nil {
+		return showError(c,
+			"Unable to complete registration with these credentials. Please try different information.")
+	}
+
+	resp, err := screenUsername(username)
+	if err != nil {
+		return showError(c, err.Error())
+	}
+	if resp != "OK" {
+		return showError(c, resp)
+	}
+
+	code, err := generateVerificationCode()
+	if err != nil {
+		logger.Error("Failed to generate verification code",
+			"error", err)
+		return showError(c, "Unable to generate verification code. Please try again.")
+	}
+
+	err = storeVerificationCode(phoneE64, code)
+	if err != nil {
+		logger.Error("Failed to store verification code",
+			"error", err, "phone", phoneE64)
+		return showError(c, "Unable to create verification code. Please try again.")
+	}
+
+	// Send SMS
+	message := fmt.Sprintf("Your Parts Pile verification code is: %s. "+
+		"This code expires in 10 minutes. Reply STOP to unsubscribe.", code)
+	err = sms.SendMessage(phoneE64, message)
+	if err != nil {
+		logger.Error("Failed to send SMS", "error", err, "phone", phoneE64)
+		// Check if this is a blocked number error
+		if errors.Is(err, sms.ErrBlockedNumber) {
+			unstopMessage := fmt.Sprintf(
+				"This phone number was previously opted out of SMS messages. "+
+					"To receive verification codes, please reply UNSTOP to %s from this phone number, then try registering again.",
+				config.TwilioFromNumber)
+			return showError(c, unstopMessage)
+		}
+		return showError(c, "Unable to send verification code. Please try again.")
+	}
+
+	return render(c, ui.RegisterVerify(username))
+}
+
+func RegisterStep2Handler(c *fiber.Ctx) error {
+	username := c.FormValue("username")
+	code := c.FormValue("code")
+	//password := c.FormValue("password")
+	//password2 := c.FormValue("password2")
+
+	if err := validateUsername(username); err != nil {
+		return c.Redirect("/register")
+	}
+
+	if code == "" {
+		return showError(c, "Please enter the verification code")
+	}
+
+	return nil
 }

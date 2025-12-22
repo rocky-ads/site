@@ -34,22 +34,22 @@ func LoginSubmitHandler(c *fiber.Ctx) error {
 
 	// Validate input
 	if userName == "" {
-		return showLoginError(c, "Username is required")
+		return showError(c, "Username is required")
 	}
 	if passwd == "" {
-		return showLoginError(c, "Password is required")
+		return showError(c, "Password is required")
 	}
 
 	// Get user from database
 	u, err := user.GetByName(userName)
 	if err != nil {
 		// User not found or error - don't reveal which
-		return showLoginError(c, "Invalid username or password")
+		return showError(c, "Invalid username or password")
 	}
 
 	// Verify password
 	if !password.VerifyPassword(passwd, u.PasswordHash, u.PasswordSalt) {
-		return showLoginError(c, "Invalid username or password")
+		return showError(c, "Invalid username or password")
 	}
 
 	// Generate JWT token
@@ -65,8 +65,4 @@ func LoginSubmitHandler(c *fiber.Ctx) error {
 	// Redirect to home page using HTMX
 	c.Set("HX-Redirect", "/")
 	return c.SendStatus(fiber.StatusOK)
-}
-
-func showLoginError(c *fiber.Ctx, errMsg string) error {
-	return render(c, ui.ErrorDiv(errMsg))
 }

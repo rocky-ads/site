@@ -31,7 +31,7 @@ type User struct {
 	PasswordHash       string     `json:"password_hash"`
 	PasswordSalt       string     `json:"password_salt"`
 	PasswordAlgo       string     `json:"password_algo"`
-	Phone              string     // Decrypted (calculated field)
+	PhoneE64           string     // Decrypted (calculated field)
 	EncryptedPhone     string     `json:"encrypted_phone"`
 	PhoneNonce         string     `json:"phone_nonce"`
 	EmailAddress       *string    // Decrypted (calculated field)
@@ -55,8 +55,18 @@ func GetByID(id int) (u User, err error) {
 	return u, nil
 }
 
+func GetByPhoneE64(phoneE64 string) (u User, err error) {
+	phoneHash := db.HashString(phoneE64)
+	query := `SELECT * FROM users WHERE phone_hash = ? AND deleted_at IS NULL`
+	err = db.QueryRow(query, phoneHash).Scan(&u)
+	if err != nil {
+		return User{}, err
+	}
+	return u, nil
+}
+
 func GetByName(name string) (User, error) {
-	nameHash := hashString(name)
+	nameHash := db.HashString(name)
 
 	var u User
 	var encryptedNameBytes, nameNonceBytes []byte
@@ -133,7 +143,7 @@ func GetByName(name string) (User, error) {
 	if err != nil {
 		return User{}, fmt.Errorf("failed to decrypt name: %w", err)
 	}
-	u.Phone, err = decryptPhone(u.ID, u.EncryptedPhone, u.PhoneNonce)
+	u.PhoneE64, err = decryptPhone(u.ID, u.EncryptedPhone, u.PhoneNonce)
 	if err != nil {
 		return User{}, fmt.Errorf("failed to decrypt phone: %w", err)
 	}
