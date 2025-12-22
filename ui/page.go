@@ -108,13 +108,13 @@ func indicator() g.Node {
 		Div(
 			Class("w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"),
 		),
-		g.Text("Loading..."),
+		g.Text("Working..."),
 	)
 }
 
 func navigation(userID int, userName, currentPath string) g.Node {
 	return Nav(
-		Class("flex items-center justify-between mb-8 pb-4 border-b"),
+		Class("sticky top-0 z-10 bg-white/75 dark:bg-gray-900/75 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between mb-8 py-4 -mx-4 px-4"),
 		Div(
 			Class("flex items-center gap-4"),
 			A(Href("/"), Class("text-xl font-bold"), g.Text(config.ServerName)),
@@ -187,7 +187,7 @@ func Page(userID int, userName, title, currentPath, csrfToken string, body []g.N
 		Body: []g.Node{
 			Class("min-h-screen bg-white dark:bg-gray-900"),
 			Div(
-				Class("w-full md:max-w-3xl md:mx-auto py-8 px-4 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900"),
+				Class("w-full md:max-w-3xl md:mx-auto pb-8 px-4 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900"),
 				hx.Headers(headersJSON),
 				hx.Indicator("#indicator"),
 				navigation(userID, userName, currentPath),

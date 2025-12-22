@@ -32,8 +32,13 @@ func offers() g.Node {
 		Class("space-y-3"),
 		checkbox("offers", "true", "I agree to receive informational text messages", false, false, Required()),
 		Div(
-			Class("text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-3 rounded border dark:border-gray-700"),
-			g.Text("By providing your phone number you agree to receive informational text messages from "+config.ServerName+". Message frequency will vary. Msg & data rates may apply. Reply HELP for help or STOP to cancel. We only use your phone for essential communications and verification."),
+			Class("text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-3 rounded border dark:border-gray-700 space-y-2"),
+			P(
+				g.Text("By providing your phone number you agree to receive informational text messages from "+config.ServerName+"."),
+			),
+			P(
+				g.Text("Message frequency will vary. Msg & data rates may apply. Reply HELP for help or STOP to cancel. We only use your phone for essential communications and verification."),
+			),
 		),
 	)
 }
