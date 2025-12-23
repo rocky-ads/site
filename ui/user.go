@@ -87,16 +87,11 @@ func UserMenu(userName string, isAdmin bool) g.Node {
 	)
 
 	return g.Group([]g.Node{
+		modalBackdrop(),
 		Div(
-			ID("user-menu-backdrop"),
+			ID("modal"),
 			hx.SwapOOB("true"),
-			Class("modal fixed inset-0 bg-black/30 z-40"),
-			hideModalOnClick,
-		),
-		Div(
-			ID("user-menu"),
-			hx.SwapOOB("true"),
-			Class("modal absolute z-50 top-full right-0 mt-2"),
+			Class("modal fixed z-50 top-16 right-4"),
 			Div(
 				Class("bg-white rounded-lg shadow-lg border border-gray-200 w-40"),
 				menuHeader(userName),

@@ -65,14 +65,6 @@ func navLoggedIn(userName string) g.Node {
 			hx.Swap("none"),
 			g.Text(getUserInitial(userName)),
 		),
-		Div(
-			ID("user-menu-backdrop"),
-			Class("modal hidden"),
-		),
-		Div(
-			ID("user-menu"),
-			Class("modal hidden"),
-		),
 	)
 }
 
@@ -193,14 +185,7 @@ func Page(userID int, userName, title, currentPath, csrfToken string, body []g.N
 				navigation(userID, userName, currentPath),
 				g.Group(body),
 			),
-			Div(
-				ID("category-select-modal-backdrop"),
-				Class("modal hidden"),
-			),
-			Div(
-				ID("category-select-modal"),
-				Class("modal hidden"),
-			),
+			g.Group(modalPlaceholder()),
 		},
 	})
 }

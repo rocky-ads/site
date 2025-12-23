@@ -8,9 +8,6 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-var hideModalOnClick = g.Attr("onclick",
-	"document.querySelectorAll('.modal').forEach(el => el.classList.add('hidden'))")
-
 func CategoryItem(currentCategoryID, categoryID int, name, imageFile string) g.Node {
 	itemClass := "flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer rounded-lg transition-colors "
 	if categoryID == currentCategoryID {
@@ -37,14 +34,9 @@ func CategoryItem(currentCategoryID, categoryID int, name, imageFile string) g.N
 
 func CategorySelectModal(categoryItems []g.Node) g.Node {
 	return g.Group([]g.Node{
+		modalBackdrop(),
 		Div(
-			ID("category-select-modal-backdrop"),
-			hx.SwapOOB("true"),
-			Class("modal fixed inset-0 bg-black/30 z-40"),
-			hideModalOnClick,
-		),
-		Div(
-			ID("category-select-modal"),
+			ID("modal"),
 			hx.SwapOOB("true"),
 			Class("modal fixed inset-0 flex items-center justify-center z-50 p-8 pointer-events-none"),
 			Div(
