@@ -6,7 +6,7 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-func userNameInput(showHelp bool) g.Node {
+func userNameInput(showHelp bool, autocomplete string) g.Node {
 	return Div(
 		label("Username"),
 		Input(
@@ -17,6 +17,7 @@ func userNameInput(showHelp bool) g.Node {
 			MaxLength("20"),
 			g.Attr("pattern", "^[a-zA-Z][a-zA-Z0-9]{2,19}$"),
 			g.Attr("placeholder", "JohnDoe"),
+			g.Attr("autocomplete", autocomplete),
 			Required(),
 		),
 		g.If(showHelp, Span(
@@ -26,7 +27,7 @@ func userNameInput(showHelp bool) g.Node {
 	)
 }
 
-func passwordInput() g.Node {
+func passwordInput(autocomplete string) g.Node {
 	return Div(
 		label("Password"),
 		Input(
@@ -34,6 +35,7 @@ func passwordInput() g.Node {
 			Type("password"),
 			Name("password"),
 			MaxLength("32"),
+			g.Attr("autocomplete", autocomplete),
 		),
 	)
 }
@@ -43,8 +45,8 @@ func LoginForm() g.Node {
 		Class("space-y-8"),
 		hx.Post("/api/login"),
 		hx.Swap("none"),
-		userNameInput(false),
-		passwordInput(),
+		userNameInput(false, "username"),
+		passwordInput("current-password"),
 		Div(
 			Class("flex items-center gap-4"),
 			standardButton(buttonProps{

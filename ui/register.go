@@ -12,12 +12,13 @@ func phoneInput() g.Node {
 		label("Phone Number"),
 		Input(
 			Class("w-full p-2 border rounded-md"),
-			Type("text"),
+			Type("tel"),
 			Name("phone"),
 			MinLength("10"),
 			MaxLength("20"),
 			g.Attr("placeholder", "+12025550123 or 202-555-0123"),
 			g.Attr("pattern", "^\\+?[\\d\\s\\-\\(\\)\\.]{10,20}$"),
+			g.Attr("autocomplete", "tel"),
 			Required(),
 		),
 		Span(
@@ -49,7 +50,7 @@ func RegisterForm() g.Node {
 		ID("registerForm"),
 		hx.Post("/api/register/step1"),
 		hx.Swap("none"),
-		userNameInput(true),
+		userNameInput(true, "username"),
 		phoneInput(),
 		offers(),
 		Div(
@@ -98,6 +99,9 @@ func verificationCodeInput() g.Node {
 			Class("w-full p-2 border rounded-md"),
 			Type("text"),
 			Name("code"),
+			g.Attr("autocomplete", "one-time-code"),
+			g.Attr("inputmode", "numeric"),
+			g.Attr("pattern", "[0-9]*"),
 		),
 	)
 }
@@ -110,6 +114,7 @@ func passwordInput2() g.Node {
 			Type("password"),
 			Name("password2"),
 			MaxLength("32"),
+			g.Attr("autocomplete", "off"),
 		),
 	)
 }
@@ -143,7 +148,7 @@ func RegisterVerify(username, phoneE64 string) g.Node {
 		hiddenUserName(username),
 		hiddenPhone(phoneE64),
 		verificationCodeInput(),
-		passwordInput(),
+		passwordInput("new-password"),
 		passwordInput2(),
 		terms(),
 		Div(

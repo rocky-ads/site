@@ -3,7 +3,6 @@ package handler
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/local"
-	"github.com/rocky-ads/site/user"
 )
 
 // redirectToLogin redirects to the login page
@@ -26,11 +25,7 @@ func AdminRequired(c *fiber.Ctx) error {
 	if userID == 0 {
 		return c.Status(fiber.StatusUnauthorized).SendString("Unauthorized")
 	}
-	u, err := user.GetByID(userID)
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("Unauthorized")
-	}
-	if !u.IsAdmin {
+	if !local.GetUserIsAdmin(c) {
 		return c.Status(fiber.StatusForbidden).SendString("Forbidden")
 	}
 	return c.Next()

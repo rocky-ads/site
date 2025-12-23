@@ -29,15 +29,20 @@ func JWTMiddleware(c *fiber.Ctx) error {
 	claims, err := validateJWTToken(tokenString)
 	if err != nil {
 		// Invalid token, clear cookie
-		cookie.ClearJWT(c)
-		local.SetUserID(c, 0)
-		local.SetUserName(c, "")
-		local.SetUserIsAdmin(c, false)
+		logout(c)
+		return c.Next()
+	}
+
+	// Verify that the user still exists in the database (lightweight check)
+	userID := getUserID(claims)
+	if !user.Exists(userID) {
+		// User doesn't exist (may have been deleted), clear cookie
+		logout(c)
 		return c.Next()
 	}
 
 	// Set user ID, username, and admin status in context
-	local.SetUserID(c, getUserID(claims))
+	local.SetUserID(c, userID)
 	local.SetUserName(c, getUserName(claims))
 	local.SetUserIsAdmin(c, getUserIsAdmin(claims))
 	return c.Next()

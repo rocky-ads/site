@@ -142,6 +142,13 @@ func GetByID(id int) (User, error) {
 	return getUserBy("id = ? AND deleted_at IS NULL", id)
 }
 
+// Exists checks if a user exists and is not deleted (lightweight check without decryption)
+func Exists(id int) bool {
+	var exists int
+	err := db.QueryRow("SELECT 1 FROM users WHERE id = ? AND deleted_at IS NULL", id).Scan(&exists)
+	return err == nil
+}
+
 func GetByPhoneE64(phoneE64 string) (User, error) {
 	phoneHash := db.HashString(phoneE64)
 	return getUserBy("phone_hash = ? AND deleted_at IS NULL", phoneHash)
