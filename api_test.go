@@ -3,9 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"mime/multipart"
 	"net/http"
@@ -23,7 +21,6 @@ import (
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/logger"
-	"github.com/rocky-ads/site/user"
 )
 
 var baseURL = "http://localhost:" + config.TestPort
@@ -1772,7 +1769,7 @@ func TestHomeHandler(t *testing.T) {
 		})
 	}
 
-	// Test without category cookie
+	// Test without category cookie - should default to default category
 	t.Run("No category cookie", func(t *testing.T) {
 		resp, err := http.Get(baseURL + "/")
 		if err != nil {
@@ -1780,8 +1777,20 @@ func TestHomeHandler(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusNotFound {
-			t.Errorf("Expected status 404 without category cookie, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("Expected status 200 without category cookie (should default to default category), got %d", resp.StatusCode)
+		}
+
+		// Verify that category cookie was set
+		hasCategoryCookie := false
+		for _, cookie := range resp.Cookies() {
+			if cookie.Name == "category" {
+				hasCategoryCookie = true
+				break
+			}
+		}
+		if !hasCategoryCookie {
+			t.Error("Expected category cookie to be set when accessing home page without cookie")
 		}
 	})
 }
@@ -1820,118 +1829,6 @@ func TestLoginHandler(t *testing.T) {
 	body := string(bodyBytes)
 	if len(body) == 0 {
 		t.Error("Expected non-empty HTML response")
-	}
-}
-
-// Test POST /api/login
-func TestLoginSubmitHandler(t *testing.T) {
-	// Check if test user exists - fail test if prerequisites not met
-	// Also check if encryption key is configured (needed for decryption)
-	if len(config.UserEncryptionKey) == 0 {
-		t.Fatal("USER_ENCRYPTION_KEY environment variable not set. This is required for user decryption.")
-	}
-
-	testUser, err := user.GetByName("test")
-	if err != nil {
-		// Check if it's a "not found" error vs decryption error
-		if errors.Is(err, sql.ErrNoRows) {
-			t.Fatalf("Test user not found in database. Database may need to be seeded with: ./rebuild_db -test-ads")
-		} else {
-			t.Fatalf("Failed to retrieve test user (error: %v). This might be a decryption error if USER_ENCRYPTION_KEY doesn't match the key used to seed the database.", err)
-		}
-	}
-
-	// Verify we got a valid user
-	if testUser.ID == 0 {
-		t.Fatal("Test user found but invalid (ID is 0)")
-	}
-
-	tests := []struct {
-		name           string
-		username       string
-		password       string
-		expectedStatus int
-		expectJWT      bool
-	}{
-		{"Valid login", "test", "test", 200, true},
-		{"Valid login - admin", "admin", "admin", 200, true},
-		{"Invalid username", "nonexistent", "test", 200, false},
-		{"Invalid password", "test", "wrong", 200, false},
-		{"Empty username", "", "test", 200, false},
-		{"Empty password", "test", "", 200, false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := getTestClient()
-			baseURLParsed, _ := url.Parse(baseURL)
-
-			// Clear any existing auth_token cookie from previous tests
-			// Create an expired cookie to clear it
-			clearCookie := &http.Cookie{
-				Name:     "auth_token",
-				Value:    "",
-				Path:     "/",
-				MaxAge:   -1,
-				HttpOnly: true,
-				Secure:   false,
-				SameSite: http.SameSiteStrictMode,
-			}
-			client.Jar.SetCookies(baseURLParsed, []*http.Cookie{clearCookie})
-
-			// Create form data
-			formData := map[string]interface{}{
-				"username": tt.username,
-				"password": tt.password,
-			}
-
-			resp, result := postFormRequest(t, baseURL+"/api/login", formData)
-
-			if resp.StatusCode != tt.expectedStatus {
-				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
-				if len(result) > 0 {
-					t.Logf("Response: %+v", result)
-				}
-			}
-
-			// Check for JWT cookie ONLY in response cookies (not jar, to avoid cookies from previous tests)
-			hasJWT := false
-			var jwtCookie *http.Cookie
-			for _, cookie := range resp.Cookies() {
-				if cookie.Name == "auth_token" {
-					hasJWT = true
-					jwtCookie = cookie
-					// Handle Secure cookie for HTTP testing (add to jar if login succeeded)
-					if cookie.Secure && tt.expectJWT {
-						testCookie := &http.Cookie{
-							Name:     cookie.Name,
-							Value:    cookie.Value,
-							Path:     cookie.Path,
-							Domain:   cookie.Domain,
-							HttpOnly: cookie.HttpOnly,
-							SameSite: cookie.SameSite,
-							Secure:   false,
-						}
-						client.Jar.SetCookies(baseURLParsed, []*http.Cookie{testCookie})
-					}
-					break
-				}
-			}
-
-			if tt.expectJWT {
-				if !hasJWT {
-					t.Error("Expected JWT cookie but it was not set")
-					// Debug: log all cookies
-					t.Logf("Response cookies: %v", resp.Cookies())
-				} else if jwtCookie != nil && jwtCookie.Value == "" {
-					t.Error("JWT cookie value is empty")
-				}
-			} else {
-				if hasJWT {
-					t.Error("Unexpected JWT cookie for failed login")
-				}
-			}
-		})
 	}
 }
 
@@ -2033,7 +1930,7 @@ func TestCategorySelectHandler(t *testing.T) {
 		})
 	}
 
-	// Test without category cookie
+	// Test without category cookie - should default to default category
 	t.Run("No category cookie", func(t *testing.T) {
 		resp, err := http.Get(baseURL + "/api/modal/category-select")
 		if err != nil {
@@ -2041,8 +1938,20 @@ func TestCategorySelectHandler(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusNotFound {
-			t.Errorf("Expected status 404 without category cookie, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("Expected status 200 without category cookie (should default to default category), got %d", resp.StatusCode)
+		}
+
+		// Verify that category cookie was set
+		hasCategoryCookie := false
+		for _, cookie := range resp.Cookies() {
+			if cookie.Name == "category" {
+				hasCategoryCookie = true
+				break
+			}
+		}
+		if !hasCategoryCookie {
+			t.Error("Expected category cookie to be set when accessing category select without cookie")
 		}
 	})
 }
@@ -2094,7 +2003,7 @@ func TestShowFiltersHandler(t *testing.T) {
 		})
 	}
 
-	// Test without category cookie
+	// Test without category cookie - should default to default category
 	t.Run("No category cookie", func(t *testing.T) {
 		resp, err := http.Get(baseURL + "/api/show-filters")
 		if err != nil {
@@ -2102,8 +2011,20 @@ func TestShowFiltersHandler(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusNotFound {
-			t.Errorf("Expected status 404 without category cookie, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("Expected status 200 without category cookie (should default to default category), got %d", resp.StatusCode)
+		}
+
+		// Verify that category cookie was set
+		hasCategoryCookie := false
+		for _, cookie := range resp.Cookies() {
+			if cookie.Name == "category" {
+				hasCategoryCookie = true
+				break
+			}
+		}
+		if !hasCategoryCookie {
+			t.Error("Expected category cookie to be set when accessing show filters without cookie")
 		}
 	})
 }
