@@ -36,6 +36,7 @@ func passwordInput(autocomplete string) g.Node {
 			Name("password"),
 			MaxLength("32"),
 			g.Attr("autocomplete", autocomplete),
+			Required(),
 		),
 	)
 }

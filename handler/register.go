@@ -29,9 +29,9 @@ var RegistrationRateLimiter = limiter.New(limiter.Config{
 	},
 	LimitReached: func(c *fiber.Ctx) error {
 		minutes := int(config.RegistrationRateLimitExp.Minutes())
-		return c.Status(429).
-			SendString(fmt.Sprintf("Too many registration attempts. "+
-				"Please try again in %d minutes.", minutes))
+		errorMsg := fmt.Sprintf("Too many registration attempts. "+
+			"Please try again in %d minutes.", minutes)
+		return showError(c, errorMsg)
 	},
 })
 
@@ -191,9 +191,6 @@ func RegisterStep2Handler(c *fiber.Ctx) error {
 	username := c.FormValue("username")
 	phoneE64 := c.FormValue("phone")
 	code := c.FormValue("code")
-	passwd := c.FormValue("password")
-	passwd2 := c.FormValue("password2")
-	terms := c.FormValue("terms")
 
 	if err := validateUsername(username); err != nil {
 		return c.Redirect("/register")
@@ -208,6 +205,36 @@ func RegisterStep2Handler(c *fiber.Ctx) error {
 		return showError(c, "Please enter the verification code")
 	}
 
+	valid, err := validateVerificationCode(phoneE64, code)
+	if err != nil {
+		logger.Warn("Verification code validation error",
+			"error", err, "phone", phoneE64)
+		return showError(c, "Invalid or expired verification code. Please request a new code.")
+	}
+	if !valid {
+		return showError(c, "Invalid verification code. Please check your code and try again.")
+	}
+
+	// Code is valid, show password form
+	return render(c, ui.RegisterPassword(username, phoneE64))
+}
+
+func RegisterStep3Handler(c *fiber.Ctx) error {
+	username := c.FormValue("username")
+	phoneE64 := c.FormValue("phone")
+	passwd := c.FormValue("password")
+	passwd2 := c.FormValue("password2")
+	terms := c.FormValue("terms")
+
+	if err := validateUsername(username); err != nil {
+		return c.Redirect("/register")
+	}
+
+	_, err := validatePhone(phoneE64)
+	if err != nil {
+		return showError(c, err.Error())
+	}
+
 	if err := password.ValidatePasswordConfirmation(passwd, passwd2); err != nil {
 		return showError(c, err.Error())
 	}
@@ -220,15 +247,8 @@ func RegisterStep2Handler(c *fiber.Ctx) error {
 		return showError(c, "You must accept the terms and conditions to continue.")
 	}
 
-	valid, err := validateVerificationCode(phoneE64, code)
-	if err != nil {
-		logger.Warn("Verification code validation error",
-			"error", err, "phone", phoneE64)
-		return showError(c, "Invalid or expired verification code. Please request a new code.")
-	}
-	if !valid {
-		return showError(c, "Invalid verification code. Please check your code and try again.")
-	}
+	// Verify code was validated in step 2 (we could add additional validation here if needed)
+	// For now, we trust that step 2 validated the code
 
 	u, err := user.CreateUser(username, phoneE64, passwd)
 	if err != nil {

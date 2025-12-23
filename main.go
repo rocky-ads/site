@@ -58,6 +58,7 @@ func setupApp() *fiber.App {
 	api.Post("/login", handler.LoginSubmitHandler)
 	api.Post("/register/step1", handler.RegistrationRateLimiter, handler.RegisterStep1Handler)
 	api.Post("/register/step2", handler.RegisterStep2Handler)
+	api.Post("/register/step3", handler.RegisterStep3Handler)
 	api.Post("/sms/webhook", handler.SMSWebhookHandler)
 
 	categoryRouter := api.Group("/category/:category")

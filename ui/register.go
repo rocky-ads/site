@@ -89,19 +89,27 @@ func hiddenPhone(phone string) g.Node {
 
 func verificationCodeInput() g.Node {
 	return Div(
-		Class("text-center mb-6"),
+		Class("text-center mb-6 space-y-6 py-4"),
 		P(
-			Class("text-gray-600"),
+			Class("text-gray-700 dark:text-gray-300 text-base leading-relaxed"),
 			g.Text("We've sent a verification code to your phone number. "+
-				"Please enter the code below to complete your registration."),
+				"Please enter the code below to continue."),
+		),
+		Label(
+			Class("block text-base font-medium mb-2"),
+			g.Attr("for", "verification-code"),
+			g.Text("Verification Code"),
 		),
 		Input(
-			Class("w-full p-2 border rounded-md"),
+			ID("verification-code"),
+			Class("max-w-xs w-full p-4 border-2 border-gray-300 dark:border-gray-600 rounded-md text-center text-2xl font-mono tracking-widest focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-gray-800 dark:text-gray-100 mx-auto block my-2"),
 			Type("text"),
 			Name("code"),
 			g.Attr("autocomplete", "one-time-code"),
 			g.Attr("inputmode", "numeric"),
 			g.Attr("pattern", "[0-9]*"),
+			g.Attr("maxlength", "6"),
+			g.Attr("placeholder", "000000"),
 		),
 	)
 }
@@ -115,6 +123,7 @@ func passwordInput2() g.Node {
 			Name("password2"),
 			MaxLength("32"),
 			g.Attr("autocomplete", "off"),
+			Required(),
 		),
 	)
 }
@@ -140,7 +149,7 @@ func terms() g.Node {
 
 func RegisterVerify(username, phoneE64 string) g.Node {
 	return Form(
-		Class("space-y-8"),
+		Class("space-y-12"),
 		ID("registerForm"),
 		hx.Post("/api/register/step2"),
 		hx.Swap("none"),
@@ -148,6 +157,26 @@ func RegisterVerify(username, phoneE64 string) g.Node {
 		hiddenUserName(username),
 		hiddenPhone(phoneE64),
 		verificationCodeInput(),
+		Div(
+			Class("flex flex-col items-center gap-6"),
+			standardButton(buttonProps{
+				Type: "submit",
+				Text: "Verify Code",
+			}),
+			ErrorDiv(""),
+		),
+	)
+}
+
+func RegisterPassword(username, phoneE64 string) g.Node {
+	return Form(
+		Class("space-y-8"),
+		ID("registerForm"),
+		hx.Post("/api/register/step3"),
+		hx.Swap("none"),
+		hx.SwapOOB("true"),
+		hiddenUserName(username),
+		hiddenPhone(phoneE64),
 		passwordInput("new-password"),
 		passwordInput2(),
 		terms(),
