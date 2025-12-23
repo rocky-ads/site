@@ -151,16 +151,16 @@ func IsBlockedError(err error) bool {
 }
 
 // SendMessage sends an SMS message and tracks delivery
-func SendMessage(phoneNumber, message string) error {
+func SendMessage(phoneE64, message string) error {
 
 	// Respect user opt-out - fail silently
-	if IsOptedOut(phoneNumber) {
+	if IsOptedOut(phoneE64) {
 		logger.Debug("Message blocked: user opted out",
-			"component", "SMS", "phoneNumber", phoneNumber)
+			"component", "SMS", "phoneNumber", phoneE64)
 		return nil
 	}
 	params := &Api.CreateMessageParams{}
-	params.SetTo(phoneNumber)
+	params.SetTo(phoneE64)
 	params.SetFrom(config.TwilioFromNumber)
 	params.SetBody(message)
 	params.SetStatusCallback(fmt.Sprintf("%s/api/sms/webhook", config.TwilioWebhookURL))
@@ -177,11 +177,11 @@ func SendMessage(phoneNumber, message string) error {
 	messageSid := *result.Sid
 
 	// Register message for delivery tracking
-	trackMessage(messageSid, phoneNumber)
+	trackMessage(messageSid, phoneE64)
 
 	logger.Info("Message sent",
 		"component", "SMS", "messageSid", messageSid,
-		"phoneNumber", phoneNumber)
+		"phoneNumber", phoneE64)
 
 	return nil
 }

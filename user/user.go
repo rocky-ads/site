@@ -1,11 +1,14 @@
 package user
 
 import (
+	"database/sql"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/rocky-ads/site/db"
+	"github.com/rocky-ads/site/password"
 )
 
 // Notification method constants
@@ -40,34 +43,12 @@ type User struct {
 	CreatedAt          time.Time  `json:"created_at"`
 	IsAdmin            bool       `json:"is_admin"`
 	PhoneVerified      bool       `json:"phone_verified"`
-	VerificationCode   *string    `json:"verification_code"`
 	NotificationMethod string     `json:"notification_method"`
 	SMSOptedOut        bool       `json:"sms_opted_out"`
 	DeletedAt          *time.Time `json:"deleted_at"`
 }
 
-func GetByID(id int) (u User, err error) {
-	query := `SELECT * FROM users WHERE id = ? AND deleted_at IS NULL`
-	err = db.QueryRow(query, id).Scan(&u)
-	if err != nil {
-		return User{}, err
-	}
-	return u, nil
-}
-
-func GetByPhoneE64(phoneE64 string) (u User, err error) {
-	phoneHash := db.HashString(phoneE64)
-	query := `SELECT * FROM users WHERE phone_hash = ? AND deleted_at IS NULL`
-	err = db.QueryRow(query, phoneHash).Scan(&u)
-	if err != nil {
-		return User{}, err
-	}
-	return u, nil
-}
-
-func GetByName(name string) (User, error) {
-	nameHash := db.HashString(name)
-
+func getUserBy(whereClause string, args ...interface{}) (User, error) {
 	var u User
 	var encryptedNameBytes, nameNonceBytes []byte
 	var encryptedPhoneBytes, phoneNonceBytes []byte
@@ -84,7 +65,6 @@ func GetByName(name string) (User, error) {
 		password_salt,
 		password_algo,
 		phone_verified,
-		verification_code,
 		notification_method,
 		encrypted_email,
 		email_nonce,
@@ -92,9 +72,9 @@ func GetByName(name string) (User, error) {
 		is_admin,
 		sms_opted_out,
 		deleted_at
-	FROM users WHERE name_hash = ? AND deleted_at IS NULL`
+	FROM users WHERE ` + whereClause
 
-	err := db.QueryRow(query, nameHash).Scan(
+	err := db.QueryRow(query, args...).Scan(
 		&u.ID,
 		&encryptedNameBytes,
 		&nameNonceBytes,
@@ -104,7 +84,6 @@ func GetByName(name string) (User, error) {
 		&u.PasswordSalt,
 		&u.PasswordAlgo,
 		&phoneVerifiedInt,
-		&u.VerificationCode,
 		&u.NotificationMethod,
 		&encryptedEmailBytes,
 		&emailNonceBytes,
@@ -154,6 +133,141 @@ func GetByName(name string) (User, error) {
 		if err == nil {
 			u.EmailAddress = &email
 		}
+	}
+
+	return u, nil
+}
+
+func GetByID(id int) (User, error) {
+	return getUserBy("id = ? AND deleted_at IS NULL", id)
+}
+
+func GetByPhoneE64(phoneE64 string) (User, error) {
+	phoneHash := db.HashString(phoneE64)
+	return getUserBy("phone_hash = ? AND deleted_at IS NULL", phoneHash)
+}
+
+func GetByName(name string) (User, error) {
+	nameHash := db.HashString(name)
+	return getUserBy("name_hash = ? AND deleted_at IS NULL", nameHash)
+}
+
+// ErrUserAlreadyExists is returned when attempting to create a user that already exists
+var ErrUserAlreadyExists = errors.New("user already exists")
+
+// CreateUser creates a new user with phone verification in a transaction.
+// It checks for existing users (including archived), creates the user, marks the phone as verified,
+// and cleans up verification codes. Returns the created user or an error.
+func CreateUser(username, phoneE64, plainPassword string) (User, error) {
+
+	// Hash password
+	passwordHash, passwordSalt, err := password.HashPassword(plainPassword)
+	if err != nil {
+		return User{}, fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Start a transaction
+	tx, err := db.Begin()
+	if err != nil {
+		return User{}, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Check if user already exists (including archived users)
+	nameHash := db.HashString(username)
+	phoneHash := db.HashString(phoneE64)
+
+	var existingUserID int
+	err = tx.QueryRow(`
+		SELECT id FROM users 
+		WHERE name_hash = $1 OR phone_hash = $2
+		LIMIT 1
+	`, nameHash, phoneHash).Scan(&existingUserID)
+	if err == nil {
+		// User exists (including archived)
+		return User{}, ErrUserAlreadyExists
+	} else if err != sql.ErrNoRows {
+		// Database error
+		return User{}, fmt.Errorf("failed to check for existing user: %w", err)
+	}
+
+	// Insert user with placeholder values to get ID
+	result, err := tx.Exec(`
+		INSERT INTO users (
+			encrypted_name, name_nonce, name_hash,
+			password_hash, password_salt, password_algo,
+			encrypted_phone, phone_nonce, phone_hash,
+			encrypted_email, email_nonce, email_hash,
+			phone_verified, is_admin
+		) VALUES ($1, $2, $3, $4, $5, 'argon2id', $6, $7, $8, $9, $10, $11, 0, 0)
+	`, []byte{}, []byte{}, nameHash,
+		passwordHash, passwordSalt,
+		[]byte{}, []byte{}, phoneHash,
+		[]byte{}, []byte{}, nil)
+	if err != nil {
+		return User{}, fmt.Errorf("failed to create user: %w", err)
+	}
+
+	userID, err := result.LastInsertId()
+	if err != nil {
+		return User{}, fmt.Errorf("failed to get user ID: %w", err)
+	}
+
+	// Encrypt name
+	encryptedName, nameNonce, err := EncryptName(int(userID), username)
+	if err != nil {
+		return User{}, fmt.Errorf("failed to encrypt name: %w", err)
+	}
+	encryptedNameBytes, _ := base64.StdEncoding.DecodeString(encryptedName)
+	nameNonceBytes, _ := base64.StdEncoding.DecodeString(nameNonce)
+
+	// Encrypt phone
+	encryptedPhone, phoneNonce, err := EncryptPhone(int(userID), phoneE64)
+	if err != nil {
+		return User{}, fmt.Errorf("failed to encrypt phone: %w", err)
+	}
+	encryptedPhoneBytes, _ := base64.StdEncoding.DecodeString(encryptedPhone)
+	phoneNonceBytes, _ := base64.StdEncoding.DecodeString(phoneNonce)
+
+	// Encrypt email (empty for new users)
+	encryptedEmail, emailNonce, err := EncryptEmailAddress(int(userID), "")
+	if err != nil {
+		return User{}, fmt.Errorf("failed to encrypt email: %w", err)
+	}
+	encryptedEmailBytes, _ := base64.StdEncoding.DecodeString(encryptedEmail)
+	emailNonceBytes, _ := base64.StdEncoding.DecodeString(emailNonce)
+
+	// Update user with encrypted fields and mark phone as verified
+	_, err = tx.Exec(`
+		UPDATE users SET
+			encrypted_name = $1, name_nonce = $2,
+			encrypted_phone = $3, phone_nonce = $4,
+			encrypted_email = $5, email_nonce = $6,
+			phone_verified = 1
+		WHERE id = $7
+	`, encryptedNameBytes, nameNonceBytes,
+		encryptedPhoneBytes, phoneNonceBytes,
+		encryptedEmailBytes, emailNonceBytes,
+		userID)
+	if err != nil {
+		return User{}, fmt.Errorf("failed to update user with encrypted fields: %w", err)
+	}
+
+	// Cleanup registration validation codes
+	_, err = tx.Exec(`DELETE FROM phone_verification WHERE phone = $1`, phoneE64)
+	if err != nil {
+		return User{}, fmt.Errorf("failed to cleanup verification codes: %w", err)
+	}
+
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		return User{}, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	// Get the created user
+	u, err := GetByID(int(userID))
+	if err != nil {
+		return User{}, fmt.Errorf("failed to get created user: %w", err)
 	}
 
 	return u, nil

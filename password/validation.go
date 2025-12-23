@@ -1,22 +1,14 @@
 package password
 
 import (
+	"fmt"
 	"unicode"
 )
 
-// ValidationError represents a password validation error
-type ValidationError struct {
-	Message string
-}
-
-func (e ValidationError) Error() string {
-	return e.Message
-}
-
-// ValidatePasswordConfirmation checks if password and confirmation match
 func ValidatePasswordConfirmation(password, confirmation string) error {
+	fmt.Println("ValidatePasswordConfirmation", password, confirmation)
 	if password != confirmation {
-		return ValidationError{Message: "Passwords do not match"}
+		return fmt.Errorf("passwords do not match")
 	}
 	return nil
 }
@@ -24,7 +16,7 @@ func ValidatePasswordConfirmation(password, confirmation string) error {
 // ValidatePasswordStrength checks if a password meets minimum requirements
 func ValidatePasswordStrength(password string) error {
 	if len(password) < 8 {
-		return ValidationError{Message: "Password must be at least 8 characters long"}
+		return fmt.Errorf("password must be at least 8 characters long")
 	}
 
 	// Check for at least one letter, one number, one uppercase, one lowercase, and one special character
@@ -54,23 +46,23 @@ func ValidatePasswordStrength(password string) error {
 	}
 
 	if !hasLetter {
-		return ValidationError{Message: "Password must contain at least one letter"}
+		return fmt.Errorf("password must contain at least one letter")
 	}
 
 	if !hasNumber {
-		return ValidationError{Message: "Password must contain at least one number"}
+		return fmt.Errorf("password must contain at least one number")
 	}
 
 	if !hasUpper {
-		return ValidationError{Message: "Password must contain at least one uppercase letter"}
+		return fmt.Errorf("password must contain at least one uppercase letter")
 	}
 
 	if !hasLower {
-		return ValidationError{Message: "Password must contain at least one lowercase letter"}
+		return fmt.Errorf("password must contain at least one lowercase letter")
 	}
 
 	if !hasSpecial {
-		return ValidationError{Message: "Password must contain at least one special character (e.g., !@#$%^&*)"}
+		return fmt.Errorf("password must contain at least one special character (e.g., !@#$%%^&*)")
 	}
 
 	return nil
@@ -80,17 +72,17 @@ func ValidatePasswordStrength(password string) error {
 func ValidatePasswordChange(currentPassword, newPassword, confirmPassword string) error {
 	// Check if current password is provided
 	if currentPassword == "" {
-		return ValidationError{Message: "Current password is required"}
+		return fmt.Errorf("current password is required")
 	}
 
 	// Check if new password is provided
 	if newPassword == "" {
-		return ValidationError{Message: "New password is required"}
+		return fmt.Errorf("new password is required")
 	}
 
 	// Check if new password is different from current
 	if currentPassword == newPassword {
-		return ValidationError{Message: "New password must be different from current password"}
+		return fmt.Errorf("new password must be different from current password")
 	}
 
 	// Validate password confirmation

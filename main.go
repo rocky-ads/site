@@ -57,7 +57,7 @@ func setupApp() *fiber.App {
 
 	api.Post("/login", handler.LoginSubmitHandler)
 	api.Post("/register/step1", handler.RegistrationRateLimiter, handler.RegisterStep1Handler)
-	api.Post("/register/step2", handler.RegistrationRateLimiter, handler.RegisterStep2Handler)
+	api.Post("/register/step2", handler.RegisterStep2Handler)
 
 	categoryRouter := api.Group("/category/:category")
 	categoryRouter.Get("/values/:field", handler.GetAllValuesHandler)

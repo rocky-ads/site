@@ -75,7 +75,14 @@ func hiddenUserName(username string) g.Node {
 		Type("hidden"),
 		Name("username"),
 		Value(username),
-		g.Attr("autocomplete", "username"),
+	)
+}
+
+func hiddenPhone(phone string) g.Node {
+	return Input(
+		Type("hidden"),
+		Name("phone"),
+		Value(phone),
 	)
 }
 
@@ -126,7 +133,7 @@ func terms() g.Node {
 	)
 }
 
-func RegisterVerify(username string) g.Node {
+func RegisterVerify(username, phoneE64 string) g.Node {
 	return Form(
 		Class("space-y-8"),
 		ID("registerForm"),
@@ -134,6 +141,7 @@ func RegisterVerify(username string) g.Node {
 		hx.Swap("none"),
 		hx.SwapOOB("true"),
 		hiddenUserName(username),
+		hiddenPhone(phoneE64),
 		verificationCodeInput(),
 		passwordInput(),
 		passwordInput2(),

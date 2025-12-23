@@ -44,18 +44,18 @@ func generateVerificationCode() (string, error) {
 	return code, nil
 }
 
-func storeVerificationCode(phone, code string) error {
+func storeVerificationCode(phoneE64, code string) error {
 	_, err := db.Exec(`
 		INSERT INTO phone_verification (phone, verification_code, attempts) 
 		VALUES ($1, $2, 0)
-	`, phone, code)
+	`, phoneE64, code)
 
 	if err != nil {
 		return fmt.Errorf("failed to create verification code: %w", err)
 	}
 
 	logger.Info("Created verification code",
-		"component", "verification", "phone", phone)
+		"component", "verification", "phone", phoneE64)
 
 	// Lazy cleanup: remove expired codes when storing a new one
 	// Ignore cleanup errors to avoid blocking code storage
@@ -71,21 +71,21 @@ func getPhoneVerification(phone string) (phoneVerification, error) {
 	var pv phoneVerification
 	// Calculate expiry threshold: records created before this time are expired
 	expiryThreshold := time.Now().UTC().Add(-CodeExpiry)
-	err := db.QueryJSON(&pv, `
-		SELECT json_object(
-			'id', id,
-			'phone', phone,
-			'verification_code', verification_code,
-			'attempts', attempts,
-			'created_at', created_at
-		)
+	err := db.QueryRow(`
+		SELECT id, phone, verification_code, attempts, created_at
 		FROM phone_verification 
 		WHERE phone = $1 
 			AND created_at > $2
 			AND attempts < $3
 		ORDER BY created_at DESC 
 		LIMIT 1
-	`, phone, expiryThreshold, MaxAttempts)
+	`, phone, expiryThreshold, MaxAttempts).Scan(
+		&pv.ID,
+		&pv.Phone,
+		&pv.VerificationCode,
+		&pv.Attempts,
+		&pv.CreatedAt,
+	)
 	if err != nil {
 		return phoneVerification{}, fmt.Errorf("verification code not found: %w", err)
 	}
@@ -93,12 +93,12 @@ func getPhoneVerification(phone string) (phoneVerification, error) {
 	return pv, nil
 }
 
-func validateVerificationCode(phone, code string) (bool, error) {
-	vc, err := getPhoneVerification(phone)
+func validateVerificationCode(phoneE64, code string) (bool, error) {
+	vc, err := getPhoneVerification(phoneE64)
 	if err != nil {
 		// If no valid record found, it could be expired or max attempts exceeded
 		// Track this for potential account cleanup
-		cleanupStaleVerifications(phone)
+		cleanupStaleVerifications(phoneE64)
 		return false, err
 	}
 
@@ -120,18 +120,18 @@ func validateVerificationCode(phone, code string) (bool, error) {
 	// Ensure both slices are the same length for constant-time comparison
 	if len(codeBytes) != len(inputBytes) {
 		logger.Warn("Invalid code (length mismatch)",
-			"component", "verification", "phone", phone)
+			"component", "verification", "phone", phoneE64)
 		return false, nil
 	}
 
 	// Use constant-time comparison to prevent timing attacks
 	if subtle.ConstantTimeCompare(codeBytes, inputBytes) == 1 {
 		logger.Info("Code validated successfully",
-			"component", "verification", "phone", phone)
+			"component", "verification", "phone", phoneE64)
 		return true, nil
 	}
 
-	logger.Warn("Invalid code", "component", "verification", "phone", phone)
+	logger.Warn("Invalid code", "component", "verification", "phone", phoneE64)
 	return false, nil
 }
 

@@ -10,7 +10,9 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/nyaruka/phonenumbers"
 	"github.com/rocky-ads/site/config"
+	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/logger"
+	"github.com/rocky-ads/site/password"
 	"github.com/rocky-ads/site/service/grok"
 	"github.com/rocky-ads/site/service/sms"
 	"github.com/rocky-ads/site/ui"
@@ -26,9 +28,10 @@ var RegistrationRateLimiter = limiter.New(limiter.Config{
 		return c.IP()
 	},
 	LimitReached: func(c *fiber.Ctx) error {
+		minutes := int(config.RegistrationRateLimitExp.Minutes())
 		return c.Status(429).
-			SendString("Too many registration attempts. " +
-				"Please try again later.")
+			SendString(fmt.Sprintf("Too many registration attempts. "+
+				"Please try again in %d minutes.", minutes))
 	},
 })
 
@@ -181,22 +184,74 @@ func RegisterStep1Handler(c *fiber.Ctx) error {
 		return showError(c, "Unable to send verification code. Please try again.")
 	}
 
-	return render(c, ui.RegisterVerify(username))
+	return render(c, ui.RegisterVerify(username, phoneE64))
 }
 
 func RegisterStep2Handler(c *fiber.Ctx) error {
 	username := c.FormValue("username")
+	phoneE64 := c.FormValue("phone")
 	code := c.FormValue("code")
-	//password := c.FormValue("password")
-	//password2 := c.FormValue("password2")
+	passwd := c.FormValue("password")
+	passwd2 := c.FormValue("password2")
+	terms := c.FormValue("terms")
 
 	if err := validateUsername(username); err != nil {
 		return c.Redirect("/register")
+	}
+
+	_, err := validatePhone(phoneE64)
+	if err != nil {
+		return showError(c, err.Error())
 	}
 
 	if code == "" {
 		return showError(c, "Please enter the verification code")
 	}
 
-	return nil
+	if err := password.ValidatePasswordConfirmation(passwd, passwd2); err != nil {
+		return showError(c, err.Error())
+	}
+
+	if err := password.ValidatePasswordStrength(passwd); err != nil {
+		return showError(c, err.Error())
+	}
+
+	if terms != "accepted" {
+		return showError(c, "You must accept the terms and conditions to continue.")
+	}
+
+	valid, err := validateVerificationCode(phoneE64, code)
+	if err != nil {
+		logger.Warn("Verification code validation error",
+			"error", err, "phone", phoneE64)
+		return showError(c, "Invalid or expired verification code. Please request a new code.")
+	}
+	if !valid {
+		return showError(c, "Invalid verification code. Please check your code and try again.")
+	}
+
+	u, err := user.CreateUser(username, phoneE64, passwd)
+	if err != nil {
+		if errors.Is(err, user.ErrUserAlreadyExists) {
+			return showError(c,
+				"Unable to complete registration with these credentials. Please try different information.")
+		}
+		logger.Error("Failed to create user",
+			"error", err, "phone", phoneE64)
+		return showError(c, "Unable to complete registration. Please try again.")
+	}
+
+	// Generate JWT token and log user in
+	token, err := generateJWTToken(&u)
+	if err != nil {
+		logger.Error("Failed to generate token",
+			"error", err, "userID", u.ID)
+		return showError(c, "Registration successful, but login failed. Please try logging in.")
+	}
+
+	// Set JWT cookie
+	cookie.SetJWT(c, token)
+
+	c.Set("HX-Redirect", "/")
+	return c.SendStatus(fiber.StatusOK)
 }
