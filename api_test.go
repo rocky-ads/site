@@ -3,13 +3,17 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"os"
+	"reflect"
 	"strconv"
 	"sync"
 	"testing"
@@ -17,32 +21,107 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/ad"
+	"github.com/rocky-ads/site/cmd/rebuild_db/seed"
 	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/logger"
+	"github.com/rocky-ads/site/user"
 )
 
 var baseURL = "http://localhost:" + config.TestPort
 var testServer *fiber.App
+var testDBPath = "test.db"
+
+// initDatabaseWithSchema initializes the database and loads the schema
+func initDatabaseWithSchema(dbPath string) error {
+	// Open database connection
+	if err := db.Init(dbPath); err != nil {
+		return fmt.Errorf("opening database: %w", err)
+	}
+
+	// Read and execute schema
+	schemaPath := "db/schema.sql"
+	if _, err := os.Stat(schemaPath); os.IsNotExist(err) {
+		// Try from current working directory
+		cwd, _ := os.Getwd()
+		schemaPath = cwd + "/db/schema.sql"
+	}
+	schema, err := os.ReadFile(schemaPath)
+	if err != nil {
+		return fmt.Errorf("reading schema file: %w", err)
+	}
+
+	if _, err := db.Exec(string(schema)); err != nil {
+		return fmt.Errorf("executing schema: %w", err)
+	}
+
+	return nil
+}
 
 // TestMain starts the test server before running tests and shuts it down after
 func TestMain(m *testing.M) {
+	// Set test encryption keys before anything else
+	// These must match the keys used when seeding the test database
+	testUserEncryptionKey := "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" // base64 encoded 32 bytes of zeros
+	testMessageEncryptionKey := "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+	testJWTSecret := "test-jwt-secret-key-for-ci-minimum-32-chars-long"
+
+	os.Setenv("USER_ENCRYPTION_KEY", testUserEncryptionKey)
+	os.Setenv("MESSAGE_ENCRYPTION_KEY", testMessageEncryptionKey)
+	os.Setenv("JWT_SECRET", testJWTSecret)
+
+	// Update config variables using reflection since they're initialized at package import time
+	// Decode and set UserEncryptionKey
+	if key, err := base64.StdEncoding.DecodeString(testUserEncryptionKey); err == nil {
+		configValue := reflect.ValueOf(&config.UserEncryptionKey).Elem()
+		configValue.Set(reflect.ValueOf(key))
+	}
+
+	// Decode and set MessageEncryptionKey
+	if key, err := base64.StdEncoding.DecodeString(testMessageEncryptionKey); err == nil {
+		configValue := reflect.ValueOf(&config.MessageEncryptionKey).Elem()
+		configValue.Set(reflect.ValueOf(key))
+	}
+
+	// Set JWTSecret
+	configValue := reflect.ValueOf(&config.JWTSecret).Elem()
+	configValue.Set(reflect.ValueOf([]byte(testJWTSecret)))
+
 	// Initialize logger for tests (use minimal logging)
 	if err := logger.Init("error", "text", ""); err != nil {
 		panic(fmt.Sprintf("Failed to initialize logger: %v", err))
 	}
 
-	// Initialize database
-	if err := db.Init("project.db"); err != nil {
-		panic(fmt.Sprintf("Failed to open database: %v", err))
+	// Remove existing test database if it exists
+	if _, err := os.Stat(testDBPath); err == nil {
+		if err := os.Remove(testDBPath); err != nil {
+			panic(fmt.Sprintf("Failed to remove existing test database: %v", err))
+		}
 	}
 
+	// Initialize database with schema
+	if err := initDatabaseWithSchema(testDBPath); err != nil {
+		panic(fmt.Sprintf("Failed to initialize test database: %v", err))
+	}
+
+	// Load seed data (including test ads)
+	if err := seed.LoadAll(true); err != nil {
+		db.Close()
+		os.Remove(testDBPath)
+		panic(fmt.Sprintf("Failed to load seed data: %v", err))
+	}
+
+	// Database is already initialized and seeded, now initialize ad and field packages
 	if err := ad.Init(); err != nil {
+		db.Close()
+		os.Remove(testDBPath)
 		panic(fmt.Sprintf("Failed to initialize ads: %v", err))
 	}
 
 	if err := field.Init(); err != nil {
+		db.Close()
+		os.Remove(testDBPath)
 		panic(fmt.Sprintf("Failed to initialize fields: %v", err))
 	}
 
@@ -85,6 +164,13 @@ func TestMain(m *testing.M) {
 
 	// Close database
 	db.Close()
+
+	// Clean up test database
+	if _, err := os.Stat(testDBPath); err == nil {
+		if err := os.Remove(testDBPath); err != nil {
+			fmt.Printf("Warning: Failed to remove test database: %v\n", err)
+		}
+	}
 
 	os.Exit(code)
 }
@@ -1829,6 +1915,118 @@ func TestLoginHandler(t *testing.T) {
 	body := string(bodyBytes)
 	if len(body) == 0 {
 		t.Error("Expected non-empty HTML response")
+	}
+}
+
+// Test POST /api/login
+func TestLoginSubmitHandler(t *testing.T) {
+	// Check if test user exists - fail test if prerequisites not met
+	// Also check if encryption key is configured (needed for decryption)
+	if len(config.UserEncryptionKey) == 0 {
+		t.Fatal("USER_ENCRYPTION_KEY environment variable not set. This is required for user decryption.")
+	}
+
+	testUser, err := user.GetByName("test")
+	if err != nil {
+		// Check if it's a "not found" error vs decryption error
+		if errors.Is(err, sql.ErrNoRows) {
+			t.Fatalf("Test user not found in database. Database may need to be seeded with: ./rebuild_db -test-ads")
+		} else {
+			t.Fatalf("Failed to retrieve test user (error: %v). This might be a decryption error if USER_ENCRYPTION_KEY doesn't match the key used to seed the database.", err)
+		}
+	}
+
+	// Verify we got a valid user
+	if testUser.ID == 0 {
+		t.Fatal("Test user found but invalid (ID is 0)")
+	}
+
+	tests := []struct {
+		name           string
+		username       string
+		password       string
+		expectedStatus int
+		expectJWT      bool
+	}{
+		{"Valid login", "test", "test", 200, true},
+		{"Valid login - admin", "admin", "admin", 200, true},
+		{"Invalid username", "nonexistent", "test", 200, false},
+		{"Invalid password", "test", "wrong", 200, false},
+		{"Empty username", "", "test", 200, false},
+		{"Empty password", "test", "", 200, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := getTestClient()
+			baseURLParsed, _ := url.Parse(baseURL)
+
+			// Clear any existing auth_token cookie from previous tests
+			// Create an expired cookie to clear it
+			clearCookie := &http.Cookie{
+				Name:     "auth_token",
+				Value:    "",
+				Path:     "/",
+				MaxAge:   -1,
+				HttpOnly: true,
+				Secure:   false,
+				SameSite: http.SameSiteStrictMode,
+			}
+			client.Jar.SetCookies(baseURLParsed, []*http.Cookie{clearCookie})
+
+			// Create form data
+			formData := map[string]interface{}{
+				"username": tt.username,
+				"password": tt.password,
+			}
+
+			resp, result := postFormRequest(t, baseURL+"/api/login", formData)
+
+			if resp.StatusCode != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
+				if len(result) > 0 {
+					t.Logf("Response: %+v", result)
+				}
+			}
+
+			// Check for JWT cookie ONLY in response cookies (not jar, to avoid cookies from previous tests)
+			hasJWT := false
+			var jwtCookie *http.Cookie
+			for _, cookie := range resp.Cookies() {
+				if cookie.Name == "auth_token" {
+					hasJWT = true
+					jwtCookie = cookie
+					// Handle Secure cookie for HTTP testing (add to jar if login succeeded)
+					if cookie.Secure && tt.expectJWT {
+						testCookie := &http.Cookie{
+							Name:     cookie.Name,
+							Value:    cookie.Value,
+							Path:     cookie.Path,
+							Domain:   cookie.Domain,
+							HttpOnly: cookie.HttpOnly,
+							SameSite: cookie.SameSite,
+							Secure:   false,
+						}
+						client.Jar.SetCookies(baseURLParsed, []*http.Cookie{testCookie})
+					}
+					break
+				}
+			}
+
+			if tt.expectJWT {
+				if !hasJWT {
+					t.Error("Expected JWT cookie but it was not set")
+					// Debug: log all cookies
+					t.Logf("Response cookies: %v", resp.Cookies())
+				} else if jwtCookie != nil && jwtCookie.Value == "" {
+					t.Error("JWT cookie value is empty")
+				}
+			} else {
+				if hasJWT {
+					t.Error("Unexpected JWT cookie for failed login")
+				}
+			}
+		})
 	}
 }
 
