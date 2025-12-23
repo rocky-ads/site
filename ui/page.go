@@ -106,7 +106,7 @@ func indicator() g.Node {
 
 func navigation(userID int, userName, currentPath string) g.Node {
 	return Nav(
-		Class("sticky top-0 z-10 bg-white/75 dark:bg-gray-900/75 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between mb-8 py-4 -mx-4 px-4"),
+		Class("sticky top-0 z-10 bg-white/75 dark:bg-gray-900/75 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700 flex items-center justify-between mb-8 py-4 -mx-4 px-4"),
 		Div(
 			Class("flex items-center gap-4"),
 			A(Href("/"), Class("text-xl font-bold"), g.Text(config.ServerName)),

@@ -6,20 +6,20 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-func HomePage(categoryName, categoryImage string) []g.Node {
-	return []g.Node{SearchContainer(categoryName, categoryImage)}
+func HomePage(userID int, categoryName, categoryImage string) []g.Node {
+	return []g.Node{SearchContainer(userID, categoryName, categoryImage)}
 }
 
-func SearchContainer(categoryName, categoryImage string) g.Node {
+func SearchContainer(userID int, categoryName, categoryImage string) g.Node {
 	return Div(
 		ID("search-container"),
-		categorySearch(categoryName, categoryImage),
+		categorySearch(userID, categoryName, categoryImage),
 	)
 }
 
-func SearchContainerRefresh(categoryName, categoryImage string) g.Node {
+func SearchContainerRefresh(userID int, categoryName, categoryImage string) g.Node {
 	return g.Group([]g.Node{
-		SearchContainer(categoryName, categoryImage),
+		SearchContainer(userID, categoryName, categoryImage),
 		Div(
 			ID("search-container-refresh"),
 			hx.SwapOOB("true"),
@@ -27,10 +27,10 @@ func SearchContainerRefresh(categoryName, categoryImage string) g.Node {
 	})
 }
 
-func categorySearch(categoryName, categoryImage string) g.Node {
+func categorySearch(userID int, categoryName, categoryImage string) g.Node {
 	return Div(
 		categoryButton(categoryName, categoryImage),
-		SearchWidget("", []g.Node{}),
+		SearchWidget(userID, "", []g.Node{}),
 	)
 }
 
@@ -136,7 +136,29 @@ func searchSimple(q string) g.Node {
 	)
 }
 
-func SearchWidget(q string, filters []g.Node) g.Node {
+func newAdButton(userID int) g.Node {
+	return standardButton(buttonProps{
+		Href:     "/auth/new-ad",
+		Text:     "New Ad",
+		Disabled: userID == 0,
+	})
+}
+
+func viewToggles() g.Node {
+	return Div(
+		Class("flex items-center gap-2"),
+	)
+}
+
+func viewRow(userID int) g.Node {
+	return Div(
+		Class("flex justify-between items-center gap-2 mb-4 mt-6"),
+		newAdButton(userID),
+		viewToggles(),
+	)
+}
+
+func SearchWidget(userID int, q string, filters []g.Node) g.Node {
 	return Form(
 		Class("flex flex-col gap-4"),
 		ID("search-widget"),
@@ -146,6 +168,7 @@ func SearchWidget(q string, filters []g.Node) g.Node {
 		hx.Include("form"),
 		g.If(len(filters) > 0, searchFilters(q, filters)),
 		g.If(len(filters) == 0, searchSimple(q)),
+		viewRow(userID),
 		searchResults(),
 	)
 }

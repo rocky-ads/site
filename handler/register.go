@@ -272,6 +272,11 @@ func RegisterStep3Handler(c *fiber.Ctx) error {
 	// Set JWT cookie
 	cookie.SetJWT(c, token)
 
-	c.Set("HX-Redirect", "/")
+	c.Set("HX-Redirect", "/auth/welcome")
 	return c.SendStatus(fiber.StatusOK)
+}
+
+func WelcomeHandler(c *fiber.Ctx) error {
+	rockCount := 3
+	return renderPage(c, "Welcome", ui.WelcomePage(rockCount))
 }

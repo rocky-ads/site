@@ -7,6 +7,7 @@ import (
 	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/field"
+	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/param"
 	"github.com/rocky-ads/site/search"
 	"github.com/rocky-ads/site/ui"
@@ -229,7 +230,9 @@ func SwitchCategoryHandler(c *fiber.Ctx) error {
 
 	cookie.SetCategoryID(c, categoryID)
 
-	return render(c, ui.SearchContainerRefresh(categoryName, categoryImage))
+	userID := local.GetUserID(c)
+
+	return render(c, ui.SearchContainerRefresh(userID, categoryName, categoryImage))
 }
 
 func ShowFiltersHandler(c *fiber.Ctx) error {
@@ -250,5 +253,7 @@ func ShowFiltersHandler(c *fiber.Ctx) error {
 		filters = append(filters, field.FilterNode(fv))
 	}
 
-	return render(c, ui.SearchWidget(fv.Get("q"), filters))
+	userID := local.GetUserID(c)
+
+	return render(c, ui.SearchWidget(userID, fv.Get("q"), filters))
 }

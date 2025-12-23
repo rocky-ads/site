@@ -11,6 +11,7 @@ type buttonProps struct {
 	Href     string
 	Type     string // "button", "submit", "reset" - only used when Href is empty
 	Class    string // Additional classes to append
+	Disabled bool   // If true, button will be disabled (for links, renders as disabled button instead)
 	Attrs    []g.Node
 	Children []g.Node // If provided, Text is ignored
 }
@@ -18,6 +19,7 @@ type buttonProps struct {
 // standardButton creates a standardized button element.
 // If Href is provided, returns an anchor element styled as a button.
 // Otherwise, returns a button element.
+// If Disabled is true and Href is set, renders a disabled button instead of a link.
 func standardButton(props buttonProps) g.Node {
 	baseClasses := "inline-block px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
 
@@ -28,11 +30,16 @@ func standardButton(props buttonProps) g.Node {
 		classes = baseClasses
 	}
 
+	// Add disabled styling if disabled
+	if props.Disabled {
+		classes += " opacity-50 cursor-not-allowed"
+	}
+
 	allAttrs := []g.Node{Class(classes)}
 	allAttrs = append(allAttrs, props.Attrs...)
 
-	if props.Href != "" {
-		// Return anchor element
+	if props.Href != "" && !props.Disabled {
+		// Return anchor element (only if not disabled)
 		allAttrs = append(allAttrs, Href(props.Href))
 		var content g.Node
 		if len(props.Children) > 0 {
@@ -44,11 +51,14 @@ func standardButton(props buttonProps) g.Node {
 		return A(allNodes...)
 	}
 
-	// Return button element
+	// Return button element (or disabled button if Href was set but Disabled is true)
 	if props.Type == "" {
 		props.Type = "button"
 	}
 	allAttrs = append(allAttrs, Type(props.Type))
+	if props.Disabled {
+		allAttrs = append(allAttrs, Disabled())
+	}
 	var content g.Node
 	if len(props.Children) > 0 {
 		content = g.Group(props.Children)

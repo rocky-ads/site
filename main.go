@@ -50,6 +50,7 @@ func setupApp() *fiber.App {
 
 	auth := app.Group("/auth", handler.AuthRequired)
 	auth.Get("/user-menu", handler.UserMenuHandler)
+	auth.Get("/welcome", handler.WelcomeHandler)
 
 	//admin := app.Group("/admin", handler.AdminRequired)
 
