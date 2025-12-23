@@ -6,7 +6,6 @@ import (
 )
 
 func ValidatePasswordConfirmation(password, confirmation string) error {
-	fmt.Println("ValidatePasswordConfirmation", password, confirmation)
 	if password != confirmation {
 		return fmt.Errorf("passwords do not match")
 	}

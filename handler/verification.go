@@ -26,7 +26,7 @@ const (
 
 type phoneVerification struct {
 	ID               int       `json:"id"`
-	Phone            string    `json:"phone"`
+	PhoneE64         string    `json:"phone_e64"`
 	VerificationCode string    `json:"verification_code"`
 	Attempts         int       `json:"attempts"`
 	CreatedAt        time.Time `json:"created_at"`
@@ -46,7 +46,7 @@ func generateVerificationCode() (string, error) {
 
 func storeVerificationCode(phoneE64, code string) error {
 	_, err := db.Exec(`
-		INSERT INTO phone_verification (phone, verification_code, attempts) 
+		INSERT INTO phone_verification (phone_e64, verification_code, attempts) 
 		VALUES ($1, $2, 0)
 	`, phoneE64, code)
 
@@ -55,7 +55,7 @@ func storeVerificationCode(phoneE64, code string) error {
 	}
 
 	logger.Info("Created verification code",
-		"component", "verification", "phone", phoneE64)
+		"component", "verification", "phoneE64", phoneE64)
 
 	// Lazy cleanup: remove expired codes when storing a new one
 	// Ignore cleanup errors to avoid blocking code storage
@@ -67,21 +67,21 @@ func storeVerificationCode(phoneE64, code string) error {
 	return nil
 }
 
-func getPhoneVerification(phone string) (phoneVerification, error) {
+func getPhoneVerification(phoneE64 string) (phoneVerification, error) {
 	var pv phoneVerification
 	// Calculate expiry threshold: records created before this time are expired
 	expiryThreshold := time.Now().UTC().Add(-CodeExpiry)
 	err := db.QueryRow(`
-		SELECT id, phone, verification_code, attempts, created_at
+		SELECT id, phone_e64, verification_code, attempts, created_at
 		FROM phone_verification 
-		WHERE phone = $1 
+		WHERE phone_e64 = $1 
 			AND created_at > $2
 			AND attempts < $3
 		ORDER BY created_at DESC 
 		LIMIT 1
-	`, phone, expiryThreshold, MaxAttempts).Scan(
+	`, phoneE64, expiryThreshold, MaxAttempts).Scan(
 		&pv.ID,
-		&pv.Phone,
+		&pv.PhoneE64,
 		&pv.VerificationCode,
 		&pv.Attempts,
 		&pv.CreatedAt,
@@ -120,18 +120,18 @@ func validateVerificationCode(phoneE64, code string) (bool, error) {
 	// Ensure both slices are the same length for constant-time comparison
 	if len(codeBytes) != len(inputBytes) {
 		logger.Warn("Invalid code (length mismatch)",
-			"component", "verification", "phone", phoneE64)
+			"component", "verification", "phoneE64", phoneE64)
 		return false, nil
 	}
 
 	// Use constant-time comparison to prevent timing attacks
 	if subtle.ConstantTimeCompare(codeBytes, inputBytes) == 1 {
 		logger.Info("Code validated successfully",
-			"component", "verification", "phone", phoneE64)
+			"component", "verification", "phoneE64", phoneE64)
 		return true, nil
 	}
 
-	logger.Warn("Invalid code", "component", "verification", "phone", phoneE64)
+	logger.Warn("Invalid code", "component", "verification", "phoneE64", phoneE64)
 	return false, nil
 }
 
@@ -170,44 +170,44 @@ func markPhoneVerified(userID int) error {
 
 // invalidateVerificationCodes invalidates all verification codes for a phone number
 // This is called when a user replies STOP or when SMS delivery fails
-func invalidateVerificationCodes(phone string) error {
+func invalidateVerificationCodes(phoneE64 string) error {
 	_, err := db.Exec(`
 		DELETE FROM phone_verification 
-		WHERE phone = $1
-	`, phone)
+		WHERE phone_e64 = $1
+	`, phoneE64)
 
 	if err != nil {
-		return fmt.Errorf("failed to invalidate verification codes for %s: %w", phone, err)
+		return fmt.Errorf("failed to invalidate verification codes for %s: %w", phoneE64, err)
 	}
 
 	logger.Info("Invalidated all verification codes for phone",
-		"component", "verification", "phone", phone)
+		"component", "verification", "phoneE64", phoneE64)
 	return nil
 }
 
-func cleanupStaleVerifications(phone string) error {
+func cleanupStaleVerifications(phoneE64 string) error {
 	// Count failed verifications in the last 24 hours
 	var count int
 	err := db.QueryRow(`
 		SELECT COUNT(*) FROM phone_verification 
-		WHERE phone = $1 AND created_at > $2
-	`, phone, time.Now().UTC().Add(-VerificationWindow)).Scan(&count)
+		WHERE phone_e64 = $1 AND created_at > $2
+	`, phoneE64, time.Now().UTC().Add(-VerificationWindow)).Scan(&count)
 
 	if err != nil {
-		return fmt.Errorf("failed to count failed verifications for %s: %w", phone, err)
+		return fmt.Errorf("failed to count failed verifications for %s: %w", phoneE64, err)
 	}
 
 	// If we've exceeded the threshold, clean up the account
 	if count >= MaxFailedVerifications {
 		logger.Warn("Max failed verifications exceeded, cleaning up account",
-			"component", "verification", "phone", phone)
-		return cleanupFailedAccount(phone)
+			"component", "verification", "phoneE64", phoneE64)
+		return cleanupFailedAccount(phoneE64)
 	}
 
 	return nil
 }
 
-func cleanupFailedAccount(phone string) error {
+func cleanupFailedAccount(phoneE64 string) error {
 	// Start a transaction
 	tx, err := db.Begin()
 	if err != nil {
@@ -216,14 +216,14 @@ func cleanupFailedAccount(phone string) error {
 	defer tx.Rollback()
 
 	// Delete verification codes
-	_, err = tx.Exec(`DELETE FROM phone_verification WHERE phone = $1`, phone)
+	_, err = tx.Exec(`DELETE FROM phone_verification WHERE phone_e64 = $1`, phoneE64)
 	if err != nil {
 		return fmt.Errorf("failed to delete verification codes: %w", err)
 	}
 
 	// Delete any partial user records (users created but not verified)
 	// Use phone_hash since users table stores phone_hash, not plain phone
-	phoneHash := db.HashString(phone)
+	phoneHash := db.HashString(phoneE64)
 	_, err = tx.Exec(`DELETE FROM users WHERE phone_hash = $1 AND phone_verified = 0`, phoneHash)
 	if err != nil {
 		return fmt.Errorf("failed to delete unverified user: %w", err)
@@ -235,6 +235,6 @@ func cleanupFailedAccount(phone string) error {
 	}
 
 	logger.Info("Successfully cleaned up failed account",
-		"component", "verification", "phone", phone)
+		"component", "verification", "phone", phoneE64)
 	return nil
 }

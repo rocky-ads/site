@@ -254,7 +254,7 @@ func CreateUser(username, phoneE64, plainPassword string) (User, error) {
 	}
 
 	// Cleanup registration validation codes
-	_, err = tx.Exec(`DELETE FROM phone_verification WHERE phone = $1`, phoneE64)
+	_, err = tx.Exec(`DELETE FROM phone_verification WHERE phone_e64 = $1`, phoneE64)
 	if err != nil {
 		return User{}, fmt.Errorf("failed to cleanup verification codes: %w", err)
 	}
@@ -271,4 +271,13 @@ func CreateUser(username, phoneE64, plainPassword string) (User, error) {
 	}
 
 	return u, nil
+}
+
+func SetSMSOptOut(userID int, optedOut bool) error {
+	val := 0
+	if optedOut {
+		val = 1
+	}
+	_, err := db.Exec("UPDATE Users SET sms_opted_out = $1 WHERE id = $2", val, userID)
+	return err
 }

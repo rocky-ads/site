@@ -39,12 +39,12 @@ CREATE INDEX idx_user_phone_hash ON users(phone_hash);
 -- Phone verification codes table
 CREATE TABLE phone_verification (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    phone TEXT NOT NULL,
+    phone_e64 TEXT NOT NULL,
     verification_code TEXT NOT NULL,
     attempts INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_phone_verification_phone ON phone_verification(phone);
+CREATE INDEX idx_phone_verification_phone_e64 ON phone_verification(phone_e64);
 CREATE INDEX idx_phone_verification_code ON phone_verification(verification_code);
 CREATE INDEX idx_phone_verification_created_at ON phone_verification(created_at);
 

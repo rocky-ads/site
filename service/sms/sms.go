@@ -186,53 +186,31 @@ func SendMessage(phoneE64, message string) error {
 	return nil
 }
 
-/*
-// HandleStopResponse processes when a user replies STOP to an SMS
-func HandleStopResponse(phoneNumber string) error {
-	logger.Info("STOP response received",
+// setSMSOptOut sets the SMS opt-out flag for a user by phone number
+func setSMSOptOut(phoneNumber string, optOut bool, logMessage string) error {
+	logger.Info(logMessage,
 		"component", "SMS", "phoneNumber", phoneNumber)
 
-	// Find user by phone and set opt-out flag
-	u, err := user.GetUserByPhone(phoneNumber)
+	u, err := user.GetByPhoneE64(phoneNumber)
 	if err == nil {
-		// User exists, set opt-out flag
-		if err := user.SetSMSOptOut(u.ID, true); err != nil {
+		if err := user.SetSMSOptOut(u.ID, optOut); err != nil {
 			logger.Error("Failed to set opt-out for user",
 				"error", err, "component", "SMS", "userID", u.ID)
 		}
 	}
 
-	// Invalidate any pending verification codes for this phone
-	err = handler.InvalidateVerificationCodes(phoneNumber)
-	if err != nil {
-		logger.Error("Failed to invalidate verification codes",
-			"error", err, "component", "SMS", "phoneNumber", phoneNumber)
-		return err
-	}
-
 	return nil
 }
-*/
 
-/*
+// HandleStopResponse processes when a user replies STOP to an SMS
+func HandleStopResponse(phoneNumber string) error {
+	return setSMSOptOut(phoneNumber, true, "STOP response received")
+}
+
 // HandleUnstopResponse processes when a user replies UNSTOP to opt back in
 func HandleUnstopResponse(phoneNumber string) error {
-	logger.Info("UNSTOP response received",
-		"component", "SMS", "phoneNumber", phoneNumber)
-
-	// Find user by phone and clear opt-out flag
-	u, err := user.GetByPhoneE64(phoneNumber)
-	if err == nil {
-		// User exists, clear opt-out flag
-		if err := user.SetSMSOptOut(u.ID, false); err != nil {
-			logger.Error("Failed to clear opt-out for user",
-				"error", err, "component", "SMS", "userID", u.ID)
-		}
-	}
-
-	return nil
+	return setSMSOptOut(phoneNumber, false, "UNSTOP response received")
 }
-*/
 
 // IsOptedOut checks if a phone number's user has opted out
 func IsOptedOut(phoneNumber string) bool {
