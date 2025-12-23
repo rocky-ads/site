@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"strconv"
 )
 
@@ -12,13 +11,13 @@ const (
 	ViewTree
 )
 
-func ValidateView(viewStr string) (int, error) {
+func ValidateView(viewStr string) int {
 	view, err := strconv.Atoi(viewStr)
 	if err != nil {
-		return 0, fmt.Errorf("invalid view: %w", err)
+		return ViewGrid
 	}
 	if view < ViewList || view > ViewTree {
-		return 0, fmt.Errorf("invalid view: %d", view)
+		return ViewGrid
 	}
-	return view, nil
+	return view
 }

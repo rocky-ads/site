@@ -1,25 +1,27 @@
 package ui
 
 import (
+	"strconv"
+
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
 )
 
-func HomePage(userID int, categoryName, categoryImage string) []g.Node {
-	return []g.Node{SearchContainer(userID, categoryName, categoryImage)}
+func HomePage(userID, view int, categoryName, categoryImage string) []g.Node {
+	return []g.Node{SearchContainer(userID, view, categoryName, categoryImage)}
 }
 
-func SearchContainer(userID int, categoryName, categoryImage string) g.Node {
+func SearchContainer(userID, view int, categoryName, categoryImage string) g.Node {
 	return Div(
 		ID("search-container"),
-		categorySearch(userID, categoryName, categoryImage),
+		categorySearch(userID, view, categoryName, categoryImage),
 	)
 }
 
-func SearchContainerRefresh(userID int, categoryName, categoryImage string) g.Node {
+func SearchContainerRefresh(userID, view int, categoryName, categoryImage string) g.Node {
 	return g.Group([]g.Node{
-		SearchContainer(userID, categoryName, categoryImage),
+		SearchContainer(userID, view, categoryName, categoryImage),
 		Div(
 			ID("search-container-refresh"),
 			hx.SwapOOB("true"),
@@ -27,10 +29,10 @@ func SearchContainerRefresh(userID int, categoryName, categoryImage string) g.No
 	})
 }
 
-func categorySearch(userID int, categoryName, categoryImage string) g.Node {
+func categorySearch(userID, view int, categoryName, categoryImage string) g.Node {
 	return Div(
 		categoryButton(categoryName, categoryImage),
-		SearchWidget(userID, "", []g.Node{}),
+		SearchWidget(userID, view, "", []g.Node{}),
 	)
 }
 
@@ -144,21 +146,41 @@ func newAdButton(userID int) g.Node {
 	})
 }
 
-func viewToggles() g.Node {
-	return Div(
-		Class("flex items-center gap-2"),
+func viewToggle(view, target int) g.Node {
+	active := view == target
+	class := "p-2 rounded-full border-2 "
+	if active {
+		class += "border-blue-500 bg-blue-100 dark:bg-blue-900 dark:border-blue-400"
+	} else {
+		class += "border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+	}
+	return Button(
+		Class(class),
+		hx.Get("/api/view/"+strconv.Itoa(target)),
+		hx.Target("#search-results"),
+		hx.Swap("outerHTML"),
+		g.Text(strconv.Itoa(target)),
 	)
 }
 
-func viewRow(userID int) g.Node {
+func viewToggles(view int) g.Node {
+	return Div(
+		Class("flex items-center gap-2"),
+		viewToggle(view, ViewList),
+		viewToggle(view, ViewGrid),
+		viewToggle(view, ViewTree),
+	)
+}
+
+func viewRow(userID, view int) g.Node {
 	return Div(
 		Class("flex justify-between items-center gap-2 mb-4 mt-6"),
 		newAdButton(userID),
-		viewToggles(),
+		viewToggles(view),
 	)
 }
 
-func SearchWidget(userID int, q string, filters []g.Node) g.Node {
+func SearchWidget(userID, view int, q string, filters []g.Node) g.Node {
 	return Form(
 		Class("flex flex-col gap-4"),
 		ID("search-widget"),
@@ -168,7 +190,7 @@ func SearchWidget(userID int, q string, filters []g.Node) g.Node {
 		hx.Include("form"),
 		g.If(len(filters) > 0, searchFilters(q, filters)),
 		g.If(len(filters) == 0, searchSimple(q)),
-		viewRow(userID),
+		viewRow(userID, view),
 		searchResults(),
 	)
 }

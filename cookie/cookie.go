@@ -10,7 +10,7 @@ import (
 	"github.com/rocky-ads/site/ui"
 )
 
-func GetView(c *fiber.Ctx) (int, error) {
+func GetView(c *fiber.Ctx) int {
 	view := c.Cookies("view")
 	return ui.ValidateView(view)
 }

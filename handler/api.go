@@ -231,8 +231,9 @@ func SwitchCategoryHandler(c *fiber.Ctx) error {
 	cookie.SetCategoryID(c, categoryID)
 
 	userID := local.GetUserID(c)
+	view := cookie.GetView(c)
 
-	return render(c, ui.SearchContainerRefresh(userID, categoryName, categoryImage))
+	return render(c, ui.SearchContainerRefresh(userID, view, categoryName, categoryImage))
 }
 
 func ShowFiltersHandler(c *fiber.Ctx) error {
@@ -254,6 +255,7 @@ func ShowFiltersHandler(c *fiber.Ctx) error {
 	}
 
 	userID := local.GetUserID(c)
+	view := cookie.GetView(c)
 
-	return render(c, ui.SearchWidget(userID, fv.Get("q"), filters))
+	return render(c, ui.SearchWidget(userID, view, fv.Get("q"), filters))
 }

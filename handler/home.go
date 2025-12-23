@@ -27,7 +27,8 @@ func HomeHandler(c *fiber.Ctx) error {
 	}
 
 	userID := local.GetUserID(c)
+	view := cookie.GetView(c)
 
 	return renderPage(c, config.ServerName,
-		ui.HomePage(userID, categoryName, categoryImage))
+		ui.HomePage(userID, view, categoryName, categoryImage))
 }
