@@ -38,10 +38,7 @@ func getFormValues(c *fiber.Ctx) field.Values {
 }
 
 func GetAllValuesHandler(c *fiber.Ctx) error {
-	categoryID, err := param.GetCategoryID(c)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, err.Error())
-	}
+	categoryID := param.GetCategoryID(c)
 
 	specField, fiberErr := param.GetSpecField(c, categoryID)
 	if fiberErr != nil {
@@ -59,10 +56,7 @@ func GetAllValuesHandler(c *fiber.Ctx) error {
 }
 
 func GetAnyValuesHandler(c *fiber.Ctx) error {
-	categoryID, err := param.GetCategoryID(c)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, err.Error())
-	}
+	categoryID := param.GetCategoryID(c)
 
 	specField, fiberErr := param.GetSpecField(c, categoryID)
 	if fiberErr != nil {
@@ -80,10 +74,7 @@ func GetAnyValuesHandler(c *fiber.Ctx) error {
 }
 
 func GetAdValuesHandler(c *fiber.Ctx) error {
-	categoryID, err := param.GetCategoryID(c)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, err.Error())
-	}
+	categoryID := param.GetCategoryID(c)
 
 	specField, fiberErr := param.GetSpecField(c, categoryID)
 	if fiberErr != nil {
@@ -118,10 +109,7 @@ func GetAdValuesHandler(c *fiber.Ctx) error {
 }
 
 func GetChainsHandler(c *fiber.Ctx) error {
-	categoryID, err := param.GetCategoryID(c)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, err.Error())
-	}
+	categoryID := param.GetCategoryID(c)
 
 	chains, err := field.GetCategoryChains(categoryID)
 	if err != nil {
@@ -146,10 +134,7 @@ func GetAdFilterValuesHandler(c *fiber.Ctx) error {
 }
 
 func SearchHandler(c *fiber.Ctx) error {
-	categoryID, err := param.GetCategoryID(c)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, err.Error())
-	}
+	categoryID := param.GetCategoryID(c)
 
 	// TODO revisit this
 	fv := getFormValues(c)
@@ -171,10 +156,7 @@ func SearchHandler(c *fiber.Ctx) error {
 }
 
 func GetFirstSpecFieldsHandler(c *fiber.Ctx) error {
-	categoryID, err := param.GetCategoryID(c)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, err.Error())
-	}
+	categoryID := param.GetCategoryID(c)
 
 	fields, err := field.GetFirstSpecFields(categoryID)
 	if err != nil {
@@ -194,10 +176,7 @@ func GetFirstSpecFieldsHandler(c *fiber.Ctx) error {
 }
 
 func GetLastSpecFieldHandler(c *fiber.Ctx) error {
-	categoryID, err := param.GetCategoryID(c)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, err.Error())
-	}
+	categoryID := param.GetCategoryID(c)
 
 	last, err := field.GetLastSpecField(categoryID)
 	if err != nil {
@@ -214,10 +193,7 @@ func GetLastSpecFieldHandler(c *fiber.Ctx) error {
 }
 
 func SwitchCategoryHandler(c *fiber.Ctx) error {
-	categoryID, err := param.GetCategoryID(c)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, err.Error())
-	}
+	categoryID := param.GetCategoryID(c)
 
 	categoryName, err := ad.GetCategoryName(categoryID)
 	if err != nil {
@@ -233,8 +209,9 @@ func SwitchCategoryHandler(c *fiber.Ctx) error {
 
 	userID := local.GetUserID(c)
 	view := cookie.GetView(c)
+	loc := cookie.GetLocation(c)
 
-	results, err := searchAndRenderAds(categoryID, make(field.Values))
+	results, err := searchAndRenderAds(categoryID, view, make(field.Values), loc)
 	if err != nil {
 		return err
 	}
@@ -265,8 +242,9 @@ func ShowFiltersHandler(c *fiber.Ctx) error {
 
 	userID := local.GetUserID(c)
 	view := cookie.GetView(c)
+	loc := cookie.GetLocation(c)
 
-	results, err := searchAndRenderAds(categoryID, fv)
+	results, err := searchAndRenderAds(categoryID, view, fv, loc)
 	if err != nil {
 		return err
 	}

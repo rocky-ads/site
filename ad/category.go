@@ -16,7 +16,8 @@ type Category struct {
 }
 
 var (
-	categories = make(map[int]Category)
+	categories      = make(map[int]Category)
+	defaultCategory int
 )
 
 func Init() error {
@@ -39,23 +40,27 @@ func Init() error {
 	for _, cat := range allCategories {
 		categories[cat.ID] = cat
 	}
+
+	// Precalculate default category ID
+	var err error
+	defaultCategory, err = GetCategoryIDByName(config.DefaultAdCategoryName)
+	if err != nil {
+		return fmt.Errorf("default category not found: %w", err)
+	}
+
 	return nil
 }
 
-func ParseCategory(categoryStr string) (int, error) {
-	if categoryStr == "" {
-		// No category string provided, use default category name
-		return GetCategoryIDByName(config.DefaultAdCategoryName)
-	}
+func ParseCategory(categoryStr string) int {
 	categoryID, err := strconv.Atoi(categoryStr)
 	if err != nil {
-		return 0, err
+		return defaultCategory
 	}
-	_, err = GetCategoryName(categoryID)
-	if err != nil {
-		return 0, err
+	_, ok := categories[categoryID]
+	if !ok {
+		return defaultCategory
 	}
-	return categoryID, nil
+	return categoryID
 }
 
 func GetCategoryName(categoryID int) (string, error) {

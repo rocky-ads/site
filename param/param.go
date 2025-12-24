@@ -8,7 +8,7 @@ import (
 	"github.com/rocky-ads/site/field"
 )
 
-func GetCategoryID(c *fiber.Ctx) (int, error) {
+func GetCategoryID(c *fiber.Ctx) int {
 	category := c.Params("category")
 	return ad.ParseCategory(category)
 }

@@ -58,7 +58,6 @@ func filtersButton() g.Node {
 			hx.Get("/api/show-filters"),
 			hx.Target("#search-widget"),
 			hx.Swap("outerHTML"),
-			hx.Include("form"),
 		},
 	})
 }
@@ -148,7 +147,7 @@ func SearchView(userID, view int, results []g.Node) g.Node {
 		Class("flex flex-col gap-4"),
 		ID("search-view"),
 		viewRow(userID, view),
-		searchResults(results),
+		searchResults(view, results),
 	)
 }
 
@@ -166,9 +165,19 @@ func SearchWidget(userID, view int, q string, results, filters []g.Node) g.Node 
 	)
 }
 
-func searchResults(results []g.Node) g.Node {
+func searchResults(view int, results []g.Node) g.Node {
+	var class string
+
+	switch view {
+	case ViewGrid:
+		class = "grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+	case ViewList, ViewTree:
+		// Empty class - items naturally stack as a column
+	}
+
 	return Div(
 		ID("search-results"),
+		Class(class),
 		g.Group(results),
 	)
 }

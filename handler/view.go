@@ -12,13 +12,14 @@ func ViewHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
 	viewStr := c.Params("view")
 	view := ui.ValidateView(viewStr)
+	loc := cookie.GetLocation(c)
 
 	categoryID, err := cookie.GetCategoryID(c)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
-	results, err := searchAndRenderAds(categoryID, make(field.Values))
+	results, err := searchAndRenderAds(categoryID, view, make(field.Values), loc)
 	if err != nil {
 		return err
 	}

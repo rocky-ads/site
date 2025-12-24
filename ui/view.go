@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strconv"
 
 	g "maragu.dev/gomponents"
@@ -64,5 +65,26 @@ func viewToggles(view int) g.Node {
 		viewToggle(view, ViewGrid),
 		viewToggle(view, ViewList),
 		viewToggle(view, ViewTree),
+	)
+}
+
+func AdGridNode(adID int, title string) g.Node {
+	return Div(
+		ID(fmt.Sprintf("ad-%d", adID)),
+		g.Text(title),
+	)
+}
+
+func AdListNode(adID int, title string) g.Node {
+	return Div(
+		ID(fmt.Sprintf("ad-%d", adID)),
+		g.Text(title),
+	)
+}
+
+func AdTreeNode(adID int, title string) g.Node {
+	return Div(
+		ID(fmt.Sprintf("ad-%d", adID)),
+		g.Text(title),
 	)
 }

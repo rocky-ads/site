@@ -29,8 +29,9 @@ func HomeHandler(c *fiber.Ctx) error {
 
 	userID := local.GetUserID(c)
 	view := cookie.GetView(c)
+	loc := cookie.GetLocation(c)
 
-	results, err := searchAndRenderAds(categoryID, make(field.Values))
+	results, err := searchAndRenderAds(categoryID, view, make(field.Values), loc)
 	if err != nil {
 		return err
 	}

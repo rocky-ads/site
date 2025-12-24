@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"time"
+
 	"maragu.dev/gomponents"
 	g "maragu.dev/gomponents"
 
@@ -26,13 +28,13 @@ func renderPage(c *fiber.Ctx, title string, body []gomponents.Node) error {
 }
 
 // searchAndRenderAds searches for ads and renders them into gomponents nodes
-func searchAndRenderAds(categoryID int, fv field.Values) ([]g.Node, error) {
+func searchAndRenderAds(categoryID int, view int, fv field.Values, loc *time.Location) ([]g.Node, error) {
 	adIDs, err := search.Search(categoryID, fv)
 	if err != nil {
 		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	results, err := ad.RenderAds(adIDs)
+	results, err := ad.AdNodes(adIDs, view, loc)
 	if err != nil {
 		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}

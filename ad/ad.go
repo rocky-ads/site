@@ -20,16 +20,20 @@ type Ad struct {
 	ImageCount  int        `db:"image_count" json:"image_count"`
 	LocationID  int        `db:"location_id" json:"location_id"`
 
-	// Location fields from joins
+	// Location fields from join
 	City      string `db:"city" json:"city"`
 	AdminArea string `db:"admin_area" json:"admin_area"`
 	Country   string `db:"country" json:"country"`
 
-	// User-specific computed fields
+	// Computed fields
 	Bookmarked bool `db:"-" json:"bookmarked"`
 }
 
-func GetAds(ids []int) ([]Ad, error) {
+func (a Ad) IsDeleted() bool {
+	return a.DeletedAt != nil
+}
+
+func GetAds(ids []int, loc *time.Location) ([]Ad, error) {
 	if len(ids) == 0 {
 		return []Ad{}, nil
 	}
@@ -61,11 +65,21 @@ func GetAds(ids []int) ([]Ad, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Convert timestamps to local timezone
+	for i := range ads {
+		ads[i].CreatedAt = ads[i].CreatedAt.In(loc)
+		if ads[i].DeletedAt != nil {
+			converted := (*ads[i].DeletedAt).In(loc)
+			ads[i].DeletedAt = &converted
+		}
+	}
+
 	return ads, nil
 }
 
-func GetAd(id int) (Ad, error) {
-	ads, err := GetAds([]int{id})
+func GetAd(id int, loc *time.Location) (Ad, error) {
+	ads, err := GetAds([]int{id}, loc)
 	if err != nil {
 		return Ad{}, err
 	}
