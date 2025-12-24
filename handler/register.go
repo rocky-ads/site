@@ -106,7 +106,7 @@ sentences), and do not mention yourself, AI, or Grok in the response.`
 			"unable to complete registration with these credentials. Please try different information.")
 	}
 	if resp != "OK" {
-		return "", fmt.Errorf(resp)
+		return "", fmt.Errorf("%s", resp)
 	}
 	return resp, nil
 }

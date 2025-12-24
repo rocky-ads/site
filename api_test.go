@@ -1579,7 +1579,7 @@ func TestSearch(t *testing.T) {
 				}
 
 				// Check for exact expected ad IDs (only if specified)
-				if tt.expectedAdIDs != nil && len(tt.expectedAdIDs) > 0 {
+				if len(tt.expectedAdIDs) > 0 {
 					if len(adIDs) != len(tt.expectedAdIDs) {
 						t.Errorf("Expected %d ad_ids, got %d. Expected: %v, Got: %v", len(tt.expectedAdIDs), len(adIDs), tt.expectedAdIDs, adIDs)
 					} else {
