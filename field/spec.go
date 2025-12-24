@@ -59,8 +59,9 @@ func Placeholders(n int) string {
 	return strings.Join(ph, ",")
 }
 
-// filterValidFields returns a new Values map containing only valid spec field names for the category
-func filterValidFields(categoryID int, fv Values) Values {
+// FilterSpecFields returns a new Values map containing only valid spec field names for the category.
+// This filters out non-field parameters like "q" (search query) and "ad_ids".
+func FilterSpecFields(categoryID int, fv Values) Values {
 	fields, ok := categoryFields[categoryID]
 	if !ok {
 		return make(Values)
@@ -92,7 +93,7 @@ func buildAdValuesQuery(f SpecField, fv Values, adFilterFunc func() (string, []a
 
 	args := adArgs
 
-	fv = filterValidFields(f.CategoryID, fv)
+	fv = FilterSpecFields(f.CategoryID, fv)
 
 	for fieldName, values := range fv {
 		if len(values) > 0 {
@@ -124,7 +125,7 @@ func buildAllQuery(f SpecField, fv Values) (string, []any, error) {
 	whereClauses := []string{"category_id = ?"}
 	args := []any{f.CategoryID}
 
-	fv = filterValidFields(f.CategoryID, fv)
+	fv = FilterSpecFields(f.CategoryID, fv)
 
 	for fieldName, values := range fv {
 		if len(values) > 0 {

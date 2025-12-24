@@ -1,38 +1,26 @@
 package ui
 
 import (
-	"strconv"
-
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
 )
 
-func HomePage(userID, view int, categoryName, categoryImage string) []g.Node {
-	return []g.Node{SearchContainer(userID, view, categoryName, categoryImage)}
+func HomePage(userID, view int, categoryName, categoryImage string, results []g.Node) []g.Node {
+	return []g.Node{SearchContainer(userID, view, categoryName, categoryImage, results)}
 }
 
-func SearchContainer(userID, view int, categoryName, categoryImage string) g.Node {
+func SearchContainer(userID, view int, categoryName, categoryImage string, results []g.Node) g.Node {
 	return Div(
 		ID("search-container"),
-		categorySearch(userID, view, categoryName, categoryImage),
+		categorySearch(userID, view, categoryName, categoryImage, results),
 	)
 }
 
-func SearchContainerRefresh(userID, view int, categoryName, categoryImage string) g.Node {
-	return g.Group([]g.Node{
-		SearchContainer(userID, view, categoryName, categoryImage),
-		Div(
-			ID("search-container-refresh"),
-			hx.SwapOOB("true"),
-		),
-	})
-}
-
-func categorySearch(userID, view int, categoryName, categoryImage string) g.Node {
+func categorySearch(userID, view int, categoryName, categoryImage string, results []g.Node) g.Node {
 	return Div(
 		categoryButton(categoryName, categoryImage),
-		SearchWidget(userID, view, "", []g.Node{}),
+		SearchWidget(userID, view, "", results, []g.Node{}),
 	)
 }
 
@@ -70,6 +58,7 @@ func filtersButton() g.Node {
 			hx.Get("/api/show-filters"),
 			hx.Target("#search-widget"),
 			hx.Swap("outerHTML"),
+			hx.Include("form"),
 		},
 	})
 }
@@ -146,32 +135,6 @@ func newAdButton(userID int) g.Node {
 	})
 }
 
-func viewToggle(view, target int) g.Node {
-	active := view == target
-	class := "p-2 rounded-full border-2 "
-	if active {
-		class += "border-blue-500 bg-blue-100 dark:bg-blue-900 dark:border-blue-400"
-	} else {
-		class += "border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
-	}
-	return Button(
-		Class(class),
-		hx.Get("/api/view/"+strconv.Itoa(target)),
-		hx.Target("#search-results"),
-		hx.Swap("outerHTML"),
-		g.Text(strconv.Itoa(target)),
-	)
-}
-
-func viewToggles(view int) g.Node {
-	return Div(
-		Class("flex items-center gap-2"),
-		viewToggle(view, ViewList),
-		viewToggle(view, ViewGrid),
-		viewToggle(view, ViewTree),
-	)
-}
-
 func viewRow(userID, view int) g.Node {
 	return Div(
 		Class("flex justify-between items-center gap-2 my-4"),
@@ -180,7 +143,16 @@ func viewRow(userID, view int) g.Node {
 	)
 }
 
-func SearchWidget(userID, view int, q string, filters []g.Node) g.Node {
+func SearchView(userID, view int, results []g.Node) g.Node {
+	return Div(
+		Class("flex flex-col gap-4"),
+		ID("search-view"),
+		viewRow(userID, view),
+		searchResults(results),
+	)
+}
+
+func SearchWidget(userID, view int, q string, results, filters []g.Node) g.Node {
 	return Form(
 		Class("flex flex-col gap-4"),
 		ID("search-widget"),
@@ -190,20 +162,13 @@ func SearchWidget(userID, view int, q string, filters []g.Node) g.Node {
 		hx.Include("form"),
 		g.If(len(filters) > 0, searchFilters(q, filters)),
 		g.If(len(filters) == 0, searchSimple(q)),
-		viewRow(userID, view),
-		searchResults(),
+		SearchView(userID, view, results),
 	)
 }
 
-func searchResults() g.Node {
+func searchResults(results []g.Node) g.Node {
 	return Div(
 		ID("search-results"),
-		searchResultsList(),
-	)
-}
-
-func searchResultsList() g.Node {
-	return Div(
-		ID("search-results-list"),
+		g.Group(results),
 	)
 }

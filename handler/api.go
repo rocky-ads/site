@@ -8,6 +8,7 @@ import (
 	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/local"
+	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/param"
 	"github.com/rocky-ads/site/search"
 	"github.com/rocky-ads/site/ui"
@@ -233,7 +234,12 @@ func SwitchCategoryHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
 	view := cookie.GetView(c)
 
-	return render(c, ui.SearchContainerRefresh(userID, view, categoryName, categoryImage))
+	results, err := searchAndRenderAds(categoryID, make(field.Values))
+	if err != nil {
+		return err
+	}
+
+	return render(c, ui.SearchContainer(userID, view, categoryName, categoryImage, results))
 }
 
 func ShowFiltersHandler(c *fiber.Ctx) error {
@@ -248,6 +254,9 @@ func ShowFiltersHandler(c *fiber.Ctx) error {
 	}
 
 	fv := getQueryValues(c)
+	q := fv.Get("q")
+
+	fv = field.FilterSpecFields(categoryID, fv)
 
 	filters := make([]g.Node, 0, len(fields))
 	for _, field := range fields {
@@ -257,5 +266,14 @@ func ShowFiltersHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
 	view := cookie.GetView(c)
 
-	return render(c, ui.SearchWidget(userID, view, fv.Get("q"), filters))
+	results, err := searchAndRenderAds(categoryID, fv)
+	if err != nil {
+		return err
+	}
+
+	logger.Debug("ShowFiltersHandler results",
+		"resultsCount", len(results),
+	)
+
+	return render(c, ui.SearchWidget(userID, view, q, results, filters))
 }

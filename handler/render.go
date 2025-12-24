@@ -5,7 +5,10 @@ import (
 	g "maragu.dev/gomponents"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/rocky-ads/site/ad"
+	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/local"
+	"github.com/rocky-ads/site/search"
 	"github.com/rocky-ads/site/ui"
 )
 
@@ -20,4 +23,19 @@ func renderPage(c *fiber.Ctx, title string, body []gomponents.Node) error {
 	userName := local.GetUserName(c)
 	csrfToken := local.GetCSRFToken(c)
 	return render(c, ui.Page(userID, userName, title, c.Path(), csrfToken, body))
+}
+
+// searchAndRenderAds searches for ads and renders them into gomponents nodes
+func searchAndRenderAds(categoryID int, fv field.Values) ([]g.Node, error) {
+	adIDs, err := search.Search(categoryID, fv)
+	if err != nil {
+		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	results, err := ad.RenderAds(adIDs)
+	if err != nil {
+		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	return results, nil
 }

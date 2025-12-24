@@ -9,27 +9,30 @@ import (
 
 type Ad struct {
 	// Core database fields
-	ID          int        `json:"id"`
-	CategoryID  int        `json:"category_id"`
-	Title       string     `json:"title"`
-	Description string     `json:"description"`
-	Price       int        `json:"price"`
-	CreatedAt   time.Time  `json:"created_at"`
-	DeletedAt   *time.Time `json:"deleted_at,omitempty"`
-	UserID      int        `json:"user_id"`
-	ImageCount  int        `json:"image_count"`
-	LocationID  int        `json:"location_id"`
+	ID          int        `db:"id" json:"id"`
+	CategoryID  int        `db:"category_id" json:"category_id"`
+	Title       string     `db:"title" json:"title"`
+	Description string     `db:"description" json:"description"`
+	Price       int        `db:"price" json:"price"`
+	CreatedAt   time.Time  `db:"created_at" json:"created_at"`
+	DeletedAt   *time.Time `db:"deleted_at" json:"deleted_at,omitempty"`
+	UserID      int        `db:"user_id" json:"user_id"`
+	ImageCount  int        `db:"image_count" json:"image_count"`
+	LocationID  int        `db:"location_id" json:"location_id"`
 
 	// Location fields from joins
-	City      string `json:"city"`
-	AdminArea string `json:"admin_area"`
-	Country   string `json:"country"`
+	City      string `db:"city" json:"city"`
+	AdminArea string `db:"admin_area" json:"admin_area"`
+	Country   string `db:"country" json:"country"`
 
 	// User-specific computed fields
-	Bookmarked bool `json:"bookmarked"`
+	Bookmarked bool `db:"-" json:"bookmarked"`
 }
 
 func GetAds(ids []int) ([]Ad, error) {
+	if len(ids) == 0 {
+		return []Ad{}, nil
+	}
 	query := `
 		SELECT
 			a.id,
@@ -46,11 +49,15 @@ func GetAds(ids []int) ([]Ad, error) {
 			l.admin_area,
 			l.country
 		FROM ads a
-		LEFT JOIN location l ON a.location_id = l.id
-		WHERE a.id IN (?)
+		LEFT JOIN locations l ON a.location_id = l.id
+		WHERE a.id IN (` + field.Placeholders(len(ids)) + `)
 	`
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
 	var ads []Ad
-	err := db.QueryJSON(&ads, query, ids)
+	err := db.Select(&ads, query, args...)
 	if err != nil {
 		return nil, err
 	}

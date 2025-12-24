@@ -4,6 +4,7 @@ import (
 	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/cookie"
+	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/ui"
 
@@ -29,6 +30,11 @@ func HomeHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
 	view := cookie.GetView(c)
 
+	results, err := searchAndRenderAds(categoryID, make(field.Values))
+	if err != nil {
+		return err
+	}
+
 	return renderPage(c, config.ServerName,
-		ui.HomePage(userID, view, categoryName, categoryImage))
+		ui.HomePage(userID, view, categoryName, categoryImage, results))
 }
