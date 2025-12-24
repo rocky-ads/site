@@ -102,7 +102,7 @@ func checkOutstandingMessages() {
 	const timeout = 30 * time.Second
 	now := time.Now()
 
-	tracker.Range(func(key, value interface{}) bool {
+	tracker.Range(func(key, value any) bool {
 		messageSid := key.(string)
 		track := value.(*MessageTracker)
 

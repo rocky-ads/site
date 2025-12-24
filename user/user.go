@@ -48,7 +48,7 @@ type User struct {
 	DeletedAt          *time.Time `json:"deleted_at"`
 }
 
-func getUserBy(whereClause string, args ...interface{}) (User, error) {
+func getUserBy(whereClause string, args ...any) (User, error) {
 	var u User
 	var encryptedNameBytes, nameNonceBytes []byte
 	var encryptedPhoneBytes, phoneNonceBytes []byte

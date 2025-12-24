@@ -15,7 +15,7 @@ func Search(categoryID int, fv field.Values) ([]int, error) {
 			SELECT COALESCE(json_group_array(id), '[]')
 			FROM ads
 			WHERE category_id = ?`
-		var args = []interface{}{categoryID}
+		var args = []any{categoryID}
 		err := db.QueryJSON(&adIDs, query, args...)
 		return adIDs, err
 	}
@@ -24,7 +24,7 @@ func Search(categoryID int, fv field.Values) ([]int, error) {
 		SELECT DISTINCT a.id
 		FROM ads a
 		WHERE a.category_id = ?`
-	var args = []interface{}{categoryID}
+	var args = []any{categoryID}
 
 	for fieldName, values := range fv {
 		if len(values) > 0 {

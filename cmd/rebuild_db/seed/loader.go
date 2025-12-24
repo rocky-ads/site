@@ -199,7 +199,7 @@ func LoadUsers() error {
 		if err != nil {
 			return fmt.Errorf("encrypting email for user %s: %w", u.Name, err)
 		}
-		var emailHash interface{} = nil // NULL for empty emails
+		var emailHash any = nil // NULL for empty emails
 
 		// Decode base64 strings to bytes for BYTEA storage
 		encryptedNameBytes, _ := base64.StdEncoding.DecodeString(encryptedName)
@@ -380,7 +380,7 @@ func loadVehicleChain(categoryID int, filename string, specTable string) error {
 		return err
 	}
 
-	var chainData map[string]interface{}
+	var chainData map[string]any
 	if err := json.Unmarshal(data, &chainData); err != nil {
 		return err
 	}
@@ -406,14 +406,14 @@ func loadVehicleChain(categoryID int, filename string, specTable string) error {
 	var vehicleRows []vehicleRow
 
 	// Recursively traverse the nested structure and collect rows
-	var traverse func(map[string]interface{}, []string, int)
-	traverse = func(m map[string]interface{}, path []string, depth int) {
+	var traverse func(map[string]any, []string, int)
+	traverse = func(m map[string]any, path []string, depth int) {
 		for key, value := range m {
 			currentPath := append(path, key)
 			switch v := value.(type) {
-			case map[string]interface{}:
+			case map[string]any:
 				traverse(v, currentPath, depth+1)
-			case []interface{}:
+			case []any:
 				make := ""
 				year := ""
 				model := ""

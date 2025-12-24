@@ -56,7 +56,7 @@ func GetAds(ids []int, loc *time.Location) ([]Ad, error) {
 		LEFT JOIN locations l ON a.location_id = l.id
 		WHERE a.id IN (` + field.Placeholders(len(ids)) + `)
 	`
-	args := make([]interface{}, len(ids))
+	args := make([]any, len(ids))
 	for i, id := range ids {
 		args[i] = id
 	}

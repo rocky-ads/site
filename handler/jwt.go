@@ -75,7 +75,7 @@ func generateJWTToken(u *user.User) (string, error) {
 
 // validateJWTToken validates a JWT token and returns the claims
 func validateJWTToken(tokenString string) (*claims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &claims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &claims{}, func(token *jwt.Token) (any, error) {
 		if token.Method != jwt.SigningMethodHS256 {
 			return nil, errors.New("unexpected signing method")
 		}

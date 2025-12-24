@@ -147,7 +147,7 @@ func SearchHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"ad_ids": adIDs,
 		"count":  len(adIDs),
 	}

@@ -95,8 +95,8 @@ func prettyPrintSQL(query string) string {
 	return strings.Join(result, "\n")
 }
 
-func formatArgs(args []interface{}) []interface{} {
-	formatted := make([]interface{}, len(args))
+func formatArgs(args []any) []any {
+	formatted := make([]any, len(args))
 	for i, arg := range args {
 		if arg == nil {
 			formatted[i] = arg
@@ -117,7 +117,7 @@ func formatArgs(args []interface{}) []interface{} {
 				previewCount = length
 			}
 
-			preview := make([]interface{}, previewCount)
+			preview := make([]any, previewCount)
 			for j := range previewCount {
 				preview[j] = val.Index(j).Interface()
 			}
@@ -137,7 +137,7 @@ func formatArgs(args []interface{}) []interface{} {
 	return formatted
 }
 
-func Query(query string, args ...interface{}) (*sql.Rows, error) {
+func Query(query string, args ...any) (*sql.Rows, error) {
 	/*
 		fmt.Println("")
 		fmt.Println("=== SQL Query ===")
@@ -149,7 +149,7 @@ func Query(query string, args ...interface{}) (*sql.Rows, error) {
 	return db.Query(query, args...)
 }
 
-func QueryRow(query string, args ...interface{}) *sql.Row {
+func QueryRow(query string, args ...any) *sql.Row {
 	/*
 		fmt.Println("")
 		fmt.Println("=== SQL QueryRow ===")
@@ -161,7 +161,7 @@ func QueryRow(query string, args ...interface{}) *sql.Row {
 	return db.QueryRow(query, args...)
 }
 
-func Exec(query string, args ...interface{}) (sql.Result, error) {
+func Exec(query string, args ...any) (sql.Result, error) {
 	/*
 		fmt.Println("")
 		fmt.Println("=== SQL Exec ===")
@@ -177,7 +177,7 @@ func Begin() (*sql.Tx, error) {
 	return db.Begin()
 }
 
-func Select(dest interface{}, query string, args ...interface{}) error {
+func Select(dest any, query string, args ...any) error {
 	/*
 		fmt.Println("")
 		fmt.Println("=== SQL Select ===")
@@ -194,7 +194,7 @@ func Ping() error {
 }
 
 // For SQLite, JSON functions return TEXT, so we scan as string
-func QueryJSON(dst interface{}, query string, args ...interface{}) error {
+func QueryJSON(dst any, query string, args ...any) error {
 	var jsonResult string
 	/*
 		fmt.Println("")
