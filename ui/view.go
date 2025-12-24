@@ -89,9 +89,9 @@ func AdListNode(userID int, adID int, title string, active bool, bookmarked bool
 		Class(class),
 		ID(fmt.Sprintf("ad-%d", adID)),
 		Div(
-			Class("flex items-center gap-2 text-blue-600 hover:text-blue-800"),
+			Class("flex items-center gap-2 text-blue-600 hover:text-blue-800 min-w-0"),
 			g.If(userID != 0, Bookmark(adID, bookmarked, csrfToken)),
-			g.Text(title),
+			Span(Class("min-w-0"), g.Text(title)),
 		),
 	)
 }

@@ -11,6 +11,7 @@ import (
 func Bookmark(adID int, bookmarked bool, csrfToken string) g.Node {
 	return Button(
 		Type("button"),
+		Class("flex-shrink-0"),
 		g.If(bookmarked, hx.Delete(fmt.Sprintf("/auth/bookmark/%d", adID))),
 		g.If(!bookmarked, hx.Post(fmt.Sprintf("/auth/bookmark/%d", adID))),
 		hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
