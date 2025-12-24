@@ -115,6 +115,16 @@ CREATE TABLE ads (
 );
 CREATE INDEX idx_ads_category ON ads(category_id);
 
+-- Bookmarks table
+CREATE TABLE bookmarks (
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    ad_id INTEGER NOT NULL REFERENCES ads(id),
+    bookmarked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, ad_id)
+);
+CREATE INDEX idx_bookmarks_user ON bookmarks(user_id);
+CREATE INDEX idx_bookmarks_ad ON bookmarks(ad_id);
+
 -- Ad values for spec fields (supports both single and multi-value fields, one row per value)
 CREATE TABLE ad_values (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

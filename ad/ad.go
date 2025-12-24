@@ -26,14 +26,14 @@ type Ad struct {
 	Country   string `db:"country" json:"country"`
 
 	// Computed fields
-	Bookmarked bool `db:"-" json:"bookmarked"`
+	Bookmarked bool `db:"bookmarked" json:"bookmarked"`
 }
 
 func (a Ad) IsDeleted() bool {
 	return a.DeletedAt != nil
 }
 
-func GetAds(ids []int, loc *time.Location) ([]Ad, error) {
+func GetAds(userID int, ids []int, loc *time.Location) ([]Ad, error) {
 	if len(ids) == 0 {
 		return []Ad{}, nil
 	}
@@ -51,14 +51,17 @@ func GetAds(ids []int, loc *time.Location) ([]Ad, error) {
 			a.location_id,
 			l.city,
 			l.admin_area,
-			l.country
+			l.country,
+			CASE WHEN b.user_id IS NOT NULL THEN 1 ELSE 0 END AS bookmarked
 		FROM ads a
 		LEFT JOIN locations l ON a.location_id = l.id
+		LEFT JOIN bookmarks b ON a.id = b.ad_id AND b.user_id = ?
 		WHERE a.id IN (` + field.Placeholders(len(ids)) + `)
 	`
-	args := make([]any, len(ids))
+	args := make([]any, len(ids)+1)
+	args[0] = userID
 	for i, id := range ids {
-		args[i] = id
+		args[i+1] = id
 	}
 	var ads []Ad
 	err := db.Select(&ads, query, args...)
@@ -78,8 +81,8 @@ func GetAds(ids []int, loc *time.Location) ([]Ad, error) {
 	return ads, nil
 }
 
-func GetAd(id int, loc *time.Location) (Ad, error) {
-	ads, err := GetAds([]int{id}, loc)
+func GetAd(userID int, id int, loc *time.Location) (Ad, error) {
+	ads, err := GetAds(userID, []int{id}, loc)
 	if err != nil {
 		return Ad{}, err
 	}

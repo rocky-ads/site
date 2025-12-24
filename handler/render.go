@@ -28,13 +28,13 @@ func renderPage(c *fiber.Ctx, title string, body []gomponents.Node) error {
 }
 
 // searchAndRenderAds searches for ads and renders them into gomponents nodes
-func searchAndRenderAds(categoryID int, view int, fv field.Values, loc *time.Location) ([]g.Node, error) {
+func searchAndRenderAds(categoryID int, userID int, view int, fv field.Values, loc *time.Location, csrfToken string) ([]g.Node, error) {
 	adIDs, err := search.Search(categoryID, fv)
 	if err != nil {
 		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	results, err := ad.AdNodes(adIDs, view, loc)
+	results, err := ad.AdNodes(adIDs, userID, view, loc, csrfToken)
 	if err != nil {
 		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}

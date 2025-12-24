@@ -27,13 +27,13 @@ func SetView(c *fiber.Ctx, view int) {
 	})
 }
 
-func GetCategoryID(c *fiber.Ctx) (int, error) {
+func GetCategoryID(c *fiber.Ctx) int {
 	category := c.Cookies("category")
 	categoryID := ad.ParseCategory(category)
 	if category == "" {
 		SetCategoryID(c, categoryID)
 	}
-	return categoryID, nil
+	return categoryID
 }
 
 func SetCategoryID(c *fiber.Ctx, category int) {

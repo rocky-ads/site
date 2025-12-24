@@ -13,20 +13,20 @@ func GetCategoryID(c *fiber.Ctx) int {
 	return ad.ParseCategory(category)
 }
 
-func GetSpecField(c *fiber.Ctx, categoryID int) (field.SpecField, *fiber.Error) {
+func GetSpecField(c *fiber.Ctx, categoryID int) (field.SpecField, error) {
 	fieldName := c.Params("field")
 	f, err := field.GetSpecField(categoryID, fieldName)
 	if err != nil {
-		return field.SpecField{}, fiber.NewError(fiber.StatusNotFound, err.Error())
+		return field.SpecField{}, err
 	}
 	return f, nil
 }
 
-func GetAdID(c *fiber.Ctx) (int, *fiber.Error) {
+func GetAdID(c *fiber.Ctx) (int, error) {
 	idStr := c.Params("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		return 0, fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
+		return 0, err
 	}
 	return id, nil
 }

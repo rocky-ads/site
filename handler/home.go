@@ -12,10 +12,7 @@ import (
 )
 
 func HomeHandler(c *fiber.Ctx) error {
-	categoryID, err := cookie.GetCategoryID(c)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, err.Error())
-	}
+	categoryID := cookie.GetCategoryID(c)
 
 	categoryName, err := ad.GetCategoryName(categoryID)
 	if err != nil {
@@ -30,8 +27,9 @@ func HomeHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
 	view := cookie.GetView(c)
 	loc := cookie.GetLocation(c)
+	csrfToken := local.GetCSRFToken(c)
 
-	results, err := searchAndRenderAds(categoryID, view, make(field.Values), loc)
+	results, err := searchAndRenderAds(categoryID, userID, view, make(field.Values), loc, csrfToken)
 	if err != nil {
 		return err
 	}

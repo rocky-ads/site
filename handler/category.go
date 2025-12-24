@@ -9,10 +9,7 @@ import (
 )
 
 func CategorySelectHandler(c *fiber.Ctx) error {
-	categoryID, err := cookie.GetCategoryID(c)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, err.Error())
-	}
+	categoryID := cookie.GetCategoryID(c)
 
 	categories, err := ad.GetCategories()
 	if err != nil {
