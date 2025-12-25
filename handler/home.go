@@ -28,8 +28,10 @@ func HomeHandler(c *fiber.Ctx) error {
 	view := cookie.GetView(c)
 	loc := cookie.GetLocation(c)
 	csrfToken := local.GetCSRFToken(c)
+	limit := config.SearchPageSize
+	offset := 0
 
-	results, err := searchAndRenderAds(categoryID, userID, view, make(field.Values), loc, csrfToken)
+	results, err := searchAndRenderAds(categoryID, limit, offset, userID, view, make(field.Values), loc, csrfToken)
 	if err != nil {
 		return err
 	}

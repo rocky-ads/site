@@ -2,6 +2,7 @@ package handler
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/local"
@@ -15,8 +16,10 @@ func ViewHandler(c *fiber.Ctx) error {
 	loc := cookie.GetLocation(c)
 	categoryID := cookie.GetCategoryID(c)
 	csrfToken := local.GetCSRFToken(c)
+	limit := config.SearchPageSize
+	offset := 0
 
-	results, err := searchAndRenderAds(categoryID, userID, view, make(field.Values), loc, csrfToken)
+	results, err := searchAndRenderAds(categoryID, limit, offset, userID, view, make(field.Values), loc, csrfToken)
 	if err != nil {
 		return err
 	}

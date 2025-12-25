@@ -46,7 +46,7 @@ func (a Ad) location() string {
 func (a Ad) Node(userID int, view int, csrfToken string) g.Node {
 	switch view {
 	case ui.ViewGrid:
-		return ui.AdGridNode(a.ID, a.Title)
+		return ui.AdGridNode(userID, a.ID, a.Price, a.ImageCount, a.Title, a.location(), a.CreatedAt, !a.IsDeleted(), a.Bookmarked, csrfToken)
 	case ui.ViewList:
 		return ui.AdListNode(userID, a.ID, a.Price, a.Title, a.location(), a.CreatedAt, !a.IsDeleted(), a.Bookmarked, csrfToken)
 	case ui.ViewTree:

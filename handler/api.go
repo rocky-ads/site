@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/rocky-ads/site/ad"
+	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/local"
@@ -142,7 +143,8 @@ func SearchHandler(c *fiber.Ctx) error {
 		fv = getQueryValues(c)
 	}
 
-	adIDs, err := search.Search(categoryID, fv)
+	limit, offset := param.GetPageLimitOffset(c)
+	adIDs, err := search.Search(categoryID, limit, offset, fv)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -211,8 +213,10 @@ func SwitchCategoryHandler(c *fiber.Ctx) error {
 	view := cookie.GetView(c)
 	loc := cookie.GetLocation(c)
 	csrfToken := local.GetCSRFToken(c)
+	limit := config.SearchPageSize
+	offset := 0
 
-	results, err := searchAndRenderAds(categoryID, userID, view, make(field.Values), loc, csrfToken)
+	results, err := searchAndRenderAds(categoryID, limit, offset, userID, view, make(field.Values), loc, csrfToken)
 	if err != nil {
 		return err
 	}
@@ -242,8 +246,10 @@ func ShowFiltersHandler(c *fiber.Ctx) error {
 	view := cookie.GetView(c)
 	loc := cookie.GetLocation(c)
 	csrfToken := local.GetCSRFToken(c)
+	limit := config.SearchPageSize
+	offset := 0
 
-	results, err := searchAndRenderAds(categoryID, userID, view, fv, loc, csrfToken)
+	results, err := searchAndRenderAds(categoryID, limit, offset, userID, view, fv, loc, csrfToken)
 	if err != nil {
 		return err
 	}

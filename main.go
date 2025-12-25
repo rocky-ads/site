@@ -47,6 +47,7 @@ func setupApp() *fiber.App {
 	app.Get("/logout", handler.LogoutHandler)
 	app.Get("/register", handler.RegisterHandler)
 	app.Get("/health", handler.HandleHealth)
+	app.Get("/image/:id/:imageID/:size", handler.ImageHandler)
 
 	auth := app.Group("/auth", handler.AuthRequired)
 	auth.Get("/user-menu", handler.UserMenuHandler)

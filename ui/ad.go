@@ -33,50 +33,26 @@ func Bookmark(adID int, bookmarked bool, csrfToken string) g.Node {
 	)
 }
 
-func AdGridNode(adID int, title string) g.Node {
-	return A(
-		Href("/ad/"+strconv.Itoa(adID)),
-		Class("block"),
-		ID(fmt.Sprintf("ad-%d", adID)),
-		g.Text(title),
+func gridNoImage() g.Node {
+	return Div(
+		Class("rounded-md w-full h-48 flex items-center justify-center border-2 border-dotted border-gray-300 dark:border-gray-600"),
+		g.Text("No Image"),
 	)
 }
 
-func AdListNode(userID, adID, price int, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string) g.Node {
-	class := "flex flex-wrap items-center justify-between py-2 px-3 cursor-pointer"
-	if active {
-		class += " hover:bg-gray-50 dark:hover:bg-gray-800"
-	} else {
-		class += " bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg"
+func gridImage(adID, current int, title string) g.Node {
+	return Img(
+		Class("rounded-md w-full h-48 object-cover"),
+		Src(fmt.Sprintf("/image/%d/%d/480w", adID, current)),
+		Alt(title),
+	)
+}
+
+func gridImageNode(adID, count, current int, title string) g.Node {
+	if count == 0 {
+		return gridNoImage()
 	}
-	return A(
-		Href("/ad/"+strconv.Itoa(adID)),
-		Class(class),
-		ID(fmt.Sprintf("ad-%d", adID)),
-		Div(
-			Class("flex items-center gap-2 text-blue-600 hover:text-blue-800 min-w-0"),
-			g.If(userID != 0, Bookmark(adID, bookmarked, csrfToken)),
-			Span(Class("min-w-0"), g.Text(title)),
-		),
-		Div(
-			Class("flex items-center gap-2 ml-auto"),
-			Div(
-				Class("flex items-center gap-2 text-xs text-gray-500"),
-				ageNode(createdAt),
-				locationNode(location),
-			),
-			priceNode(price),
-		),
-	)
-}
-
-func AdTreeNode(adID int, title string) g.Node {
-	return A(
-		Href("/ad/"+strconv.Itoa(adID)),
-		Class("block"),
-		ID(fmt.Sprintf("ad-%d", adID)),
-		g.Text(title),
-	)
+	return gridImage(adID, current, title)
 }
 
 // format ad age as Xm, XhYm, Xd, Xmo, or Xy Xmo
@@ -135,9 +111,66 @@ func ageNode(createdAt time.Time) g.Node {
 }
 
 func locationNode(location string) g.Node {
-	return Span(Class("text-xs text-gray-500"), g.Text(location))
+	return g.Text(location)
 }
 
-func priceNode(price int) g.Node {
-	return Span(Class("text-green-600 font-semibold"), g.Text(fmt.Sprintf("$%.0f", float64(price)/100)))
+func AdGridNode(userID, adID, price, imageCount int, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string) g.Node {
+	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
+	class := "flex flex-col cursor-pointer"
+	if !active {
+		class += " bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg"
+	}
+	return A(
+		Href("/ad/"+strconv.Itoa(adID)),
+		Class(class),
+		gridImageNode(adID, imageCount, 1, title),
+		Span(Class("text-green-600 font-semibold pt-2"), g.Text(priceStr)),
+		Span(Class("min-w-0"), g.Text(title)),
+		Div(
+			Class("flex items-center gap-2"),
+			Div(
+				Class("flex items-center gap-2 text-xs text-gray-500"),
+				ageNode(createdAt),
+				g.Text(location),
+			),
+			g.If(userID != 0, Bookmark(adID, bookmarked, csrfToken)),
+		),
+	)
+}
+
+func AdListNode(userID, adID, price int, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string) g.Node {
+	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
+	class := "flex flex-wrap items-center justify-between py-2 px-3 cursor-pointer"
+	if active {
+		class += " hover:bg-gray-50 dark:hover:bg-gray-800"
+	} else {
+		class += " bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg"
+	}
+	return A(
+		Href("/ad/"+strconv.Itoa(adID)),
+		Class(class),
+		Div(
+			Class("flex items-center gap-2 min-w-0"),
+			g.If(userID != 0, Bookmark(adID, bookmarked, csrfToken)),
+			Span(Class("min-w-0"), g.Text(title)),
+		),
+		Div(
+			Class("flex items-center gap-2 ml-auto"),
+			Div(
+				Class("flex items-center gap-2 text-xs text-gray-500"),
+				ageNode(createdAt),
+				g.Text(location),
+			),
+			Span(Class("text-green-600 font-semibold"), g.Text(priceStr)),
+		),
+	)
+}
+
+func AdTreeNode(adID int, title string) g.Node {
+	return A(
+		Href("/ad/"+strconv.Itoa(adID)),
+		Class("block"),
+		ID(fmt.Sprintf("ad-%d", adID)),
+		g.Text(title),
+	)
 }

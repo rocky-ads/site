@@ -20,6 +20,12 @@ func render(c *fiber.Ctx, component g.Node) error {
 	return component.Render(c.Response().BodyWriter())
 }
 
+// renderSVG renders a gomponents Node as SVG response
+func renderSVG(c *fiber.Ctx, component g.Node) error {
+	c.Set(fiber.HeaderContentType, "image/svg+xml")
+	return component.Render(c.Response().BodyWriter())
+}
+
 func renderPage(c *fiber.Ctx, title string, body []gomponents.Node) error {
 	userID := local.GetUserID(c)
 	userName := local.GetUserName(c)
@@ -28,8 +34,8 @@ func renderPage(c *fiber.Ctx, title string, body []gomponents.Node) error {
 }
 
 // searchAndRenderAds searches for ads and renders them into gomponents nodes
-func searchAndRenderAds(categoryID int, userID int, view int, fv field.Values, loc *time.Location, csrfToken string) ([]g.Node, error) {
-	adIDs, err := search.Search(categoryID, fv)
+func searchAndRenderAds(categoryID, limit, offset, userID, view int, fv field.Values, loc *time.Location, csrfToken string) ([]g.Node, error) {
+	adIDs, err := search.Search(categoryID, limit, offset, fv)
 	if err != nil {
 		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}

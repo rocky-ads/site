@@ -7,15 +7,18 @@ import (
 	"github.com/rocky-ads/site/field"
 )
 
-func Search(categoryID int, fv field.Values) ([]int, error) {
+func Search(categoryID, limit, offset int, fv field.Values) ([]int, error) {
 
 	if len(fv) == 0 {
 		var adIDs []int
 		query := `
 			SELECT COALESCE(json_group_array(id), '[]')
-			FROM ads
-			WHERE category_id = ?`
-		var args = []any{categoryID}
+			FROM (
+				SELECT id FROM ads
+				WHERE category_id = ?
+				LIMIT ? OFFSET ?
+			) AS limited_ads`
+		var args = []any{categoryID, limit, offset}
 		err := db.QueryJSON(&adIDs, query, args...)
 		return adIDs, err
 	}
@@ -40,7 +43,9 @@ func Search(categoryID int, fv field.Values) ([]int, error) {
 		}
 	}
 
-	query = fmt.Sprintf("SELECT COALESCE(json_group_array(id), '[]') FROM (%s)", query)
+	query += " LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
+	query = fmt.Sprintf("SELECT COALESCE(json_group_array(id), '[]') FROM (%s) AS limited_ads", query)
 	var adIDs []int
 	err := db.QueryJSON(&adIDs, query, args...)
 	if err != nil {
