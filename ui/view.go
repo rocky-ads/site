@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"strconv"
 
 	g "maragu.dev/gomponents"
@@ -65,42 +64,5 @@ func viewToggles(view int) g.Node {
 		viewToggle(view, ViewGrid),
 		viewToggle(view, ViewList),
 		viewToggle(view, ViewTree),
-	)
-}
-
-func AdGridNode(adID int, title string) g.Node {
-	return A(
-		Href("/ad/"+strconv.Itoa(adID)),
-		Class("block"),
-		ID(fmt.Sprintf("ad-%d", adID)),
-		g.Text(title),
-	)
-}
-
-func AdListNode(userID int, adID int, title string, active bool, bookmarked bool, csrfToken string) g.Node {
-	class := "flex flex-wrap items-center justify-between py-2 px-3 cursor-pointer"
-	if active {
-		class += " hover:bg-gray-50 dark:hover:bg-gray-800"
-	} else {
-		class += " bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg"
-	}
-	return A(
-		Href("/ad/"+strconv.Itoa(adID)),
-		Class(class),
-		ID(fmt.Sprintf("ad-%d", adID)),
-		Div(
-			Class("flex items-center gap-2 text-blue-600 hover:text-blue-800 min-w-0"),
-			g.If(userID != 0, Bookmark(adID, bookmarked, csrfToken)),
-			Span(Class("min-w-0"), g.Text(title)),
-		),
-	)
-}
-
-func AdTreeNode(adID int, title string) g.Node {
-	return A(
-		Href("/ad/"+strconv.Itoa(adID)),
-		Class("block"),
-		ID(fmt.Sprintf("ad-%d", adID)),
-		g.Text(title),
 	)
 }

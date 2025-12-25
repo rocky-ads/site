@@ -1,6 +1,7 @@
 package ad
 
 import (
+	"strings"
 	"time"
 
 	"github.com/rocky-ads/site/ui"
@@ -19,12 +20,35 @@ func AdNodes(adIDs []int, userID int, view int, loc *time.Location, csrfToken st
 	return results, nil
 }
 
+func (a Ad) location() string {
+	if a.City == "" && a.AdminArea == "" && a.Country == "" {
+		return ""
+	}
+
+	var locationText string
+	if a.City != "" && a.AdminArea != "" {
+		locationText = a.City + ", " + a.AdminArea
+	} else if a.City != "" {
+		locationText = a.City
+	} else if a.AdminArea != "" {
+		locationText = a.AdminArea
+	}
+
+	var flag string
+	if len(a.Country) == 2 {
+		code := strings.ToUpper(a.Country)
+		flag = string(rune(int32(code[0])-'A'+0x1F1E6)) + string(rune(int32(code[1])-'A'+0x1F1E6))
+	}
+
+	return flag + " " + locationText
+}
+
 func (a Ad) Node(userID int, view int, csrfToken string) g.Node {
 	switch view {
 	case ui.ViewGrid:
 		return ui.AdGridNode(a.ID, a.Title)
 	case ui.ViewList:
-		return ui.AdListNode(userID, a.ID, a.Title, !a.IsDeleted(), a.Bookmarked, csrfToken)
+		return ui.AdListNode(userID, a.ID, a.Price, a.Title, a.location(), a.CreatedAt, !a.IsDeleted(), a.Bookmarked, csrfToken)
 	case ui.ViewTree:
 		return ui.AdTreeNode(a.ID, a.Title)
 	default:
