@@ -12,13 +12,12 @@ import (
 const (
 	ViewGrid int = iota + 1
 	ViewList
-	ViewTree
+	//ViewTree
 )
 
 var viewNames = map[int]string{
 	ViewList: "list",
 	ViewGrid: "grid",
-	ViewTree: "tree",
 }
 
 func GetViewName(view int) string {
@@ -30,7 +29,7 @@ func ValidateView(viewStr string) int {
 	if err != nil {
 		return ViewGrid
 	}
-	if view < ViewList || view > ViewTree {
+	if view < ViewGrid || view > ViewList {
 		return ViewGrid
 	}
 	return view
@@ -63,6 +62,5 @@ func viewToggles(view int) g.Node {
 		Class("flex items-center gap-2"),
 		viewToggle(view, ViewGrid),
 		viewToggle(view, ViewList),
-		viewToggle(view, ViewTree),
 	)
 }

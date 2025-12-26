@@ -20,7 +20,7 @@ func AdNodes(adIDs []int, userID int, view int, loc *time.Location, csrfToken st
 	return results, nil
 }
 
-func (a Ad) location() string {
+func (a Ad) Location() string {
 	if a.City == "" && a.AdminArea == "" && a.Country == "" {
 		return ""
 	}
@@ -46,11 +46,9 @@ func (a Ad) location() string {
 func (a Ad) Node(userID int, view int, csrfToken string) g.Node {
 	switch view {
 	case ui.ViewGrid:
-		return ui.AdGridNode(userID, a.ID, a.Price, a.ImageCount, a.Title, a.location(), a.CreatedAt, !a.IsDeleted(), a.Bookmarked, csrfToken)
+		return ui.AdGridNode(userID, a.ID, a.Price, a.ImageCount, a.Title, a.Location(), a.CreatedAt, !a.IsDeleted(), a.Bookmarked, csrfToken)
 	case ui.ViewList:
-		return ui.AdListNode(userID, a.ID, a.Price, a.Title, a.location(), a.CreatedAt, !a.IsDeleted(), a.Bookmarked, csrfToken)
-	case ui.ViewTree:
-		return ui.AdTreeNode(a.ID, a.Title)
+		return ui.AdListNode(userID, a.ID, a.Price, a.Title, a.Location(), a.CreatedAt, !a.IsDeleted(), a.Bookmarked, csrfToken)
 	default:
 		return g.Text("bad view")
 	}

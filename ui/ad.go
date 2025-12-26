@@ -33,74 +33,11 @@ func Bookmark(adID int, bookmarked bool, csrfToken string) g.Node {
 	)
 }
 
-func gridNoImage() g.Node {
-	return Div(
-		Class("rounded-md w-full h-48 flex items-center justify-center border-2 border-dotted border-gray-300 dark:border-gray-600"),
-		g.Text("No Image"),
-	)
-}
-
-func gridImageCount(current, count int) g.Node {
-	return Span(
-		Class("absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full"),
-		g.Text(fmt.Sprintf("%d/%d", current, count)),
-	)
-}
-
-func gridImageNav(adID, current, count int) g.Node {
-
-	prevIdx := (current-2+count)%count + 1
-	nextIdx := current%count + 1
-
-	return g.Group([]g.Node{
-		// Left button
-		Button(
-			Type("button"),
-			Class("absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/50 rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:bg-white/60 focus:outline-none cursor-pointer z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:transition-opacity"),
-			hx.Get(fmt.Sprintf("/api/grid-image/%d/%d/%d", adID, prevIdx, count)),
-			hx.Target(fmt.Sprintf("#grid-image-%d", adID)),
-			hx.Swap("outerHTML"),
-			g.Attr("onclick", "event.stopPropagation()"),
-			Img(
-				Class("w-6 h-6"),
-				Src("/images/left.svg"),
-			),
-		),
-		// Right button
-		Button(
-			Type("button"),
-			Class("absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/50 rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:bg-white/60 focus:outline-none cursor-pointer z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:transition-opacity"),
-			hx.Get(fmt.Sprintf("/api/grid-image/%d/%d/%d", adID, nextIdx, count)),
-			hx.Target(fmt.Sprintf("#grid-image-%d", adID)),
-			hx.Swap("outerHTML"),
-			g.Attr("onclick", "event.stopPropagation()"),
-			Img(
-				Class("w-6 h-6"),
-				Src("/images/right.svg"),
-			),
-		),
-	})
-}
-
-func GridImage(adID, count, current int) g.Node {
-	return Div(
-		ID(fmt.Sprintf("grid-image-%d", adID)),
-		Class("relative group"),
-		Img(
-			Class("rounded-md w-full h-48 object-cover"),
-			Src(fmt.Sprintf("/image/%d/%d/480w", adID, current)),
-			g.Attr("loading", "lazy"),
-		),
-		g.If(count > 1, gridImageCount(current, count)),
-		g.If(count > 1, gridImageNav(adID, current, count)),
-	)
-}
-
 func gridImageNode(adID, count, current int, title string) g.Node {
 	if count == 0 {
-		return gridNoImage()
+		return noImage("h-48")
 	}
-	return GridImage(adID, count, current)
+	return ImageNode(adID, count, current, "480w", "h-48", false)
 }
 
 // format ad age as Xm, XhYm, Xd, Xmo, or Xy Xmo
@@ -160,10 +97,12 @@ func ageNode(createdAt time.Time) g.Node {
 
 func AdGridNode(userID, adID, price, imageCount int, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string) g.Node {
 	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
+
 	class := "flex flex-col cursor-pointer py-1"
 	if !active {
 		class += " bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg"
 	}
+
 	return A(
 		Href("/ad/"+strconv.Itoa(adID)),
 		Class(class),
@@ -184,12 +123,14 @@ func AdGridNode(userID, adID, price, imageCount int, title, location string, cre
 
 func AdListNode(userID, adID, price int, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string) g.Node {
 	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
+
 	class := "flex flex-wrap items-center justify-between py-2 px-3 cursor-pointer"
 	if active {
 		class += " hover:bg-gray-50 dark:hover:bg-gray-800"
 	} else {
 		class += " bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg"
 	}
+
 	return A(
 		Href("/ad/"+strconv.Itoa(adID)),
 		Class(class),
@@ -210,11 +151,73 @@ func AdListNode(userID, adID, price int, title, location string, createdAt time.
 	)
 }
 
-func AdTreeNode(adID int, title string) g.Node {
-	return A(
-		Href("/ad/"+strconv.Itoa(adID)),
-		Class("block"),
-		ID(fmt.Sprintf("ad-%d", adID)),
-		g.Text(title),
+func deletedWatermark() g.Node {
+	return Div(
+		Class("absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center pointer-events-none z-50"),
+		Div(
+			Class("font-bold text-8xl text-red-500 transform rotate-[-45deg]"),
+			g.Text("DELETED"),
+		),
 	)
+}
+
+func Ad(adID, userID, imageCount, price int, title, location, description string,
+	createdAt time.Time, bookmarked, active bool, csrfToken string) []g.Node {
+
+	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
+
+	return []g.Node{
+		Div(
+			Class("flex flex-col relative rounded-lg shadow-xl/50 my-4 mx-2 col-span-full overflow-hidden"),
+			g.If(imageCount > 0, ImageNode(adID, imageCount, 1, "1200w", "h-96 md:h-[600px] lg:h-[600px]", true)),
+			g.If(imageCount == 0, noImage("h-96 md:h-[600px] lg:h-[600px]")),
+			g.If(!active, deletedWatermark()),
+			Div(
+				Class("p-4 flex flex-col"),
+				Div(
+					Class("flex items-center gap-2 min-w-0"),
+					g.If(userID != 0, Bookmark(adID, bookmarked, csrfToken)),
+					Span(Class("min-w-0"), g.Text(title)),
+				),
+				Div(
+					Class("flex items-center gap-2"),
+					Div(
+						Class("flex items-center gap-2 text-xs text-gray-500"),
+						ageNode(createdAt),
+						g.Text(location),
+					),
+					Span(Class("text-green-600 font-semibold"), g.Text(priceStr)),
+				),
+				Div(Class("text-base mt-2 whitespace-pre-wrap"), g.Text(description)),
+			),
+		),
+	}
+}
+
+func AdDeleted() []g.Node {
+	return []g.Node{
+		Div(
+			Class("text-center py-16"),
+			Div(
+				Class("mb-6 flex justify-center"),
+				Img(
+					Src("/images/trashcan.svg"),
+					Alt("Deleted"),
+					Class("w-24 h-24"),
+				),
+			),
+			H2(
+				Class("text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4"),
+				g.Text("Ad Deleted"),
+			),
+			P(
+				Class("text-lg text-gray-600 dark:text-gray-400 mb-8"),
+				g.Text("This ad has been deleted by the owner and is no longer available."),
+			),
+			standardButton(buttonProps{
+				Text: "Back to Home",
+				Href: "/",
+			}),
+		),
+	}
 }

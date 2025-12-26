@@ -6,6 +6,8 @@ import (
 	"strconv"
 
 	g "maragu.dev/gomponents"
+	hx "maragu.dev/gomponents-htmx"
+	. "maragu.dev/gomponents/html"
 )
 
 func GenerateSVG(adID, imageID int, size string) g.Node {
@@ -110,5 +112,171 @@ func GenerateSVG(adID, imageID int, size string) g.Node {
 				g.Text("<missing>"),
 			),
 		),
+	)
+}
+
+func noImage(heightClass string) g.Node {
+	return Div(
+		Class(fmt.Sprintf("rounded-md w-full %s flex items-center justify-center border-2 border-dotted border-gray-300 dark:border-gray-600", heightClass)),
+		g.Text("No Image"),
+	)
+}
+
+func imageCount(current, count int) g.Node {
+	return Span(
+		Class("absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full"),
+		g.Text(fmt.Sprintf("%d/%d", current, count)),
+	)
+}
+
+func imageNav(adID, current, count int, size, heightClass string, clickable bool) g.Node {
+	if count <= 1 {
+		return g.Group([]g.Node{}) // Return empty group if count is 0 or 1
+	}
+	prevIdx := (current-2+count)%count + 1
+	nextIdx := current%count + 1
+	containerID := fmt.Sprintf("image-%d", adID)
+
+	return g.Group([]g.Node{
+		// Left button
+		Button(
+			Type("button"),
+			Class("absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/50 rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:bg-white/60 focus:outline-none cursor-pointer z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:transition-opacity"),
+			hx.Get(fmt.Sprintf("/api/image-nav/%d?index=%d&count=%d&size=%s&heightClass=%s&clickable=%v",
+				adID, prevIdx, count, size, heightClass, clickable)),
+			hx.Target(fmt.Sprintf("#%s", containerID)),
+			hx.Swap("outerHTML"),
+			g.Attr("onclick", "event.stopPropagation()"),
+			Img(
+				Class("w-6 h-6"),
+				Src("/images/left.svg"),
+			),
+		),
+		// Right button
+		Button(
+			Type("button"),
+			Class("absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/50 rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:bg-white/60 focus:outline-none cursor-pointer z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:transition-opacity"),
+			hx.Get(fmt.Sprintf("/api/image-nav/%d?index=%d&count=%d&size=%s&heightClass=%s&clickable=%v",
+				adID, nextIdx, count, size, heightClass, clickable)),
+			hx.Target(fmt.Sprintf("#%s", containerID)),
+			hx.Swap("outerHTML"),
+			g.Attr("onclick", "event.stopPropagation()"),
+			Img(
+				Class("w-6 h-6"),
+				Src("/images/right.svg"),
+			),
+		),
+	})
+}
+
+func ImageNode(adID, count, current int, size, heightClass string, clickable bool) g.Node {
+	containerID := fmt.Sprintf("image-%d", adID)
+	imgElement := Img(
+		Class(fmt.Sprintf("rounded-md w-full %s object-cover", heightClass)),
+		Src(fmt.Sprintf("/image/%d/%d/%s", adID, current, size)),
+		g.Attr("loading", "lazy"),
+	)
+
+	var imageWrapper g.Node
+	if clickable {
+		imageWrapper = Div(
+			hx.Get(fmt.Sprintf("/api/image-full/%d?index=%d&count=%d&size=%s", adID, current, count, size)),
+			hx.Target("#modal"),
+			hx.Swap("outerHTML"),
+			Class("cursor-pointer"),
+			imgElement,
+		)
+	} else {
+		imageWrapper = imgElement
+	}
+
+	return Div(
+		ID(containerID),
+		Class("relative group"),
+		imageWrapper,
+		g.If(count > 1, imageCount(current, count)),
+		g.If(count > 1, imageNav(adID, current, count, size, heightClass, clickable)),
+	)
+}
+
+func ImageFullScreen(adID, current, count int, size string) g.Node {
+	return g.Group([]g.Node{
+		Div(
+			ID("modal-backdrop"),
+			hx.SwapOOB("true"),
+			Class("modal fixed inset-0 bg-black/90 z-40"),
+			hideModalOnClick,
+		),
+		Div(
+			ID("modal"),
+			hx.SwapOOB("true"),
+			Class("modal fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none"),
+			Div(
+				Class("relative w-full h-full flex items-center justify-center pointer-events-auto"),
+				// Close button
+				Button(
+					Type("button"),
+					Class("absolute top-4 right-4 bg-white/90 hover:bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg focus:outline-none cursor-pointer z-50"),
+					hideModalOnClick,
+					Img(
+						Src("/images/close.svg"),
+						Alt("Close"),
+						Class("w-6 h-6"),
+					),
+				),
+				// Image container
+				Div(
+					Class("relative w-full h-full flex items-center justify-center"),
+					Img(
+						Class("max-w-full max-h-full object-contain"),
+						Src(fmt.Sprintf("/image/%d/%d/%s", adID, current, size)),
+						Alt(fmt.Sprintf("Image %d of %d", current, count)),
+					),
+					// Navigation buttons (only if multiple images)
+					g.If(count > 1, imageFullScreenNav(adID, current, count, size)),
+					// Image counter
+					g.If(count > 1, imageFullScreenCount(current, count)),
+				),
+			),
+		),
+	})
+}
+
+func imageFullScreenNav(adID, current, count int, size string) g.Node {
+	prevIdx := (current-2+count)%count + 1
+	nextIdx := current%count + 1
+
+	return g.Group([]g.Node{
+		// Left button
+		Button(
+			Type("button"),
+			Class("absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg focus:outline-none cursor-pointer z-40"),
+			hx.Get(fmt.Sprintf("/api/image-full/%d?index=%d&count=%d&size=%s", adID, prevIdx, count, size)),
+			hx.Target("#modal"),
+			hx.Swap("outerHTML"),
+			Img(
+				Class("w-6 h-6"),
+				Src("/images/left.svg"),
+			),
+		),
+		// Right button
+		Button(
+			Type("button"),
+			Class("absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg focus:outline-none cursor-pointer z-40"),
+			hx.Get(fmt.Sprintf("/api/image-full/%d?index=%d&count=%d&size=%s", adID, nextIdx, count, size)),
+			hx.Target("#modal"),
+			hx.Swap("outerHTML"),
+			Img(
+				Class("w-6 h-6"),
+				Src("/images/right.svg"),
+			),
+		),
+	})
+}
+
+func imageFullScreenCount(current, count int) g.Node {
+	return Div(
+		Class("absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white text-sm px-4 py-2 rounded-full"),
+		g.Text(fmt.Sprintf("%d / %d", current, count)),
 	)
 }

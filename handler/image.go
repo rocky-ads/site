@@ -24,23 +24,46 @@ func ImageHandler(c *fiber.Ctx) error {
 	return renderSVG(c, ui.GenerateSVG(adID, imageID, size))
 }
 
-func GridImageHandler(c *fiber.Ctx) error {
+func ImageNavigationHandler(c *fiber.Ctx) error {
 	adID, err := param.GetAdID(c)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	imageIDStr := c.Params("index")
-	imageID, err := strconv.Atoi(imageIDStr)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid image ID")
+	imageID := c.QueryInt("index", 1)
+	if imageID < 1 {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid image index")
 	}
 
-	countStr := c.Params("count")
-	count, err := strconv.Atoi(countStr)
-	if err != nil {
+	count := c.QueryInt("count", 1)
+	if count < 0 {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid image count")
 	}
 
-	return render(c, ui.GridImage(adID, count, imageID))
+	size := c.Query("size", "480w")
+	heightClass := c.Query("heightClass", "h-48")
+	clickable := c.Query("clickable", "false") == "true"
+
+	return render(c, ui.ImageNode(adID, count, imageID, size, heightClass, clickable))
+}
+
+func ImageFullScreenHandler(c *fiber.Ctx) error {
+	adID, err := param.GetAdID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	imageID := c.QueryInt("index", 1)
+	if imageID < 1 {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid image index")
+	}
+
+	count := c.QueryInt("count", 1)
+	if count < 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid image count")
+	}
+
+	size := c.Query("size", "1200w")
+
+	return render(c, ui.ImageFullScreen(adID, imageID, count, size))
 }
