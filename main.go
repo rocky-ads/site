@@ -47,7 +47,7 @@ func setupApp() *fiber.App {
 	app.Get("/logout", handler.LogoutHandler)
 	app.Get("/register", handler.RegisterHandler)
 	app.Get("/health", handler.HandleHealth)
-	app.Get("/image/:id/:imageID/:size", handler.ImageHandler)
+	app.Get("/image/:id/:index/:size", handler.ImageHandler)
 
 	auth := app.Group("/auth", handler.AuthRequired)
 	auth.Get("/user-menu", handler.UserMenuHandler)
@@ -65,6 +65,7 @@ func setupApp() *fiber.App {
 	api.Post("/register/step3", handler.RegisterStep3Handler)
 	api.Post("/sms/webhook", handler.SMSWebhookHandler)
 	api.Get("/view/:view", handler.ViewHandler)
+	api.Get("/grid-image/:id/:index/:count", handler.GridImageHandler)
 
 	categoryRouter := api.Group("/category/:category")
 	categoryRouter.Get("/values/:field", handler.GetAllValuesHandler)

@@ -40,12 +40,59 @@ func gridNoImage() g.Node {
 	)
 }
 
-func gridImage(adID, current int, title string) g.Node {
-	return Img(
-		Class("rounded-md w-full h-48 object-cover"),
-		Src(fmt.Sprintf("/image/%d/%d/480w", adID, current)),
-		Alt(title),
-		g.Attr("loading", "lazy"),
+func gridImageCount(current, count int) g.Node {
+	return Span(
+		Class("absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full"),
+		g.Text(fmt.Sprintf("%d/%d", current, count)),
+	)
+}
+
+func gridImageNav(adID, current, count int) g.Node {
+
+	prevIdx := (current-2+count)%count + 1
+	nextIdx := current%count + 1
+
+	return g.Group([]g.Node{
+		// Left button
+		Button(
+			Type("button"),
+			Class("absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/50 rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:bg-white/60 focus:outline-none cursor-pointer z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:transition-opacity"),
+			hx.Get(fmt.Sprintf("/api/grid-image/%d/%d/%d", adID, prevIdx, count)),
+			hx.Target(fmt.Sprintf("#grid-image-%d", adID)),
+			hx.Swap("outerHTML"),
+			g.Attr("onclick", "event.stopPropagation()"),
+			Img(
+				Class("w-6 h-6"),
+				Src("/images/left.svg"),
+			),
+		),
+		// Right button
+		Button(
+			Type("button"),
+			Class("absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/50 rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:bg-white/60 focus:outline-none cursor-pointer z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:transition-opacity"),
+			hx.Get(fmt.Sprintf("/api/grid-image/%d/%d/%d", adID, nextIdx, count)),
+			hx.Target(fmt.Sprintf("#grid-image-%d", adID)),
+			hx.Swap("outerHTML"),
+			g.Attr("onclick", "event.stopPropagation()"),
+			Img(
+				Class("w-6 h-6"),
+				Src("/images/right.svg"),
+			),
+		),
+	})
+}
+
+func GridImage(adID, count, current int) g.Node {
+	return Div(
+		ID(fmt.Sprintf("grid-image-%d", adID)),
+		Class("relative group"),
+		Img(
+			Class("rounded-md w-full h-48 object-cover"),
+			Src(fmt.Sprintf("/image/%d/%d/480w", adID, current)),
+			g.Attr("loading", "lazy"),
+		),
+		g.If(count > 1, gridImageCount(current, count)),
+		g.If(count > 1, gridImageNav(adID, current, count)),
 	)
 }
 
@@ -53,7 +100,7 @@ func gridImageNode(adID, count, current int, title string) g.Node {
 	if count == 0 {
 		return gridNoImage()
 	}
-	return gridImage(adID, current, title)
+	return GridImage(adID, count, current)
 }
 
 // format ad age as Xm, XhYm, Xd, Xmo, or Xy Xmo
@@ -109,10 +156,6 @@ func ageNode(createdAt time.Time) g.Node {
 		g.If(time.Since(createdAt) < 4*time.Hour, newBadge()),
 		g.Text(formatAdAge(createdAt)),
 	)
-}
-
-func locationNode(location string) g.Node {
-	return g.Text(location)
 }
 
 func AdGridNode(userID, adID, price, imageCount int, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string) g.Node {
