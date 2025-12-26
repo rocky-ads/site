@@ -98,7 +98,7 @@ func ageNode(createdAt time.Time) g.Node {
 func AdGridNode(userID, adID, price, imageCount int, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string) g.Node {
 	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
 
-	class := "flex flex-col cursor-pointer py-1"
+	class := "flex flex-col cursor-pointer gap-1 py-3"
 	if !active {
 		class += " bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg"
 	}
@@ -107,17 +107,16 @@ func AdGridNode(userID, adID, price, imageCount int, title, location string, cre
 		Href("/ad/"+strconv.Itoa(adID)),
 		Class(class),
 		gridImageNode(adID, imageCount, 1, title),
-		Span(Class("text-green-600 font-semibold pt-2"), g.Text(priceStr)),
-		Span(Class("min-w-0"), g.Text(title)),
 		Div(
-			Class("flex items-center gap-2"),
+			Class("flex items-center justify-between pt-1"),
+			Span(Class("text-green-600 font-semibold"), g.Text(priceStr)),
 			Div(
-				Class("flex items-center gap-2 text-xs text-gray-500"),
+				Class("flex gap-2 text-xs text-gray-500"),
 				ageNode(createdAt),
 				g.Text(location),
 			),
-			g.If(userID != 0, Bookmark(adID, bookmarked, csrfToken)),
 		),
+		Span(Class("min-w-0"), g.Text(title)),
 	)
 }
 
@@ -136,7 +135,6 @@ func AdListNode(userID, adID, price int, title, location string, createdAt time.
 		Class(class),
 		Div(
 			Class("flex items-center gap-2 min-w-0"),
-			g.If(userID != 0, Bookmark(adID, bookmarked, csrfToken)),
 			Span(Class("min-w-0"), g.Text(title)),
 		),
 		Div(
@@ -219,5 +217,11 @@ func AdDeleted() []g.Node {
 				Href: "/",
 			}),
 		),
+	}
+}
+
+func NewAd() []g.Node {
+	return []g.Node{
+		Div(),
 	}
 }

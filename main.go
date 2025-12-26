@@ -51,6 +51,7 @@ func setupApp() *fiber.App {
 	app.Get("/image/:id/:index/:size", handler.ImageHandler)
 
 	auth := app.Group("/auth", handler.AuthRequired)
+	auth.Get("/new-ad", handler.NewAdHandler)
 	auth.Get("/user-menu", handler.UserMenuHandler)
 	auth.Get("/welcome", handler.WelcomeHandler)
 	auth.Post("/bookmark/:id", handler.BookmarkHandler)

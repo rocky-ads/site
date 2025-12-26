@@ -99,3 +99,18 @@ func checkbox(name string, value string, label string, checked bool, disabled bo
 		labelNode,
 	)
 }
+
+func label(text string) g.Node {
+	return Label(
+		Class("block text-base font-medium mb-1"),
+		g.Text(text),
+	)
+}
+
+// pageTitle creates a standardized H1 page title element
+func pageTitle(text string) g.Node {
+	return H1(
+		Class("text-3xl font-bold mb-6"),
+		g.Text(text),
+	)
+}

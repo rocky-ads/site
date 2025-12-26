@@ -37,3 +37,7 @@ func AdHandler(c *fiber.Ctx) error {
 		a.Title, a.Location(), a.Description, a.CreatedAt, a.Bookmarked,
 		!a.IsDeleted(), csrfToken))
 }
+
+func NewAdHandler(c *fiber.Ctx) error {
+	return renderPage(c, "New Ad", ui.NewAd())
+}
