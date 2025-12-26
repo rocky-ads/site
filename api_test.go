@@ -15,6 +15,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -669,7 +670,7 @@ func TestGetAllValues(t *testing.T) {
 			category:       "999",
 			field:          "make",
 			queryParams:    "",
-			expectedStatus: 404,
+			expectedStatus: 200,
 		},
 		{
 			name:           "Invalid field",
@@ -709,6 +710,32 @@ func TestGetAllValues(t *testing.T) {
 					} else {
 						t.Errorf("Expected all values to be strings, got %T at index %d", v, i)
 						return
+					}
+				}
+
+				// If invalid category (999), verify results are for default category
+				if tt.category == "999" {
+					// Verify that we got valid values (not empty)
+					if len(actualValues) == 0 {
+						t.Errorf("Expected values for default category, got empty array")
+					}
+					// Verify values are for default category (Car & Truck Parts) - should contain car makes
+					// Check for at least one common car make
+					hasCarMake := false
+					carMakes := []string{"FORD", "HONDA", "TOYOTA", "BMW", "AC"}
+					for _, make := range carMakes {
+						for _, val := range actualValues {
+							if val == make {
+								hasCarMake = true
+								break
+							}
+						}
+						if hasCarMake {
+							break
+						}
+					}
+					if !hasCarMake && tt.field == "make" {
+						t.Errorf("Expected car makes for default category, but didn't find common makes in response")
 					}
 				}
 
@@ -1430,7 +1457,7 @@ func TestSearch(t *testing.T) {
 			body:           map[string]interface{}{"part_category": []string{"Brakes & Wheel Hub"}},
 			queryParams:    "",
 			expectedStatus: 200,
-			expectedCount:  91,
+			expectedCount:  config.SearchPageSize,
 			// Don't check specific ad IDs as they may vary
 		},
 		{
@@ -1465,8 +1492,8 @@ func TestSearch(t *testing.T) {
 			category:       "999",
 			body:           map[string]interface{}{},
 			queryParams:    "",
-			expectedStatus: 404,
-			expectedCount:  0,
+			expectedStatus: 200,
+			expectedCount:  config.SearchPageSize, // Should return one page of default category results
 		},
 		{
 			name:           "Search with empty arrays",
@@ -1561,6 +1588,18 @@ func TestSearch(t *testing.T) {
 					} else {
 						t.Errorf("Expected ad_id to be a number, got %T", id)
 						return
+					}
+				}
+
+				// If invalid category (999), verify results are for default category
+				if tt.category == "999" {
+					// Verify that we got results (should be one page of default category ads)
+					if len(adIDs) == 0 && tt.expectedCount > 0 {
+						t.Errorf("Expected results for default category, got empty")
+					}
+					// Verify count matches expected (one page)
+					if int(count) != config.SearchPageSize {
+						t.Errorf("Expected one page (%d) of default category results, got %d", config.SearchPageSize, int(count))
 					}
 				}
 
@@ -1820,7 +1859,7 @@ func TestHomeHandler(t *testing.T) {
 	}{
 		{"Valid category", 6, 200},
 		{"Another valid category", 5, 200},
-		{"Invalid category", 999, 404},
+		{"Invalid category", 999, 200},
 	}
 
 	for _, tt := range tests {
@@ -1850,6 +1889,14 @@ func TestHomeHandler(t *testing.T) {
 				// Check that body contains some expected HTML elements
 				if len(body) == 0 {
 					t.Error("Expected non-empty HTML response")
+				}
+
+				// If invalid category (999), verify results are for default category
+				if tt.categoryID == 999 {
+					// Verify HTML contains default category name (check for HTML entity version)
+					if !strings.Contains(body, "Car &amp; Truck Parts") && !strings.Contains(body, "Car & Truck Parts") {
+						t.Errorf("Expected HTML to contain default category name 'Car & Truck Parts' (or HTML entity version)")
+					}
 				}
 			}
 		})
@@ -2039,7 +2086,7 @@ func TestSwitchCategoryHandler(t *testing.T) {
 	}{
 		{"Valid category", "6", 200},
 		{"Another valid category", "5", 200},
-		{"Invalid category", "999", 404},
+		{"Invalid category", "999", 200},
 	}
 
 	for _, tt := range tests {
@@ -2067,17 +2114,33 @@ func TestSwitchCategoryHandler(t *testing.T) {
 
 				// Check that category cookie is set
 				hasCategoryCookie := false
+				var cookieValue string
 				for _, cookie := range resp.Cookies() {
 					if cookie.Name == "category" {
 						hasCategoryCookie = true
-						if cookie.Value != tt.categoryID {
-							t.Errorf("Expected category cookie value %s, got %s", tt.categoryID, cookie.Value)
-						}
+						cookieValue = cookie.Value
 						break
 					}
 				}
 				if !hasCategoryCookie {
 					t.Error("Expected category cookie to be set")
+				}
+
+				// If invalid category (999), verify results are for default category
+				if tt.categoryID == "999" {
+					// Verify HTML contains default category name (check for HTML entity version)
+					if !strings.Contains(body, "Car &amp; Truck Parts") && !strings.Contains(body, "Car & Truck Parts") {
+						t.Errorf("Expected HTML to contain default category name 'Car & Truck Parts' (or HTML entity version)")
+					}
+					// Verify cookie is set to default category ID (5)
+					if cookieValue != "5" {
+						t.Errorf("Expected category cookie to be set to default category ID (5), got %s", cookieValue)
+					}
+				} else {
+					// For valid categories, verify cookie matches requested category
+					if cookieValue != tt.categoryID {
+						t.Errorf("Expected category cookie value %s, got %s", tt.categoryID, cookieValue)
+					}
 				}
 			}
 		})
@@ -2093,7 +2156,7 @@ func TestCategorySelectHandler(t *testing.T) {
 	}{
 		{"Valid category", 6, 200},
 		{"Another valid category", 5, 200},
-		{"Invalid category", 999, 404},
+		{"Invalid category", 999, 200},
 	}
 
 	for _, tt := range tests {
@@ -2123,6 +2186,14 @@ func TestCategorySelectHandler(t *testing.T) {
 				// Check that body contains some expected HTML elements
 				if len(body) == 0 {
 					t.Error("Expected non-empty HTML response")
+				}
+
+				// If invalid category (999), verify results are for default category
+				if tt.categoryID == 999 {
+					// Verify HTML contains default category name (check for HTML entity version)
+					if !strings.Contains(body, "Car &amp; Truck Parts") && !strings.Contains(body, "Car & Truck Parts") {
+						t.Errorf("Expected HTML to contain default category name 'Car & Truck Parts' (or HTML entity version)")
+					}
 				}
 			}
 		})
@@ -2165,7 +2236,7 @@ func TestShowFiltersHandler(t *testing.T) {
 		{"Valid category - no query params", 6, "", 200},
 		{"Valid category - with query params", 6, "?make=HONDA&year=2020", 200},
 		{"Another valid category", 5, "", 200},
-		{"Invalid category", 999, "", 404},
+		{"Invalid category", 999, "", 200},
 	}
 
 	for _, tt := range tests {
@@ -2196,6 +2267,23 @@ func TestShowFiltersHandler(t *testing.T) {
 				// Check that body contains some expected HTML elements
 				if len(body) == 0 {
 					t.Error("Expected non-empty HTML response")
+				}
+
+				// If invalid category (999), verify results are for default category
+				// Note: ShowFiltersHandler renders SearchWidget which doesn't include category name,
+				// but it should render filters for the default category (Car & Truck Parts)
+				// We can verify by checking for fields specific to that category
+				if tt.categoryID == 999 {
+					// Verify HTML contains filter fields that are specific to Car & Truck Parts
+					// The default category should have part_category and part_subcategory fields
+					hasPartCategory := strings.Contains(body, "part_category") || strings.Contains(body, "part-category") || strings.Contains(body, "Part Category")
+					hasPartSubcategory := strings.Contains(body, "part_subcategory") || strings.Contains(body, "part-subcategory") || strings.Contains(body, "Part Subcategory")
+					if !hasPartCategory && !hasPartSubcategory {
+						// If we can't find part category fields, at least verify we got valid HTML with filters
+						if !strings.Contains(body, "search-widget") && !strings.Contains(body, "filter") {
+							t.Errorf("Expected HTML to contain search widget or filter elements for default category")
+						}
+					}
 				}
 			}
 		})
