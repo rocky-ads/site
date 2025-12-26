@@ -45,6 +45,7 @@ func gridImage(adID, current int, title string) g.Node {
 		Class("rounded-md w-full h-48 object-cover"),
 		Src(fmt.Sprintf("/image/%d/%d/480w", adID, current)),
 		Alt(title),
+		g.Attr("loading", "lazy"),
 	)
 }
 
@@ -116,7 +117,7 @@ func locationNode(location string) g.Node {
 
 func AdGridNode(userID, adID, price, imageCount int, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string) g.Node {
 	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
-	class := "flex flex-col cursor-pointer"
+	class := "flex flex-col cursor-pointer py-1"
 	if !active {
 		class += " bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg"
 	}
