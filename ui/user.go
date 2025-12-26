@@ -58,10 +58,21 @@ func UserMenu(userName string, isAdmin bool) g.Node {
 		),
 		A(
 			Href("/messages"),
-			Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"),
+			Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between"),
 			hideModalOnClick,
-			menuIcon("/images/message.svg", "Messages"),
-			g.Text("Messages"),
+			Div(
+				Class("flex items-center"),
+				menuIcon("/images/message.svg", "Messages"),
+				g.Text("Messages"),
+			),
+			Span(
+				ID("menu-message-count"),
+				hx.Ext("sse"),
+				g.Attr("sse-connect", "/auth/message-count-stream"),
+				g.Attr("sse-swap", "message"),
+				hx.Swap("innerHTML"),
+				// Start empty - will be populated by SSE
+			),
 		),
 		A(
 			Href("/settings"),

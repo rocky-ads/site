@@ -56,6 +56,7 @@ func setupApp() *fiber.App {
 	auth.Get("/welcome", handler.WelcomeHandler)
 	auth.Post("/bookmark/:id", handler.BookmarkHandler)
 	auth.Delete("/bookmark/:id", handler.BookmarkHandler)
+	auth.Get("/message-count-stream", handler.MessageCountStreamHandler)
 
 	//admin := app.Group("/admin", handler.AdminRequired)
 

@@ -65,6 +65,15 @@ func navLoggedIn(userName string) g.Node {
 			hx.Swap("none"),
 			g.Text(getUserInitial(userName)),
 		),
+		Span(
+			ID("message-unread-counter"),
+			Class("absolute -top-1 right-6"),
+			hx.Ext("sse"),
+			g.Attr("sse-connect", "/auth/message-count-stream"),
+			g.Attr("sse-swap", "message"),
+			hx.Swap("innerHTML"),
+			// Start empty - will be populated by SSE
+		),
 	)
 }
 
