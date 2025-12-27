@@ -23,3 +23,8 @@ func (f YearField) FilterNode(fv Values) g.Node {
 
 	return ui.YearRange(f.DisplayName, minYear, maxYear, maxMaxYear)
 }
+
+func (f YearField) NewAdNode(fv Values) g.Node {
+	year := fv.Get("year")
+	return ui.YearInput(f.DisplayName, year, f.IsRequired)
+}

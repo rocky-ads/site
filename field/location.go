@@ -20,3 +20,7 @@ func (f LocationField) FilterNode(fv Values) g.Node {
 
 	return ui.LocationRadius(location, radius)
 }
+
+func (f LocationField) NewAdNode(fv Values) g.Node {
+	return ui.LocationInput(f.IsRequired)
+}

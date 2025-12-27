@@ -46,7 +46,7 @@ func offers() g.Node {
 
 func RegisterForm() g.Node {
 	return Form(
-		Class("space-y-8"),
+		Class("space-y-8 mt-8"),
 		ID("registerForm"),
 		hx.Post("/api/register/step1"),
 		hx.Swap("none"),

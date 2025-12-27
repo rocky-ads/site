@@ -43,7 +43,7 @@ func passwordInput(autocomplete string) g.Node {
 
 func LoginForm() g.Node {
 	return Form(
-		Class("space-y-8"),
+		Class("space-y-8 mt-8"),
 		hx.Post("/api/login"),
 		hx.Swap("none"),
 		userNameInput(false, "username"),

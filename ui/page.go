@@ -185,7 +185,7 @@ func Page(userID int, userName, title, currentPath, csrfToken string, body []g.N
 			g.If(userID != 0, hx.Ext("sse")),
 			g.If(userID != 0, g.Attr("sse-connect", "/auth/sse")),
 			Div(
-				Class("w-full md:max-w-3xl md:mx-auto pb-8 px-4 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900"),
+				Class("w-full md:max-w-3xl md:mx-auto pb-8 px-6 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900"),
 				hx.Headers(headersJSON),
 				hx.Indicator("#indicator"),
 				navigation(userID, userName, currentPath),

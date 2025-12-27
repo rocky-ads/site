@@ -23,6 +23,7 @@ type Values = url.Values // map[string][]string
 
 type Fielder interface {
 	FilterNode(fv Values) g.Node
+	NewAdNode(fv Values) g.Node
 	GetField() Field
 }
 
@@ -143,6 +144,10 @@ func GetFields(categoryID int) ([]Fielder, error) {
 }
 
 func (f Field) FilterNode(fv Values) g.Node {
+	return g.Group{}
+}
+
+func (f Field) NewAdNode(fv Values) g.Node {
 	return g.Group{}
 }
 

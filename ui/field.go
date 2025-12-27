@@ -1,6 +1,9 @@
 package ui
 
 import (
+	"fmt"
+	"time"
+
 	g "maragu.dev/gomponents"
 	. "maragu.dev/gomponents/html"
 )
@@ -15,7 +18,7 @@ func FieldSelect(name, displayName, selectedValue string, values []string) g.Nod
 	}
 
 	return Div(
-		Label(Class("block text-sm font-medium mb-1"), g.Text(displayName)),
+		label(displayName),
 		Select(
 			Name(name),
 			Class("w-full p-2 border rounded-md"),
@@ -26,7 +29,7 @@ func FieldSelect(name, displayName, selectedValue string, values []string) g.Nod
 
 func PriceRange(displayName, minPrice, maxPrice string) g.Node {
 	return Div(
-		Label(Class("block text-sm font-medium mb-1"), g.Text(displayName+" Range")),
+		label(displayName+" Range"),
 		Div(
 			Class("flex gap-2 flex-nowrap"),
 			Input(
@@ -55,7 +58,7 @@ func PriceRange(displayName, minPrice, maxPrice string) g.Node {
 
 func YearRange(displayName, minYear, maxYear, maxMaxYear string) g.Node {
 	return Div(
-		Label(Class("block text-sm font-medium mb-1"), g.Text(displayName+" Range")),
+		label(displayName+" Range"),
 		Div(
 			Class("flex gap-2 flex-nowrap"),
 			Input(
@@ -86,7 +89,7 @@ func LocationRadius(location, radius string) g.Node {
 	return g.Group([]g.Node{
 		// Location input
 		Div(
-			Label(Class("block text-sm font-medium mb-1"), g.Text("Location")),
+			label("Location"),
 			Input(
 				Type("text"),
 				Name("location"),
@@ -97,7 +100,7 @@ func LocationRadius(location, radius string) g.Node {
 		),
 		// Radius dropdown
 		Div(
-			Label(Class("block text-sm font-medium mb-1"), g.Text("Radius")),
+			label("Radius"),
 			Select(
 				Name("radius"),
 				Class("w-full p-2 border rounded-md"),
@@ -109,4 +112,52 @@ func LocationRadius(location, radius string) g.Node {
 			),
 		),
 	})
+}
+
+func LocationInput(isRequired bool) g.Node {
+	return Div(
+		label("Location"),
+		inputText("location", "City, State or ZIP (optional)", isRequired,
+			MaxLength("32"),
+			Pattern("[\\x20-\\x7E]+"),
+			g.Attr("oninput", "this.checkValidity()"),
+		),
+	)
+}
+
+func PriceInput(isRequired bool) g.Node {
+	return Div(
+		label("Price"),
+		inputText("price", "0", isRequired,
+			Type("number"),
+			Min("0"),
+			Step("1"),
+			Pattern("^(0|[1-9][0-9]*)$"),
+			Title("Price must be a non-negative integer"),
+			g.Attr("oninput", "this.checkValidity()"),
+		),
+	)
+}
+
+// YearInput renders a single year input field for forms
+func YearInput(displayName, value string, isRequired bool) g.Node {
+	maxYear := time.Now().Year() + 2
+	inputAttrs := []g.Node{
+		Type("number"),
+		Name("year"),
+		Class("w-full p-2 border rounded-md"),
+		Placeholder("2024"),
+		Min("1900"),
+		Max(fmt.Sprintf("%d", maxYear)),
+		Step("1"),
+		Value(value),
+	}
+	if isRequired {
+		inputAttrs = append(inputAttrs, Required())
+	}
+
+	return Div(
+		label(displayName),
+		Input(inputAttrs...),
+	)
 }

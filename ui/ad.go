@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/rocky-ads/site/config"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -220,8 +221,65 @@ func AdDeleted() []g.Node {
 	}
 }
 
-func NewAd() []g.Node {
+func categoryNode(categoryName string) g.Node {
+	return Div(
+		Class("text-lg text-gray-600 dark:text-gray-400 italic"),
+		g.Text(categoryName),
+	)
+}
+
+func titleInput() g.Node {
+	return Div(
+		label("Title"),
+		inputText("title", "", true,
+			MaxLength("35"),
+			Pattern("[\\x20-\\x7E]+"),
+			//Title("Title must be 1-35 characters, printable ASCII characters only"),
+			g.Attr("oninput", "this.checkValidity()"),
+		),
+	)
+}
+
+func descriptionInput() g.Node {
+	return Div(
+		label("Description"),
+		textArea("description", "", true,
+			MaxLength(fmt.Sprintf("%d", config.MaxAdDescriptionLength)),
+			Rows("4"),
+			Pattern("[\\x20-\\x7E\\n\\r]+"),
+			Title("Description must contain printable ASCII characters only"),
+			g.Attr("oninput", "this.checkValidity()"),
+		),
+	)
+}
+
+func imagesInput() g.Node {
+	return Div(
+		label("Images"),
+		inputText("images", "", true),
+	)
+}
+
+func newAdForm(fields []g.Node) g.Node {
+	return Form(
+		Class("space-y-8 mt-8"),
+		hx.Post("/api/ad/new"),
+		hx.Swap("none"),
+		titleInput(),
+		g.Group(fields),
+		imagesInput(),
+		descriptionInput(),
+		standardButton(buttonProps{
+			Type: "submit",
+			Text: "Submit",
+		}),
+	)
+}
+
+func NewAd(categoryName string, fields []g.Node) []g.Node {
 	return []g.Node{
-		Div(),
+		pageTitle("Create New Ad"),
+		categoryNode(categoryName),
+		newAdForm(fields),
 	}
 }
