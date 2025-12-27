@@ -65,12 +65,10 @@ func navLoggedIn(userName string) g.Node {
 			hx.Swap("none"),
 			g.Text(getUserInitial(userName)),
 		),
-		Span(
+		Div(
 			ID("message-unread-counter"),
-			Class("absolute -top-1 right-6"),
-			hx.Ext("sse"),
-			g.Attr("sse-connect", "/auth/message-count-stream"),
-			g.Attr("sse-swap", "message"),
+			Class("absolute -top-1 right-6 bg-green-500 text-white rounded-full h-6 min-w-6 px-1.5 flex items-center justify-center text-xs font-bold empty:hidden"),
+			g.Attr("sse-swap", "message-count"),
 			hx.Swap("innerHTML"),
 			// Start empty - will be populated by SSE
 		),
@@ -181,12 +179,11 @@ func Page(userID int, userName, title, currentPath, csrfToken string, body []g.N
 	// Properly escape the CSRF token for JSON
 	headersJSON := fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)
 
-	return components.HTML5(components.HTML5Props{
-		Title:    config.ServerName,
-		Language: "en",
-		Head:     headNodes,
-		Body: []g.Node{
-			Class("min-h-screen bg-white dark:bg-gray-900"),
+	bodyNodes := []g.Node{
+		Class("min-h-screen bg-white dark:bg-gray-900"),
+		Div(
+			g.If(userID != 0, hx.Ext("sse")),
+			g.If(userID != 0, g.Attr("sse-connect", "/auth/sse")),
 			Div(
 				Class("w-full md:max-w-3xl md:mx-auto pb-8 px-4 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900"),
 				hx.Headers(headersJSON),
@@ -195,6 +192,13 @@ func Page(userID int, userName, title, currentPath, csrfToken string, body []g.N
 				g.Group(body),
 			),
 			g.Group(modalPlaceholder()),
-		},
+		),
+	}
+
+	return components.HTML5(components.HTML5Props{
+		Title:    config.ServerName,
+		Language: "en",
+		Head:     headNodes,
+		Body:     bodyNodes,
 	})
 }

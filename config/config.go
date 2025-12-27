@@ -53,6 +53,9 @@ const (
 	// CDN URLs for external resources
 	HTMXURL    = "https://unpkg.com/htmx.org@2.0.7"
 	HTMXSSEURL = "https://unpkg.com/htmx-ext-sse@2.2.3/dist/sse.min.js"
+
+	// SSE configuration
+	SSEChannelBufferSize = 100 // Buffer size for user event channels
 )
 
 // Global configuration variables

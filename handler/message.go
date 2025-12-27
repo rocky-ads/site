@@ -1,48 +1,50 @@
 package handler
 
 import (
-	"bufio"
 	"fmt"
 	"math/rand"
 	"time"
-
-	"github.com/gofiber/fiber/v2"
-	"github.com/valyala/fasthttp"
 )
 
-// MessageCountStreamHandler handles SSE stream for message count updates
-func MessageCountStreamHandler(c *fiber.Ctx) error {
-	c.Set(fiber.HeaderContentType, "text/event-stream")
-	c.Set(fiber.HeaderCacheControl, "no-cache")
-	c.Set(fiber.HeaderConnection, "keep-alive")
-	c.Set("Transfer-Encoding", "chunked")
+// SimulateMessageCountUpdate simulates a message count update for testing
+// In production, this would be called when a user receives a new message
+func SimulateMessageCountUpdate(userID int) {
+	// Initialize random seed
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	c.Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
-		// Initialize random seed
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	// Generate random message count between 0 and 14
+	count := r.Intn(15)
 
-		for {
-			// Generate random message count between 0 and 10
-			count := r.Intn(15)
+	// Create SSE event
+	event := SSEEvent{Event: "message-count"}
+	if count > 0 {
+		event.Data = fmt.Sprintf("<span>%d</span>", count)
+	}
 
-			// Send the count as HTML
-			// If count is 0, send empty string to hide the element
-			// Otherwise, send the counter HTML
-			if count == 0 {
-				fmt.Fprintf(w, "data: \n\n")
-			} else {
-				countText := fmt.Sprintf("%d", count)
-				fmt.Fprintf(w, "data: <span class=\"bg-green-500 text-white rounded-full h-6 min-w-6 px-1.5 flex items-center justify-center text-xs font-bold\">%s</span>\n\n", countText)
+	// Send event to user's browser
+	SendSSEEvent(userID, event)
+}
+
+// StartMessageCountSimulator starts a background goroutine that simulates
+// message count updates for testing purposes
+func StartMessageCountSimulator() {
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			// Get all connected users and simulate updates
+			channelMutex.RLock()
+			userIDs := make([]int, 0, len(userChannels))
+			for userID := range userChannels {
+				userIDs = append(userIDs, userID)
 			}
+			channelMutex.RUnlock()
 
-			// Flush detects client disconnect
-			if err := w.Flush(); err != nil {
-				return
+			// Send updates to all connected users
+			for _, userID := range userIDs {
+				SimulateMessageCountUpdate(userID)
 			}
-
-			time.Sleep(1 * time.Second)
 		}
-	}))
-
-	return nil
+	}()
 }

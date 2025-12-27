@@ -21,7 +21,7 @@ func setupApp() *fiber.App {
 		ErrorHandler: handler.ErrorHandler,
 		BodyLimit:    config.ServerBodyLimit, // Total request body size (for multiple files)
 		ReadTimeout:  30 * time.Second,       // Prevent long-running requests
-		WriteTimeout: 30 * time.Second,       // Prevent long-running responses
+		//WriteTimeout: 30 * time.Second,       // Prevent long-running responses
 	})
 
 	// Must be early in middleware chain
@@ -56,7 +56,7 @@ func setupApp() *fiber.App {
 	auth.Get("/welcome", handler.WelcomeHandler)
 	auth.Post("/bookmark/:id", handler.BookmarkHandler)
 	auth.Delete("/bookmark/:id", handler.BookmarkHandler)
-	auth.Get("/message-count-stream", handler.MessageCountStreamHandler)
+	auth.Get("/sse", handler.SSEHandler)
 
 	//admin := app.Group("/admin", handler.AdminRequired)
 
@@ -108,6 +108,9 @@ func main() {
 	if err := ad.Init(); err != nil {
 		logger.Fatal("Failed to initialize ads", "error", err)
 	}
+
+	// Start SSE message count simulator (for testing)
+	handler.StartMessageCountSimulator()
 
 	app := setupApp()
 

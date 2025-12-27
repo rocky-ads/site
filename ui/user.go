@@ -67,9 +67,8 @@ func UserMenu(userName string, isAdmin bool) g.Node {
 			),
 			Span(
 				ID("menu-message-count"),
-				hx.Ext("sse"),
-				g.Attr("sse-connect", "/auth/message-count-stream"),
-				g.Attr("sse-swap", "message"),
+				Class("bg-green-500 text-white rounded-full h-6 min-w-6 px-1.5 flex items-center justify-center text-xs font-bold empty:hidden"),
+				g.Attr("sse-swap", "message-count"),
 				hx.Swap("innerHTML"),
 				// Start empty - will be populated by SSE
 			),

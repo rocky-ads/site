@@ -942,6 +942,11 @@
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
     transition-duration: var(--tw-duration, var(--default-transition-duration));
   }
+  .empty\:hidden {
+    &:empty {
+      display: none;
+    }
+  }
   .hover\:bg-blue-200 {
     &:hover {
       @media (hover: hover) {
