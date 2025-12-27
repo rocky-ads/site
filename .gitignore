@@ -33,6 +33,8 @@ go.work.sum
 
 /rebuild_db
 /project.db
+/project.db-shm
+/project.db-wal
 /site
 
 # macOS
