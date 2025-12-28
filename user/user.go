@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/rocky-ads/site/db"
@@ -48,61 +49,45 @@ type User struct {
 	DeletedAt          *time.Time `json:"deleted_at"`
 }
 
-func getUserBy(whereClause string, args ...any) (User, error) {
+const userSelectFields = `SELECT 
+	id,
+	encrypted_name,
+	name_nonce,
+	encrypted_phone,
+	phone_nonce,
+	password_hash,
+	password_salt,
+	password_algo,
+	phone_verified,
+	notification_method,
+	encrypted_email,
+	email_nonce,
+	created_at,
+	is_admin,
+	sms_opted_out,
+	deleted_at
+FROM users`
+
+func processUserRow(id int, encryptedNameBytes, nameNonceBytes []byte,
+	encryptedPhoneBytes, phoneNonceBytes []byte, passwordHash, passwordSalt, passwordAlgo string,
+	phoneVerifiedInt int, notificationMethod string, encryptedEmailBytes, emailNonceBytes []byte,
+	createdAt time.Time, isAdminInt int, smsOptedOutInt int, deletedAt *time.Time,
+) (User, error) {
 	var u User
-	var encryptedNameBytes, nameNonceBytes []byte
-	var encryptedPhoneBytes, phoneNonceBytes []byte
-	var encryptedEmailBytes, emailNonceBytes []byte
-	var phoneVerifiedInt, isAdminInt, smsOptedOutInt int
 
-	query := `SELECT 
-		id,
-		encrypted_name,
-		name_nonce,
-		encrypted_phone,
-		phone_nonce,
-		password_hash,
-		password_salt,
-		password_algo,
-		phone_verified,
-		notification_method,
-		encrypted_email,
-		email_nonce,
-		created_at,
-		is_admin,
-		sms_opted_out,
-		deleted_at
-	FROM users WHERE ` + whereClause
+	u.ID = id
+	u.PasswordHash = passwordHash
+	u.PasswordSalt = passwordSalt
+	u.PasswordAlgo = passwordAlgo
+	u.NotificationMethod = notificationMethod
+	u.CreatedAt = createdAt
+	u.DeletedAt = deletedAt
 
-	err := db.QueryRow(query, args...).Scan(
-		&u.ID,
-		&encryptedNameBytes,
-		&nameNonceBytes,
-		&encryptedPhoneBytes,
-		&phoneNonceBytes,
-		&u.PasswordHash,
-		&u.PasswordSalt,
-		&u.PasswordAlgo,
-		&phoneVerifiedInt,
-		&u.NotificationMethod,
-		&encryptedEmailBytes,
-		&emailNonceBytes,
-		&u.CreatedAt,
-		&isAdminInt,
-		&smsOptedOutInt,
-		&u.DeletedAt,
-	)
-	if err != nil {
-		return User{}, err
-	}
-
-	// Convert BLOB to base64 strings
 	u.EncryptedName = base64.StdEncoding.EncodeToString(encryptedNameBytes)
 	u.NameNonce = base64.StdEncoding.EncodeToString(nameNonceBytes)
 	u.EncryptedPhone = base64.StdEncoding.EncodeToString(encryptedPhoneBytes)
 	u.PhoneNonce = base64.StdEncoding.EncodeToString(phoneNonceBytes)
 
-	// Convert email BLOBs if present (NULL BLOBs scan as empty slices)
 	if len(encryptedEmailBytes) > 0 {
 		encryptedEmailStr := base64.StdEncoding.EncodeToString(encryptedEmailBytes)
 		u.EncryptedEmail = &encryptedEmailStr
@@ -112,12 +97,11 @@ func getUserBy(whereClause string, args ...any) (User, error) {
 		u.EmailNonce = &emailNonceStr
 	}
 
-	// Convert integer flags to booleans
 	u.PhoneVerified = phoneVerifiedInt == 1
 	u.IsAdmin = isAdminInt == 1
 	u.SMSOptedOut = smsOptedOutInt == 1
 
-	// Decrypt name and phone
+	var err error
 	u.Name, err = decryptName(u.ID, u.EncryptedName, u.NameNonce)
 	if err != nil {
 		return User{}, fmt.Errorf("failed to decrypt name: %w", err)
@@ -127,7 +111,6 @@ func getUserBy(whereClause string, args ...any) (User, error) {
 		return User{}, fmt.Errorf("failed to decrypt phone: %w", err)
 	}
 
-	// Decrypt email if present
 	if u.EncryptedEmail != nil && u.EmailNonce != nil {
 		email, err := decryptEmailAddress(u.ID, *u.EncryptedEmail, *u.EmailNonce)
 		if err == nil {
@@ -138,8 +121,70 @@ func getUserBy(whereClause string, args ...any) (User, error) {
 	return u, nil
 }
 
+// scanner interface for both *sql.Row and *sql.Rows
+type scanner interface {
+	Scan(dest ...interface{}) error
+}
+
+func scanUserFields(s scanner) (User, error) {
+	var id int
+	var encryptedNameBytes, nameNonceBytes []byte
+	var encryptedPhoneBytes, phoneNonceBytes []byte
+	var encryptedEmailBytes, emailNonceBytes []byte
+	var phoneVerifiedInt, isAdminInt, smsOptedOutInt int
+	var passwordHash, passwordSalt, passwordAlgo, notificationMethod string
+	var createdAt time.Time
+	var deletedAt *time.Time
+
+	err := s.Scan(
+		&id,
+		&encryptedNameBytes,
+		&nameNonceBytes,
+		&encryptedPhoneBytes,
+		&phoneNonceBytes,
+		&passwordHash,
+		&passwordSalt,
+		&passwordAlgo,
+		&phoneVerifiedInt,
+		&notificationMethod,
+		&encryptedEmailBytes,
+		&emailNonceBytes,
+		&createdAt,
+		&isAdminInt,
+		&smsOptedOutInt,
+		&deletedAt,
+	)
+	if err != nil {
+		return User{}, err
+	}
+
+	return processUserRow(
+		id,
+		encryptedNameBytes, nameNonceBytes,
+		encryptedPhoneBytes, phoneNonceBytes,
+		passwordHash, passwordSalt, passwordAlgo,
+		phoneVerifiedInt,
+		notificationMethod,
+		encryptedEmailBytes, emailNonceBytes,
+		createdAt,
+		isAdminInt,
+		smsOptedOutInt,
+		deletedAt,
+	)
+}
+
+func getUserBy(whereClause string, args ...any) (User, error) {
+	query := userSelectFields + " WHERE " + whereClause
+	return scanUserFields(db.QueryRow(query, args...))
+}
+
 func GetByID(id int) (User, error) {
 	return getUserBy("id = ? AND deleted_at IS NULL", id)
+}
+
+// GetByIDIncludingDeleted returns a user by ID, including deleted users
+func GetByIDIncludingDeleted(id int) (User, error) {
+	return getUserBy("id = ?", id)
 }
 
 // Exists checks if a user exists and is not deleted (lightweight check without decryption)
@@ -286,5 +331,90 @@ func SetSMSOptOut(userID int, optedOut bool) error {
 		val = 1
 	}
 	_, err := db.Exec("UPDATE Users SET sms_opted_out = $1 WHERE id = $2", val, userID)
+	return err
+}
+
+// GetAllUsers returns all users (including deleted) with optional sorting
+func GetAllUsers(sortBy string, sortOrder string) ([]User, error) {
+	validSortColumns := map[string]bool{
+		"id":         true,
+		"name":       true,
+		"phone":      true,
+		"is_admin":   true,
+		"created_at": true,
+		"deleted_at": true,
+	}
+
+	if !validSortColumns[sortBy] {
+		sortBy = "id"
+	}
+
+	if sortOrder != "ASC" && sortOrder != "DESC" {
+		sortOrder = "ASC"
+	}
+
+	query := userSelectFields
+
+	needsInMemorySort := sortBy == "name" || sortBy == "phone"
+	if !needsInMemorySort {
+		query += " ORDER BY " + sortBy + " " + sortOrder
+	}
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		u, err := scanUserFields(rows)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if needsInMemorySort {
+		sort.Slice(users, func(i, j int) bool {
+			var less bool
+			switch sortBy {
+			case "name":
+				less = users[i].Name < users[j].Name
+			case "phone":
+				less = users[i].PhoneE64 < users[j].PhoneE64
+			}
+			if sortOrder == "DESC" {
+				return !less
+			}
+			return less
+		})
+	}
+
+	return users, nil
+}
+
+func DeleteUser(userID int) error {
+	now := time.Now()
+	_, err := db.Exec("UPDATE users SET deleted_at = ? WHERE id = ?", now, userID)
+	return err
+}
+
+func RestoreUser(userID int) error {
+	_, err := db.Exec("UPDATE users SET deleted_at = NULL WHERE id = ?", userID)
+	return err
+}
+
+func PromoteToAdmin(userID int) error {
+	_, err := db.Exec("UPDATE users SET is_admin = 1 WHERE id = ?", userID)
+	return err
+}
+
+func DemoteFromAdmin(userID int) error {
+	_, err := db.Exec("UPDATE users SET is_admin = 0 WHERE id = ?", userID)
 	return err
 }

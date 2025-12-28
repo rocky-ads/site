@@ -39,7 +39,7 @@ func UserMenu(userName string, isAdmin bool) g.Node {
 	if isAdmin {
 		menuItems = append(menuItems,
 			A(
-				Href("/admin"),
+				Href("/admin/dashboard"),
 				Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"),
 				hideModalOnClick,
 				menuIcon("/images/tools.svg", "Admin"),

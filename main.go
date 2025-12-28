@@ -60,7 +60,14 @@ func setupApp() *fiber.App {
 	auth.Delete("/bookmark/:id", handler.BookmarkHandler)
 	auth.Get("/sse", handler.SSEHandler)
 
-	//admin := app.Group("/admin", handler.AdminRequired)
+	admin := app.Group("/admin", handler.AdminRequired)
+	admin.Get("/dashboard", handler.AdminDashboardHandler)
+	admin.Get("/tab/:tab", handler.AdminTabHandler)
+	admin.Get("/users", handler.AdminUsersHandler)
+	admin.Post("/user/:id/delete", handler.AdminUserDeleteHandler)
+	admin.Post("/user/:id/restore", handler.AdminUserRestoreHandler)
+	admin.Post("/user/:id/promote", handler.AdminUserPromoteHandler)
+	admin.Post("/user/:id/demote", handler.AdminUserDemoteHandler)
 
 	api := app.Group("/api")
 
