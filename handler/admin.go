@@ -61,7 +61,7 @@ func AdminUsersHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to load users")
 	}
 
-	return render(c, ui.UsersRows(users, currentUserID))
+	return render(c, ui.UsersTable(users, sortBy, sortOrder, currentUserID))
 }
 
 func AdminUserDeleteHandler(c *fiber.Ctx) error {

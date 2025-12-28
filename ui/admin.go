@@ -62,7 +62,6 @@ func AdminContent(activeTab string, users []user.User, sortBy, sortOrder string,
 	return Div(
 		ID("admin-content"),
 		g.If(activeTab == "users", Div(
-			ID("users-table"),
 			Class("mt-4"),
 			UsersTable(users, sortBy, sortOrder, currentUserID),
 		)),
@@ -94,6 +93,7 @@ func AdminSettingsTab() g.Node {
 
 func UsersTable(users []user.User, sortBy, sortOrder string, currentUserID int) g.Node {
 	return Div(
+		ID("users-table"),
 		Class("w-full text-xs"),
 		tableHeader(sortBy, sortOrder),
 		Div(
@@ -150,7 +150,7 @@ func sortableHeader(column, label, currentSort, currentOrder string) g.Node {
 		A(
 			Href(href),
 			hx.Get(href),
-			hx.Target("#users-rows"),
+			hx.Target("#users-table"),
 			hx.Swap("outerHTML"),
 			Class("flex items-center cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"),
 			g.Text(label),
