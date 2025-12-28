@@ -306,7 +306,7 @@ func actionIconButton(iconSrc, alt, actionURL, confirmMsg, colorClass string, ta
 		Img(
 			Src(iconSrc),
 			Alt(alt),
-			Class("w-4 h-4 dark:invert"),
+			Class("w-5 h-5 dark:invert"),
 		),
 	)
 }
