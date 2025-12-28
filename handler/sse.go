@@ -3,12 +3,12 @@ package handler
 import (
 	"bufio"
 	"fmt"
-	"sync"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/logger"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/valyala/fasthttp"
 )
 
@@ -22,7 +22,7 @@ var (
 	// userChannels maps userID to a slice of their event channels (multiple tabs/browsers)
 	userChannels = make(map[int][]chan SSEEvent)
 	// channelMutex protects userChannels map
-	channelMutex sync.RWMutex
+	channelMutex deadlock.RWMutex
 )
 
 // SendSSEEvent sends an SSE event to all connections for a specific user

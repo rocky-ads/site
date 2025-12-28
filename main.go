@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"time"
 
 	"github.com/rocky-ads/site/ad"
@@ -9,6 +10,7 @@ import (
 	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/handler"
 	"github.com/rocky-ads/site/logger"
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
@@ -89,6 +91,11 @@ func setupApp() *fiber.App {
 }
 
 func main() {
+	deadlock.Opts.Disable = false                    // default = false
+	deadlock.Opts.DeadlockTimeout = 10 * time.Second // detect very long waits
+	deadlock.Opts.PrintAllCurrentGoroutines = true   // very helpful
+	deadlock.Opts.LogBuf = os.Stderr
+
 	if err := logger.Init(config.LogLevel, config.LogFormat,
 		config.LogFile); err != nil {
 		logger.Fatal("Failed to initialize logger", "error", err)
