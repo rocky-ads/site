@@ -30,6 +30,10 @@ func renderPage(c *fiber.Ctx, title string, body []gomponents.Node) error {
 	userID := local.GetUserID(c)
 	userName := local.GetUserName(c)
 	csrfToken := local.GetCSRFToken(c)
+
+	// Close existing SSE connections before rendering new page
+	closeSSE(userID)
+
 	return render(c, ui.Page(userID, userName, title, c.Path(), csrfToken, body))
 }
 

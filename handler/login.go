@@ -23,7 +23,7 @@ func logout(c *fiber.Ctx) {
 
 func LogoutHandler(c *fiber.Ctx) error {
 	logout(c)
-	return renderPage(c, "Logout", ui.LogoutPage())
+	return c.Redirect("/")
 }
 
 func LoginSubmitHandler(c *fiber.Ctx) error {

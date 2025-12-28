@@ -65,19 +65,3 @@ func LoginPage() []g.Node {
 		LoginForm(),
 	}
 }
-
-func LogoutPage() []g.Node {
-	return []g.Node{
-		Div(
-			Class("text-center py-16"),
-			H2(
-				Class("text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-8"),
-				g.Text("You have been logged out"),
-			),
-			standardButton(buttonProps{
-				Href: "/",
-				Text: "Go Home",
-			}),
-		),
-	}
-}

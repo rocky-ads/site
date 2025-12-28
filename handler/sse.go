@@ -25,6 +25,17 @@ var (
 	channelMutex deadlock.RWMutex
 )
 
+// closeSSE closes all SSE connections for a specific user by sending a close event
+func closeSSE(userID int) {
+	if userID == 0 {
+		return
+	}
+	SendSSEEvent(userID, SSEEvent{
+		Event: "close",
+		Data:  "",
+	})
+}
+
 // SendSSEEvent sends an SSE event to all connections for a specific user
 // If the user is not connected, the event is dropped
 func SendSSEEvent(userID int, event SSEEvent) {
