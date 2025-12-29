@@ -17,7 +17,7 @@ func AdNodes(adIDs []int, userID, view, page int, loc *time.Location, csrfToken 
 	nextPage := page + 1
 	for i, ad := range ads {
 		isLast := i == len(ads)-1
-		results[i] = ad.Node(userID, view, csrfToken, isLast, nextPage)
+		results[i] = ad.Node(userID, view, nextPage, csrfToken, isLast)
 	}
 	return results, nil
 }

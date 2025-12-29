@@ -96,6 +96,16 @@ func ageNode(createdAt time.Time) g.Node {
 	)
 }
 
+func paginationDiv(nextPage int) g.Node {
+	return Div(
+		hx.Get(fmt.Sprintf("/api/search/?page=%d", nextPage)),
+		hx.Trigger("revealed"),
+		hx.Target("this"),
+		hx.Swap("outerHTML"),
+		hx.Include("form"),
+	)
+}
+
 func AdGridNode(userID, adID, price, imageCount, nextPage int, title, location, csrfToken string, createdAt time.Time, active, bookmarked, isLast bool) g.Node {
 	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
 
@@ -123,12 +133,7 @@ func AdGridNode(userID, adID, price, imageCount, nextPage int, title, location, 
 	if isLast {
 		return g.Group([]g.Node{
 			node,
-			Div(
-				hx.Get(fmt.Sprintf("/search/?page=%d", nextPage)),
-				hx.Trigger("revealed"),
-				hx.Swap("afterend"),
-				hx.Include("form"),
-			),
+			paginationDiv(nextPage),
 		})
 	}
 
@@ -166,12 +171,7 @@ func AdListNode(userID, adID, price int, title, location string, createdAt time.
 	if isLast {
 		return g.Group([]g.Node{
 			node,
-			Div(
-				hx.Get(fmt.Sprintf("/search/?page=%d", nextPage)),
-				hx.Trigger("revealed"),
-				hx.Swap("afterend"),
-				hx.Include("form"),
-			),
+			paginationDiv(nextPage),
 		})
 	}
 
