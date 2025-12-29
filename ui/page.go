@@ -116,9 +116,15 @@ func indicator() g.Node {
 func navigation(userID int, userName, currentPath string) g.Node {
 	return Nav(
 		Class("relative z-10 bg-white/75 dark:bg-gray-900/75 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700 flex items-center justify-between mb-8 py-4 -mx-4 px-4"),
-		Div(
-			Class("flex items-center gap-4"),
-			A(Href("/"), Class("text-xl font-bold"), g.Text(config.ServerName)),
+		A(
+			Href("/"),
+			Class("flex items-center gap-2"),
+			Img(
+				Src("/images/rocks.png"),
+				Alt("Rocks"),
+				Class("h-8 dark:invert"),
+			),
+			Span(Class("text-xl font-bold"), g.Text(config.ServerName)),
 		),
 		indicator(),
 		g.Iff(userID != 0, func() g.Node { return navLoggedIn(userName) }),
