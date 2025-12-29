@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"fmt"
+
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -33,7 +35,7 @@ func menuHeader(userName string) g.Node {
 	)
 }
 
-func UserMenu(userName string, isAdmin bool) g.Node {
+func UserMenu(userName string, isAdmin bool, messageCount int) g.Node {
 	var menuItems []g.Node
 
 	if isAdmin {
@@ -62,12 +64,12 @@ func UserMenu(userName string, isAdmin bool) g.Node {
 				menuIcon("/images/message.svg", "Messages"),
 				g.Text("Messages"),
 			),
-			Span(
-				ID("menu-message-count"),
-				Class("bg-green-500 text-white rounded-full h-6 min-w-6 px-1.5 flex items-center justify-center text-xs font-bold empty:hidden"),
-				g.Attr("sse-swap", "message-count"),
-				hx.Swap("innerHTML"),
-				// Start empty - will be populated by SSE
+			g.If(messageCount > 0,
+				Span(
+					ID("menu-message-count"),
+					Class("bg-green-500 text-white rounded-full h-6 min-w-6 px-1.5 flex items-center justify-center text-xs font-bold"),
+					g.Text(fmt.Sprintf("%d", messageCount)),
+				),
 			),
 		),
 		A(

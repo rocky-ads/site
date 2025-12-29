@@ -6,14 +6,21 @@ import (
 	"time"
 )
 
+// GetMessageCount returns the current unread message count for a user
+// In production, this would query the database for unread messages
+// For now, it uses the same simulation logic as SimulateMessageCountUpdate
+func GetMessageCount(userID int) int {
+	// Initialize random seed based on userID for consistency
+	r := rand.New(rand.NewSource(time.Now().UnixNano() + int64(userID)))
+
+	// Generate random message count between 0 and 14
+	return r.Intn(15)
+}
+
 // SimulateMessageCountUpdate simulates a message count update for testing
 // In production, this would be called when a user receives a new message
 func SimulateMessageCountUpdate(userID int) {
-	// Initialize random seed
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	// Generate random message count between 0 and 14
-	count := r.Intn(15)
+	count := GetMessageCount(userID)
 
 	// Create SSE event
 	event := SSEEvent{Event: "message-count"}
