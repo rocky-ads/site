@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"strconv"
+
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -168,7 +170,16 @@ func SearchWidget(userID, view int, q string, results, filters []g.Node) g.Node 
 	)
 }
 
-func searchResults(view int, results []g.Node) g.Node {
+func sentinel(page int) g.Node {
+	return Div(
+		hx.Get("/api/search/"+strconv.Itoa(page)),
+		hx.Trigger("revealed"),
+		hx.Swap("outerHTML"),
+		//hx.Include("form"),
+	)
+}
+
+func searchResults(view int, page int, results []g.Node) g.Node {
 	var class string
 
 	switch view {
@@ -182,5 +193,6 @@ func searchResults(view int, results []g.Node) g.Node {
 		ID("search-results"),
 		Class(class),
 		g.Group(results),
+		sentinel(page),
 	)
 }
