@@ -122,7 +122,7 @@ func navigation(userID int, userName, currentPath string) g.Node {
 			Img(
 				Src("/images/rocks.png"),
 				Alt("Rocks"),
-				Class("h-8 dark:invert"),
+				Class("h-8"),
 			),
 			Span(Class("text-xl font-bold"), g.Text(config.ServerName)),
 		),
