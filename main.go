@@ -80,6 +80,8 @@ func setupApp() *fiber.App {
 	api.Get("/image-nav/:id", handler.ImageNavigationHandler)
 	api.Get("/image-full/:id", handler.ImageFullScreenHandler)
 	api.Get("/show-filters", handler.ShowFiltersHandler)
+	api.Get("/category-select", handler.CategorySelectHandler)
+	api.Get("/modal-remove/:name", handler.ModalRemoveHandler)
 
 	categoryRouter := api.Group("/category/:category")
 	categoryRouter.Get("/values/:field", handler.GetAllValuesHandler)
@@ -92,7 +94,6 @@ func setupApp() *fiber.App {
 	categoryRouter.Get("/switch", handler.SwitchCategoryHandler)
 
 	api.Get("/ads/:id/filter-values", handler.GetAdFilterValuesHandler)
-	api.Get("/modal/category-select", handler.CategorySelectHandler)
 
 	return app
 }

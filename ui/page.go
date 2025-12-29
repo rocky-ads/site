@@ -57,17 +57,19 @@ func getUserInitial(userName string) string {
 
 func navLoggedIn(userName string) g.Node {
 	return Div(
+		ID("user-avatar-container"),
 		Class("relative"),
 		Span(
 			ID("user-avatar"),
 			Class("bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-semibold text-sm cursor-pointer hover:bg-red-600"),
 			hx.Get("/auth/user-menu"),
-			hx.Swap("none"),
+			hx.Target("body"),
+			hx.Swap("beforeend"),
 			g.Text(getUserInitial(userName)),
 		),
 		Div(
 			ID("message-unread-counter"),
-			Class("absolute -top-1 right-6 bg-green-500 text-white rounded-full h-6 min-w-6 px-1.5 flex items-center justify-center text-xs font-bold empty:hidden"),
+			Class("absolute -top-1 -right-3 bg-green-500 text-white rounded-full h-5 min-w-5 px-1 flex items-center justify-center text-[10px] font-bold empty:hidden"),
 			g.Attr("sse-swap", "message-count"),
 			hx.Swap("innerHTML"),
 			// Start empty - will be populated by SSE
@@ -113,7 +115,7 @@ func indicator() g.Node {
 
 func navigation(userID int, userName, currentPath string) g.Node {
 	return Nav(
-		Class("sticky top-0 z-10 bg-white/75 dark:bg-gray-900/75 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700 flex items-center justify-between mb-8 py-4 -mx-4 px-4"),
+		Class("relative z-10 bg-white/75 dark:bg-gray-900/75 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700 flex items-center justify-between mb-8 py-4 -mx-4 px-4"),
 		Div(
 			Class("flex items-center gap-4"),
 			A(Href("/"), Class("text-xl font-bold"), g.Text(config.ServerName)),
@@ -192,7 +194,6 @@ func Page(userID int, userName, title, currentPath, csrfToken string, body []g.N
 				navigation(userID, userName, currentPath),
 				g.Group(body),
 			),
-			g.Group(modalPlaceholder()),
 		),
 	}
 

@@ -11,10 +11,12 @@ func HomePage(userID, view int, categoryName, categoryImage string, results []g.
 }
 
 func SearchContainer(userID, view int, categoryName, categoryImage string, results []g.Node) g.Node {
-	return Div(
-		ID("search-container"),
-		categorySearch(userID, view, categoryName, categoryImage, results),
-	)
+	return g.Group(append([]g.Node{
+		Div(
+			ID("search-container"),
+			categorySearch(userID, view, categoryName, categoryImage, results),
+		),
+	}, RemoveModal("category")...))
 }
 
 func categorySearch(userID, view int, categoryName, categoryImage string, results []g.Node) g.Node {
@@ -37,8 +39,9 @@ func categoryButton(categoryName, categoryImage string) g.Node {
 			Button(
 				Type("button"),
 				Class("py-2 px-5 flex items-center gap-2 rounded-full border-2 border-blue-500 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 dark:border-blue-400"),
-				hx.Get("/api/modal/category-select"),
-				hx.Swap("none"),
+				hx.Get("/api/category-select"),
+				hx.Target("body"),
+				hx.Swap("beforeend"),
 				Img(
 					Src(imagePath),
 					Alt("Category icon"),

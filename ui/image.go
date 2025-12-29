@@ -181,8 +181,8 @@ func ImageNode(adID, count, current int, size, heightClass string, clickable boo
 	if clickable {
 		imageWrapper = Div(
 			hx.Get(fmt.Sprintf("/api/image-full/%d?index=%d&count=%d&size=%s", adID, current, count, size)),
-			hx.Target("#modal"),
-			hx.Swap("outerHTML"),
+			hx.Target("body"),
+			hx.Swap("beforeend"),
 			Class("cursor-pointer"),
 			imgElement,
 		)
@@ -199,45 +199,69 @@ func ImageNode(adID, count, current int, size, heightClass string, clickable boo
 	)
 }
 
+func imageFullScreenContent(adID, current, count int, size string) g.Node {
+	return Div(
+		Class("relative w-full h-full flex items-center justify-center pointer-events-auto"),
+		// Close button
+		Button(
+			Type("button"),
+			Class("absolute top-4 right-4 bg-white/90 hover:bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg focus:outline-none cursor-pointer z-50"),
+			hx.Get("/api/modal-remove/image-fullscreen"),
+			hx.Swap("none"),
+			Img(
+				Src("/images/close.svg"),
+				Alt("Close"),
+				Class("w-6 h-6"),
+			),
+		),
+		// Image container
+		Div(
+			Class("relative w-full h-full flex items-center justify-center"),
+			Img(
+				Class("max-w-full max-h-full object-contain"),
+				Src(fmt.Sprintf("/image/%d/%d/%s", adID, current, size)),
+				Alt(fmt.Sprintf("Image %d of %d", current, count)),
+			),
+			// Navigation buttons (only if multiple images)
+			g.If(count > 1, imageFullScreenNav(adID, current, count, size)),
+			// Image counter
+			g.If(count > 1, imageFullScreenCount(current, count)),
+		),
+	)
+}
+
 func ImageFullScreen(adID, current, count int, size string) g.Node {
 	return g.Group([]g.Node{
 		Div(
-			ID("modal-backdrop"),
-			hx.SwapOOB("true"),
-			Class("modal fixed inset-0 bg-black/90 z-40"),
-			hideModalOnClick,
+			ID("image-fullscreen-modal-backdrop"),
+			Class("fixed inset-0 bg-black/90 z-40"),
+			hx.Get("/api/modal-remove/image-fullscreen"),
+			hx.Swap("none"),
+			hx.Trigger("click, keyup[key=='Escape'] from:body"),
 		),
 		Div(
-			ID("modal"),
+			ID("image-fullscreen-modal"),
+			Class("fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none"),
+			imageFullScreenContent(adID, current, count, size),
+		),
+	})
+}
+
+func ImageFullScreenUpdate(adID, current, count int, size string) g.Node {
+	return g.Group([]g.Node{
+		Div(
+			ID("image-fullscreen-modal-backdrop"),
 			hx.SwapOOB("true"),
-			Class("modal fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none"),
-			Div(
-				Class("relative w-full h-full flex items-center justify-center pointer-events-auto"),
-				// Close button
-				Button(
-					Type("button"),
-					Class("absolute top-4 right-4 bg-white/90 hover:bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg focus:outline-none cursor-pointer z-50"),
-					hideModalOnClick,
-					Img(
-						Src("/images/close.svg"),
-						Alt("Close"),
-						Class("w-6 h-6"),
-					),
-				),
-				// Image container
-				Div(
-					Class("relative w-full h-full flex items-center justify-center"),
-					Img(
-						Class("max-w-full max-h-full object-contain"),
-						Src(fmt.Sprintf("/image/%d/%d/%s", adID, current, size)),
-						Alt(fmt.Sprintf("Image %d of %d", current, count)),
-					),
-					// Navigation buttons (only if multiple images)
-					g.If(count > 1, imageFullScreenNav(adID, current, count, size)),
-					// Image counter
-					g.If(count > 1, imageFullScreenCount(current, count)),
-				),
-			),
+			Class("fixed inset-0 bg-black/90 z-40"),
+			hx.Get("/api/modal-remove/image-fullscreen"),
+			hx.Swap("none"),
+			hx.Trigger("click, keyup[key=='Escape'] from:body"),
+		),
+		Div(
+			ID("image-fullscreen-modal"),
+			hx.SwapOOB("true"),
+			Class("fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none"),
+			imageFullScreenContent(adID, current, count, size),
 		),
 	})
 }
@@ -251,9 +275,9 @@ func imageFullScreenNav(adID, current, count int, size string) g.Node {
 		Button(
 			Type("button"),
 			Class("absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg focus:outline-none cursor-pointer z-40"),
-			hx.Get(fmt.Sprintf("/api/image-full/%d?index=%d&count=%d&size=%s", adID, prevIdx, count, size)),
-			hx.Target("#modal"),
-			hx.Swap("outerHTML"),
+			hx.Get(fmt.Sprintf("/api/image-full/%d?index=%d&count=%d&size=%s&update=true", adID, prevIdx, count, size)),
+			hx.Target("body"),
+			hx.Swap("none"),
 			Img(
 				Class("w-6 h-6"),
 				Src("/images/left.svg"),
@@ -263,9 +287,9 @@ func imageFullScreenNav(adID, current, count int, size string) g.Node {
 		Button(
 			Type("button"),
 			Class("absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg focus:outline-none cursor-pointer z-40"),
-			hx.Get(fmt.Sprintf("/api/image-full/%d?index=%d&count=%d&size=%s", adID, nextIdx, count, size)),
-			hx.Target("#modal"),
-			hx.Swap("outerHTML"),
+			hx.Get(fmt.Sprintf("/api/image-full/%d?index=%d&count=%d&size=%s&update=true", adID, nextIdx, count, size)),
+			hx.Target("body"),
+			hx.Swap("none"),
 			Img(
 				Class("w-6 h-6"),
 				Src("/images/right.svg"),

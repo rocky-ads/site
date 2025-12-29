@@ -41,7 +41,6 @@ func UserMenu(userName string, isAdmin bool) g.Node {
 			A(
 				Href("/admin/dashboard"),
 				Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"),
-				hideModalOnClick,
 				menuIcon("/images/tools.svg", "Admin"),
 				g.Text("Admin"),
 			),
@@ -52,14 +51,12 @@ func UserMenu(userName string, isAdmin bool) g.Node {
 		A(
 			Href("/ads"),
 			Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"),
-			hideModalOnClick,
 			menuIcon("/images/bookmark-true.svg", "My Ads"),
 			g.Text("My Ads"),
 		),
 		A(
 			Href("/messages"),
 			Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between"),
-			hideModalOnClick,
 			Div(
 				Class("flex items-center"),
 				menuIcon("/images/message.svg", "Messages"),
@@ -76,32 +73,34 @@ func UserMenu(userName string, isAdmin bool) g.Node {
 		A(
 			Href("/settings"),
 			Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"),
-			hideModalOnClick,
 			menuIcon("/images/settings.svg", "Settings"),
 			g.Text("Settings"),
 		),
 		A(
 			Href("/about"),
 			Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"),
-			hideModalOnClick,
 			menuIcon("/images/info.svg", "About"),
 			g.Text("About"),
 		),
 		A(
 			Href("/logout"),
 			Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"),
-			hideModalOnClick,
 			menuIcon("/images/logout.svg", "Logout"),
 			g.Text("Logout"),
 		),
 	)
 
 	return g.Group([]g.Node{
-		modalBackdrop(),
 		Div(
-			ID("modal"),
-			hx.SwapOOB("true"),
-			Class("modal fixed z-50 top-16 right-4"),
+			ID("user-menu-modal-backdrop"),
+			Class("fixed inset-0 bg-black/30 z-40"),
+			hx.Get("/api/modal-remove/user-menu"),
+			hx.Swap("none"),
+			hx.Trigger("click, keyup[key=='Escape'] from:body"),
+		),
+		Div(
+			ID("user-menu-modal"),
+			Class("fixed z-50 top-20 right-6"),
 			Div(
 				Class("bg-white rounded-lg shadow-lg border border-gray-200 w-40"),
 				menuHeader(userName),

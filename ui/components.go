@@ -2,6 +2,7 @@ package ui
 
 import (
 	g "maragu.dev/gomponents"
+	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
 )
 
@@ -138,4 +139,18 @@ func pageTitle(text string) g.Node {
 		Class("text-3xl font-bold"),
 		g.Text(text),
 	)
+}
+
+// RemoveModal returns swap-oob delete elements to remove a modal and its backdrop
+func RemoveModal(name string) []g.Node {
+	return []g.Node{
+		Div(
+			ID(name+"-modal-backdrop"),
+			hx.SwapOOB("delete"),
+		),
+		Div(
+			ID(name+"-modal"),
+			hx.SwapOOB("delete"),
+		),
+	}
 }

@@ -23,3 +23,8 @@ func CategorySelectHandler(c *fiber.Ctx) error {
 
 	return render(c, ui.CategorySelectModal(categoryItems))
 }
+
+func ModalRemoveHandler(c *fiber.Ctx) error {
+	name := c.Params("name")
+	return render(c, g.Group(ui.RemoveModal(name)))
+}

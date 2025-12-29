@@ -65,5 +65,11 @@ func ImageFullScreenHandler(c *fiber.Ctx) error {
 
 	size := c.Query("size", "1200w")
 
+	// If update query parameter is present, it's a navigation update (use swap-oob)
+	// Otherwise, it's an initial render (append to body)
+	if c.Query("update") == "true" {
+		return render(c, ui.ImageFullScreenUpdate(adID, imageID, count, size))
+	}
+
 	return render(c, ui.ImageFullScreen(adID, imageID, count, size))
 }

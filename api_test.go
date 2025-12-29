@@ -2147,7 +2147,7 @@ func TestSwitchCategoryHandler(t *testing.T) {
 	}
 }
 
-// Test GET /api/modal/category-select
+// Test GET /api/category-select
 func TestCategorySelectHandler(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -2166,7 +2166,7 @@ func TestCategorySelectHandler(t *testing.T) {
 				t.Fatalf("Failed to create client: %v", err)
 			}
 
-			resp, body := getRequestWithCookies(t, client, baseURL+"/api/modal/category-select")
+			resp, body := getRequestWithCookies(t, client, baseURL+"/api/category-select")
 
 			if resp.StatusCode != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
@@ -2201,7 +2201,7 @@ func TestCategorySelectHandler(t *testing.T) {
 
 	// Test without category cookie - should default to default category
 	t.Run("No category cookie", func(t *testing.T) {
-		resp, err := http.Get(baseURL + "/api/modal/category-select")
+		resp, err := http.Get(baseURL + "/api/category-select")
 		if err != nil {
 			t.Fatalf("Failed to make request: %v", err)
 		}
