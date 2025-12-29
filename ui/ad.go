@@ -96,7 +96,7 @@ func ageNode(createdAt time.Time) g.Node {
 	)
 }
 
-func AdGridNode(userID, adID, price, imageCount int, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string) g.Node {
+func AdGridNode(userID, adID, price, imageCount, nextPage int, title, location, csrfToken string, createdAt time.Time, active, bookmarked, isLast bool) g.Node {
 	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
 
 	class := "flex flex-col cursor-pointer gap-1 py-3"
@@ -104,7 +104,7 @@ func AdGridNode(userID, adID, price, imageCount int, title, location string, cre
 		class += " bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg"
 	}
 
-	return A(
+	node := A(
 		Href("/ad/"+strconv.Itoa(adID)),
 		Class(class),
 		gridImageNode(adID, imageCount, 1, title),
@@ -119,9 +119,23 @@ func AdGridNode(userID, adID, price, imageCount int, title, location string, cre
 		),
 		Span(Class("min-w-0"), g.Text(title)),
 	)
+
+	if isLast {
+		return g.Group([]g.Node{
+			node,
+			Div(
+				hx.Get(fmt.Sprintf("/search/?page=%d", nextPage)),
+				hx.Trigger("revealed"),
+				hx.Swap("afterend"),
+				hx.Include("form"),
+			),
+		})
+	}
+
+	return node
 }
 
-func AdListNode(userID, adID, price int, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string) g.Node {
+func AdListNode(userID, adID, price int, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string, isLast bool, nextPage int) g.Node {
 	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
 
 	class := "flex flex-wrap items-center justify-between py-2 px-3 cursor-pointer"
@@ -131,7 +145,7 @@ func AdListNode(userID, adID, price int, title, location string, createdAt time.
 		class += " bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg"
 	}
 
-	return A(
+	node := A(
 		Href("/ad/"+strconv.Itoa(adID)),
 		Class(class),
 		Div(
@@ -148,6 +162,20 @@ func AdListNode(userID, adID, price int, title, location string, createdAt time.
 			Span(Class("text-green-600 font-semibold"), g.Text(priceStr)),
 		),
 	)
+
+	if isLast {
+		return g.Group([]g.Node{
+			node,
+			Div(
+				hx.Get(fmt.Sprintf("/search/?page=%d", nextPage)),
+				hx.Trigger("revealed"),
+				hx.Swap("afterend"),
+				hx.Include("form"),
+			),
+		})
+	}
+
+	return node
 }
 
 func deletedWatermark() g.Node {

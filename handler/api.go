@@ -260,3 +260,23 @@ func ShowFiltersHandler(c *fiber.Ctx) error {
 
 	return render(c, ui.SearchWidget(userID, view, q, results, filters))
 }
+
+func SearchPageHandler(c *fiber.Ctx) error {
+	categoryID := cookie.GetCategoryID(c)
+
+	fv := getQueryValues(c)
+	fv = field.FilterSpecFields(categoryID, fv)
+
+	userID := local.GetUserID(c)
+	view := cookie.GetView(c)
+	loc := cookie.GetLocation(c)
+	csrfToken := local.GetCSRFToken(c)
+	limit, offset := param.GetPageLimitOffset(c)
+
+	results, err := searchAndRenderAds(categoryID, limit, offset, userID, view, fv, loc, csrfToken)
+	if err != nil {
+		return err
+	}
+
+	return render(c, g.Group(results))
+}

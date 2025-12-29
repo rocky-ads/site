@@ -8,14 +8,16 @@ import (
 	g "maragu.dev/gomponents"
 )
 
-func AdNodes(adIDs []int, userID int, view int, loc *time.Location, csrfToken string) ([]g.Node, error) {
+func AdNodes(adIDs []int, userID, view, page int, loc *time.Location, csrfToken string) ([]g.Node, error) {
 	ads, err := GetAds(userID, adIDs, loc)
 	if err != nil {
 		return nil, err
 	}
 	results := make([]g.Node, len(ads))
+	nextPage := page + 1
 	for i, ad := range ads {
-		results[i] = ad.Node(userID, view, csrfToken)
+		isLast := i == len(ads)-1
+		results[i] = ad.Node(userID, view, csrfToken, isLast, nextPage)
 	}
 	return results, nil
 }
@@ -43,12 +45,12 @@ func (a Ad) Location() string {
 	return flag + " " + locationText
 }
 
-func (a Ad) Node(userID int, view int, csrfToken string) g.Node {
+func (a Ad) Node(userID, view, nextPage int, csrfToken string, isLast bool) g.Node {
 	switch view {
 	case ui.ViewGrid:
-		return ui.AdGridNode(userID, a.ID, a.Price, a.ImageCount, a.Title, a.Location(), a.CreatedAt, !a.IsDeleted(), a.Bookmarked, csrfToken)
+		return ui.AdGridNode(userID, a.ID, a.Price, a.ImageCount, nextPage, a.Title, a.Location(), csrfToken, a.CreatedAt, !a.IsDeleted(), a.Bookmarked, isLast)
 	case ui.ViewList:
-		return ui.AdListNode(userID, a.ID, a.Price, a.Title, a.Location(), a.CreatedAt, !a.IsDeleted(), a.Bookmarked, csrfToken)
+		return ui.AdListNode(userID, a.ID, a.Price, a.Title, a.Location(), a.CreatedAt, !a.IsDeleted(), a.Bookmarked, csrfToken, isLast, nextPage)
 	default:
 		return g.Text("bad view")
 	}
