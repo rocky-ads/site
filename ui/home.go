@@ -131,7 +131,7 @@ func searchSimple(q string) g.Node {
 
 func newAdButton(userID int) g.Node {
 	return standardButton(buttonProps{
-		Href:     "/auth/new-ad",
+		Href:     "/auth/ad/new",
 		Text:     "New Ad",
 		Disabled: userID == 0,
 	})

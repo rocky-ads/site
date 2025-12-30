@@ -8,15 +8,18 @@ import (
 	g "maragu.dev/gomponents"
 )
 
-func AdNodes(adIDs []int, userID, view, page int, loc *time.Location, csrfToken string) ([]g.Node, error) {
+func AdNodes(adIDs []int, userID, view, page int, loc *time.Location, csrfToken string, pagination bool) ([]g.Node, error) {
 	ads, err := GetAds(userID, adIDs, loc)
 	if err != nil {
 		return nil, err
 	}
 	results := make([]g.Node, len(ads))
-	nextPage := page + 1
+	var nextPage int
+	if pagination {
+		nextPage = page + 1
+	}
 	for i, ad := range ads {
-		isLast := i == len(ads)-1
+		isLast := i == len(ads)-1 && pagination
 		results[i] = ad.Node(userID, view, nextPage, csrfToken, isLast)
 	}
 	return results, nil

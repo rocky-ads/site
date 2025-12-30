@@ -15,7 +15,7 @@ func Search(categoryID, limit, offset int, fv field.Values) ([]int, error) {
 			SELECT COALESCE(json_group_array(id), '[]')
 			FROM (
 				SELECT id FROM ads
-				WHERE category_id = ?
+				WHERE category_id = ? AND deleted_at IS NULL
 				LIMIT ? OFFSET ?
 			) AS limited_ads`
 		var args = []any{categoryID, limit, offset}
@@ -26,7 +26,7 @@ func Search(categoryID, limit, offset int, fv field.Values) ([]int, error) {
 	query := `
 		SELECT DISTINCT a.id
 		FROM ads a
-		WHERE a.category_id = ?`
+		WHERE a.category_id = ? AND a.deleted_at IS NULL`
 	var args = []any{categoryID}
 
 	for fieldName, values := range fv {

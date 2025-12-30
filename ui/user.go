@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	g "maragu.dev/gomponents"
+	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
 )
 
@@ -50,13 +51,13 @@ func UserMenu(userName string, isAdmin bool, messageCount int) g.Node {
 
 	menuItems = append(menuItems,
 		A(
-			Href("/ads"),
+			Href("/auth/user/myads"),
 			Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"),
 			menuIcon("/images/bookmark-true.svg", "My Ads"),
 			g.Text("My Ads"),
 		),
 		A(
-			Href("/messages"),
+			Href("/auth/user/messages"),
 			Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between"),
 			Div(
 				Class("flex items-center"),
@@ -72,13 +73,13 @@ func UserMenu(userName string, isAdmin bool, messageCount int) g.Node {
 			),
 		),
 		A(
-			Href("/settings"),
+			Href("/auth/user/settings"),
 			Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"),
 			menuIcon("/images/settings.svg", "Settings"),
 			g.Text("Settings"),
 		),
 		A(
-			Href("/about"),
+			Href("/auth/user/about"),
 			Class("block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"),
 			menuIcon("/images/info.svg", "About"),
 			g.Text("About"),
@@ -106,4 +107,102 @@ func UserMenu(userName string, isAdmin bool, messageCount int) g.Node {
 			),
 		),
 	})
+}
+
+func MyAdsPage(activeTab string, adNodes []g.Node) []g.Node {
+	return []g.Node{
+		pageTitle("My Ads"),
+		MyAdsContainer(activeTab, adNodes),
+	}
+}
+
+func MyAdsContainer(activeTab string, adNodes []g.Node) g.Node {
+	return Div(
+		ID("my-ads-container"),
+		Class("space-y-6 mt-6"),
+		MyAdsTabs(activeTab),
+		MyAdsContent(activeTab, adNodes),
+	)
+}
+
+func MyAdsTabs(activeTab string) g.Node {
+	return Div(
+		ID("my-ads-tabs"),
+		Class("border-b border-gray-200 dark:border-gray-700"),
+		Div(
+			Class("flex space-x-8"),
+			myAdsTab("Bookmarked", "bookmarked", activeTab == "bookmarked"),
+			myAdsTab("Active", "active", activeTab == "active"),
+			myAdsTab("Deleted", "deleted", activeTab == "deleted"),
+		),
+	)
+}
+
+func myAdsTab(name, tabID string, active bool) g.Node {
+	var classes string
+	if active {
+		classes = "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400 py-4 px-1 text-sm font-medium"
+	} else {
+		classes = "border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 py-4 px-1 text-sm font-medium"
+	}
+
+	href := fmt.Sprintf("/auth/user/myads/tab/%s", tabID)
+
+	return A(
+		Href(href),
+		hx.Get(href),
+		hx.Target("#my-ads-container"),
+		hx.Swap("outerHTML"),
+		Class(classes),
+		g.Text(name),
+	)
+}
+
+func MyAdsContent(activeTab string, adNodes []g.Node) g.Node {
+	return Div(
+		ID("my-ads-content"),
+		Class("mt-4"),
+		g.If(len(adNodes) == 0,
+			Div(
+				Class("text-center text-gray-600 dark:text-gray-400 py-8"),
+				P(g.Text("No ads found.")),
+			),
+		),
+		g.If(len(adNodes) > 0,
+			Div(
+				Class("space-y-0"),
+				g.Group(adNodes),
+			),
+		),
+	)
+}
+
+func MessagesPage() []g.Node {
+	return []g.Node{
+		pageTitle("Messages"),
+		Div(
+			Class("mt-8 text-center text-gray-600 dark:text-gray-400"),
+			P(g.Text("This page will show your messages.")),
+		),
+	}
+}
+
+func SettingsPage() []g.Node {
+	return []g.Node{
+		pageTitle("Settings"),
+		Div(
+			Class("mt-8 text-center text-gray-600 dark:text-gray-400"),
+			P(g.Text("This page will show your settings.")),
+		),
+	}
+}
+
+func AboutPage() []g.Node {
+	return []g.Node{
+		pageTitle("About"),
+		Div(
+			Class("mt-8 text-center text-gray-600 dark:text-gray-400"),
+			P(g.Text("This page will show information about Rocky Ads.")),
+		),
+	}
 }

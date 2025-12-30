@@ -1,6 +1,7 @@
 package ad
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/rocky-ads/site/db"
@@ -117,4 +118,45 @@ func LoadFieldValues(adID int) (field.Values, error) {
 	}
 
 	return fv, nil
+}
+
+// GetUserAdIDs returns ad IDs for a user based on filter type
+// filterType: "bookmarked", "active", or "deleted"
+func GetUserAdIDs(userID int, filterType string) ([]int, error) {
+	var query string
+	var args []any
+
+	switch filterType {
+	case "bookmarked":
+		query = `
+			SELECT COALESCE(json_group_array(a.id), '[]')
+			FROM ads a
+			JOIN bookmarks b ON a.id = b.ad_id
+			WHERE b.user_id = ? AND a.deleted_at IS NULL
+			ORDER BY a.created_at DESC
+		`
+		args = []any{userID}
+	case "active":
+		query = `
+			SELECT COALESCE(json_group_array(id), '[]')
+			FROM ads
+			WHERE user_id = ? AND deleted_at IS NULL
+			ORDER BY created_at DESC
+		`
+		args = []any{userID}
+	case "deleted":
+		query = `
+			SELECT COALESCE(json_group_array(id), '[]')
+			FROM ads
+			WHERE user_id = ? AND deleted_at IS NOT NULL
+			ORDER BY deleted_at DESC
+		`
+		args = []any{userID}
+	default:
+		return nil, fmt.Errorf("invalid filter type: %s", filterType)
+	}
+
+	var adIDs []int
+	err := db.QueryJSON(&adIDs, query, args...)
+	return adIDs, err
 }

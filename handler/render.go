@@ -45,7 +45,7 @@ func searchAndRenderAds(categoryID, limit, offset, userID, view int, fv field.Va
 	}
 
 	page := (offset / limit) + 1
-	results, err := ad.AdNodes(adIDs, userID, view, page, loc, csrfToken)
+	results, err := ad.AdNodes(adIDs, userID, view, page, loc, csrfToken, true)
 	if err != nil {
 		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}

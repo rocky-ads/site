@@ -62,7 +62,7 @@ func navLoggedIn(userName string) g.Node {
 		Span(
 			ID("user-avatar"),
 			Class("bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-semibold text-sm cursor-pointer hover:bg-red-600"),
-			hx.Get("/auth/user-menu"),
+			hx.Get("/auth/user/menu"),
 			hx.Target("body"),
 			hx.Swap("beforeend"),
 			g.Text(getUserInitial(userName)),

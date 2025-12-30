@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/cookie"
+	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/param"
@@ -37,7 +38,7 @@ func AdHandler(c *fiber.Ctx) error {
 
 	title := "Rocky Ads - " + a.Title
 	csrfToken := local.GetCSRFToken(c)
-	return renderPage(c, title, ui.Ad(adID, userID, a.ImageCount, a.Price,
+	return renderPage(c, title, ui.Ad(adID, userID, a.UserID, a.ImageCount, a.Price,
 		a.Title, a.Location(), a.Description, a.CreatedAt, a.Bookmarked,
 		!a.IsDeleted(), csrfToken))
 }
@@ -89,4 +90,74 @@ func AdShareHandler(c *fiber.Ctx) error {
 	}
 
 	return render(c, ui.AdShareModal(fmt.Sprintf("/ad/%d/share", adID)))
+}
+
+func DeleteAdHandler(c *fiber.Ctx) error {
+	adID, err := param.GetAdID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
+	}
+
+	userID := local.GetUserID(c)
+	loc := cookie.GetLocation(c)
+
+	// Get ad to verify ownership
+	a, err := ad.GetAd(userID, adID, loc)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
+	}
+
+	// Check ownership
+	if a.UserID != userID {
+		return fiber.NewError(fiber.StatusForbidden, "You are not the owner of this ad")
+	}
+
+	// Delete the ad
+	if err := deleteAd(adID); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to delete ad")
+	}
+
+	// Redirect to the ad page
+	c.Set("HX-Redirect", fmt.Sprintf("/ad/%d", adID))
+	return c.SendStatus(fiber.StatusOK)
+}
+
+func RestoreAdHandler(c *fiber.Ctx) error {
+	adID, err := param.GetAdID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
+	}
+
+	userID := local.GetUserID(c)
+	loc := cookie.GetLocation(c)
+
+	// Get ad to verify ownership
+	a, err := ad.GetAd(userID, adID, loc)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
+	}
+
+	// Check ownership
+	if a.UserID != userID {
+		return fiber.NewError(fiber.StatusForbidden, "You are not the owner of this ad")
+	}
+
+	// Restore the ad
+	if err := restoreAd(adID); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to restore ad")
+	}
+
+	// Redirect to the ad page
+	c.Set("HX-Redirect", fmt.Sprintf("/ad/%d", adID))
+	return c.SendStatus(fiber.StatusOK)
+}
+
+func deleteAd(adID int) error {
+	_, err := db.Exec("UPDATE ads SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?", adID)
+	return err
+}
+
+func restoreAd(adID int) error {
+	_, err := db.Exec("UPDATE ads SET deleted_at = NULL WHERE id = ?", adID)
+	return err
 }

@@ -153,7 +153,7 @@ func buildAllQuery(f SpecField, fv Values) (string, []any, error) {
 
 func buildAnyQuery(f SpecField, fv Values) (string, []any, error) {
 	return buildAdValuesQuery(f, fv, func() (string, []any) {
-		return "a.category_id = ?", []any{f.CategoryID}
+		return "a.category_id = ? AND a.deleted_at IS NULL", []any{f.CategoryID}
 	})
 }
 
@@ -167,7 +167,7 @@ func buildAdQuery(adIDs []int, f SpecField, fv Values) (query string, args []any
 			args[i] = id
 		}
 		args = append(args, f.CategoryID)
-		return "a.id IN (" + Placeholders(len(adIDs)) + ") AND a.category_id = ?", args
+		return "a.id IN (" + Placeholders(len(adIDs)) + ") AND a.category_id = ? AND a.deleted_at IS NULL", args
 	})
 }
 
