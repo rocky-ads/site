@@ -14,15 +14,15 @@ func ErrorPageContent(code int, message string) []g.Node {
 		Div(
 			Class("text-center py-16"),
 			H1(
-				Class("text-6xl font-bold text-gray-900 dark:text-gray-100 mb-4"),
+				Class("text-6xl font-bold mb-4"),
 				g.Text(fmt.Sprintf("%d", code)),
 			),
 			H2(
-				Class("text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-2"),
+				Class("text-2xl font-semibold mb-2"),
 				g.Text(message),
 			),
 			P(
-				Class("text-gray-600 dark:text-gray-400 mb-8"),
+				Class("text-zinc-600 dark:text-zinc-400 mb-8"),
 				g.Text("Sorry, something went wrong."),
 			),
 			standardButton(buttonProps{

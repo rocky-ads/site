@@ -115,7 +115,7 @@ func indicator() g.Node {
 
 func navigation(userID int, userName, currentPath string) g.Node {
 	return Nav(
-		Class("relative z-10 bg-white/75 dark:bg-gray-900/75 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700 flex items-center justify-between mb-8 py-4 -mx-4 px-4"),
+		Class("relative z-10 bg-white/75 dark:bg-zinc-900/75 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between mb-8 py-4 -mx-4 px-4"),
 		A(
 			Href("/"),
 			Class("flex items-center gap-2"),
@@ -188,13 +188,13 @@ func Page(userID int, userName, title, currentPath, csrfToken string, body []g.N
 	headersJSON := fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)
 
 	bodyNodes := []g.Node{
-		Class("min-h-screen bg-white dark:bg-gray-900"),
+		Class("min-h-screen bg-white dark:bg-zinc-900"),
 		Div(
 			g.If(userID != 0, hx.Ext("sse")),
 			g.If(userID != 0, g.Attr("sse-connect", "/auth/sse")),
 			g.If(userID != 0, g.Attr("sse-close", "close")),
 			Div(
-				Class("w-full md:max-w-3xl md:mx-auto pb-8 px-6 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900"),
+				Class("w-full md:max-w-3xl md:mx-auto pb-8 px-6 text-zinc-900 dark:text-zinc-200 bg-white dark:bg-zinc-900"),
 				hx.Headers(headersJSON),
 				hx.Indicator("#indicator"),
 				navigation(userID, userName, currentPath),

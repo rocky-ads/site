@@ -29,7 +29,7 @@ func AdminDashboardContainer(activeTab string, users []user.User, sortBy, sortOr
 func AdminTabs(activeTab string) g.Node {
 	return Div(
 		ID("admin-tabs"),
-		Class("border-b border-gray-200 dark:border-gray-700"),
+		Class("border-b border-zinc-200 dark:border-zinc-700"),
 		Div(
 			Class("flex space-x-8"),
 			adminTab("Users", "users", activeTab == "users"),
@@ -43,7 +43,7 @@ func adminTab(name, tabID string, active bool) g.Node {
 	if active {
 		classes = "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400 py-4 px-1 text-sm font-medium"
 	} else {
-		classes = "border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 py-4 px-1 text-sm font-medium"
+		classes = "border-b-2 border-transparent text-zinc-500 hover:text-zinc-700 hover:border-zinc-300 dark:text-zinc-400 dark:hover:text-zinc-300 py-4 px-1 text-sm font-medium"
 	}
 
 	href := fmt.Sprintf("/admin/tab/%s", tabID)
@@ -72,20 +72,20 @@ func AdminContent(activeTab string, users []user.User, sortBy, sortOrder string,
 func UsersRows(users []user.User, currentUserID int) g.Node {
 	return Div(
 		ID("users-rows"),
-		Class("bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700"),
+		Class("bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-700"),
 		g.Group(userRows(users, currentUserID)),
 	)
 }
 
 func AdminSettingsTab() g.Node {
 	return Div(
-		Class("mt-4 p-6 bg-white dark:bg-gray-800 rounded-lg shadow"),
+		Class("mt-4 p-6 bg-white dark:bg-zinc-800 rounded-lg shadow"),
 		H2(
-			Class("text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4"),
+			Class("text-xl font-semibold text-zinc-900 dark:text-zinc-200 mb-4"),
 			g.Text("Settings"),
 		),
 		P(
-			Class("text-gray-600 dark:text-gray-400"),
+			Class("text-zinc-600 dark:text-zinc-400"),
 			g.Text("This is a dummy settings tab for testing purposes."),
 		),
 	)
@@ -98,7 +98,7 @@ func UsersTable(users []user.User, sortBy, sortOrder string, currentUserID int) 
 		tableHeader(sortBy, sortOrder),
 		Div(
 			ID("users-rows"),
-			Class("bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700"),
+			Class("bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-700"),
 			g.Group(userRows(users, currentUserID)),
 		),
 	)
@@ -106,7 +106,7 @@ func UsersTable(users []user.User, sortBy, sortOrder string, currentUserID int) 
 
 func tableHeader(sortBy, sortOrder string) g.Node {
 	return Div(
-		Class("grid grid-cols-7 gap-2 bg-gray-50 dark:bg-gray-800 px-2 py-2 border-b border-gray-200 dark:border-gray-700"),
+		Class("grid grid-cols-7 gap-2 bg-zinc-50 dark:bg-zinc-800 px-2 py-2 border-b border-zinc-200 dark:border-zinc-700"),
 		sortableHeader("id", "ID", sortBy, sortOrder),
 		sortableHeader("name", "Name", sortBy, sortOrder),
 		sortableHeader("phone", "Phone", sortBy, sortOrder),
@@ -114,7 +114,7 @@ func tableHeader(sortBy, sortOrder string) g.Node {
 		sortableHeader("created_at", "Created", sortBy, sortOrder),
 		sortableHeader("deleted_at", "Deleted", sortBy, sortOrder),
 		Div(
-			Class("px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"),
+			Class("px-2 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider"),
 			g.Text("Actions"),
 		),
 	)
@@ -146,13 +146,13 @@ func sortableHeader(column, label, currentSort, currentOrder string) g.Node {
 	}
 
 	return Div(
-		Class("px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"),
+		Class("px-2 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider"),
 		A(
 			Href(href),
 			hx.Get(href),
 			hx.Target("#users-table"),
 			hx.Swap("outerHTML"),
-			Class("flex items-center cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"),
+			Class("flex items-center cursor-pointer hover:text-zinc-700 dark:hover:text-zinc-300"),
 			g.Text(label),
 			sortIndicator,
 		),
@@ -178,10 +178,10 @@ func UserRow(u user.User, currentUserID int) g.Node {
 	var rowClass string
 
 	if isDeleted {
-		statusClass = "text-gray-400 dark:text-gray-600"
+		statusClass = "text-zinc-400 dark:text-zinc-600"
 		rowClass = ""
 	} else {
-		statusClass = "text-gray-900 dark:text-gray-100"
+		statusClass = "text-zinc-900 dark:text-zinc-200"
 		if u.IsAdmin {
 			rowClass = "bg-red-50 dark:bg-red-900/20"
 		} else {
@@ -201,7 +201,7 @@ func UserRow(u user.User, currentUserID int) g.Node {
 
 	return Div(
 		ID(rowID),
-		Class("grid grid-cols-7 gap-2 px-2 py-2 border-b border-gray-200 dark:border-gray-700 "+rowClass),
+		Class("grid grid-cols-7 gap-2 px-2 py-2 border-b border-zinc-200 dark:border-zinc-700 "+rowClass),
 		Div(
 			Class("px-2 py-2 text-xs "+statusClass),
 			g.Text(strconv.Itoa(u.ID)),
@@ -297,7 +297,7 @@ func userActions(u user.User, currentUserID int) g.Node {
 func actionIconButton(iconSrc, alt, actionURL, confirmMsg, colorClass string, targetRowID string) g.Node {
 	return Button(
 		Type("button"),
-		Class("p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors "+colorClass),
+		Class("p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors "+colorClass),
 		hx.Post(actionURL),
 		hx.Target(fmt.Sprintf("#%s", targetRowID)),
 		hx.Swap("outerHTML"),
@@ -306,7 +306,7 @@ func actionIconButton(iconSrc, alt, actionURL, confirmMsg, colorClass string, ta
 		Img(
 			Src(iconSrc),
 			Alt(alt),
-			Class("w-5 h-5 dark:invert"),
+			Class("w-5 h-5 dark:invert dark:opacity-80"),
 		),
 	)
 }

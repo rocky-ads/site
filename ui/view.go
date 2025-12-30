@@ -41,7 +41,7 @@ func viewToggle(view, target int) g.Node {
 	if active {
 		class += "border-blue-500 bg-blue-100 dark:bg-blue-900 dark:border-blue-400"
 	} else {
-		class += "border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+		class += "border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800"
 	}
 	return Button(
 		Type("button"),
@@ -50,7 +50,7 @@ func viewToggle(view, target int) g.Node {
 		hx.Target("#search-view"),
 		hx.Swap("outerHTML"),
 		Img(
-			Class("w-6 h-6 dark:invert"),
+			Class("w-6 h-6 dark:invert dark:opacity-80"),
 			Src("/images/"+GetViewName(target)+".svg"),
 			Alt(GetViewName(target)+" view"),
 		),

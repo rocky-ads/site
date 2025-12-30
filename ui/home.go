@@ -45,7 +45,7 @@ func categoryButton(categoryName, categoryImage string) g.Node {
 				Img(
 					Src(imagePath),
 					Alt("Category icon"),
-					Class("w-6 h-6 dark:invert"),
+					Class("w-6 h-6 dark:invert dark:opacity-80"),
 				),
 				Span(g.Text(categoryName)),
 			),

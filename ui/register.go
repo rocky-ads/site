@@ -22,7 +22,7 @@ func phoneInput() g.Node {
 			Required(),
 		),
 		Span(
-			Class("text-xs text-gray-500 dark:text-gray-400 mt-1"),
+			Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1"),
 			g.Text("Enter your phone in international format (e.g. +12025550123) or US/Canada format (e.g. 503-523-8780)."),
 		),
 	)
@@ -33,7 +33,7 @@ func offers() g.Node {
 		Class("space-y-3"),
 		checkbox("offers", "true", "I agree to receive informational text messages", false, false, Required()),
 		Div(
-			Class("text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-3 rounded border dark:border-gray-700 space-y-2"),
+			Class("text-xs text-zinc-600 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-800 p-3 rounded border dark:border-zinc-700 space-y-2"),
 			P(
 				g.Text("By providing your phone number you agree to receive informational text messages from "+config.ServerName+"."),
 			),
@@ -91,7 +91,7 @@ func verificationCodeInput() g.Node {
 	return Div(
 		Class("text-center mb-6 space-y-6 py-4"),
 		P(
-			Class("text-gray-700 dark:text-gray-300 text-base leading-relaxed"),
+			Class("text-base leading-relaxed"),
 			g.Text("We've sent a verification code to your phone number. "+
 				"Please enter the code below to continue."),
 		),
@@ -102,7 +102,7 @@ func verificationCodeInput() g.Node {
 		),
 		Input(
 			ID("verification-code"),
-			Class("max-w-xs w-full p-4 border-2 border-gray-300 dark:border-gray-600 rounded-md text-center text-2xl font-mono tracking-widest focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-gray-800 dark:text-gray-100 mx-auto block my-2"),
+			Class("max-w-xs w-full p-4 border-2 border-zinc-300 dark:border-zinc-600 rounded-md text-center text-2xl font-mono tracking-widest focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-zinc-800 dark:text-zinc-200 mx-auto block my-2"),
 			Type("text"),
 			Name("code"),
 			g.Attr("autocomplete", "one-time-code"),

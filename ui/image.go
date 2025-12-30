@@ -117,7 +117,7 @@ func GenerateSVG(adID, imageID int, size string) g.Node {
 
 func noImage(heightClass string) g.Node {
 	return Div(
-		Class(fmt.Sprintf("rounded-md w-full %s flex items-center justify-center border-2 border-dotted border-gray-300 dark:border-gray-600", heightClass)),
+		Class(fmt.Sprintf("rounded-md w-full %s flex items-center justify-center border-2 border-dotted border-zinc-300 dark:border-zinc-600", heightClass)),
 		g.Text("No Image"),
 	)
 }

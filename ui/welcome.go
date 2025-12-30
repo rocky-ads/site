@@ -21,22 +21,22 @@ func WelcomePage(rockCount int) []g.Node {
 					),
 				),
 				P(
-					Class("text-gray-900 dark:text-gray-100 text-lg"),
+					Class("text-zinc-900 dark:text-zinc-200 text-lg"),
 					g.Text("Welcome to Rocky Ads!"),
 				),
 				P(
-					Class("text-gray-900 dark:text-gray-100 text-lg"),
+					Class("text-zinc-900 dark:text-zinc-200 text-lg"),
 					g.Textf("You've been given %d rocks to help maintain quality on our platform.", rockCount),
 				),
 			),
 			Div(
 				Class("space-y-4"),
 				H2(
-					Class("text-2xl font-semibold text-gray-900 dark:text-gray-100"),
+					Class("text-2xl font-semibold"),
 					g.Text("How Rocks Work"),
 				),
 				Ul(
-					Class("space-y-2 list-disc list-inside text-gray-700 dark:text-gray-300"),
+					Class("space-y-2 list-disc list-inside"),
 					Li(g.Text("Throw rocks at ads that violate our policies or have issues")),
 					Li(g.Text("Each rock creates a conversation with the ad owner")),
 					Li(g.Text("Work together to resolve the dispute")),

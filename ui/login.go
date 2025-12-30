@@ -21,7 +21,7 @@ func userNameInput(showHelp bool, autocomplete string) g.Node {
 			Required(),
 		),
 		g.If(showHelp, Span(
-			Class("text-xs text-gray-500 dark:text-gray-400 mt-1"),
+			Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1"),
 			g.Text("3-20 characters, letters and digits only. Must start with a letter."),
 		)),
 	)

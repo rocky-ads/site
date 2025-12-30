@@ -9,7 +9,7 @@ import (
 )
 
 func CategoryItem(currentCategoryID, categoryID int, name, imageFile string) g.Node {
-	itemClass := "flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer rounded-lg transition-colors "
+	itemClass := "flex items-center gap-3 p-3 hover:bg-zinc-50 cursor-pointer rounded-lg transition-colors "
 	if categoryID == currentCategoryID {
 		itemClass += "bg-blue-50 border border-blue-200"
 	}
@@ -20,14 +20,14 @@ func CategoryItem(currentCategoryID, categoryID int, name, imageFile string) g.N
 		hx.Target("#search-container"),
 		hx.Swap("outerHTML"),
 		Div(
-			Class("p-2 bg-gray-200 rounded-full flex items-center justify-center"),
+			Class("p-2 bg-zinc-200 rounded-full flex items-center justify-center"),
 			Img(
 				Src("/images/category/"+imageFile),
 				Alt("Category icon"),
 				Class("w-6 h-6"),
 			),
 		),
-		Span(Class("text-gray-700 flex-1"), g.Text(name)),
+		Span(Class("flex-1"), g.Text(name)),
 	)
 }
 
@@ -38,11 +38,11 @@ func CategorySelectModal(categoryItems []g.Node) g.Node {
 			ID("category-modal"),
 			Class("fixed inset-0 flex items-center justify-center z-50 p-8 pointer-events-none"),
 			Div(
-				Class("bg-white rounded-lg w-full shadow-2xl border-2 border-gray-300 flex flex-col pointer-events-auto"),
+				Class("bg-white rounded-lg w-full shadow-2xl border-2 border-zinc-300 flex flex-col pointer-events-auto"),
 				Style("max-width: 400px; max-height: 80vh"),
 				Div(
-					Class("flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0"),
-					H3(Class("text-xl font-bold text-gray-900"), g.Text("Select Category")),
+					Class("flex items-center justify-between p-6 border-b border-zinc-200 flex-shrink-0"),
+					H3(Class("text-xl font-bold text-zinc-900 dark:text-zinc-200"), g.Text("Select Category")),
 					modalClose("category"),
 				),
 				Div(

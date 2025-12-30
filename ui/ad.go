@@ -22,7 +22,7 @@ func BookmarkButton(adID int, bookmarked bool, csrfToken string) g.Node {
 		)
 	} else {
 		imageNode = Img(
-			Class("w-6 h-6 dark:invert"),
+			Class("w-6 h-6 dark:invert dark:opacity-80"),
 			Src("/images/bookmark-false.svg"),
 			Alt("Bookmark"),
 		)
@@ -129,7 +129,7 @@ func AdGridNode(userID, adID, price, imageCount, nextPage int, title, location, 
 			Class("flex items-center justify-between pt-1"),
 			Span(Class("text-green-600 font-semibold"), g.Text(priceStr)),
 			Div(
-				Class("flex gap-2 text-xs text-gray-500"),
+				Class("flex gap-2 text-xs text-zinc-500"),
 				ageNode(createdAt),
 				g.Text(location),
 			),
@@ -156,7 +156,7 @@ func AdListNode(userID, adID, price int, title, location string, createdAt time.
 
 	class := "flex flex-wrap items-center justify-between py-2 px-3 cursor-pointer"
 	if active {
-		class += " hover:bg-gray-50 dark:hover:bg-gray-800"
+		class += " hover:bg-zinc-50 dark:hover:bg-zinc-800"
 	} else {
 		class += " bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg"
 	}
@@ -172,7 +172,7 @@ func AdListNode(userID, adID, price int, title, location string, createdAt time.
 		Div(
 			Class("flex items-center gap-2 ml-auto"),
 			Div(
-				Class("flex items-center gap-2 text-xs text-gray-500"),
+				Class("flex items-center gap-2 text-xs text-zinc-500"),
 				ageNode(createdAt),
 				g.Text(location),
 			),
@@ -204,7 +204,7 @@ func shareButton(adID int) g.Node {
 	return iconButton(buttonProps{
 		ImageSrc: "/images/share.svg",
 		Alt:      "Share Ad",
-		Class:    "dark:invert",
+		Class:    "dark:invert dark:opacity-80",
 		Attrs: []g.Node{
 			hx.Get(fmt.Sprintf("/api/ad/%d/share", adID)),
 			hx.Target("body"),
@@ -217,7 +217,7 @@ func deleteButton(adID int, csrfToken string) g.Node {
 	return iconButton(buttonProps{
 		ImageSrc: "/images/trashcan.svg",
 		Alt:      "Delete Ad",
-		Class:    "dark:invert",
+		Class:    "dark:invert dark:opacity-80",
 		Attrs: []g.Node{
 			hx.Delete(fmt.Sprintf("/auth/ad/delete/%d", adID)),
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
@@ -232,7 +232,7 @@ func restoreButton(adID int, csrfToken string) g.Node {
 	return iconButton(buttonProps{
 		ImageSrc: "/images/restore.svg",
 		Alt:      "Restore Ad",
-		Class:    "dark:invert",
+		Class:    "dark:invert dark:opacity-80",
 		Attrs: []g.Node{
 			hx.Post(fmt.Sprintf("/auth/ad/restore/%d", adID)),
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
@@ -247,7 +247,7 @@ func messageButton(adID int) g.Node {
 	return iconButton(buttonProps{
 		ImageSrc: "/images/message.svg",
 		Alt:      "Message",
-		Class:    "dark:invert",
+		Class:    "dark:invert dark:opacity-80",
 		Attrs: []g.Node{
 			hx.Get(fmt.Sprintf("/auth/message/%d", adID)),
 			hx.Target("body"),
@@ -325,10 +325,10 @@ func AdShareModal(path string) g.Node {
 			ID("ad-share-modal"),
 			Class("fixed inset-0 flex items-center justify-center z-50 p-8 pointer-events-none"),
 			Div(
-				Class("bg-white dark:bg-gray-800 rounded-lg w-full max-w-md shadow-2xl border-2 border-gray-300 dark:border-gray-600 flex flex-col pointer-events-auto"),
+				Class("bg-white dark:bg-zinc-800 rounded-lg w-full max-w-md shadow-2xl border-2 border-zinc-300 dark:border-zinc-600 flex flex-col pointer-events-auto"),
 				Div(
-					Class("flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"),
-					H3(Class("text-xl font-bold text-gray-900 dark:text-gray-100"), g.Text("Share Ad")),
+					Class("flex items-center justify-between p-6 border-b border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
+					H3(Class("text-xl font-bold text-zinc-900 dark:text-zinc-200"), g.Text("Share Ad")),
 					modalClose("ad-share"),
 				),
 				Div(
@@ -336,7 +336,7 @@ func AdShareModal(path string) g.Node {
 					Div(
 						Class("flex flex-col gap-2"),
 						Label(
-							Class("text-sm font-medium text-gray-700 dark:text-gray-300"),
+							Class("text-sm font-medium text-zinc-700 dark:text-zinc-300"),
 							g.Text("Ad Link"),
 						),
 						Div(
@@ -347,7 +347,7 @@ func AdShareModal(path string) g.Node {
 								Value(path),
 								g.Attr("readonly", ""),
 								g.Attr("onfocus", "this.select();"),
-								Class("flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100"),
+								Class("flex-1 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-zinc-50 dark:bg-zinc-700 text-sm text-zinc-900 dark:text-zinc-200"),
 							),
 							copyButton(path, false),
 						),
@@ -365,12 +365,12 @@ func Ad(adID, userID, ownerID, imageCount, price int, title, location, descripti
 
 	return []g.Node{
 		Div(
-			Class("flex flex-col relative rounded-lg shadow-xl/50 my-4 mx-2 col-span-full overflow-hidden"),
+			Class("flex flex-col relative rounded-lg shadow-lg dark:shadow-xl dark:shadow-zinc-900/50 my-4 mx-2 col-span-full overflow-hidden bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700"),
 			g.If(imageCount > 0, ImageNode(adID, imageCount, 1, "1200w", "h-96 md:h-[600px] lg:h-[600px]", true)),
 			g.If(imageCount == 0, noImage("h-96 md:h-[600px] lg:h-[600px]")),
 			g.If(!active, deletedWatermark()),
 			Div(
-				Class("p-4 flex flex-col"),
+				Class("p-6 flex flex-col bg-white dark:bg-zinc-800"),
 				Div(
 					Class("flex items-center justify-between min-w-0"),
 					Span(Class("min-w-0"), g.Text(title)),
@@ -379,7 +379,7 @@ func Ad(adID, userID, ownerID, imageCount, price int, title, location, descripti
 				Div(
 					Class("flex items-center gap-2"),
 					Div(
-						Class("flex items-center gap-2 text-xs text-gray-500"),
+						Class("flex items-center gap-2 text-xs text-zinc-500"),
 						ageNode(createdAt),
 						g.Text(location),
 					),
@@ -404,11 +404,11 @@ func AdDeleted() []g.Node {
 				),
 			),
 			H2(
-				Class("text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4"),
+				Class("text-3xl font-bold mb-4"),
 				g.Text("Ad Deleted"),
 			),
 			P(
-				Class("text-lg text-gray-600 dark:text-gray-400 mb-8"),
+				Class("text-lg text-zinc-600 dark:text-zinc-400 mb-8"),
 				g.Text("This ad has been deleted by the owner and is no longer available."),
 			),
 			standardButton(buttonProps{
@@ -421,7 +421,7 @@ func AdDeleted() []g.Node {
 
 func categoryNode(categoryName string) g.Node {
 	return Div(
-		Class("text-lg text-gray-600 dark:text-gray-400 italic"),
+		Class("text-lg italic text-zinc-600 dark:text-zinc-400"),
 		g.Text(categoryName),
 	)
 }

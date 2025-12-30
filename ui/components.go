@@ -128,7 +128,7 @@ func checkbox(name string, value string, label string, checked bool, disabled bo
 
 	labelNode := Label(
 		For(name+"-"+value),
-		g.If(disabled, Class("text-gray-400")),
+		g.If(disabled, Class("text-zinc-400")),
 		g.Text(label),
 	)
 
@@ -208,7 +208,7 @@ func modalBackdrop(name string) g.Node {
 func modalClose(name string) g.Node {
 	return Button(
 		Type("button"),
-		Class("bg-white border-2 border-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-lg hover:bg-gray-100 focus:outline-none cursor-pointer"),
+		Class("bg-white border-2 border-zinc-800 rounded-full w-8 h-8 flex items-center justify-center shadow-lg hover:bg-zinc-100 focus:outline-none cursor-pointer"),
 		hx.Get(fmt.Sprintf("/api/modal-remove/%s", name)),
 		hx.Swap("none"),
 		Img(
