@@ -203,6 +203,7 @@ func shareButton(adID int) g.Node {
 	return iconButton(buttonProps{
 		ImageSrc: "/images/share.svg",
 		Alt:      "Share Ad",
+		Class:    "dark:invert",
 		Attrs: []g.Node{
 			hx.Get(fmt.Sprintf("/api/ad/%d/share", adID)),
 			hx.Target("body"),
@@ -215,6 +216,7 @@ func deleteButton(adID int, csrfToken string) g.Node {
 	return iconButton(buttonProps{
 		ImageSrc: "/images/trashcan.svg",
 		Alt:      "Delete Ad",
+		Class:    "dark:invert",
 		Attrs: []g.Node{
 			hx.Delete(fmt.Sprintf("/auth/ad/delete/%d", adID)),
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
@@ -228,6 +230,7 @@ func restoreButton(adID int, csrfToken string) g.Node {
 	return iconButton(buttonProps{
 		ImageSrc: "/images/restore.svg",
 		Alt:      "Restore Ad",
+		Class:    "dark:invert",
 		Attrs: []g.Node{
 			hx.Post(fmt.Sprintf("/auth/ad/restore/%d", adID)),
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
@@ -237,12 +240,25 @@ func restoreButton(adID int, csrfToken string) g.Node {
 	})
 }
 
-func adButtons(adID, userID, ownerID int, bookmarked, active bool, csrfToken string) g.Node {
+func messageButton(adID int) g.Node {
+	return iconButton(buttonProps{
+		ImageSrc: "/images/message.svg",
+		Alt:      "Message",
+		Class:    "dark:invert",
+		Attrs: []g.Node{
+			hx.Get(fmt.Sprintf("/auth/message/%d", adID)),
+			hx.Target("body"),
+			hx.Swap("beforeend"),
+		},
+	})
+}
+
+func adButtons(adID, userID, ownerID int, bookmarked, active, reachable bool, csrfToken string) g.Node {
 	isOwner := userID != 0 && userID == ownerID
 	return Div(
 		Class("flex items-center gap-2"),
 		g.If(userID != 0, BookmarkButton(adID, bookmarked, csrfToken)),
-		//g.If(active && userID != 0, messageButton(adID, userID, OwnerUnreachable == 1)),
+		g.If(active && userID != 0 && reachable, messageButton(adID)),
 		g.If(active && isOwner, deleteButton(adID, csrfToken)),
 		g.If(!active && isOwner, restoreButton(adID, csrfToken)),
 		shareButton(adID),
@@ -256,11 +272,49 @@ func AdShareModal(path string) g.Node {
 			ID("ad-share-modal"),
 			Class("fixed inset-0 flex items-center justify-center z-50 p-8 pointer-events-none"),
 			Div(
-				Class("bg-white rounded-lg w-full shadow-2xl border-2 border-gray-300 flex flex-col pointer-events-auto"),
+				Class("bg-white dark:bg-gray-800 rounded-lg w-full max-w-md shadow-2xl border-2 border-gray-300 dark:border-gray-600 flex flex-col pointer-events-auto"),
 				Div(
-					Class("flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0"),
-					H3(Class("text-xl font-bold text-gray-900"), g.Text("Share Ad")),
+					Class("flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"),
+					H3(Class("text-xl font-bold text-gray-900 dark:text-gray-100"), g.Text("Share Ad")),
 					modalClose("ad-share"),
+				),
+				Div(
+					Class("p-6 flex flex-col gap-4"),
+					Div(
+						Class("flex flex-col gap-2"),
+						Label(
+							Class("text-sm font-medium text-gray-700 dark:text-gray-300"),
+							g.Text("Ad Link"),
+						),
+						Div(
+							Class("flex items-center gap-2"),
+							Input(
+								ID("ad-link-input"),
+								Type("text"),
+								Value(path),
+								g.Attr("readonly", ""),
+								Class("flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100"),
+							),
+							standardButton(buttonProps{
+								Type:  "button",
+								Class: "flex items-center gap-2",
+								Attrs: []g.Node{
+									g.Attr("onclick", fmt.Sprintf(`navigator.clipboard.writeText(%q);`, path)),
+								},
+								Children: []g.Node{
+									Div(
+										Class("flex items-center gap-2"),
+										Img(
+											Src("/images/copy.svg"),
+											Alt("Copy"),
+											Class("w-4 h-4"),
+										),
+										g.Text("Copy"),
+									),
+								},
+							}),
+						),
+					),
 				),
 			),
 		),
@@ -268,7 +322,7 @@ func AdShareModal(path string) g.Node {
 }
 
 func Ad(adID, userID, ownerID, imageCount, price int, title, location, description string,
-	createdAt time.Time, bookmarked, active bool, csrfToken string) []g.Node {
+	createdAt time.Time, bookmarked, active, reachable bool, csrfToken string) []g.Node {
 
 	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
 
@@ -283,7 +337,7 @@ func Ad(adID, userID, ownerID, imageCount, price int, title, location, descripti
 				Div(
 					Class("flex items-center justify-between min-w-0"),
 					Span(Class("min-w-0"), g.Text(title)),
-					adButtons(adID, userID, ownerID, bookmarked, active, csrfToken),
+					adButtons(adID, userID, ownerID, bookmarked, active, reachable, csrfToken),
 				),
 				Div(
 					Class("flex items-center gap-2"),

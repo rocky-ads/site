@@ -172,7 +172,7 @@ func imageNav(adID, current, count int, size, heightClass string, clickable bool
 func ImageNode(adID, count, current int, size, heightClass string, clickable bool) g.Node {
 	containerID := fmt.Sprintf("image-%d", adID)
 	imgElement := Img(
-		Class(fmt.Sprintf("rounded-md w-full %s object-cover", heightClass)),
+		Class(fmt.Sprintf("rounded-t-md w-full %s object-cover", heightClass)),
 		Src(fmt.Sprintf("/image/%d/%d/%s", adID, current, size)),
 		g.Attr("loading", "lazy"),
 	)

@@ -78,9 +78,6 @@ func standardButton(props buttonProps) g.Node {
 // iconButton creates a standardized icon button element
 func iconButton(props buttonProps) g.Node {
 	classes := "flex-shrink-0 cursor-pointer"
-	if props.Class != "" {
-		classes += " " + props.Class
-	}
 
 	allAttrs := []g.Node{
 		Type("button"),
@@ -92,8 +89,12 @@ func iconButton(props buttonProps) g.Node {
 	if len(props.Children) > 0 {
 		imageNode = g.Group(props.Children)
 	} else {
+		imageClasses := "w-6 h-6"
+		if props.Class != "" {
+			imageClasses += " " + props.Class
+		}
 		imageNode = Img(
-			Class("w-6 h-6"),
+			Class(imageClasses),
 			Src(props.ImageSrc),
 			Alt(props.Alt),
 		)

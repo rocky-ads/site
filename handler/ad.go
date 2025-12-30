@@ -38,9 +38,11 @@ func AdHandler(c *fiber.Ctx) error {
 
 	title := "Rocky Ads - " + a.Title
 	csrfToken := local.GetCSRFToken(c)
+	// TODO: Determine reachable based on owner's contact info/verification status
+	reachable := true // For now, assume owner is reachable
 	return renderPage(c, title, ui.Ad(adID, userID, a.UserID, a.ImageCount, a.Price,
 		a.Title, a.Location(), a.Description, a.CreatedAt, a.Bookmarked,
-		!a.IsDeleted(), csrfToken))
+		!a.IsDeleted(), reachable, csrfToken))
 }
 
 func NewAdHandler(c *fiber.Ctx) error {
@@ -59,6 +61,8 @@ func NewAdHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
+
+	// TODO looks messy below
 
 	fv := make(field.Values)
 	renderedFields := make([]g.Node, 0, len(fields))
@@ -89,7 +93,14 @@ func AdShareHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
 	}
 
-	return render(c, ui.AdShareModal(fmt.Sprintf("/ad/%d/share", adID)))
+	// Construct full URL
+	protocol := "https"
+	if c.Protocol() == "http" {
+		protocol = "http"
+	}
+	path := fmt.Sprintf("%s://%s/ad/%d", protocol, c.Hostname(), adID)
+
+	return render(c, ui.AdShareModal(path))
 }
 
 func DeleteAdHandler(c *fiber.Ctx) error {

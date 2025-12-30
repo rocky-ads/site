@@ -14,13 +14,9 @@ func AdNodes(adIDs []int, userID, view, page int, loc *time.Location, csrfToken 
 		return nil, err
 	}
 	results := make([]g.Node, len(ads))
-	var nextPage int
-	if pagination {
-		nextPage = page + 1
-	}
 	for i, ad := range ads {
 		isLast := i == len(ads)-1 && pagination
-		results[i] = ad.Node(userID, view, nextPage, csrfToken, isLast)
+		results[i] = ad.Node(userID, view, page+1, csrfToken, isLast)
 	}
 	return results, nil
 }
