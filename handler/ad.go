@@ -103,6 +103,16 @@ func AdShareHandler(c *fiber.Ctx) error {
 	return render(c, ui.AdShareModal(path))
 }
 
+func AdShareCopyHandler(c *fiber.Ctx) error {
+	path := c.Query("path", "")
+	copied := c.Query("copied", "false") == "true"
+
+	if copied {
+		return render(c, ui.CopyButtonCopied(path))
+	}
+	return render(c, ui.CopyButton(path))
+}
+
 func DeleteAdHandler(c *fiber.Ctx) error {
 	adID, err := param.GetAdID(c)
 	if err != nil {

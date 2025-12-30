@@ -13,6 +13,7 @@ type buttonProps struct {
 	Text     string
 	Href     string
 	Type     string // "button", "submit", "reset" - only used when Href is empty
+	ID       string // Optional ID for the button
 	Class    string // Additional classes to append
 	Disabled bool   // If true, button will be disabled (for links, renders as disabled button instead)
 	Attrs    []g.Node
@@ -42,6 +43,9 @@ func standardButton(props buttonProps) g.Node {
 	}
 
 	allAttrs := []g.Node{Class(classes)}
+	if props.ID != "" {
+		allAttrs = append(allAttrs, ID(props.ID))
+	}
 	allAttrs = append(allAttrs, props.Attrs...)
 
 	if props.Href != "" && !props.Disabled {

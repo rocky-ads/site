@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -222,6 +223,7 @@ func deleteButton(adID int, csrfToken string) g.Node {
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
 			hx.Target("body"),
 			hx.Swap("outerHTML"),
+			g.Attr("hx-confirm", "Are you sure you want to delete this ad?"),
 		},
 	})
 }
@@ -236,6 +238,7 @@ func restoreButton(adID int, csrfToken string) g.Node {
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
 			hx.Target("body"),
 			hx.Swap("outerHTML"),
+			g.Attr("hx-confirm", "Are you sure you want to restore this ad?"),
 		},
 	})
 }
@@ -263,6 +266,56 @@ func adButtons(adID, userID, ownerID int, bookmarked, active, reachable bool, cs
 		g.If(!active && isOwner, restoreButton(adID, csrfToken)),
 		shareButton(adID),
 	)
+}
+
+func copyButton(path string, copied bool) g.Node {
+	var text string
+	var attrs []g.Node
+
+	if copied {
+		text = "Copied!"
+		attrs = []g.Node{
+			hx.Get(fmt.Sprintf("/api/ad/share/copy?copied=false&path=%s", url.QueryEscape(path))),
+			hx.Target("#copy-link-button"),
+			hx.Swap("outerHTML"),
+			hx.Trigger("load delay:2s"),
+		}
+	} else {
+		text = "Copy"
+		attrs = []g.Node{
+			g.Attr("onclick", fmt.Sprintf(`navigator.clipboard.writeText(%q);`, path)),
+			hx.Get(fmt.Sprintf("/api/ad/share/copy?copied=true&path=%s", url.QueryEscape(path))),
+			hx.Target("#copy-link-button"),
+			hx.Swap("outerHTML"),
+			hx.Trigger("click"),
+		}
+	}
+
+	return standardButton(buttonProps{
+		Type:  "button",
+		ID:    "copy-link-button",
+		Class: "flex items-center justify-center gap-2 transition-all duration-200 min-w-[140px]",
+		Attrs: attrs,
+		Children: []g.Node{
+			Div(
+				Class("flex items-center justify-center gap-2 whitespace-nowrap"),
+				Img(
+					Src("/images/copy.svg"),
+					Alt("Copy"),
+					Class("w-4 h-4"),
+				),
+				g.Text(text),
+			),
+		},
+	})
+}
+
+func CopyButton(path string) g.Node {
+	return copyButton(path, false)
+}
+
+func CopyButtonCopied(path string) g.Node {
+	return copyButton(path, true)
 }
 
 func AdShareModal(path string) g.Node {
@@ -293,26 +346,10 @@ func AdShareModal(path string) g.Node {
 								Type("text"),
 								Value(path),
 								g.Attr("readonly", ""),
+								g.Attr("onfocus", "this.select();"),
 								Class("flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100"),
 							),
-							standardButton(buttonProps{
-								Type:  "button",
-								Class: "flex items-center gap-2",
-								Attrs: []g.Node{
-									g.Attr("onclick", fmt.Sprintf(`navigator.clipboard.writeText(%q);`, path)),
-								},
-								Children: []g.Node{
-									Div(
-										Class("flex items-center gap-2"),
-										Img(
-											Src("/images/copy.svg"),
-											Alt("Copy"),
-											Class("w-4 h-4"),
-										),
-										g.Text("Copy"),
-									),
-								},
-							}),
+							copyButton(path, false),
 						),
 					),
 				),
