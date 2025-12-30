@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"fmt"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/cookie"
@@ -78,4 +80,13 @@ func NewAdHandler(c *fiber.Ctx) error {
 	}
 
 	return renderPage(c, "New Ad", ui.NewAd(categoryName, renderedFields))
+}
+
+func AdShareHandler(c *fiber.Ctx) error {
+	adID, err := param.GetAdID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
+	}
+
+	return render(c, ui.AdShareModal(fmt.Sprintf("/ad/%d/share", adID)))
 }

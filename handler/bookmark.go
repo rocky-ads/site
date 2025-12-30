@@ -35,7 +35,7 @@ func BookmarkHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, handlerErr.Error())
 	}
 
-	return render(c, ui.Bookmark(adID, bookmarked, csrfToken))
+	return render(c, ui.BookmarkButton(adID, bookmarked, csrfToken))
 }
 
 func bookmarkPost(userID int, adID int) error {

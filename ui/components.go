@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"fmt"
+
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -15,6 +17,9 @@ type buttonProps struct {
 	Disabled bool   // If true, button will be disabled (for links, renders as disabled button instead)
 	Attrs    []g.Node
 	Children []g.Node // If provided, Text is ignored
+	// Icon button properties
+	ImageSrc string // The image source path (e.g., "/images/share.svg")
+	Alt      string // Alt text for the image
 }
 
 // standardButton creates a standardized button element.
@@ -67,6 +72,34 @@ func standardButton(props buttonProps) g.Node {
 		content = g.Text(props.Text)
 	}
 	allNodes := append(allAttrs, content)
+	return Button(allNodes...)
+}
+
+// iconButton creates a standardized icon button element
+func iconButton(props buttonProps) g.Node {
+	classes := "flex-shrink-0 cursor-pointer"
+	if props.Class != "" {
+		classes += " " + props.Class
+	}
+
+	allAttrs := []g.Node{
+		Type("button"),
+		Class(classes),
+	}
+	allAttrs = append(allAttrs, props.Attrs...)
+
+	var imageNode g.Node
+	if len(props.Children) > 0 {
+		imageNode = g.Group(props.Children)
+	} else {
+		imageNode = Img(
+			Class("w-6 h-6"),
+			Src(props.ImageSrc),
+			Alt(props.Alt),
+		)
+	}
+
+	allNodes := append(allAttrs, imageNode)
 	return Button(allNodes...)
 }
 
@@ -153,4 +186,30 @@ func RemoveModal(name string) []g.Node {
 			hx.SwapOOB("delete"),
 		),
 	}
+}
+
+// modalBackdrop creates a backdrop div that removes itself (and modal) when clicked
+func modalBackdrop(name string) g.Node {
+	return Div(
+		ID(name+"-modal-backdrop"),
+		Class("fixed inset-0 bg-black/30 z-40"),
+		hx.Get(fmt.Sprintf("/api/modal-remove/%s", name)),
+		hx.Swap("none"),
+		hx.Trigger("click, keyup[key=='Escape'] from:body"),
+	)
+}
+
+// modalClose creates a standardized close button for modals
+func modalClose(name string) g.Node {
+	return Button(
+		Type("button"),
+		Class("bg-white border-2 border-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-lg hover:bg-gray-100 focus:outline-none cursor-pointer"),
+		hx.Get(fmt.Sprintf("/api/modal-remove/%s", name)),
+		hx.Swap("none"),
+		Img(
+			Src("/images/close.svg"),
+			Alt("Close"),
+			Class("w-4 h-4"),
+		),
+	)
 }

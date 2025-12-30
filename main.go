@@ -83,6 +83,7 @@ func setupApp() *fiber.App {
 	api.Get("/category-select", handler.CategorySelectHandler)
 	api.Get("/modal-remove/:name", handler.ModalRemoveHandler)
 	api.Get("/search/", handler.SearchPageHandler)
+	api.Get("/ad/:id/share", handler.AdShareHandler)
 
 	categoryRouter := api.Group("/category/:category")
 	categoryRouter.Get("/values/:field", handler.GetAllValuesHandler)

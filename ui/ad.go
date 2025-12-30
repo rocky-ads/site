@@ -11,27 +11,33 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-func Bookmark(adID int, bookmarked bool, csrfToken string) g.Node {
-	return Button(
-		Type("button"),
-		Class("flex-shrink-0"),
-		g.If(bookmarked, hx.Delete(fmt.Sprintf("/auth/bookmark/%d", adID))),
-		g.If(!bookmarked, hx.Post(fmt.Sprintf("/auth/bookmark/%d", adID))),
-		hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
-		hx.Target("this"),
-		hx.Swap("outerHTML"),
-		g.Attr("onclick", "event.stopPropagation()"),
-		g.If(bookmarked, Img(
+func BookmarkButton(adID int, bookmarked bool, csrfToken string) g.Node {
+	var imageNode g.Node
+	if bookmarked {
+		imageNode = Img(
 			Class("w-6 h-6"),
 			Src("/images/bookmark-true.svg"),
 			Alt("Bookmark"),
-		)),
-		g.If(!bookmarked, Img(
+		)
+	} else {
+		imageNode = Img(
 			Class("w-6 h-6 dark:invert"),
 			Src("/images/bookmark-false.svg"),
 			Alt("Bookmark"),
-		)),
-	)
+		)
+	}
+
+	return iconButton(buttonProps{
+		Children: []g.Node{imageNode},
+		Attrs: []g.Node{
+			g.If(bookmarked, hx.Delete(fmt.Sprintf("/auth/bookmark/%d", adID))),
+			g.If(!bookmarked, hx.Post(fmt.Sprintf("/auth/bookmark/%d", adID))),
+			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
+			hx.Target("this"),
+			hx.Swap("outerHTML"),
+			g.Attr("onclick", "event.stopPropagation()"),
+		},
+	})
 }
 
 func gridImageNode(adID, count, current int, title string) g.Node {
@@ -188,6 +194,47 @@ func deletedWatermark() g.Node {
 	)
 }
 
+func shareButton(adID int) g.Node {
+	return iconButton(buttonProps{
+		ImageSrc: "/images/share.svg",
+		Alt:      "Share Ad",
+		Attrs: []g.Node{
+			hx.Get(fmt.Sprintf("/api/ad/%d/share", adID)),
+			hx.Target("body"),
+			hx.Swap("beforeend"),
+		},
+	})
+}
+
+func adButtons(adID, userID int, bookmarked, active bool, csrfToken string) g.Node {
+	return Div(
+		Class("flex items-center gap-2"),
+		g.If(userID != 0, BookmarkButton(adID, bookmarked, csrfToken)),
+		//g.If(active && userID != 0, messageButton(adID, userID, OwnerUnreachable == 1)),
+		//g.If(active, deleteButton(adID, userID)),
+		//g.If(!active, restoreButton(adID, userID)),
+		shareButton(adID),
+	)
+}
+
+func AdShareModal(path string) g.Node {
+	return g.Group([]g.Node{
+		modalBackdrop("ad-share"),
+		Div(
+			ID("ad-share-modal"),
+			Class("fixed inset-0 flex items-center justify-center z-50 p-8 pointer-events-none"),
+			Div(
+				Class("bg-white rounded-lg w-full shadow-2xl border-2 border-gray-300 flex flex-col pointer-events-auto"),
+				Div(
+					Class("flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0"),
+					H3(Class("text-xl font-bold text-gray-900"), g.Text("Share Ad")),
+					modalClose("ad-share"),
+				),
+			),
+		),
+	})
+}
+
 func Ad(adID, userID, imageCount, price int, title, location, description string,
 	createdAt time.Time, bookmarked, active bool, csrfToken string) []g.Node {
 
@@ -202,9 +249,9 @@ func Ad(adID, userID, imageCount, price int, title, location, description string
 			Div(
 				Class("p-4 flex flex-col"),
 				Div(
-					Class("flex items-center gap-2 min-w-0"),
-					g.If(userID != 0, Bookmark(adID, bookmarked, csrfToken)),
+					Class("flex items-center justify-between min-w-0"),
 					Span(Class("min-w-0"), g.Text(title)),
+					adButtons(adID, userID, bookmarked, active, csrfToken),
 				),
 				Div(
 					Class("flex items-center gap-2"),

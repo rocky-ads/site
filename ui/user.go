@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	g "maragu.dev/gomponents"
-	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
 )
 
@@ -93,13 +92,7 @@ func UserMenu(userName string, isAdmin bool, messageCount int) g.Node {
 	)
 
 	return g.Group([]g.Node{
-		Div(
-			ID("user-menu-modal-backdrop"),
-			Class("fixed inset-0 bg-black/30 z-40"),
-			hx.Get("/api/modal-remove/user-menu"),
-			hx.Swap("none"),
-			hx.Trigger("click, keyup[key=='Escape'] from:body"),
-		),
+		modalBackdrop("user-menu"),
 		Div(
 			ID("user-menu-modal"),
 			Class("fixed z-50 top-20 right-6"),

@@ -33,13 +33,7 @@ func CategoryItem(currentCategoryID, categoryID int, name, imageFile string) g.N
 
 func CategorySelectModal(categoryItems []g.Node) g.Node {
 	return g.Group([]g.Node{
-		Div(
-			ID("category-modal-backdrop"),
-			Class("fixed inset-0 bg-black/30 z-40"),
-			hx.Get("/api/modal-remove/category"),
-			hx.Swap("none"),
-			hx.Trigger("click, keyup[key=='Escape'] from:body"),
-		),
+		modalBackdrop("category"),
 		Div(
 			ID("category-modal"),
 			Class("fixed inset-0 flex items-center justify-center z-50 p-8 pointer-events-none"),
@@ -49,17 +43,7 @@ func CategorySelectModal(categoryItems []g.Node) g.Node {
 				Div(
 					Class("flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0"),
 					H3(Class("text-xl font-bold text-gray-900"), g.Text("Select Category")),
-					Button(
-						Type("button"),
-						Class("bg-white border-2 border-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-lg hover:bg-gray-100 focus:outline-none cursor-pointer"),
-						hx.Get("/api/modal-remove/category"),
-						hx.Swap("none"),
-						Img(
-							Src("/images/close.svg"),
-							Alt("Close"),
-							Class("w-4 h-4"),
-						),
-					),
+					modalClose("category"),
 				),
 				Div(
 					Class("flex-1 overflow-y-auto p-6 pt-4"),
