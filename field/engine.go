@@ -11,14 +11,7 @@ type EngineField struct {
 }
 
 func (f EngineField) FilterNode(fv Values) g.Node {
-	values, err := f.GetAnyValues(fv)
-	if err != nil {
-		logger.Error("Failed to get values for engine field: %w", err)
-		return nil
-	}
-
-	value := fv.Get("engine")
-	return ui.FieldSelect(f.Name, f.DisplayName, value, values)
+	return nil
 }
 
 func (f EngineField) NewAdNode(fv Values) g.Node {

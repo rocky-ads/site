@@ -172,7 +172,7 @@ func imageNav(adID, current, count int, size, heightClass string, clickable bool
 func ImageNode(adID, count, current int, size, heightClass string, clickable bool) g.Node {
 	containerID := fmt.Sprintf("image-%d", adID)
 	imgElement := Img(
-		Class(fmt.Sprintf("rounded-t-md w-full %s object-cover", heightClass)),
+		Class("rounded-t-md max-w-full max-h-full object-contain"),
 		Src(fmt.Sprintf("/ad/%d/image/%d/%s", adID, current, size)),
 		g.Attr("loading", "lazy"),
 	)
@@ -183,11 +183,14 @@ func ImageNode(adID, count, current int, size, heightClass string, clickable boo
 			hx.Get(fmt.Sprintf("/api/image-full/%d?index=%d&count=%d&size=%s", adID, current, count, size)),
 			hx.Target("body"),
 			hx.Swap("beforeend"),
-			Class("cursor-pointer"),
+			Class(fmt.Sprintf("cursor-pointer bg-white dark:bg-zinc-800 flex items-center justify-center w-full %s", heightClass)),
 			imgElement,
 		)
 	} else {
-		imageWrapper = imgElement
+		imageWrapper = Div(
+			Class(fmt.Sprintf("bg-white dark:bg-zinc-800 flex items-center justify-center w-full %s", heightClass)),
+			imgElement,
+		)
 	}
 
 	return Div(
@@ -358,7 +361,7 @@ func ImageThumbnails(adID, current, count int, size, heightClass string, clickab
 func ImageNodeWithThumbnails(adID, count, current int, size, heightClass string, clickable bool) g.Node {
 	containerID := fmt.Sprintf("image-%d", adID)
 	imgElement := Img(
-		Class(fmt.Sprintf("rounded-t-md w-full %s object-cover", heightClass)),
+		Class("rounded-t-md max-w-full max-h-full object-contain"),
 		Src(fmt.Sprintf("/ad/%d/image/%d/%s", adID, current, size)),
 		g.Attr("loading", "lazy"),
 	)
@@ -369,11 +372,14 @@ func ImageNodeWithThumbnails(adID, count, current int, size, heightClass string,
 			hx.Get(fmt.Sprintf("/api/image-full/%d?index=%d&count=%d&size=%s", adID, current, count, size)),
 			hx.Target("body"),
 			hx.Swap("beforeend"),
-			Class("cursor-pointer"),
+			Class(fmt.Sprintf("cursor-pointer bg-white dark:bg-zinc-800 flex items-center justify-center w-full %s", heightClass)),
 			imgElement,
 		)
 	} else {
-		imageWrapper = imgElement
+		imageWrapper = Div(
+			Class(fmt.Sprintf("bg-white dark:bg-zinc-800 flex items-center justify-center w-full %s", heightClass)),
+			imgElement,
+		)
 	}
 
 	return Div(

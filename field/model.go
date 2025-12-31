@@ -11,14 +11,7 @@ type ModelField struct {
 }
 
 func (f ModelField) FilterNode(fv Values) g.Node {
-	values, err := f.GetAnyValues(fv)
-	if err != nil {
-		logger.Error("Failed to get values for model field: %w", err)
-		return nil
-	}
-
-	value := fv.Get("model")
-	return ui.FieldSelect(f.Name, f.DisplayName, value, values)
+	return nil
 }
 
 func (f ModelField) NewAdNode(fv Values) g.Node {

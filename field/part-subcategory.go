@@ -11,14 +11,7 @@ type PartSubcategoryField struct {
 }
 
 func (f PartSubcategoryField) FilterNode(fv Values) g.Node {
-	values, err := f.GetAnyValues(fv)
-	if err != nil {
-		logger.Error("Failed to get values for part_subcategory field: %w", err)
-		return nil
-	}
-
-	value := fv.Get("part_subcategory")
-	return ui.FieldSelect(f.Name, f.DisplayName, value, values)
+	return nil
 }
 
 func (f PartSubcategoryField) NewAdNode(fv Values) g.Node {
