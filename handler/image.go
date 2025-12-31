@@ -1,9 +1,13 @@
 package handler
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/param"
 	"github.com/rocky-ads/site/ui"
 )
@@ -21,6 +25,20 @@ func ImageHandler(c *fiber.Ctx) error {
 	}
 
 	size := c.Params("size")
+
+	// Check if image file exists at static/images/ad/:id/:index-:size.webp
+	imagePath := filepath.Join("static", "images", "ad", fmt.Sprintf("%d", adID), fmt.Sprintf("%d-%s.webp", imageID, size))
+	logger.Info("ImageHandler: checking for file", "path", imagePath, "adID", adID, "imageID", imageID, "size", size)
+
+	fileInfo, err := os.Stat(imagePath)
+	if err == nil {
+		// File exists, serve it
+		logger.Info("ImageHandler: file found, serving", "path", imagePath, "size", fileInfo.Size())
+		return c.SendFile(imagePath)
+	}
+
+	// File doesn't exist, fall back to SVG
+	logger.Info("ImageHandler: file not found, falling back to SVG", "path", imagePath, "error", err)
 	return renderSVG(c, ui.GenerateSVG(adID, imageID, size))
 }
 
@@ -43,6 +61,11 @@ func ImageNavigationHandler(c *fiber.Ctx) error {
 	size := c.Query("size", "480w")
 	heightClass := c.Query("heightClass", "h-48")
 	clickable := c.Query("clickable", "false") == "true"
+
+	// Use ImageNodeWithThumbnails for full ad view (1200w size)
+	if size == "1200w" && clickable {
+		return render(c, ui.ImageNodeWithThumbnails(adID, count, imageID, size, heightClass, clickable))
+	}
 
 	return render(c, ui.ImageNode(adID, count, imageID, size, heightClass, clickable))
 }

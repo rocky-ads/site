@@ -200,7 +200,7 @@ func modalBackdrop(name string) g.Node {
 		Class("fixed inset-0 bg-black/30 z-40"),
 		hx.Get(fmt.Sprintf("/api/modal-remove/%s", name)),
 		hx.Swap("none"),
-		hx.Trigger("click, keyup[key=='Escape'] from:body"),
+		hx.Trigger("click"),
 	)
 }
 

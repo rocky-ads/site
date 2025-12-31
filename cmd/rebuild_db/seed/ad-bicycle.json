@@ -1,5 +1,6 @@
 [
   {
+    "id": 9,
     "make": "TREK",
     "models": [
       "DOMANE SL"
@@ -21,6 +22,7 @@
     "image_count": 3
   },
   {
+    "id": 10,
     "make": "SPECIALIZED",
     "models": [
       "TARMAC"

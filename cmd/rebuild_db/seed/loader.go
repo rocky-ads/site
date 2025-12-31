@@ -567,6 +567,9 @@ func LoadAds(includeTestAds bool) error {
 		return nil
 	}
 
+	// Track used ad IDs to detect collisions
+	usedIDs := make(map[int]string) // Maps ad ID to filename for error reporting
+
 	// Sort category names to ensure deterministic processing order
 	categoryNames := make([]string, 0, len(categoryFiles))
 	for name := range categoryFiles {
@@ -579,7 +582,7 @@ func LoadAds(includeTestAds bool) error {
 		files := categoryFiles[categoryName]
 		categoryID := files.ID
 
-		if err := loadAdsFromFile(categoryID, files.SeedAdFile); err != nil {
+		if err := loadAdsFromFile(categoryID, files.SeedAdFile, usedIDs); err != nil {
 			return fmt.Errorf("loading ads from %s for category %s: %w", files.SeedAdFile, categoryName, err)
 		}
 	}
@@ -589,7 +592,7 @@ func LoadAds(includeTestAds bool) error {
 
 // adJSON represents the flat JSON structure from ad-*.json files
 type adJSON struct {
-	ID              int          `json:"id,omitempty"`
+	ID              int          `json:"id"`
 	CategoryID      int          `json:"category_id,omitempty"`
 	Make            string       `json:"make,omitempty"`
 	Years           []string     `json:"years,omitempty"`
@@ -645,7 +648,7 @@ func convertAdJSON(aj adJSON) Ad {
 }
 
 // loadAdsFromFile loads ads from a single ad file
-func loadAdsFromFile(categoryID int, filename string) error {
+func loadAdsFromFile(categoryID int, filename string, usedIDs map[int]string) error {
 	data, err := os.ReadFile("cmd/rebuild_db/seed/" + filename)
 	if err != nil {
 		return err
@@ -681,6 +684,19 @@ func loadAdsFromFile(categoryID int, filename string) error {
 	}
 
 	for i, ad := range ads {
+		// Check if ad has an ID specified
+		if adsJSON[i].ID == 0 {
+			return fmt.Errorf("ad at index %d in %s is missing required 'id' field", i, filename)
+		}
+
+		adID := adsJSON[i].ID
+
+		// Check for ID collision
+		if existingFile, exists := usedIDs[adID]; exists {
+			return fmt.Errorf("duplicate ad ID %d: found in both %s and %s", adID, filename, existingFile)
+		}
+		usedIDs[adID] = filename
+
 		// Get or create location
 		locationID, err := getOrCreateLocation(adsJSON[i].Location)
 		if err != nil {
@@ -696,16 +712,14 @@ func loadAdsFromFile(categoryID int, filename string) error {
 			return fmt.Errorf("parsing created_at: %w", err)
 		}
 
-		// Insert ad using test user ID and location_id
-		result, err := db.Exec(
-			"INSERT INTO ads (category_id, title, description, price, created_at, user_id, image_count, location_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-			categoryID, ad.Title, ad.Description, priceCents, createdAt, testUserID, ad.ImageCount, locationID,
+		// Insert ad with explicit ID
+		_, err = db.Exec(
+			"INSERT INTO ads (id, category_id, title, description, price, created_at, user_id, image_count, location_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			adID, categoryID, ad.Title, ad.Description, priceCents, createdAt, testUserID, ad.ImageCount, locationID,
 		)
 		if err != nil {
-			return fmt.Errorf("inserting ad: %w", err)
+			return fmt.Errorf("inserting ad with ID %d: %w", adID, err)
 		}
-
-		adID, _ := result.LastInsertId()
 
 		// Insert spec field values from SpecValues map
 		// All values go to ad_values table (one row per value)

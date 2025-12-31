@@ -36,6 +36,7 @@ go.work.sum
 /project.db-shm
 /project.db-wal
 /site
+/static/images/ad
 
 # macOS
 .DS_Store

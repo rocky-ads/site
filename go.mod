@@ -3,6 +3,7 @@ module github.com/rocky-ads/site
 go 1.25.3
 
 require (
+	github.com/chai2010/webp v1.1.1
 	github.com/gofiber/fiber/v2 v2.52.10
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/jmoiron/sqlx v1.4.0
@@ -10,6 +11,7 @@ require (
 	github.com/nyaruka/phonenumbers v1.6.7
 	github.com/twilio/twilio-go v1.27.0
 	golang.org/x/crypto v0.46.0
+	golang.org/x/image v0.18.0
 	golang.org/x/term v0.38.0
 	maragu.dev/gomponents v1.2.0
 	maragu.dev/gomponents-htmx v0.6.1

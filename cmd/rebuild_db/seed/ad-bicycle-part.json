@@ -1,5 +1,6 @@
 [
   {
+    "id": 6,
     "make": "TREK",
     "models": [
       "DOMANE SL"
@@ -21,6 +22,7 @@
     "part_subcategory": "Cassette"
   },
   {
+    "id": 7,
     "make": "SPECIALIZED",
     "models": [
       "SHIV"
@@ -42,6 +44,7 @@
     "part_subcategory": "Handlebar"
   },
   {
+    "id": 8,
     "make": "GIANT",
     "models": [
       "TCR"

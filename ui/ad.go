@@ -366,7 +366,7 @@ func Ad(adID, userID, ownerID, imageCount, price int, title, location, descripti
 	return []g.Node{
 		Div(
 			Class("flex flex-col relative rounded-lg shadow-lg dark:shadow-xl dark:shadow-zinc-900/50 my-4 mx-2 col-span-full overflow-hidden bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700"),
-			g.If(imageCount > 0, ImageNode(adID, imageCount, 1, "1200w", "h-96 md:h-[600px] lg:h-[600px]", true)),
+			g.If(imageCount > 0, ImageNodeWithThumbnails(adID, imageCount, 1, "1200w", "h-96 md:h-[600px] lg:h-[600px]", true)),
 			g.If(imageCount == 0, noImage("h-96 md:h-[600px] lg:h-[600px]")),
 			g.If(!active, deletedWatermark()),
 			Div(
@@ -378,12 +378,12 @@ func Ad(adID, userID, ownerID, imageCount, price int, title, location, descripti
 				),
 				Div(
 					Class("flex items-center gap-2"),
+					Span(Class("text-green-600 font-semibold"), g.Text(priceStr)),
 					Div(
 						Class("flex items-center gap-2 text-xs text-zinc-500"),
 						ageNode(createdAt),
 						g.Text(location),
 					),
-					Span(Class("text-green-600 font-semibold"), g.Text(priceStr)),
 				),
 				Div(Class("text-base mt-2 whitespace-pre-wrap"), g.Text(description)),
 			),

@@ -50,7 +50,7 @@ func setupApp() *fiber.App {
 	app.Get("/register", handler.RegisterHandler)
 	app.Get("/health", handler.HandleHealth)
 	app.Get("/ad/:id", handler.AdHandler)
-	app.Get("/image/:id/:index/:size", handler.ImageHandler)
+	app.Get("/ad/:id/image/:index/:size", handler.ImageHandler)
 
 	auth := app.Group("/auth", handler.AuthRequired)
 	auth.Get("/ad/new", handler.NewAdHandler)
