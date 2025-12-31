@@ -172,7 +172,7 @@ func imageNav(adID, current, count int, size, heightClass string, clickable bool
 func ImageNode(adID, count, current int, size, heightClass string, clickable bool) g.Node {
 	containerID := fmt.Sprintf("image-%d", adID)
 	imgElement := Img(
-		Class("rounded-t-md max-w-full max-h-full object-contain"),
+		Class("max-w-full max-h-full object-contain"),
 		Src(fmt.Sprintf("/ad/%d/image/%d/%s", adID, current, size)),
 		g.Attr("loading", "lazy"),
 	)
@@ -183,12 +183,12 @@ func ImageNode(adID, count, current int, size, heightClass string, clickable boo
 			hx.Get(fmt.Sprintf("/api/image-full/%d?index=%d&count=%d&size=%s", adID, current, count, size)),
 			hx.Target("body"),
 			hx.Swap("beforeend"),
-			Class(fmt.Sprintf("cursor-pointer bg-white dark:bg-zinc-800 flex items-center justify-center w-full %s", heightClass)),
+			Class(fmt.Sprintf("cursor-pointer bg-zinc-100 dark:bg-zinc-700 flex items-center justify-center w-full %s", heightClass)),
 			imgElement,
 		)
 	} else {
 		imageWrapper = Div(
-			Class(fmt.Sprintf("bg-white dark:bg-zinc-800 flex items-center justify-center w-full %s", heightClass)),
+			Class(fmt.Sprintf("bg-zinc-100 dark:bg-zinc-700 flex items-center justify-center w-full %s", heightClass)),
 			imgElement,
 		)
 	}
@@ -334,7 +334,7 @@ func ImageThumbnails(adID, current, count int, size, heightClass string, clickab
 		if clickable {
 			thumbnailWrapper = Button(
 				Type("button"),
-				Class(fmt.Sprintf("flex-shrink-0 w-24 aspect-[4/3] rounded overflow-hidden cursor-pointer %s transition-colors", borderClass)),
+				Class(fmt.Sprintf("flex-shrink-0 w-24 aspect-[4/3] rounded overflow-hidden cursor-pointer bg-zinc-100 dark:bg-zinc-700 %s transition-colors", borderClass)),
 				hx.Get(fmt.Sprintf("/api/image-nav/%d?index=%d&count=%d&size=%s&heightClass=%s&clickable=%v",
 					adID, i, count, "1200w", heightClass, clickable)),
 				hx.Target(fmt.Sprintf("#%s", containerID)),
@@ -344,7 +344,7 @@ func ImageThumbnails(adID, current, count int, size, heightClass string, clickab
 			)
 		} else {
 			thumbnailWrapper = Div(
-				Class(fmt.Sprintf("flex-shrink-0 w-24 aspect-[4/3] rounded overflow-hidden %s", borderClass)),
+				Class(fmt.Sprintf("flex-shrink-0 w-24 aspect-[4/3] rounded overflow-hidden bg-zinc-100 dark:bg-zinc-700 %s", borderClass)),
 				thumbnailImg,
 			)
 		}
@@ -353,7 +353,7 @@ func ImageThumbnails(adID, current, count int, size, heightClass string, clickab
 	}
 
 	return Div(
-		Class("flex flex-wrap gap-2 px-4 py-2 justify-center"),
+		Class("flex flex-wrap gap-2 px-4 py-2 justify-center bg-zinc-100 dark:bg-zinc-700"),
 		g.Group(thumbnails),
 	)
 }
@@ -361,7 +361,7 @@ func ImageThumbnails(adID, current, count int, size, heightClass string, clickab
 func ImageNodeWithThumbnails(adID, count, current int, size, heightClass string, clickable bool) g.Node {
 	containerID := fmt.Sprintf("image-%d", adID)
 	imgElement := Img(
-		Class("rounded-t-md max-w-full max-h-full object-contain"),
+		Class("max-w-full max-h-full object-contain"),
 		Src(fmt.Sprintf("/ad/%d/image/%d/%s", adID, current, size)),
 		g.Attr("loading", "lazy"),
 	)
@@ -372,12 +372,12 @@ func ImageNodeWithThumbnails(adID, count, current int, size, heightClass string,
 			hx.Get(fmt.Sprintf("/api/image-full/%d?index=%d&count=%d&size=%s", adID, current, count, size)),
 			hx.Target("body"),
 			hx.Swap("beforeend"),
-			Class(fmt.Sprintf("cursor-pointer bg-white dark:bg-zinc-800 flex items-center justify-center w-full %s", heightClass)),
+			Class(fmt.Sprintf("cursor-pointer bg-zinc-100 dark:bg-zinc-700 flex items-center justify-center w-full %s", heightClass)),
 			imgElement,
 		)
 	} else {
 		imageWrapper = Div(
-			Class(fmt.Sprintf("bg-white dark:bg-zinc-800 flex items-center justify-center w-full %s", heightClass)),
+			Class(fmt.Sprintf("bg-zinc-100 dark:bg-zinc-700 flex items-center justify-center w-full %s", heightClass)),
 			imgElement,
 		)
 	}

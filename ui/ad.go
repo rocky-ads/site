@@ -43,9 +43,9 @@ func BookmarkButton(adID int, bookmarked bool, csrfToken string) g.Node {
 
 func gridImageNode(adID, count, current int) g.Node {
 	if count == 0 {
-		return noImage("h-48")
+		return noImage("aspect-[4/3]")
 	}
-	return ImageNode(adID, count, current, "480w", "h-48", false)
+	return ImageNode(adID, count, current, "480w", "aspect-[4/3]", false)
 }
 
 // format ad age as Xm, XhYm, Xd, Xmo, or Xy Xmo
@@ -366,8 +366,8 @@ func Ad(adID, userID, ownerID, imageCount, price int, title, location, descripti
 	return []g.Node{
 		Div(
 			Class("flex flex-col relative rounded-lg shadow-lg dark:shadow-xl dark:shadow-zinc-900/50 my-4 mx-2 col-span-full overflow-hidden bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700"),
-			g.If(imageCount > 0, ImageNodeWithThumbnails(adID, imageCount, 1, "1200w", "h-96 md:h-[600px] lg:h-[600px]", true)),
-			g.If(imageCount == 0, noImage("h-96 md:h-[600px] lg:h-[600px]")),
+			g.If(imageCount > 0, ImageNodeWithThumbnails(adID, imageCount, 1, "1200w", "aspect-[4/3] w-full", true)),
+			g.If(imageCount == 0, noImage("aspect-[4/3] w-full")),
 			g.If(!active, deletedWatermark()),
 			Div(
 				Class("p-6 flex flex-col bg-white dark:bg-zinc-800"),
