@@ -115,7 +115,7 @@ func indicator() g.Node {
 
 func navigation(userID int, userName, currentPath string) g.Node {
 	return Nav(
-		Class("relative z-10 bg-white/75 dark:bg-zinc-900/75 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between mb-8 py-4 -mx-4 px-4"),
+		Class("sticky top-0 z-10 bg-white/75 dark:bg-zinc-900/75 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between mb-8 py-4 -mx-4 px-4"),
 		A(
 			Href("/"),
 			Class("flex items-center gap-2"),

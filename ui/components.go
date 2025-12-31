@@ -208,13 +208,13 @@ func modalBackdrop(name string) g.Node {
 func modalClose(name string) g.Node {
 	return Button(
 		Type("button"),
-		Class("bg-white border-2 border-zinc-800 rounded-full w-8 h-8 flex items-center justify-center shadow-lg hover:bg-zinc-100 focus:outline-none cursor-pointer"),
+		Class("bg-white dark:bg-zinc-700 border-2 border-zinc-800 dark:border-zinc-500 rounded-full w-8 h-8 flex items-center justify-center shadow-lg hover:bg-zinc-100 dark:hover:bg-zinc-600 focus:outline-none cursor-pointer"),
 		hx.Get(fmt.Sprintf("/api/modal-remove/%s", name)),
 		hx.Swap("none"),
 		Img(
 			Src("/images/close.svg"),
 			Alt("Close"),
-			Class("w-4 h-4"),
+			Class("w-4 h-4 dark:invert"),
 		),
 	)
 }
