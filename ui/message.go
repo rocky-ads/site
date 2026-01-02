@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rocky-ads/site/message"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -63,12 +62,7 @@ func MessageItem(senderID, currentUserID int, content string, createdAt time.Tim
 	)
 }
 
-func ConversationMessages(conversationID, currentUserID int, otherUserName string, messages []message.Message, csrfToken string, loc *time.Location) g.Node {
-	var messageNodes []g.Node
-	for _, msg := range messages {
-		messageNodes = append(messageNodes, MessageItem(msg.SenderID, currentUserID, msg.Content, msg.CreatedAt, loc))
-	}
-
+func ConversationMessages(conversationID, currentUserID int, otherUserName string, messageNodes []g.Node, csrfToken string) g.Node {
 	return Div(
 		ID(fmt.Sprintf("conversation-%d-messages", conversationID)),
 		Class("flex-1 overflow-y-auto p-4 space-y-2"),
@@ -146,22 +140,22 @@ func ConversationModal(conversationID, adID int, adTitle string, ownerID, enquir
 	})
 }
 
-func ConversationListItem(conv message.ConversationWithLastMessage, otherUserName string) g.Node {
-	lastMessagePreview := conv.LastMessageContent
+func ConversationListItem(conversationID, adID int, adTitle, lastMessageContent string, lastMessageAt *time.Time, updatedAt time.Time, otherUserName string) g.Node {
+	lastMessagePreview := lastMessageContent
 	if len(lastMessagePreview) > 50 {
 		lastMessagePreview = lastMessagePreview[:50] + "..."
 	}
 
 	var timeStr string
-	if conv.LastMessageAt != nil {
-		timeStr = formatMessageTime(*conv.LastMessageAt)
+	if lastMessageAt != nil {
+		timeStr = formatMessageTime(*lastMessageAt)
 	} else {
-		timeStr = formatMessageTime(conv.UpdatedAt)
+		timeStr = formatMessageTime(updatedAt)
 	}
 
 	return Div(
 		Class("border-b border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer transition-colors"),
-		hx.Get(fmt.Sprintf("/auth/conversation/%d", conv.ID)),
+		hx.Get(fmt.Sprintf("/auth/conversation/%d", conversationID)),
 		hx.Target("body"),
 		hx.Swap("beforeend"),
 		Div(
@@ -169,9 +163,9 @@ func ConversationListItem(conv message.ConversationWithLastMessage, otherUserNam
 			Div(
 				Class("flex items-start justify-between mb-2"),
 				A(
-					Href(fmt.Sprintf("/ad/%d", conv.AdID)),
+					Href(fmt.Sprintf("/ad/%d", adID)),
 					Class("text-lg font-semibold text-zinc-900 dark:text-zinc-200 hover:text-blue-600 dark:hover:text-blue-400"),
-					g.Text(conv.AdTitle),
+					g.Text(adTitle),
 					g.Attr("onclick", "event.stopPropagation()"),
 				),
 				Span(
@@ -185,7 +179,7 @@ func ConversationListItem(conv message.ConversationWithLastMessage, otherUserNam
 					Class("text-sm text-zinc-600 dark:text-zinc-400"),
 					g.Text(fmt.Sprintf("With %s", otherUserName)),
 				),
-				g.If(conv.LastMessageContent != "",
+				g.If(lastMessageContent != "",
 					Span(
 						Class("text-sm text-zinc-500 dark:text-zinc-500 truncate ml-4 max-w-[50%%]"),
 						g.Text(lastMessagePreview),
@@ -196,9 +190,9 @@ func ConversationListItem(conv message.ConversationWithLastMessage, otherUserNam
 	)
 }
 
-func MessagesPage(conversations []message.ConversationWithLastMessage, userMap map[int]string) []g.Node {
+func MessagesPage(conversationItems []g.Node) []g.Node {
 	var conversationNodes []g.Node
-	if len(conversations) == 0 {
+	if len(conversationItems) == 0 {
 		conversationNodes = append(conversationNodes,
 			Div(
 				Class("text-center text-zinc-600 dark:text-zinc-400 py-16"),
@@ -206,13 +200,7 @@ func MessagesPage(conversations []message.ConversationWithLastMessage, userMap m
 			),
 		)
 	} else {
-		for _, conv := range conversations {
-			otherUserName := userMap[conv.OtherUserID]
-			if otherUserName == "" {
-				otherUserName = "Unknown User"
-			}
-			conversationNodes = append(conversationNodes, ConversationListItem(conv, otherUserName))
-		}
+		conversationNodes = conversationItems
 	}
 
 	return []g.Node{

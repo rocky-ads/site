@@ -223,5 +223,22 @@ func UserMessagesHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	return renderPage(c, "Messages", ui.MessagesPage(conversations, userMap))
+	var conversationItems []g.Node
+	for _, conv := range conversations {
+		otherUserName := userMap[conv.OtherUserID]
+		if otherUserName == "" {
+			otherUserName = "Unknown User"
+		}
+		conversationItems = append(conversationItems, ui.ConversationListItem(
+			conv.ID,
+			conv.AdID,
+			conv.AdTitle,
+			conv.LastMessageContent,
+			conv.LastMessageAt,
+			conv.UpdatedAt,
+			otherUserName,
+		))
+	}
+
+	return renderPage(c, "Messages", ui.MessagesPage(conversationItems))
 }
