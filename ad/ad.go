@@ -87,6 +87,9 @@ func GetAd(userID int, id int, loc *time.Location) (Ad, error) {
 	if err != nil {
 		return Ad{}, err
 	}
+	if len(ads) == 0 {
+		return Ad{}, fmt.Errorf("ad not found")
+	}
 	return ads[0], nil
 }
 

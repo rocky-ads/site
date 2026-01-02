@@ -261,7 +261,7 @@ func adButtons(adID, userID, ownerID int, bookmarked, active, reachable bool, cs
 	return Div(
 		Class("flex items-center gap-2"),
 		g.If(userID != 0, BookmarkButton(adID, bookmarked, csrfToken)),
-		g.If(active && userID != 0 && reachable, messageButton(adID)),
+		g.If(active && userID != 0 && reachable && !isOwner, messageButton(adID)),
 		g.If(active && isOwner, deleteButton(adID, csrfToken)),
 		g.If(!active && isOwner, restoreButton(adID, csrfToken)),
 		shareButton(adID),

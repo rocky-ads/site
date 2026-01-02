@@ -63,6 +63,10 @@ func setupApp() *fiber.App {
 	auth.Get("/user/settings", handler.UserSettingsHandler)
 	auth.Get("/user/about", handler.UserAboutHandler)
 	auth.Get("/welcome", handler.WelcomeHandler)
+	auth.Get("/message/:id", handler.MessageModalHandler)
+	auth.Post("/message/:id/send", handler.SendMessageHandler)
+	auth.Get("/conversation/:id", handler.ConversationModalHandler)
+	auth.Post("/conversation/:id/send", handler.SendConversationMessageHandler)
 	auth.Post("/bookmark/:id", handler.BookmarkHandler)
 	auth.Delete("/bookmark/:id", handler.BookmarkHandler)
 	auth.Get("/sse", handler.SSEHandler)
@@ -133,9 +137,6 @@ func main() {
 	if err := ad.Init(); err != nil {
 		logger.Fatal("Failed to initialize ads", "error", err)
 	}
-
-	// Start SSE message count simulator (for testing)
-	handler.StartMessageCountSimulator()
 
 	app := setupApp()
 

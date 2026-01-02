@@ -53,10 +53,6 @@ func userMyAdsTabHandler(c *fiber.Ctx, activeTab string) error {
 	return renderPage(c, "My Ads", ui.MyAdsPage(activeTab, adNodes))
 }
 
-func UserMessagesHandler(c *fiber.Ctx) error {
-	return renderPage(c, "Messages", ui.MessagesPage())
-}
-
 func UserSettingsHandler(c *fiber.Ctx) error {
 	return renderPage(c, "Settings", ui.SettingsPage())
 }

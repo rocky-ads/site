@@ -177,16 +177,6 @@ func MyAdsContent(activeTab string, adNodes []g.Node) g.Node {
 	)
 }
 
-func MessagesPage() []g.Node {
-	return []g.Node{
-		pageTitle("Messages"),
-		Div(
-			Class("mt-8 text-center text-zinc-600 dark:text-zinc-400"),
-			P(g.Text("This page will show your messages.")),
-		),
-	}
-}
-
 func SettingsPage() []g.Node {
 	return []g.Node{
 		pageTitle("Settings"),

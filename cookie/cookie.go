@@ -1,6 +1,7 @@
 package cookie
 
 import (
+	"net/url"
 	"strconv"
 	"time"
 
@@ -72,12 +73,15 @@ func GetJWT(c *fiber.Ctx) string {
 func GetLocation(c *fiber.Ctx) *time.Location {
 	timezone := c.Cookies("timezone")
 	if timezone == "" {
-		// Default to UTC if no timezone cookie is set
 		return time.UTC
 	}
-	loc, err := time.LoadLocation(timezone)
+	// URL decode the timezone value (e.g., America%2FLos_Angeles -> America/Los_Angeles)
+	decodedTimezone, err := url.QueryUnescape(timezone)
 	if err != nil {
-		// Invalid timezone, default to UTC
+		return time.UTC
+	}
+	loc, err := time.LoadLocation(decodedTimezone)
+	if err != nil {
 		return time.UTC
 	}
 	return loc

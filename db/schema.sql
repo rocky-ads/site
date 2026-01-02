@@ -175,3 +175,29 @@ CREATE TABLE spec_part (
     part_subcategory TEXT CHECK (part_subcategory IS NULL OR part_subcategory != ''),
     UNIQUE(category_id, part_category, part_subcategory)
 );
+
+-- Conversations table
+CREATE TABLE conversations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ad_id INTEGER NOT NULL REFERENCES ads(id),
+    owner_id INTEGER NOT NULL REFERENCES users(id),
+    enquirer_id INTEGER NOT NULL REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(ad_id, enquirer_id)
+);
+CREATE INDEX idx_conversations_owner ON conversations(owner_id);
+CREATE INDEX idx_conversations_enquirer ON conversations(enquirer_id);
+CREATE INDEX idx_conversations_ad ON conversations(ad_id);
+CREATE INDEX idx_conversations_updated_at ON conversations(updated_at);
+
+-- Messages table
+CREATE TABLE messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id INTEGER NOT NULL REFERENCES conversations(id),
+    sender_id INTEGER NOT NULL REFERENCES users(id),
+    content TEXT NOT NULL CHECK (content != ''),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX idx_messages_created_at ON messages(created_at);
