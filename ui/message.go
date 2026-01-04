@@ -29,7 +29,7 @@ func formatMessageTime(t time.Time) string {
 	return t.Format("Jan 2, 2006")
 }
 
-func MessageItem(senderID, currentUserID int, content string, createdAt time.Time, loc *time.Location) g.Node {
+func MessageItem(senderID, currentUserID int, content string, createdAt time.Time, loc *time.Location, attrs ...g.Node) g.Node {
 	isSent := senderID == currentUserID
 
 	var bubbleClass string
@@ -45,9 +45,13 @@ func MessageItem(senderID, currentUserID int, content string, createdAt time.Tim
 	localTime := createdAt.In(loc)
 	fullTimestamp := localTime.Format("2006-01-02 03:04:05 PM MST")
 
-	return Div(
-		Class(containerClass+" mb-2"),
+	allAttrs := append([]g.Node{
+		Class(containerClass + " mb-2"),
 		Title(fullTimestamp),
+	}, attrs...)
+
+	return Div(
+		g.Group(allAttrs),
 		Div(
 			Class("max-w-[70%]"),
 			Div(
@@ -67,6 +71,68 @@ func ConversationMessages(conversationID, currentUserID int, otherUserName strin
 		ID(fmt.Sprintf("conversation-%d-messages", conversationID)),
 		Class("flex-1 overflow-y-auto p-4 space-y-2"),
 		g.Group(messageNodes),
+	)
+}
+
+func ConversationMessagesSentinel(conversationID int) g.Node {
+	return Div(
+		ID(fmt.Sprintf("conversation-%d-sentinel", conversationID)),
+		g.Attr("style", "display: none;"),
+	)
+}
+
+func ConversationMessageSwapOOB(conversationID int, messageNode g.Node) g.Node {
+	sentinelID := fmt.Sprintf("conversation-%d-sentinel", conversationID)
+	return Div(
+		hx.SwapOOB(fmt.Sprintf("beforebegin:#%s", sentinelID)),
+		messageNode,
+	)
+}
+
+func ConversationMessagesUpdate(conversationID int, messageNodes []g.Node) g.Node {
+	nodesWithSentinel := append(messageNodes, ConversationMessagesSentinel(conversationID))
+	return Div(
+		ID(fmt.Sprintf("conversation-%d-messages", conversationID)),
+		Class("flex-1 overflow-y-auto p-4 space-y-2"),
+		g.Group(nodesWithSentinel),
+	)
+}
+
+func ConversationContentInput(conversationID int, attrs ...g.Node) g.Node {
+	allAttrs := []g.Node{
+		ID(fmt.Sprintf("conversation-%d-content-input", conversationID)),
+		Type("text"),
+		Name("content"),
+		Placeholder("Type a message..."),
+		Required(),
+		Class("flex-1 px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200"),
+		g.Attr("onkeydown", "if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); this.form.requestSubmit(); }"),
+	}
+	allAttrs = append(allAttrs, attrs...)
+	return Input(g.Group(allAttrs))
+}
+
+func ConversationForm(conversationID int, csrfToken string) g.Node {
+	modalName := fmt.Sprintf("conversation-%d", conversationID)
+	attrs := []g.Node{
+		ID(fmt.Sprintf("%s-form", modalName)),
+		Class("p-4 border-t border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
+		hx.Post(fmt.Sprintf("/auth/conversation/%d/send", conversationID)),
+		hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
+		hx.Include("this"),
+		hx.Swap("none"),
+	}
+	return Form(
+		g.Group(attrs),
+		Div(
+			Class("flex gap-2"),
+			ConversationContentInput(conversationID),
+			Button(
+				Type("submit"),
+				Class("px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"),
+				g.Text("Send"),
+			),
+		),
 	)
 }
 
@@ -110,31 +176,9 @@ func ConversationModal(conversationID, adID int, adTitle string, ownerID, enquir
 					g.If(len(messageNodes) > 0,
 						g.Group(messageNodes),
 					),
+					ConversationMessagesSentinel(conversationID),
 				),
-				Form(
-					Class("p-4 border-t border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
-					hx.Post(fmt.Sprintf("/auth/conversation/%d/send", conversationID)),
-					hx.Target(fmt.Sprintf("#%s-messages", modalName)),
-					hx.Swap("outerHTML"),
-					hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
-					hx.Include("this"),
-					Div(
-						Class("flex gap-2"),
-						Input(
-							Type("text"),
-							Name("content"),
-							Placeholder("Type a message..."),
-							Required(),
-							Class("flex-1 px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200"),
-							g.Attr("onkeydown", "if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); this.form.requestSubmit(); }"),
-						),
-						Button(
-							Type("submit"),
-							Class("px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"),
-							g.Text("Send"),
-						),
-					),
-				),
+				ConversationForm(conversationID, csrfToken),
 			),
 		),
 	})

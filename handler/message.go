@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"fmt"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/ad"
@@ -13,7 +13,6 @@ import (
 	"github.com/rocky-ads/site/user"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
-	. "maragu.dev/gomponents/html"
 )
 
 func GetMessageCount(userID int) int {
@@ -22,6 +21,72 @@ func GetMessageCount(userID int) int {
 		return 0
 	}
 	return count
+}
+
+func buildMessageNodes(messages []message.Message, currentUserID int, loc *time.Location) []g.Node {
+	var messageNodes []g.Node
+	for _, msg := range messages {
+		messageNodes = append(messageNodes, ui.MessageItem(msg.SenderID, currentUserID, msg.Content, msg.CreatedAt, loc))
+	}
+	return messageNodes
+}
+
+func sendMessageAndRenderUpdate(c *fiber.Ctx, conv message.Conversation, currentUserID int,
+	loc *time.Location) error {
+
+	content := c.FormValue("content")
+	if content == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Message content cannot be empty")
+	}
+
+	msg, err := message.CreateMessage(conv.ID, currentUserID, content)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to send message")
+	}
+
+	newMessageNode := ui.MessageItem(msg.SenderID, currentUserID, msg.Content, msg.CreatedAt, loc)
+	clearedInput := ui.ConversationContentInput(conv.ID, hx.SwapOOB("true"))
+
+	return render(c, g.Group([]g.Node{
+		ui.ConversationMessageSwapOOB(conv.ID, newMessageNode),
+		clearedInput,
+	}))
+}
+
+func getOtherUserName(conv message.Conversation, currentUserID int) (string, error) {
+	var otherUserID int
+	if conv.OwnerID == currentUserID {
+		otherUserID = conv.EnquirerID
+	} else {
+		otherUserID = conv.OwnerID
+	}
+
+	otherUser, err := user.GetByID(otherUserID)
+	if err != nil {
+		return "", err
+	}
+	return otherUser.Name, nil
+}
+
+func renderConversationModal(c *fiber.Ctx, conv message.Conversation, currentUserID int, loc *time.Location, csrfToken string) error {
+	a, err := ad.GetAd(currentUserID, conv.AdID, loc)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
+	}
+
+	messages, err := message.GetConversationMessages(conv.ID, currentUserID, loc)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get messages")
+	}
+
+	otherUserName, err := getOtherUserName(conv, currentUserID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get other user")
+	}
+
+	messageNodes := buildMessageNodes(messages, currentUserID, loc)
+
+	return render(c, ui.ConversationModal(conv.ID, conv.AdID, a.Title, conv.OwnerID, conv.EnquirerID, currentUserID, otherUserName, messageNodes, csrfToken))
 }
 
 func MessageModalHandler(c *fiber.Ctx) error {
@@ -48,22 +113,7 @@ func MessageModalHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get conversation")
 	}
 
-	messages, err := message.GetConversationMessages(conv.ID, currentUserID, loc)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get messages")
-	}
-
-	owner, err := user.GetByID(a.UserID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get owner")
-	}
-
-	var messageNodes []g.Node
-	for _, msg := range messages {
-		messageNodes = append(messageNodes, ui.MessageItem(msg.SenderID, currentUserID, msg.Content, msg.CreatedAt, loc))
-	}
-
-	return render(c, ui.ConversationModal(conv.ID, adID, a.Title, a.UserID, currentUserID, currentUserID, owner.Name, messageNodes, csrfToken))
+	return renderConversationModal(c, conv, currentUserID, loc, csrfToken)
 }
 
 func SendMessageHandler(c *fiber.Ctx) error {
@@ -85,33 +135,7 @@ func SendMessageHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get conversation")
 	}
 
-	content := c.FormValue("content")
-	if content == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "Message content cannot be empty")
-	}
-
-	_, err = message.CreateMessage(conv.ID, currentUserID, content)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to send message")
-	}
-
-	messages, err := message.GetConversationMessages(conv.ID, currentUserID, loc)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get messages")
-	}
-
-	modalName := fmt.Sprintf("conversation-%d", conv.ID)
-	var messageNodes []g.Node
-	for _, msg := range messages {
-		messageNodes = append(messageNodes, ui.MessageItem(msg.SenderID, currentUserID, msg.Content, msg.CreatedAt, loc))
-	}
-
-	return render(c, Div(
-		ID(modalName+"-messages"),
-		hx.SwapOOB("true"),
-		Class("flex-1 overflow-y-auto p-4 space-y-2"),
-		g.Group(messageNodes),
-	))
+	return sendMessageAndRenderUpdate(c, conv, currentUserID, loc)
 }
 
 func SendConversationMessageHandler(c *fiber.Ctx) error {
@@ -128,33 +152,7 @@ func SendConversationMessageHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
 	}
 
-	content := c.FormValue("content")
-	if content == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "Message content cannot be empty")
-	}
-
-	_, err = message.CreateMessage(conv.ID, currentUserID, content)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to send message")
-	}
-
-	messages, err := message.GetConversationMessages(conv.ID, currentUserID, loc)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get messages")
-	}
-
-	modalName := fmt.Sprintf("conversation-%d", conv.ID)
-	var messageNodes []g.Node
-	for _, msg := range messages {
-		messageNodes = append(messageNodes, ui.MessageItem(msg.SenderID, currentUserID, msg.Content, msg.CreatedAt, loc))
-	}
-
-	return render(c, Div(
-		ID(modalName+"-messages"),
-		hx.SwapOOB("true"),
-		Class("flex-1 overflow-y-auto p-4 space-y-2"),
-		g.Group(messageNodes),
-	))
+	return sendMessageAndRenderUpdate(c, conv, currentUserID, loc)
 }
 
 func ConversationModalHandler(c *fiber.Ctx) error {
@@ -172,36 +170,7 @@ func ConversationModalHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
 	}
 
-	a, err := ad.GetAd(currentUserID, conv.AdID, loc)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
-	}
-
-	messages, err := message.GetConversationMessages(conv.ID, currentUserID, loc)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get messages")
-	}
-
-	var otherUserID int
-	var otherUserName string
-	if conv.OwnerID == currentUserID {
-		otherUserID = conv.EnquirerID
-	} else {
-		otherUserID = conv.OwnerID
-	}
-
-	otherUser, err := user.GetByID(otherUserID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get other user")
-	}
-	otherUserName = otherUser.Name
-
-	var messageNodes []g.Node
-	for _, msg := range messages {
-		messageNodes = append(messageNodes, ui.MessageItem(msg.SenderID, currentUserID, msg.Content, msg.CreatedAt, loc))
-	}
-
-	return render(c, ui.ConversationModal(conv.ID, conv.AdID, a.Title, conv.OwnerID, conv.EnquirerID, currentUserID, otherUserName, messageNodes, csrfToken))
+	return renderConversationModal(c, conv, currentUserID, loc, csrfToken)
 }
 
 func UserMessagesHandler(c *fiber.Ctx) error {
