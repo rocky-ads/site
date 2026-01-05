@@ -81,7 +81,7 @@ func ConversationMessagesSentinel(conversationID int) g.Node {
 	)
 }
 
-func ConversationMessageSwapOOB(conversationID int, messageNode g.Node) g.Node {
+func MessageItemSwapOOB(conversationID int, messageNode g.Node) g.Node {
 	sentinelID := fmt.Sprintf("conversation-%d-sentinel", conversationID)
 	return Div(
 		hx.SwapOOB(fmt.Sprintf("beforebegin:#%s", sentinelID)),
@@ -95,6 +95,15 @@ func ConversationMessagesUpdate(conversationID int, messageNodes []g.Node) g.Nod
 		ID(fmt.Sprintf("conversation-%d-messages", conversationID)),
 		Class("flex-1 overflow-y-auto p-4 space-y-2"),
 		g.Group(nodesWithSentinel),
+	)
+}
+
+func ConversationListItemSwapOOB(conversationID int, conversationItemNode g.Node) g.Node {
+	itemID := fmt.Sprintf("conversation-item-%d", conversationID)
+	return Div(
+		hx.SwapOOB("outerHTML"),
+		ID(itemID),
+		conversationItemNode,
 	)
 }
 
@@ -158,8 +167,18 @@ func ConversationModal(conversationID, adID int, adTitle string, ownerID, enquir
 						),
 						Div(
 							Class("text-sm text-zinc-600 dark:text-zinc-400"),
-							Span(Class("font-semibold"), g.Text("To: ")),
-							g.Text(otherUserName),
+							g.If(enquirerID == currentUserID,
+								g.Group([]g.Node{
+									Span(Class("font-semibold"), g.Text("To: ")),
+									g.Text(otherUserName),
+								}),
+							),
+							g.If(ownerID == currentUserID,
+								g.Group([]g.Node{
+									Span(Class("font-semibold"), g.Text("From: ")),
+									g.Text(otherUserName),
+								}),
+							),
 						),
 					),
 					modalClose(modalName),
@@ -169,6 +188,7 @@ func ConversationModal(conversationID, adID int, adTitle string, ownerID, enquir
 					Class("flex-1 overflow-y-auto p-4 space-y-2"),
 					g.If(len(messageNodes) == 0,
 						Div(
+							ID(fmt.Sprintf("conversation-%d-empty-message", conversationID)),
 							Class("text-center text-zinc-500 dark:text-zinc-400 py-8"),
 							g.Text("No messages yet. Start the conversation!"),
 						),
@@ -184,7 +204,7 @@ func ConversationModal(conversationID, adID int, adTitle string, ownerID, enquir
 	})
 }
 
-func ConversationListItem(conversationID, adID int, adTitle, lastMessageContent string, lastMessageAt *time.Time, updatedAt time.Time, otherUserName string) g.Node {
+func ConversationListItem(conversationID, adID, ownerID, enquirerID, currentUserID int, adTitle, lastMessageContent, otherUserName string, lastMessageAt *time.Time, updatedAt time.Time, hasUnread bool) g.Node {
 	lastMessagePreview := lastMessageContent
 	if len(lastMessagePreview) > 50 {
 		lastMessagePreview = lastMessagePreview[:50] + "..."
@@ -198,6 +218,7 @@ func ConversationListItem(conversationID, adID int, adTitle, lastMessageContent 
 	}
 
 	return Div(
+		ID(fmt.Sprintf("conversation-item-%d", conversationID)),
 		Class("border-b border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer transition-colors"),
 		hx.Get(fmt.Sprintf("/auth/conversation/%d", conversationID)),
 		hx.Target("body"),
@@ -206,11 +227,17 @@ func ConversationListItem(conversationID, adID int, adTitle, lastMessageContent 
 			Class("p-4"),
 			Div(
 				Class("flex items-start justify-between mb-2"),
-				A(
-					Href(fmt.Sprintf("/ad/%d", adID)),
-					Class("text-lg font-semibold text-zinc-900 dark:text-zinc-200 hover:text-blue-600 dark:hover:text-blue-400"),
-					g.Text(adTitle),
-					g.Attr("onclick", "event.stopPropagation()"),
+				Div(
+					Class("flex items-center gap-2 flex-1 min-w-0"),
+					g.If(hasUnread,
+						Div(
+							Class("bg-green-500 rounded-full w-2 h-2 flex-shrink-0"),
+						),
+					),
+					Span(
+						Class("text-lg font-semibold text-zinc-900 dark:text-zinc-200"),
+						g.Text(adTitle),
+					),
 				),
 				Span(
 					Class("text-xs text-zinc-500 dark:text-zinc-400 ml-4 flex-shrink-0"),
@@ -221,7 +248,12 @@ func ConversationListItem(conversationID, adID int, adTitle, lastMessageContent 
 				Class("flex items-center justify-between"),
 				Span(
 					Class("text-sm text-zinc-600 dark:text-zinc-400"),
-					g.Text(fmt.Sprintf("With %s", otherUserName)),
+					g.If(enquirerID == currentUserID,
+						g.Text(fmt.Sprintf("To: %s", otherUserName)),
+					),
+					g.If(ownerID == currentUserID,
+						g.Text(fmt.Sprintf("From: %s", otherUserName)),
+					),
 				),
 				g.If(lastMessageContent != "",
 					Span(
@@ -240,7 +272,16 @@ func MessagesPage(conversationItems []g.Node) []g.Node {
 		conversationNodes = append(conversationNodes,
 			Div(
 				Class("text-center text-zinc-600 dark:text-zinc-400 py-16"),
-				P(g.Text("No conversations yet. Start a conversation by clicking the message button on an ad.")),
+				P(
+					Class("flex items-center justify-center gap-2"),
+					g.Text("No conversations yet. Start a conversation by clicking the "),
+					Img(
+						Src("/images/message.svg"),
+						Alt("Message"),
+						Class("w-5 h-5 inline-block dark:invert dark:opacity-80"),
+					),
+					g.Text(" message button on an ad."),
+				),
 			),
 		)
 	} else {

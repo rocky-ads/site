@@ -79,7 +79,7 @@ var CSRFMiddleware = csrf.New(csrf.Config{
 	// Check for token in header (used by HTMX requests via hx.Headers)
 	KeyLookup: "header:X-Csrf-Token",
 	// Store token in context so handler can access it
-	ContextKey: "csrf_token",
+	ContextKey: "csrf-token",
 	// Configure CSRF cookie with secure settings using new API
 	CookieName:     "_csrf",
 	CookieHTTPOnly: true,                // Prevent XSS attacks from reading token

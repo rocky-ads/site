@@ -184,6 +184,8 @@ CREATE TABLE conversations (
     enquirer_id INTEGER NOT NULL REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    owner_has_unread INTEGER NOT NULL DEFAULT 0,
+    enquirer_has_unread INTEGER NOT NULL DEFAULT 0,
     UNIQUE(ad_id, enquirer_id)
 );
 CREATE INDEX idx_conversations_owner ON conversations(owner_id);

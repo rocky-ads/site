@@ -10,12 +10,14 @@ import (
 )
 
 type Conversation struct {
-	ID         int       `db:"id" json:"id"`
-	AdID       int       `db:"ad_id" json:"ad_id"`
-	OwnerID    int       `db:"owner_id" json:"owner_id"`
-	EnquirerID int       `db:"enquirer_id" json:"enquirer_id"`
-	CreatedAt  time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt  time.Time `db:"updated_at" json:"updated_at"`
+	ID                int       `db:"id" json:"id"`
+	AdID              int       `db:"ad_id" json:"ad_id"`
+	OwnerID           int       `db:"owner_id" json:"owner_id"`
+	EnquirerID        int       `db:"enquirer_id" json:"enquirer_id"`
+	CreatedAt         time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt         time.Time `db:"updated_at" json:"updated_at"`
+	OwnerHasUnread    bool      `db:"owner_has_unread" json:"owner_has_unread"`
+	EnquirerHasUnread bool      `db:"enquirer_has_unread" json:"enquirer_has_unread"`
 }
 
 type Message struct {
@@ -36,6 +38,7 @@ type ConversationWithLastMessage struct {
 	LastMessageContent string     `db:"last_message_content" json:"last_message_content"`
 	LastMessageAt      *time.Time `db:"last_message_at" json:"last_message_at"`
 	OtherUserID        int        `db:"other_user_id" json:"other_user_id"`
+	HasUnread          bool       `db:"has_unread" json:"has_unread"`
 }
 
 var ErrConversationNotFound = errors.New("conversation not found")
@@ -48,7 +51,7 @@ func GetOrCreateConversation(adID, ownerID, enquirerID int) (Conversation, error
 
 	var conv Conversation
 	query := `
-		SELECT id, ad_id, owner_id, enquirer_id, created_at, updated_at
+		SELECT id, ad_id, owner_id, enquirer_id, created_at, updated_at, owner_has_unread, enquirer_has_unread
 		FROM conversations
 		WHERE ad_id = ? AND enquirer_id = ?
 	`
@@ -59,17 +62,19 @@ func GetOrCreateConversation(adID, ownerID, enquirerID int) (Conversation, error
 		&conv.EnquirerID,
 		&conv.CreatedAt,
 		&conv.UpdatedAt,
+		&conv.OwnerHasUnread,
+		&conv.EnquirerHasUnread,
 	)
 	if err == nil {
 		return conv, nil
 	}
-	if err != nil && err != sql.ErrNoRows {
+	if err != sql.ErrNoRows {
 		return Conversation{}, fmt.Errorf("failed to query conversation: %w", err)
 	}
 
 	result, err := db.Exec(`
-		INSERT INTO conversations (ad_id, owner_id, enquirer_id, created_at, updated_at)
-		VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		INSERT INTO conversations (ad_id, owner_id, enquirer_id, created_at, updated_at, owner_has_unread, enquirer_has_unread)
+		VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0)
 	`, adID, ownerID, enquirerID)
 	if err != nil {
 		return Conversation{}, fmt.Errorf("failed to create conversation: %w", err)
@@ -93,7 +98,7 @@ func GetOrCreateConversation(adID, ownerID, enquirerID int) (Conversation, error
 func GetConversation(conversationID, userID int) (Conversation, error) {
 	var conv Conversation
 	query := `
-		SELECT id, ad_id, owner_id, enquirer_id, created_at, updated_at
+		SELECT id, ad_id, owner_id, enquirer_id, created_at, updated_at, owner_has_unread, enquirer_has_unread
 		FROM conversations
 		WHERE id = ? AND (owner_id = ? OR enquirer_id = ?)
 	`
@@ -104,6 +109,8 @@ func GetConversation(conversationID, userID int) (Conversation, error) {
 		&conv.EnquirerID,
 		&conv.CreatedAt,
 		&conv.UpdatedAt,
+		&conv.OwnerHasUnread,
+		&conv.EnquirerHasUnread,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -123,13 +130,19 @@ func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLas
 			c.enquirer_id,
 			c.created_at,
 			c.updated_at,
+			c.owner_has_unread,
+			c.enquirer_has_unread,
 			a.title AS ad_title,
 			COALESCE(m.content, '') AS last_message_content,
 			m.created_at AS last_message_at,
 			CASE
 				WHEN c.owner_id = ? THEN c.enquirer_id
 				ELSE c.owner_id
-			END AS other_user_id
+			END AS other_user_id,
+			CASE
+				WHEN c.owner_id = ? THEN c.owner_has_unread
+				ELSE c.enquirer_has_unread
+			END AS has_unread
 		FROM conversations c
 		JOIN ads a ON c.ad_id = a.id
 		LEFT JOIN (
@@ -143,7 +156,7 @@ func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLas
 		ORDER BY COALESCE(m.created_at, c.updated_at) DESC
 	`
 	var conversations []ConversationWithLastMessage
-	err := db.Select(&conversations, query, userID, userID, userID)
+	err := db.Select(&conversations, query, userID, userID, userID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user conversations: %w", err)
 	}
@@ -213,11 +226,19 @@ func CreateMessage(conversationID, senderID int, content string) (Message, error
 		return Message{}, fmt.Errorf("failed to get message ID: %w", err)
 	}
 
-	_, err = db.Exec(`
+	// Set has_unread=true for the recipient (the one who didn't send the message)
+	var recipientField string
+	if conv.OwnerID == senderID {
+		recipientField = "enquirer_has_unread"
+	} else {
+		recipientField = "owner_has_unread"
+	}
+
+	_, err = db.Exec(fmt.Sprintf(`
 		UPDATE conversations
-		SET updated_at = CURRENT_TIMESTAMP
+		SET updated_at = CURRENT_TIMESTAMP, %s = 1
 		WHERE id = ?
-	`, conversationID)
+	`, recipientField), conversationID)
 	if err != nil {
 		return Message{}, fmt.Errorf("failed to update conversation: %w", err)
 	}
@@ -242,18 +263,44 @@ func CreateMessage(conversationID, senderID int, content string) (Message, error
 	return msg, nil
 }
 
-func GetUnreadMessageCount(userID int) (int, error) {
+// GetHasUnread checks if the user has any unread conversations
+func GetHasUnread(userID int) (bool, error) {
 	query := `
-		SELECT COUNT(*)
-		FROM messages m
-		JOIN conversations c ON m.conversation_id = c.id
-		WHERE (c.owner_id = ? OR c.enquirer_id = ?)
-		AND m.sender_id != ?
+		SELECT COUNT(*) > 0
+		FROM conversations
+		WHERE (owner_id = ? AND owner_has_unread = 1)
+		   OR (enquirer_id = ? AND enquirer_has_unread = 1)
 	`
-	var count int
-	err := db.QueryRow(query, userID, userID, userID).Scan(&count)
+	var hasUnread bool
+	err := db.QueryRow(query, userID, userID).Scan(&hasUnread)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get unread count: %w", err)
+		return false, fmt.Errorf("failed to get unread status: %w", err)
 	}
-	return count, nil
+	return hasUnread, nil
+}
+
+// MarkConversationAsRead marks a conversation as read for the given user
+func MarkConversationAsRead(conversationID, userID int) error {
+	conv, err := GetConversation(conversationID, userID)
+	if err != nil {
+		return err
+	}
+
+	var field string
+	if conv.OwnerID == userID {
+		field = "owner_has_unread"
+	} else {
+		field = "enquirer_has_unread"
+	}
+
+	_, err = db.Exec(fmt.Sprintf(`
+		UPDATE conversations
+		SET %s = 0
+		WHERE id = ?
+	`, field), conversationID)
+	if err != nil {
+		return fmt.Errorf("failed to mark conversation as read: %w", err)
+	}
+
+	return nil
 }

@@ -55,25 +55,37 @@ func getUserInitial(userName string) string {
 	return strings.ToUpper(string([]rune(userName)[0]))
 }
 
-func navLoggedIn(userName string) g.Node {
+func avatar(userName string) g.Node {
+	return Span(
+		ID("user-avatar"),
+		Class("bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-semibold text-sm cursor-pointer hover:bg-red-600"),
+		hx.Get("/auth/user/menu"),
+		hx.Target("body"),
+		hx.Swap("beforeend"),
+		g.Text(getUserInitial(userName)),
+	)
+}
+
+func hasUnreadIndicator() g.Node {
+	return Div(
+		Class("bg-green-500 rounded-full w-3 h-3"),
+	)
+}
+
+func UnreadIndicatorSwapOOB(hasUnread bool) g.Node {
+	return Div(
+		hx.SwapOOB("true"),
+		ID("message-unread-indicator"),
+		g.If(hasUnread, Div(Class("absolute -top-1 -right-3"), hasUnreadIndicator())),
+	)
+}
+
+func navLoggedIn(userName string, hasUnread bool) g.Node {
 	return Div(
 		ID("user-avatar-container"),
 		Class("relative"),
-		Span(
-			ID("user-avatar"),
-			Class("bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-semibold text-sm cursor-pointer hover:bg-red-600"),
-			hx.Get("/auth/user/menu"),
-			hx.Target("body"),
-			hx.Swap("beforeend"),
-			g.Text(getUserInitial(userName)),
-		),
-		Div(
-			ID("message-unread-counter"),
-			Class("absolute -top-1 -right-3 bg-green-500 text-white rounded-full h-5 min-w-5 px-1 flex items-center justify-center text-[10px] font-bold empty:hidden"),
-			g.Attr("sse-swap", "message-count"),
-			hx.Swap("innerHTML"),
-			// Start empty - will be populated by SSE
-		),
+		avatar(userName),
+		UnreadIndicatorSwapOOB(hasUnread),
 	)
 }
 
@@ -113,7 +125,17 @@ func indicator() g.Node {
 	)
 }
 
-func navigation(userID int, userName, currentPath string) g.Node {
+// Global listener for unnamed SSE events sunk here.  Assumption is unnamed
+// event data contains htmx swap-oob elements to swap into DOM.
+func swapOOBmessages() g.Node {
+	return Div(
+		g.Attr("sse-swap", "message"),
+		hx.Swap("none"),
+		g.Attr("style", "display: none;"),
+	)
+}
+
+func navigation(userID int, userName, currentPath string, hasUnread bool) g.Node {
 	return Nav(
 		Class("sticky top-0 z-10 bg-white/75 dark:bg-zinc-900/75 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between mb-8 py-4 -mx-4 px-4"),
 		A(
@@ -127,12 +149,12 @@ func navigation(userID int, userName, currentPath string) g.Node {
 			Span(Class("text-xl font-bold"), g.Text(config.ServerName)),
 		),
 		indicator(),
-		g.Iff(userID != 0, func() g.Node { return navLoggedIn(userName) }),
+		g.Iff(userID != 0, func() g.Node { return navLoggedIn(userName, hasUnread) }),
 		g.Iff(userID == 0, func() g.Node { return navLoggedOut(currentPath) }),
 	)
 }
 
-func Page(userID int, userName, title, currentPath, csrfToken string, body []g.Node) g.Node {
+func Page(userID int, hasUnread bool, userName, title, currentPath, csrfToken string, body []g.Node) g.Node {
 	var headNodes []g.Node
 
 	// SEO meta tags for homepage
@@ -193,11 +215,12 @@ func Page(userID int, userName, title, currentPath, csrfToken string, body []g.N
 			g.If(userID != 0, hx.Ext("sse")),
 			g.If(userID != 0, g.Attr("sse-connect", "/auth/sse")),
 			g.If(userID != 0, g.Attr("sse-close", "close")),
+			g.If(userID != 0, swapOOBmessages()),
 			Div(
 				Class("w-full md:max-w-3xl md:mx-auto pb-8 px-6 text-zinc-900 dark:text-zinc-200 bg-white dark:bg-zinc-900"),
 				hx.Headers(headersJSON),
 				hx.Indicator("#indicator"),
-				navigation(userID, userName, currentPath),
+				navigation(userID, userName, currentPath, hasUnread),
 				g.Group(body),
 			),
 		),

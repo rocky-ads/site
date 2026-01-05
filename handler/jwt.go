@@ -2,7 +2,6 @@ package handler
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -19,9 +18,7 @@ func JWTMiddleware(c *fiber.Ctx) error {
 	// Get JWT token from cookie
 	tokenString := cookie.GetJWT(c)
 	if tokenString == "" {
-		local.SetUserID(c, 0)
-		local.SetUserName(c, "")
-		local.SetUserIsAdmin(c, false)
+		logout(c)
 		return c.Next()
 	}
 
@@ -45,6 +42,7 @@ func JWTMiddleware(c *fiber.Ctx) error {
 	local.SetUserID(c, userID)
 	local.SetUserName(c, getUserName(claims))
 	local.SetUserIsAdmin(c, getUserIsAdmin(claims))
+
 	return c.Next()
 }
 
@@ -106,20 +104,4 @@ func getUserName(claims *claims) string {
 // getUserIsAdmin extracts the admin status from validated claims
 func getUserIsAdmin(claims *claims) bool {
 	return claims.IsAdmin
-}
-
-// validateJWTSecret validates that JWT secret is set and sufficiently strong
-// Minimum requirements: at least 32 bytes (256 bits) of entropy
-func validateJWTSecret(secret []byte) error {
-	if len(secret) == 0 {
-		return fmt.Errorf("JWT_SECRET environment variable is required but not set")
-	}
-
-	// Require at least 32 bytes (256 bits) for HS256
-	minLength := 32
-	if len(secret) < minLength {
-		return fmt.Errorf("JWT_SECRET must be at least %d characters long for security", minLength)
-	}
-
-	return nil
 }

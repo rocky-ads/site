@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/base64"
+	"fmt"
 	"os"
 	"time"
 
@@ -149,20 +150,28 @@ func getEncryptionKey(envKey string) []byte {
 	return key
 }
 
-// SecurityCheck validates security configuration and logs warnings
-// Logs fatal errors for required configs, warnings for insecure defaults
-func SecurityCheck() {
-	// Validate JWT secret (required)
-	if len(JWTSecret) == 0 {
-		logger.Fatal("Security configuration error",
-			"error", "JWT_SECRET environment variable is required but not set")
+// ValidateJWTSecret validates that JWT secret is set and sufficiently strong
+// Minimum requirements: at least 32 bytes (256 bits) of entropy
+func ValidateJWTSecret(secret []byte) error {
+	if len(secret) == 0 {
+		return fmt.Errorf("JWT_SECRET environment variable is required but not set")
 	}
 
 	// Require at least 32 bytes (256 bits) for HS256
 	minLength := 32
-	if len(JWTSecret) < minLength {
-		logger.Fatal("Security configuration error",
-			"error", "JWT_SECRET must be at least 32 characters long for security")
+	if len(secret) < minLength {
+		return fmt.Errorf("JWT_SECRET must be at least %d characters long for security", minLength)
+	}
+
+	return nil
+}
+
+// SecurityCheck validates security configuration and logs warnings
+// Logs fatal errors for required configs, warnings for insecure defaults
+func SecurityCheck() {
+	// Validate JWT secret (required)
+	if err := ValidateJWTSecret(JWTSecret); err != nil {
+		logger.Fatal("Security configuration error", "error", err.Error())
 	}
 
 	// Log security status
