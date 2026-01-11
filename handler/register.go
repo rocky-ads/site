@@ -168,8 +168,8 @@ func RegisterStep1Handler(c *fiber.Ctx) error {
 	}
 
 	// Send SMS
-	message := fmt.Sprintf("Your Parts Pile verification code is: %s. "+
-		"This code expires in 10 minutes. Reply STOP to unsubscribe.", code)
+	message := fmt.Sprintf("Your %s verification code is: %s. "+
+		"This code expires in 10 minutes. Reply STOP to unsubscribe.", config.ServerName, code)
 	err = sms.SendMessage(phoneE64, message)
 	if err != nil {
 		logger.Error("Failed to send SMS", "error", err, "phone", phoneE64)

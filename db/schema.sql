@@ -30,11 +30,13 @@ CREATE TABLE users (
     -- Notification settings
     notification_method TEXT NOT NULL DEFAULT 'sms',
     summary_notifications_enabled INTEGER DEFAULT 0,
-    summary_notifications_frequency TEXT DEFAULT 'daily'
+    summary_notifications_frequency TEXT DEFAULT 'daily',
+    last_sms_sent_at TIMESTAMP
 );
 CREATE INDEX idx_user_deleted_at ON users(deleted_at);
 CREATE INDEX idx_user_name_hash ON users(name_hash);
 CREATE INDEX idx_user_phone_hash ON users(phone_hash);
+CREATE INDEX idx_users_last_sms_sent ON users(last_sms_sent_at);
 
 -- Phone verification codes table
 CREATE TABLE phone_verification (
@@ -186,12 +188,14 @@ CREATE TABLE conversations (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     owner_has_unread INTEGER NOT NULL DEFAULT 0,
     enquirer_has_unread INTEGER NOT NULL DEFAULT 0,
+    is_public INTEGER NOT NULL DEFAULT 0,
     UNIQUE(ad_id, enquirer_id)
 );
 CREATE INDEX idx_conversations_owner ON conversations(owner_id);
 CREATE INDEX idx_conversations_enquirer ON conversations(enquirer_id);
 CREATE INDEX idx_conversations_ad ON conversations(ad_id);
 CREATE INDEX idx_conversations_updated_at ON conversations(updated_at);
+CREATE INDEX idx_conversations_is_public ON conversations(is_public);
 
 -- Messages table
 CREATE TABLE messages (
@@ -203,3 +207,29 @@ CREATE TABLE messages (
 );
 CREATE INDEX idx_messages_conversation ON messages(conversation_id);
 CREATE INDEX idx_messages_created_at ON messages(created_at);
+
+-- Rocks table
+CREATE TABLE rocks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    conversation_id INTEGER NOT NULL REFERENCES conversations(id),
+    thrown_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, conversation_id)
+);
+CREATE INDEX idx_rocks_user ON rocks(user_id);
+CREATE INDEX idx_rocks_conversation ON rocks(conversation_id);
+
+-- SMS notification queue table
+CREATE TABLE sms_notification_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recipient_user_id INTEGER NOT NULL REFERENCES users(id),
+    conversation_id INTEGER NOT NULL REFERENCES conversations(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP,
+    status TEXT NOT NULL DEFAULT 'pending',
+    FOREIGN KEY (recipient_user_id) REFERENCES users(id),
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id)
+);
+CREATE INDEX idx_sms_queue_recipient_status ON sms_notification_queue(recipient_user_id, status);
+CREATE INDEX idx_sms_queue_status_created ON sms_notification_queue(status, created_at);
+CREATE INDEX idx_sms_queue_processed_at ON sms_notification_queue(processed_at);

@@ -18,6 +18,12 @@ import (
 	Api "github.com/twilio/twilio-go/rest/api/v2010"
 )
 
+// isTestPhoneNumber checks if a phone number is a test number (+1555010xxxx)
+func isTestPhoneNumber(phoneE64 string) bool {
+	testPattern := regexp.MustCompile(`^\+1555010\d{4}$`)
+	return testPattern.MatchString(phoneE64)
+}
+
 // SMSStatus represents the status of an SMS message
 type SMSStatus string
 
@@ -62,19 +68,29 @@ func init() {
 func SetMessageStatus(messageSid string, status SMSStatus) {
 	if value, exists := tracker.Load(messageSid); exists {
 		if track, ok := value.(*MessageTracker); ok {
+			oldStatus := track.Status
 			track.Status = status
 			// Log delivery status changes
+			logger.Info("Message status updated",
+				"component", "SMS",
+				"messageSid", messageSid,
+				"phoneNumber", track.PhoneNumber,
+				"oldStatus", oldStatus,
+				"newStatus", status)
 			switch status {
 			case SMSStatusDelivered:
-				logger.Info("Message delivered",
+				logger.Info("Message delivered successfully",
 					"component", "SMS", "messageSid", messageSid,
 					"phoneNumber", track.PhoneNumber)
 			case SMSStatusFailed, SMSStatusUndelivered:
-				logger.Warn("Message failed",
+				logger.Warn("Message delivery failed",
 					"component", "SMS", "messageSid", messageSid,
 					"phoneNumber", track.PhoneNumber, "status", status)
 			}
 		}
+	} else {
+		logger.Debug("Status update for unknown message",
+			"component", "SMS", "messageSid", messageSid, "status", status)
 	}
 }
 
@@ -159,11 +175,17 @@ func SendMessage(phoneE64, message string) error {
 			"component", "SMS", "phoneNumber", phoneE64)
 		return nil
 	}
+	statusCallbackURL := fmt.Sprintf("%s/api/sms/webhook", config.TwilioWebhookURL)
+	logger.Debug("Setting SMS status callback",
+		"component", "SMS",
+		"statusCallbackURL", statusCallbackURL,
+		"baseWebhookURL", config.TwilioWebhookURL)
+
 	params := &Api.CreateMessageParams{}
 	params.SetTo(phoneE64)
 	params.SetFrom(config.TwilioFromNumber)
 	params.SetBody(message)
-	params.SetStatusCallback(fmt.Sprintf("%s/api/sms/webhook", config.TwilioWebhookURL))
+	params.SetStatusCallback(statusCallbackURL)
 
 	result, err := twilioClient.Api.CreateMessage(params)
 	if err != nil {
@@ -175,13 +197,20 @@ func SendMessage(phoneE64, message string) error {
 	}
 
 	messageSid := *result.Sid
+	messageStatus := ""
+	if result.Status != nil {
+		messageStatus = string(*result.Status)
+	}
 
 	// Register message for delivery tracking
 	trackMessage(messageSid, phoneE64)
 
-	logger.Info("Message sent",
-		"component", "SMS", "messageSid", messageSid,
-		"phoneNumber", phoneE64)
+	logger.Info("Message sent to Twilio",
+		"component", "SMS",
+		"messageSid", messageSid,
+		"phoneNumber", phoneE64,
+		"initialStatus", messageStatus,
+		"messageLength", len(message))
 
 	return nil
 }
@@ -245,7 +274,15 @@ func HandleDeliveryFailure(phoneNumber, errorMessage string) error {
 // using the official Twilio SDK's RequestValidator
 func VerifyTwilioSignature(c *fiber.Ctx) bool {
 	signature := c.Get("X-Twilio-Signature")
-	if signature == "" || config.TwilioAuthToken == "" {
+	if signature == "" {
+		logger.Debug("No Twilio signature header found",
+			"component", "SMS",
+			"headers", c.GetReqHeaders())
+		return false
+	}
+	if config.TwilioAuthToken == "" {
+		logger.Warn("Twilio auth token not configured",
+			"component", "SMS")
 		return false
 	}
 
@@ -264,6 +301,12 @@ func VerifyTwilioSignature(c *fiber.Ctx) bool {
 	}
 
 	webhookURL := fmt.Sprintf("%s://%s%s", protocol, host, c.OriginalURL())
+	logger.Debug("Verifying Twilio signature",
+		"component", "SMS",
+		"webhookURL", webhookURL,
+		"protocol", protocol,
+		"host", host,
+		"originalURL", c.OriginalURL())
 
 	// Extract all form parameters (POST body and query string)
 	params := make(map[string]string)
@@ -279,7 +322,13 @@ func VerifyTwilioSignature(c *fiber.Ctx) bool {
 
 	// Validate using Twilio SDK
 	validator := client.NewRequestValidator(config.TwilioAuthToken)
-	return validator.Validate(webhookURL, params, signature)
+	isValid := validator.Validate(webhookURL, params, signature)
+	logger.Debug("Twilio signature validation result",
+		"component", "SMS",
+		"isValid", isValid,
+		"webhookURL", webhookURL,
+		"paramCount", len(params))
+	return isValid
 }
 
 // ParseWebhook parses webhook data from Fiber context

@@ -26,6 +26,22 @@ func AdminDashboardContainer(activeTab string, users []user.User, sortBy, sortOr
 	)
 }
 
+func AdminDashboardContainerWithQueue(activeTab string, users []user.User, sortBy, sortOrder string, currentUserID int, queueStats QueueStats, queueEntries []SMSQueueEntry) g.Node {
+	return Div(
+		ID("admin-dashboard-container"),
+		Class("space-y-6 mt-6"),
+		AdminTabs(activeTab),
+		AdminContentWithQueue(activeTab, users, sortBy, sortOrder, currentUserID, queueStats, queueEntries),
+	)
+}
+
+// QueueStats represents queue statistics for UI
+type QueueStats struct {
+	Pending    int
+	Processed  int
+	Suppressed int
+}
+
 func AdminTabs(activeTab string) g.Node {
 	return Div(
 		ID("admin-tabs"),
@@ -33,6 +49,7 @@ func AdminTabs(activeTab string) g.Node {
 		Div(
 			Class("flex space-x-8"),
 			adminTab("Users", "users", activeTab == "users"),
+			adminTab("SMS Queue", "sms-queue", activeTab == "sms-queue"),
 			adminTab("Settings", "settings", activeTab == "settings"),
 		),
 	)
@@ -65,8 +82,213 @@ func AdminContent(activeTab string, users []user.User, sortBy, sortOrder string,
 			Class("mt-4"),
 			UsersTable(users, sortBy, sortOrder, currentUserID),
 		)),
+		g.If(activeTab == "sms-queue", SMSQueueTab(QueueStats{}, []SMSQueueEntry{})),
 		g.If(activeTab == "settings", AdminSettingsTab()),
 	)
+}
+
+func AdminContentWithQueue(activeTab string, users []user.User, sortBy, sortOrder string, currentUserID int, queueStats QueueStats, queueEntries []SMSQueueEntry) g.Node {
+	return Div(
+		ID("admin-content"),
+		g.If(activeTab == "users", Div(
+			Class("mt-4"),
+			UsersTable(users, sortBy, sortOrder, currentUserID),
+		)),
+		g.If(activeTab == "sms-queue", SMSQueueTab(queueStats, queueEntries)),
+		g.If(activeTab == "settings", AdminSettingsTab()),
+	)
+}
+
+// SMSQueueTab renders the SMS queue tab content
+func SMSQueueTab(stats QueueStats, entries []SMSQueueEntry) g.Node {
+	return Div(
+		ID("sms-queue-tab"),
+		Class("mt-4"),
+		hx.Get("/admin/tab/sms-queue"),
+		hx.Target("#admin-dashboard-container"),
+		hx.Swap("outerHTML"),
+		hx.Trigger("every 5s"),
+		hx.Include("#sms-queue-status-filter"),
+		SMSQueueStats(stats),
+		SMSQueueTableWithEntries(entries),
+	)
+}
+
+// SMSQueueStats renders queue statistics
+func SMSQueueStats(stats QueueStats) g.Node {
+	return Div(
+		Class("mb-4 grid grid-cols-3 gap-4"),
+		Div(
+			Class("bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4"),
+			Div(
+				Class("text-sm font-medium text-yellow-800 dark:text-yellow-200"),
+				g.Text("Pending"),
+			),
+			Div(
+				ID("sms-queue-pending-count"),
+				Class("text-2xl font-bold text-yellow-900 dark:text-yellow-100"),
+				g.Text(strconv.Itoa(stats.Pending)),
+			),
+		),
+		Div(
+			Class("bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4"),
+			Div(
+				Class("text-sm font-medium text-green-800 dark:text-green-200"),
+				g.Text("Processed"),
+			),
+			Div(
+				ID("sms-queue-processed-count"),
+				Class("text-2xl font-bold text-green-900 dark:text-green-100"),
+				g.Text(strconv.Itoa(stats.Processed)),
+			),
+		),
+		Div(
+			Class("bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-800 rounded-lg p-4"),
+			Div(
+				Class("text-sm font-medium text-gray-800 dark:text-gray-200"),
+				g.Text("Suppressed"),
+			),
+			Div(
+				ID("sms-queue-suppressed-count"),
+				Class("text-2xl font-bold text-gray-900 dark:text-gray-100"),
+				g.Text(strconv.Itoa(stats.Suppressed)),
+			),
+		),
+	)
+}
+
+// SMSQueueTableWithEntries renders the queue entries table with data
+func SMSQueueTableWithEntries(entries []SMSQueueEntry) g.Node {
+	return Div(
+		ID("sms-queue-table"),
+		Class("bg-white dark:bg-zinc-800 rounded-lg shadow overflow-hidden"),
+		SMSQueueFilters(),
+		SMSQueueTableHeader(),
+		SMSQueueRows(entries),
+	)
+}
+
+// SMSQueueFilters renders the status filter dropdown
+func SMSQueueFilters() g.Node {
+	return Div(
+		Class("p-4 border-b border-zinc-200 dark:border-zinc-700"),
+		Select(
+			ID("sms-queue-status-filter"),
+			Name("status"),
+			Class("px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200 text-sm"),
+			hx.Get("/admin/tab/sms-queue"),
+			hx.Target("#admin-dashboard-container"),
+			hx.Swap("outerHTML"),
+			hx.Trigger("change"),
+			hx.Include("#sms-queue-status-filter"),
+			Option(Value("all"), Selected(), g.Text("All Statuses")),
+			Option(Value("pending"), g.Text("Pending")),
+			Option(Value("processed"), g.Text("Processed")),
+			Option(Value("suppressed"), g.Text("Suppressed")),
+		),
+	)
+}
+
+// SMSQueueTableHeader renders the table header
+func SMSQueueTableHeader() g.Node {
+	return Div(
+		Class("grid grid-cols-6 gap-2 bg-zinc-50 dark:bg-zinc-800 px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 text-xs"),
+		Div(
+			Class("font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider"),
+			g.Text("ID"),
+		),
+		Div(
+			Class("font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider"),
+			g.Text("Recipient"),
+		),
+		Div(
+			Class("font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider"),
+			g.Text("Conversation"),
+		),
+		Div(
+			Class("font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider"),
+			g.Text("Status"),
+		),
+		Div(
+			Class("font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider"),
+			g.Text("Created At"),
+		),
+		Div(
+			Class("font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider"),
+			g.Text("Processed At"),
+		),
+	)
+}
+
+// SMSQueueRows renders queue entry rows
+func SMSQueueRows(entries []SMSQueueEntry) g.Node {
+	rows := make([]g.Node, len(entries))
+	for i, entry := range entries {
+		rows[i] = SMSQueueRow(entry)
+	}
+	return Div(
+		ID("sms-queue-rows"),
+		Class("divide-y divide-zinc-200 dark:divide-zinc-700"),
+		g.Group(rows),
+	)
+}
+
+// SMSQueueRow renders a single queue entry row
+func SMSQueueRow(entry SMSQueueEntry) g.Node {
+	var statusClass string
+	switch entry.Status {
+	case "pending":
+		statusClass = "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200"
+	case "processed":
+		statusClass = "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200"
+	case "suppressed":
+		statusClass = "bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-200"
+	default:
+		statusClass = "bg-zinc-100 dark:bg-zinc-900/30 text-zinc-800 dark:text-zinc-200"
+	}
+
+	createdAtStr := entry.CreatedAt
+	var processedAtStr string
+	if entry.ProcessedAt != nil && *entry.ProcessedAt != "" {
+		processedAtStr = *entry.ProcessedAt
+	} else {
+		processedAtStr = "—"
+	}
+
+	return Div(
+		Class("grid grid-cols-6 gap-2 px-4 py-2 text-xs text-zinc-900 dark:text-zinc-200"),
+		Div(
+			g.Text(strconv.Itoa(entry.ID)),
+		),
+		Div(
+			g.Text(entry.RecipientName),
+		),
+		Div(
+			g.Text(entry.AdTitle),
+		),
+		Div(
+			Span(
+				Class("px-2 py-1 rounded text-xs font-medium "+statusClass),
+				g.Text(entry.Status),
+			),
+		),
+		Div(
+			g.Text(createdAtStr),
+		),
+		Div(
+			g.Text(processedAtStr),
+		),
+	)
+}
+
+// SMSQueueEntry represents a queue entry for UI rendering
+type SMSQueueEntry struct {
+	ID            int
+	RecipientName string
+	AdTitle       string
+	Status        string
+	CreatedAt     string
+	ProcessedAt   *string
 }
 
 func UsersRows(users []user.User, currentUserID int) g.Node {

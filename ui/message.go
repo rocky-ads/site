@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/rocky-ads/site/rock"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -66,6 +67,45 @@ func MessageItem(senderID, currentUserID int, content string, createdAt time.Tim
 	)
 }
 
+// RockThrownMessage renders a message-like item showing when a rock was thrown
+func RockThrownMessage(throwerID, currentUserID int, thrownAt time.Time, loc *time.Location, ownerID, enquirerID int) g.Node {
+	isSent := throwerID == currentUserID
+
+	var bubbleClass string
+	var containerClass string
+	if isSent {
+		bubbleClass = "bg-blue-500 text-white rounded-lg rounded-tr-none"
+		containerClass = "flex justify-end"
+	} else {
+		bubbleClass = "bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 rounded-lg rounded-tl-none"
+		containerClass = "flex justify-start"
+	}
+
+	localTime := thrownAt.In(loc)
+	fullTimestamp := localTime.Format("2006-01-02 03:04:05 PM MST")
+
+	return Div(
+		Class(containerClass+" mb-2"),
+		Title(fullTimestamp),
+		Div(
+			Class("max-w-[70%]"),
+			Div(
+				Class("px-4 py-2 "+bubbleClass+" flex items-center gap-2"),
+				Img(
+					Src("/images/broken-egg.svg"),
+					Alt("Rock thrown"),
+					Class("w-5 h-5 flex-shrink-0"),
+				),
+				g.Text("Rock thrown"),
+			),
+			Div(
+				Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1 px-1"),
+				g.Text(formatMessageTime(localTime)),
+			),
+		),
+	)
+}
+
 func ConversationMessages(conversationID, currentUserID int, otherUserName string, messageNodes []g.Node, csrfToken string) g.Node {
 	return Div(
 		ID(fmt.Sprintf("conversation-%d-messages", conversationID)),
@@ -86,6 +126,16 @@ func MessageItemSwapOOB(conversationID int, messageNode g.Node) g.Node {
 	return Div(
 		hx.SwapOOB(fmt.Sprintf("beforebegin:#%s", sentinelID)),
 		messageNode,
+	)
+}
+
+func ConversationEmptyMessageDeleteOOB(conversationID int, isFirstMessage bool) g.Node {
+	if !isFirstMessage {
+		return g.Raw("")
+	}
+	return Div(
+		ID(fmt.Sprintf("conversation-%d-empty-message", conversationID)),
+		hx.SwapOOB("delete"),
 	)
 }
 
@@ -121,31 +171,54 @@ func ConversationContentInput(conversationID int, attrs ...g.Node) g.Node {
 	return Input(g.Group(allAttrs))
 }
 
-func ConversationForm(conversationID int, csrfToken string) g.Node {
+func ConversationForm(conversationID int, csrfToken string, canPost bool) g.Node {
 	modalName := fmt.Sprintf("conversation-%d", conversationID)
 	attrs := []g.Node{
 		ID(fmt.Sprintf("%s-form", modalName)),
 		Class("p-4 border-t border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
-		hx.Post(fmt.Sprintf("/auth/conversation/%d/send", conversationID)),
-		hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
-		hx.Include("this"),
-		hx.Swap("none"),
+	}
+	if canPost {
+		attrs = append(attrs,
+			hx.Post(fmt.Sprintf("/auth/conversation/%d/send", conversationID)),
+			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
+			hx.Include("this"),
+			hx.Swap("none"),
+		)
 	}
 	return Form(
 		g.Group(attrs),
 		Div(
 			Class("flex gap-2"),
-			ConversationContentInput(conversationID),
-			Button(
-				Type("submit"),
-				Class("px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"),
-				g.Text("Send"),
+			g.If(canPost,
+				ConversationContentInput(conversationID),
+			),
+			g.If(!canPost,
+				Input(
+					ID(fmt.Sprintf("conversation-%d-content-input", conversationID)),
+					Type("text"),
+					Name("content"),
+					Placeholder("Read-only conversation"),
+					Disabled(),
+					Class("flex-1 px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 cursor-not-allowed"),
+				),
+			),
+			g.If(canPost,
+				Button(
+					Type("submit"),
+					Class("px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"),
+					g.Text("Send"),
+				),
 			),
 		),
 	)
 }
 
 func ConversationModal(conversationID, adID int, adTitle string, ownerID, enquirerID, currentUserID int, otherUserName string, messageNodes []g.Node, csrfToken string) g.Node {
+	// Default to allowing posting (for backward compatibility)
+	return ConversationModalWithRock(conversationID, adID, adTitle, ownerID, enquirerID, currentUserID, otherUserName, otherUserName, messageNodes, csrfToken, true, false, false, nil)
+}
+
+func ConversationModalWithRock(conversationID, adID int, adTitle string, ownerID, enquirerID, currentUserID int, ownerName, enquirerName string, messageNodes []g.Node, csrfToken string, canPost, hasThrownRock, canThrowRock bool, rockThrown *rock.Rock) g.Node {
 	modalName := fmt.Sprintf("conversation-%d", conversationID)
 
 	return g.Group([]g.Node{
@@ -167,21 +240,45 @@ func ConversationModal(conversationID, adID int, adTitle string, ownerID, enquir
 						),
 						Div(
 							Class("text-sm text-zinc-600 dark:text-zinc-400"),
-							g.If(enquirerID == currentUserID,
-								g.Group([]g.Node{
-									Span(Class("font-semibold"), g.Text("To: ")),
-									g.Text(otherUserName),
-								}),
+							Span(Class("font-semibold"), g.Text("From: ")),
+							g.Text(enquirerName),
+							g.Text(", "),
+							Span(Class("font-semibold"), g.Text("To: ")),
+							g.Text(ownerName),
+							g.Text(" (ad owner)"),
+							g.If(!canPost && (ownerID != currentUserID && enquirerID != currentUserID),
+								Span(
+									Class("ml-2 px-2 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-xs"),
+									g.Text("Read-only"),
+								),
 							),
-							g.If(ownerID == currentUserID,
-								g.Group([]g.Node{
-									Span(Class("font-semibold"), g.Text("From: ")),
-									g.Text(otherUserName),
-								}),
+						),
+						g.If(!canPost && rockThrown != nil,
+							Div(
+								Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1"),
+								g.Text("Rock thrown by: "),
+								g.If(rockThrown.UserID == currentUserID,
+									// Current user threw it - use blue color (like sent messages)
+									Span(Class("text-blue-600 dark:text-blue-400 font-medium"),
+										g.If(rockThrown.UserID == ownerID, g.Text(ownerName)),
+										g.If(rockThrown.UserID == enquirerID, g.Text(enquirerName)),
+									),
+								),
+								g.If(rockThrown.UserID != currentUserID,
+									// Someone else threw it - use gray color (like received messages)
+									Span(Class("text-zinc-700 dark:text-zinc-300 font-medium"),
+										g.If(rockThrown.UserID == ownerID, g.Text(ownerName)),
+										g.If(rockThrown.UserID == enquirerID, g.Text(enquirerName)),
+									),
+								),
 							),
 						),
 					),
-					modalClose(modalName),
+					Div(
+						Class("flex items-center gap-2"),
+						g.If(canPost, RockThrowButton(conversationID, hasThrownRock, canThrowRock, csrfToken)),
+						modalClose(modalName),
+					),
 				),
 				Div(
 					ID(fmt.Sprintf("%s-messages", modalName)),
@@ -190,7 +287,12 @@ func ConversationModal(conversationID, adID int, adTitle string, ownerID, enquir
 						Div(
 							ID(fmt.Sprintf("conversation-%d-empty-message", conversationID)),
 							Class("text-center text-zinc-500 dark:text-zinc-400 py-8"),
-							g.Text("No messages yet. Start the conversation!"),
+							g.If(canPost,
+								g.Text("No messages yet. Start the conversation!"),
+							),
+							g.If(!canPost,
+								g.Text("No messages yet."),
+							),
 						),
 					),
 					g.If(len(messageNodes) > 0,
@@ -198,13 +300,13 @@ func ConversationModal(conversationID, adID int, adTitle string, ownerID, enquir
 					),
 					ConversationMessagesSentinel(conversationID),
 				),
-				ConversationForm(conversationID, csrfToken),
+				ConversationForm(conversationID, csrfToken, canPost),
 			),
 		),
 	})
 }
 
-func ConversationListItem(conversationID, adID, ownerID, enquirerID, currentUserID int, adTitle, lastMessageContent, otherUserName string, lastMessageAt *time.Time, updatedAt time.Time, hasUnread bool) g.Node {
+func ConversationListItem(conversationID, adID, ownerID, enquirerID, currentUserID int, adTitle, lastMessageContent, otherUserName string, lastMessageAt *time.Time, updatedAt time.Time, hasUnread bool, conversationCount int) g.Node {
 	lastMessagePreview := lastMessageContent
 	if len(lastMessagePreview) > 50 {
 		lastMessagePreview = lastMessagePreview[:50] + "..."
@@ -223,6 +325,7 @@ func ConversationListItem(conversationID, adID, ownerID, enquirerID, currentUser
 		hx.Get(fmt.Sprintf("/auth/conversation/%d", conversationID)),
 		hx.Target("body"),
 		hx.Swap("beforeend"),
+		hx.Trigger("click[!closest(.rock-icon-container)]"),
 		Div(
 			Class("p-4"),
 			Div(
@@ -234,6 +337,7 @@ func ConversationListItem(conversationID, adID, ownerID, enquirerID, currentUser
 							Class("bg-green-500 rounded-full w-2 h-2 flex-shrink-0"),
 						),
 					),
+					g.If(currentUserID != 0 && conversationCount > 0, RockIcons(adID, conversationCount, currentUserID)),
 					Span(
 						Class("text-lg font-semibold text-zinc-900 dark:text-zinc-200"),
 						g.Text(adTitle),

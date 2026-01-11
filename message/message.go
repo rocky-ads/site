@@ -18,6 +18,7 @@ type Conversation struct {
 	UpdatedAt         time.Time `db:"updated_at" json:"updated_at"`
 	OwnerHasUnread    bool      `db:"owner_has_unread" json:"owner_has_unread"`
 	EnquirerHasUnread bool      `db:"enquirer_has_unread" json:"enquirer_has_unread"`
+	IsPublic          bool      `db:"is_public" json:"is_public"`
 }
 
 type Message struct {
@@ -51,7 +52,7 @@ func GetOrCreateConversation(adID, ownerID, enquirerID int) (Conversation, error
 
 	var conv Conversation
 	query := `
-		SELECT id, ad_id, owner_id, enquirer_id, created_at, updated_at, owner_has_unread, enquirer_has_unread
+		SELECT id, ad_id, owner_id, enquirer_id, created_at, updated_at, owner_has_unread, enquirer_has_unread, is_public
 		FROM conversations
 		WHERE ad_id = ? AND enquirer_id = ?
 	`
@@ -64,6 +65,7 @@ func GetOrCreateConversation(adID, ownerID, enquirerID int) (Conversation, error
 		&conv.UpdatedAt,
 		&conv.OwnerHasUnread,
 		&conv.EnquirerHasUnread,
+		&conv.IsPublic,
 	)
 	if err == nil {
 		return conv, nil
@@ -73,8 +75,8 @@ func GetOrCreateConversation(adID, ownerID, enquirerID int) (Conversation, error
 	}
 
 	result, err := db.Exec(`
-		INSERT INTO conversations (ad_id, owner_id, enquirer_id, created_at, updated_at, owner_has_unread, enquirer_has_unread)
-		VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0)
+		INSERT INTO conversations (ad_id, owner_id, enquirer_id, created_at, updated_at, owner_has_unread, enquirer_has_unread, is_public)
+		VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 0)
 	`, adID, ownerID, enquirerID)
 	if err != nil {
 		return Conversation{}, fmt.Errorf("failed to create conversation: %w", err)
@@ -98,9 +100,9 @@ func GetOrCreateConversation(adID, ownerID, enquirerID int) (Conversation, error
 func GetConversation(conversationID, userID int) (Conversation, error) {
 	var conv Conversation
 	query := `
-		SELECT id, ad_id, owner_id, enquirer_id, created_at, updated_at, owner_has_unread, enquirer_has_unread
+		SELECT id, ad_id, owner_id, enquirer_id, created_at, updated_at, owner_has_unread, enquirer_has_unread, is_public
 		FROM conversations
-		WHERE id = ? AND (owner_id = ? OR enquirer_id = ?)
+		WHERE id = ? AND (owner_id = ? OR enquirer_id = ? OR is_public = 1)
 	`
 	err := db.QueryRow(query, conversationID, userID, userID).Scan(
 		&conv.ID,
@@ -111,6 +113,7 @@ func GetConversation(conversationID, userID int) (Conversation, error) {
 		&conv.UpdatedAt,
 		&conv.OwnerHasUnread,
 		&conv.EnquirerHasUnread,
+		&conv.IsPublic,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -119,6 +122,81 @@ func GetConversation(conversationID, userID int) (Conversation, error) {
 		return Conversation{}, fmt.Errorf("failed to get conversation: %w", err)
 	}
 	return conv, nil
+}
+
+// GetConversationByID gets a conversation by ID without user check (for public access)
+func GetConversationByID(conversationID int) (Conversation, error) {
+	var conv Conversation
+	query := `
+		SELECT id, ad_id, owner_id, enquirer_id, created_at, updated_at, owner_has_unread, enquirer_has_unread, is_public
+		FROM conversations
+		WHERE id = ?
+	`
+	err := db.QueryRow(query, conversationID).Scan(
+		&conv.ID,
+		&conv.AdID,
+		&conv.OwnerID,
+		&conv.EnquirerID,
+		&conv.CreatedAt,
+		&conv.UpdatedAt,
+		&conv.OwnerHasUnread,
+		&conv.EnquirerHasUnread,
+		&conv.IsPublic,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return Conversation{}, ErrConversationNotFound
+		}
+		return Conversation{}, fmt.Errorf("failed to get conversation: %w", err)
+	}
+	return conv, nil
+}
+
+// IsPublic checks if a conversation is public
+func IsPublic(conversationID int) (bool, error) {
+	var isPublic int
+	err := db.QueryRow(`
+		SELECT is_public
+		FROM conversations
+		WHERE id = ?
+	`, conversationID).Scan(&isPublic)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, ErrConversationNotFound
+		}
+		return false, fmt.Errorf("failed to check if conversation is public: %w", err)
+	}
+	return isPublic == 1, nil
+}
+
+// CanUserPost checks if a user can post to a conversation (must be participant)
+func CanUserPost(conversationID, userID int) (bool, error) {
+	var count int
+	err := db.QueryRow(`
+		SELECT COUNT(*)
+		FROM conversations
+		WHERE id = ? AND (owner_id = ? OR enquirer_id = ?)
+	`, conversationID, userID, userID).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("failed to check if user can post: %w", err)
+	}
+	return count > 0, nil
+}
+
+// GetPublicConversations returns public conversations for an ad
+func GetPublicConversations(adID int) ([]Conversation, error) {
+	query := `
+		SELECT id, ad_id, owner_id, enquirer_id, created_at, updated_at, owner_has_unread, enquirer_has_unread, is_public
+		FROM conversations
+		WHERE ad_id = ? AND is_public = 1
+		ORDER BY updated_at DESC
+	`
+	var conversations []Conversation
+	err := db.Select(&conversations, query, adID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get public conversations: %w", err)
+	}
+	return conversations, nil
 }
 
 func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLastMessage, error) {
@@ -132,6 +210,7 @@ func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLas
 			c.updated_at,
 			c.owner_has_unread,
 			c.enquirer_has_unread,
+			c.is_public,
 			a.title AS ad_title,
 			COALESCE(m.content, '') AS last_message_content,
 			m.created_at AS last_message_at,
@@ -174,6 +253,7 @@ func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLas
 }
 
 func GetConversationMessages(conversationID, userID int, loc *time.Location) ([]Message, error) {
+	// Allow access if user is participant OR conversation is public
 	conv, err := GetConversation(conversationID, userID)
 	if err != nil {
 		return nil, err
@@ -204,13 +284,18 @@ func CreateMessage(conversationID, senderID int, content string) (Message, error
 		return Message{}, fmt.Errorf("message content cannot be empty")
 	}
 
-	conv, err := GetConversation(conversationID, senderID)
+	// Check if user can post (must be participant)
+	canPost, err := CanUserPost(conversationID, senderID)
 	if err != nil {
 		return Message{}, err
 	}
-
-	if conv.OwnerID != senderID && conv.EnquirerID != senderID {
+	if !canPost {
 		return Message{}, ErrNotParticipant
+	}
+
+	conv, err := GetConversationByID(conversationID)
+	if err != nil {
+		return Message{}, err
 	}
 
 	result, err := db.Exec(`

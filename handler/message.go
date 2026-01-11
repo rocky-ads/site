@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -11,17 +10,48 @@ import (
 	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/message"
 	"github.com/rocky-ads/site/param"
+	"github.com/rocky-ads/site/rock"
+	"github.com/rocky-ads/site/service/sms"
 	"github.com/rocky-ads/site/ui"
 	"github.com/rocky-ads/site/user"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
-	. "maragu.dev/gomponents/html"
 )
 
 func buildMessageNodes(messages []message.Message, currentUserID int, loc *time.Location) []g.Node {
 	var messageNodes []g.Node
 	for _, msg := range messages {
 		messageNodes = append(messageNodes, ui.MessageItem(msg.SenderID, currentUserID, msg.Content, msg.CreatedAt, loc))
+	}
+	return messageNodes
+}
+
+func buildMessageNodesWithRock(messages []message.Message, currentUserID int, loc *time.Location, rockThrown *rock.Rock, ownerID, enquirerID int) []g.Node {
+	var messageNodes []g.Node
+
+	// Insert rock-thrown message if it exists
+	if rockThrown != nil {
+		// Find the right position to insert the rock message (chronologically)
+		inserted := false
+		for _, msg := range messages {
+			if !inserted && msg.CreatedAt.After(rockThrown.ThrownAt) {
+				// Insert rock message before this message
+				rockThrownNode := ui.RockThrownMessage(rockThrown.UserID, currentUserID, rockThrown.ThrownAt, loc, ownerID, enquirerID)
+				messageNodes = append(messageNodes, rockThrownNode)
+				inserted = true
+			}
+			messageNodes = append(messageNodes, ui.MessageItem(msg.SenderID, currentUserID, msg.Content, msg.CreatedAt, loc))
+		}
+		// If rock was thrown after all messages, append it at the end
+		if !inserted {
+			rockThrownNode := ui.RockThrownMessage(rockThrown.UserID, currentUserID, rockThrown.ThrownAt, loc, ownerID, enquirerID)
+			messageNodes = append(messageNodes, rockThrownNode)
+		}
+	} else {
+		// No rock, just add messages normally
+		for _, msg := range messages {
+			messageNodes = append(messageNodes, ui.MessageItem(msg.SenderID, currentUserID, msg.Content, msg.CreatedAt, loc))
+		}
 	}
 	return messageNodes
 }
@@ -83,6 +113,7 @@ func sendMessageAndRenderUpdate(c *fiber.Ctx, conv message.Conversation, current
 		return fiber.NewError(fiber.StatusBadRequest, "Message content cannot be empty")
 	}
 
+	// Step 1: Update database - if it fails, stop
 	// Check if this is the first message (before creating it)
 	existingMessages, _ := message.GetConversationMessages(conv.ID, currentUserID, loc)
 	isFirstMessage := len(existingMessages) == 0
@@ -92,23 +123,35 @@ func sendMessageAndRenderUpdate(c *fiber.Ctx, conv message.Conversation, current
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to send message")
 	}
 
+	// Step 2: Send SSE updates
+	sendMessageSSE(conv, currentUserID, msg)
+
+	// Step 3: Enqueue SMS notification (non-blocking)
+	// Determine recipient user ID
+	recipientID := conv.OwnerID
+	if conv.OwnerID == currentUserID {
+		recipientID = conv.EnquirerID
+	}
+	if err := sms.EnqueueNotification(recipientID, conv.ID); err != nil {
+		logger.Error("Failed to enqueue SMS notification",
+			"error", err,
+			"component", "message",
+			"conversationID", conv.ID,
+			"recipientID", recipientID,
+			"senderID", currentUserID)
+		// Don't fail the request, just log
+	}
+
 	newMessageNode := ui.MessageItem(msg.SenderID, currentUserID, msg.Content, msg.CreatedAt, loc)
 	messageSwapOOB := ui.MessageItemSwapOOB(conv.ID, newMessageNode)
 	clearedInputOOB := ui.ConversationContentInput(conv.ID, hx.SwapOOB("true"))
+	emptyMessageDeleteOOB := ui.ConversationEmptyMessageDeleteOOB(conv.ID, isFirstMessage)
 
-	// If this is the first message, delete the "No messages yet" text
-	var nodes []g.Node
-	nodes = append(nodes, messageSwapOOB, clearedInputOOB)
-	if isFirstMessage {
-		emptyMessageDelete := Div(
-			ID(fmt.Sprintf("conversation-%d-empty-message", conv.ID)),
-			hx.SwapOOB("delete"),
-		)
-		nodes = append(nodes, emptyMessageDelete)
+	nodes := []g.Node{
+		messageSwapOOB,
+		clearedInputOOB,
+		emptyMessageDeleteOOB,
 	}
-
-	// Send SSE event to recipient with the new message
-	sendMessageSSE(conv, currentUserID, msg)
 
 	return render(c, g.Group(nodes))
 }
@@ -126,6 +169,18 @@ func getOtherUserName(conv message.Conversation, currentUserID int) (string, err
 		return "", err
 	}
 	return otherUser.Name, nil
+}
+
+func getOwnerAndEnquirerNames(conv message.Conversation) (ownerName, enquirerName string, err error) {
+	owner, err := user.GetByID(conv.OwnerID)
+	if err != nil {
+		return "", "", err
+	}
+	enquirer, err := user.GetByID(conv.EnquirerID)
+	if err != nil {
+		return "", "", err
+	}
+	return owner.Name, enquirer.Name, nil
 }
 
 func sendConversationListItemUpdate(conv message.Conversation, currentUserID int, hasUnread bool) {
@@ -166,6 +221,7 @@ func sendConversationListItemUpdate(conv message.Conversation, currentUserID int
 		lastMessageAt,
 		conv.UpdatedAt,
 		hasUnread,
+		a.RockCount,
 	)
 	conversationItemSwapOOB := ui.ConversationListItemSwapOOB(conv.ID, conversationItem)
 	itemHTML, err := renderToString(conversationItemSwapOOB)
@@ -192,14 +248,69 @@ func renderConversationModal(c *fiber.Ctx, conv message.Conversation, currentUse
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get messages")
 	}
 
-	otherUserName, err := getOtherUserName(conv, currentUserID)
+	// Get owner and enquirer names
+	ownerName, enquirerName, err := getOwnerAndEnquirerNames(conv)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get other user")
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get user names")
 	}
 
-	messageNodes := buildMessageNodes(messages, currentUserID, loc)
+	// Get rock information if it exists
+	var rockThrown *rock.Rock
+	rockData, err := rock.GetRockForConversation(conv.ID)
+	if err == nil {
+		rockThrown = &rockData
+	} else if err != rock.ErrRockNotFound {
+		logger.Error("Failed to get rock for conversation", "error", err, "conversationID", conv.ID)
+	}
 
-	return render(c, ui.ConversationModal(conv.ID, conv.AdID, a.Title, conv.OwnerID, conv.EnquirerID, currentUserID, otherUserName, messageNodes, csrfToken))
+	messageNodes := buildMessageNodesWithRock(messages, currentUserID, loc, rockThrown, conv.OwnerID, conv.EnquirerID)
+
+	// Check if user can post (must be participant)
+	canPost, err := message.CanUserPost(conv.ID, currentUserID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to check permissions")
+	}
+
+	// Check if user has thrown a rock
+	hasThrownRock, err := rock.HasUserThrownRock(currentUserID, conv.ID)
+	if err != nil {
+		logger.Error("Failed to check if user threw rock", "error", err, "conversationID", conv.ID, "userID", currentUserID)
+		hasThrownRock = false
+	}
+
+	// Check if ANY rock exists on this conversation
+	rockCount, err := rock.GetRockCountForConversation(conv.ID)
+	if err != nil {
+		logger.Error("Failed to get rock count for conversation", "error", err, "conversationID", conv.ID)
+		rockCount = 0
+	}
+	hasAnyRock := rockCount > 0
+
+	// Check if user can throw rock (must be participant, have < 3 rocks, AND no rock exists on this conversation)
+	canThrowRock := false
+	if canPost && !hasAnyRock {
+		userRockCount, err := rock.GetUserRockCount(currentUserID)
+		if err == nil && userRockCount < 3 {
+			canThrowRock = true
+		}
+	}
+
+	return render(c, ui.ConversationModalWithRock(
+		conv.ID,
+		conv.AdID,
+		a.Title,
+		conv.OwnerID,
+		conv.EnquirerID,
+		currentUserID,
+		ownerName,
+		enquirerName,
+		messageNodes,
+		csrfToken,
+		canPost,
+		hasThrownRock,
+		canThrowRock,
+		rockThrown,
+	))
 }
 
 func MessageModalHandler(c *fiber.Ctx) error {
@@ -260,6 +371,15 @@ func SendConversationMessageHandler(c *fiber.Ctx) error {
 	currentUserID := local.GetUserID(c)
 	loc := cookie.GetLocation(c)
 
+	// Check if user can post (must be participant)
+	canPost, err := message.CanUserPost(conversationID, currentUserID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to check permissions")
+	}
+	if !canPost {
+		return fiber.NewError(fiber.StatusForbidden, "You can only read this conversation")
+	}
+
 	conv, err := message.GetConversation(conversationID, currentUserID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
@@ -278,24 +398,32 @@ func ConversationModalHandler(c *fiber.Ctx) error {
 	loc := cookie.GetLocation(c)
 	csrfToken := local.GetCSRFToken(c)
 
-	conv, err := message.GetConversation(conversationID, currentUserID)
+	// Get conversation (public conversations are accessible to all logged-in users)
+	conv, err := message.GetConversationByID(conversationID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
 	}
 
-	// Mark conversation as read when opened
-	if err := message.MarkConversationAsRead(conversationID, currentUserID); err != nil {
-		// Log error but don't fail the request
-		logger.Error("Failed to mark conversation as read", "error", err, "conversationID", conversationID, "userID", currentUserID)
-	} else {
-		// Send conversation list item update - remove green dot since conversation is now read
-		sendConversationListItemUpdate(conv, currentUserID, false)
+	// Check if conversation is public or user is participant
+	if !conv.IsPublic && conv.OwnerID != currentUserID && conv.EnquirerID != currentUserID {
+		return fiber.NewError(fiber.StatusForbidden, "Conversation not found")
+	}
 
-		// Check if there are any remaining unread conversations
-		hasUnread, err := message.GetHasUnread(currentUserID)
-		if err == nil {
-			// Update avatar indicator based on whether there are any remaining unread conversations
-			sendUnreadIndicatorUpdate(currentUserID, hasUnread)
+	// Mark conversation as read when opened (only if user is participant)
+	if conv.OwnerID == currentUserID || conv.EnquirerID == currentUserID {
+		if err := message.MarkConversationAsRead(conversationID, currentUserID); err != nil {
+			// Log error but don't fail the request
+			logger.Error("Failed to mark conversation as read", "error", err, "conversationID", conversationID, "userID", currentUserID)
+		} else {
+			// Send conversation list item update - remove green dot since conversation is now read
+			sendConversationListItemUpdate(conv, currentUserID, false)
+
+			// Check if there are any remaining unread conversations
+			hasUnread, err := message.GetHasUnread(currentUserID)
+			if err == nil {
+				// Update avatar indicator based on whether there are any remaining unread conversations
+				sendUnreadIndicatorUpdate(currentUserID, hasUnread)
+			}
 		}
 	}
 
@@ -327,6 +455,14 @@ func UserMessagesHandler(c *fiber.Ctx) error {
 		if otherUserName == "" {
 			otherUserName = "Unknown User"
 		}
+
+		// Get ad to get conversation count for rock icons
+		a, err := ad.GetAd(currentUserID, conv.AdID, loc)
+		conversationCount := 0
+		if err == nil {
+			conversationCount = a.RockCount
+		}
+
 		conversationItems = append(conversationItems, ui.ConversationListItem(
 			conv.ID,
 			conv.AdID,
@@ -339,6 +475,7 @@ func UserMessagesHandler(c *fiber.Ctx) error {
 			conv.LastMessageAt,
 			conv.UpdatedAt,
 			conv.HasUnread,
+			conversationCount,
 		))
 	}
 

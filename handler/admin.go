@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/logger"
+	"github.com/rocky-ads/site/service/sms"
 	"github.com/rocky-ads/site/ui"
 	"github.com/rocky-ads/site/user"
 )
@@ -29,7 +30,7 @@ func AdminDashboardHandler(c *fiber.Ctx) error {
 
 func AdminTabHandler(c *fiber.Ctx) error {
 	tabID := c.Params("tab")
-	if tabID != "users" && tabID != "settings" {
+	if tabID != "users" && tabID != "settings" && tabID != "sms-queue" {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid tab")
 	}
 
@@ -47,7 +48,60 @@ func AdminTabHandler(c *fiber.Ctx) error {
 		return render(c, ui.AdminDashboardContainer("users", users, sortBy, sortOrder, currentUserID))
 	}
 
+	if tabID == "sms-queue" {
+		return AdminSMSQueueHandler(c)
+	}
+
 	return render(c, ui.AdminDashboardContainer("settings", nil, "", "", 0))
+}
+
+func AdminSMSQueueHandler(c *fiber.Ctx) error {
+	currentUserID := local.GetUserID(c)
+	status := c.Query("status", "all")
+	limit := 50
+	offset := 0
+
+	// Get queue stats
+	stats, err := sms.GetQueueStats()
+	if err != nil {
+		logger.Error("Failed to get queue stats", "error", err)
+		return showError(c, "Failed to load queue statistics")
+	}
+
+	// Get queue entries
+	queueEntries, err := sms.GetQueueEntries(status, limit, offset)
+	if err != nil {
+		logger.Error("Failed to get queue entries", "error", err)
+		return showError(c, "Failed to load queue entries")
+	}
+
+	// Convert queue entries to UI format
+	uiEntries := make([]ui.SMSQueueEntry, len(queueEntries))
+	for i, entry := range queueEntries {
+		createdAtStr := entry.CreatedAt.Format("2006-01-02 15:04:05")
+		var processedAtStr *string
+		if entry.ProcessedAt != nil {
+			processedAtStrVal := entry.ProcessedAt.Format("2006-01-02 15:04:05")
+			processedAtStr = &processedAtStrVal
+		}
+
+		uiEntries[i] = ui.SMSQueueEntry{
+			ID:            entry.ID,
+			RecipientName: entry.RecipientName,
+			AdTitle:       entry.AdTitle,
+			Status:        entry.Status,
+			CreatedAt:     createdAtStr,
+			ProcessedAt:   processedAtStr,
+		}
+	}
+
+	uiStats := ui.QueueStats{
+		Pending:    stats.Pending,
+		Processed:  stats.Processed,
+		Suppressed: stats.Suppressed,
+	}
+
+	return render(c, ui.AdminDashboardContainerWithQueue("sms-queue", nil, "", "", currentUserID, uiStats, uiEntries))
 }
 
 func AdminUsersHandler(c *fiber.Ctx) error {

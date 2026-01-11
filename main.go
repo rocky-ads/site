@@ -10,6 +10,7 @@ import (
 	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/handler"
 	"github.com/rocky-ads/site/logger"
+	"github.com/rocky-ads/site/service/sms"
 	"github.com/sasha-s/go-deadlock"
 
 	"github.com/gofiber/fiber/v2"
@@ -42,6 +43,8 @@ func setupApp() *fiber.App {
 		Format: "${status} | ${latency} | ${ip} | ${method} | ${path}\n",
 	}))
 
+	// Public routes
+
 	app.Static("/", "./static")
 
 	app.Get("/", handler.HomeHandler)
@@ -52,10 +55,17 @@ func setupApp() *fiber.App {
 	app.Get("/ad/:id", handler.AdHandler)
 	app.Get("/ad/:id/image/:index/:size", handler.ImageHandler)
 
+	// Auth routes
+
 	auth := app.Group("/auth", handler.AuthRequired)
+
+	auth.Get("/sse", handler.SSEHandler)
+
 	auth.Get("/ad/new", handler.NewAdHandler)
-	auth.Delete("/ad/delete/:id", handler.DeleteAdHandler)
-	auth.Post("/ad/restore/:id", handler.RestoreAdHandler)
+	auth.Delete("/ad/:id/delete", handler.DeleteAdHandler)
+	auth.Post("/ad/:id/restore", handler.RestoreAdHandler)
+	auth.Get("/ad/:id/new-conversation", handler.MessageModalHandler)
+
 	auth.Get("/user/menu", handler.UserMenuHandler)
 	auth.Get("/user/myads", handler.UserMyAdsHandler)
 	auth.Get("/user/myads/tab/:tab", handler.UserMyAdsTabHandler)
@@ -63,13 +73,16 @@ func setupApp() *fiber.App {
 	auth.Get("/user/settings", handler.UserSettingsHandler)
 	auth.Get("/user/about", handler.UserAboutHandler)
 	auth.Get("/welcome", handler.WelcomeHandler)
-	auth.Get("/message/:id", handler.MessageModalHandler)
-	auth.Post("/message/:id/send", handler.SendMessageHandler)
+
 	auth.Get("/conversation/:id", handler.ConversationModalHandler)
 	auth.Post("/conversation/:id/send", handler.SendConversationMessageHandler)
+	auth.Post("/conversation/:id/rock/throw", handler.ThrowRockHandler)
+	auth.Delete("/conversation/:id/rock/unthrow", handler.UnthrowRockHandler)
+
 	auth.Post("/bookmark/:id", handler.BookmarkHandler)
 	auth.Delete("/bookmark/:id", handler.BookmarkHandler)
-	auth.Get("/sse", handler.SSEHandler)
+
+	// Admin routes
 
 	admin := app.Group("/admin", handler.AdminRequired)
 	admin.Get("/dashboard", handler.AdminDashboardHandler)
@@ -79,6 +92,8 @@ func setupApp() *fiber.App {
 	admin.Post("/user/:id/restore", handler.AdminUserRestoreHandler)
 	admin.Post("/user/:id/promote", handler.AdminUserPromoteHandler)
 	admin.Post("/user/:id/demote", handler.AdminUserDemoteHandler)
+
+	// API routes
 
 	api := app.Group("/api")
 
@@ -137,6 +152,8 @@ func main() {
 	if err := ad.Init(); err != nil {
 		logger.Fatal("Failed to initialize ads", "error", err)
 	}
+
+	sms.StartSMSWorker()
 
 	app := setupApp()
 

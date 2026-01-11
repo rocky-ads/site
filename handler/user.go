@@ -6,6 +6,7 @@ import (
 	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/message"
+	"github.com/rocky-ads/site/rock"
 	"github.com/rocky-ads/site/ui"
 )
 
@@ -14,7 +15,8 @@ func UserMenuHandler(c *fiber.Ctx) error {
 	userName := local.GetUserName(c)
 	isAdmin := local.GetUserIsAdmin(c)
 	hasUnread, _ := message.GetHasUnread(userID)
-	return render(c, ui.UserMenu(userName, isAdmin, hasUnread))
+	rockCount, _ := rock.GetUserRockCount(userID)
+	return render(c, ui.UserMenu(userName, isAdmin, hasUnread, rockCount))
 }
 
 func UserMyAdsHandler(c *fiber.Ctx) error {

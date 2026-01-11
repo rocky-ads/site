@@ -13,6 +13,7 @@ func AdNodes(adIDs []int, userID, view, page int, loc *time.Location, csrfToken 
 	if err != nil {
 		return nil, err
 	}
+
 	results := make([]g.Node, len(ads))
 	for i, ad := range ads {
 		isLast := i == len(ads)-1 && pagination
@@ -47,9 +48,9 @@ func (a Ad) Location() string {
 func (a Ad) Node(userID, view, nextPage int, csrfToken string, isLast bool) g.Node {
 	switch view {
 	case ui.ViewGrid:
-		return ui.AdGridNode(userID, a.ID, a.Price, a.ImageCount, nextPage, a.Title, a.Location(), csrfToken, a.CreatedAt, !a.IsDeleted(), a.Bookmarked, isLast)
+		return ui.AdGridNode(userID, a.ID, a.Price, a.ImageCount, nextPage, a.Title, a.Location(), csrfToken, a.CreatedAt, !a.IsDeleted(), a.Bookmarked, isLast, a.RockCount)
 	case ui.ViewList:
-		return ui.AdListNode(userID, a.ID, a.Price, a.Title, a.Location(), a.CreatedAt, !a.IsDeleted(), a.Bookmarked, csrfToken, isLast, nextPage)
+		return ui.AdListNode(userID, a.ID, a.Price, a.Title, a.Location(), a.CreatedAt, !a.IsDeleted(), a.Bookmarked, csrfToken, isLast, nextPage, a.RockCount)
 	default:
 		return g.Text("bad view")
 	}

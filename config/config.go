@@ -57,6 +57,12 @@ const (
 
 	// SSE configuration
 	SSEChannelBufferSize = 100 // Buffer size for user event channels
+
+	// SMS queue configuration
+	SMSSuppressionWindowMinutes = 10              // Suppress SMS if sent within this many minutes
+	SMSWorkerPollInterval       = 5 * time.Second // How often worker checks for pending notifications
+	SMSQueueCleanupInterval     = 1 * time.Hour   // How often to cleanup old records
+	SMSQueueRetentionHours      = 24              // How long to keep processed/suppressed records
 )
 
 // Global configuration variables

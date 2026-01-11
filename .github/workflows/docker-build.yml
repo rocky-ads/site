@@ -115,7 +115,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix={{branch}}-
           labels: |
-            org.opencontainers.image.title=Parts Pile Jump Server
+            org.opencontainers.image.title=Rocky Ads Jump Server
             org.opencontainers.image.description=Jump server with test_db_perf for database performance testing
 
       - name: Build and push jump server image
@@ -169,8 +169,8 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix={{branch}}-
           labels: |
-            org.opencontainers.image.title=Parts Pile MinIO Server
-            org.opencontainers.image.description=MinIO object storage server for Parts Pile
+            org.opencontainers.image.title=Rocky Ads MinIO Server
+            org.opencontainers.image.description=MinIO object storage server for Rocky Ads
 
       - name: Build and push MinIO image
         uses: docker/build-push-action@v5

@@ -113,7 +113,7 @@ func paginationDiv(nextPage int) g.Node {
 	)
 }
 
-func AdGridNode(userID, adID, price, imageCount, nextPage int, title, location, csrfToken string, createdAt time.Time, active, bookmarked, isLast bool) g.Node {
+func AdGridNode(userID, adID, price, imageCount, nextPage int, title, location, csrfToken string, createdAt time.Time, active, bookmarked, isLast bool, conversationCount int) g.Node {
 	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
 
 	class := "flex flex-col cursor-pointer gap-1 py-3"
@@ -137,6 +137,7 @@ func AdGridNode(userID, adID, price, imageCount, nextPage int, title, location, 
 		Div(
 			Class("flex items-center gap-2 min-w-0"),
 			g.If(userID != 0 && bookmarked, BookmarkButton(adID, bookmarked, csrfToken)),
+			g.If(userID != 0 && conversationCount > 0, RockIcons(adID, conversationCount, userID)),
 			Span(Class("min-w-0"), g.Text(title)),
 		),
 	)
@@ -151,7 +152,7 @@ func AdGridNode(userID, adID, price, imageCount, nextPage int, title, location, 
 	return node
 }
 
-func AdListNode(userID, adID, price int, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string, isLast bool, nextPage int) g.Node {
+func AdListNode(userID, adID, price int, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string, isLast bool, nextPage int, conversationCount int) g.Node {
 	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
 
 	class := "flex flex-wrap items-center justify-between py-2 px-3 cursor-pointer"
@@ -167,6 +168,7 @@ func AdListNode(userID, adID, price int, title, location string, createdAt time.
 		Div(
 			Class("flex items-center gap-2 min-w-0"),
 			g.If(userID != 0 && bookmarked, BookmarkButton(adID, bookmarked, csrfToken)),
+			g.If(userID != 0 && conversationCount > 0, RockIcons(adID, conversationCount, userID)),
 			Span(Class("min-w-0"), g.Text(title)),
 		),
 		Div(
@@ -219,7 +221,7 @@ func deleteButton(adID int, csrfToken string) g.Node {
 		Alt:      "Delete Ad",
 		Class:    "dark:invert dark:opacity-80",
 		Attrs: []g.Node{
-			hx.Delete(fmt.Sprintf("/auth/ad/delete/%d", adID)),
+			hx.Delete(fmt.Sprintf("/auth/ad/%d/delete", adID)),
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
 			hx.Target("body"),
 			hx.Swap("outerHTML"),
@@ -234,7 +236,7 @@ func restoreButton(adID int, csrfToken string) g.Node {
 		Alt:      "Restore Ad",
 		Class:    "dark:invert dark:opacity-80",
 		Attrs: []g.Node{
-			hx.Post(fmt.Sprintf("/auth/ad/restore/%d", adID)),
+			hx.Post(fmt.Sprintf("/auth/ad/%d/restore", adID)),
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
 			hx.Target("body"),
 			hx.Swap("outerHTML"),
@@ -249,7 +251,7 @@ func messageButton(adID int) g.Node {
 		Alt:      "Message",
 		Class:    "dark:invert dark:opacity-80",
 		Attrs: []g.Node{
-			hx.Get(fmt.Sprintf("/auth/message/%d", adID)),
+			hx.Get(fmt.Sprintf("/auth/ad/%d/new-conversation", adID)),
 			hx.Target("body"),
 			hx.Swap("beforeend"),
 		},
@@ -359,7 +361,7 @@ func AdShareModal(path string) g.Node {
 }
 
 func Ad(adID, userID, ownerID, imageCount, price int, title, location, description string,
-	createdAt time.Time, bookmarked, active, reachable bool, csrfToken string) []g.Node {
+	createdAt time.Time, bookmarked, active, reachable bool, csrfToken string, conversationCount int) []g.Node {
 
 	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
 
@@ -373,7 +375,11 @@ func Ad(adID, userID, ownerID, imageCount, price int, title, location, descripti
 				Class("p-6 flex flex-col bg-white dark:bg-zinc-800"),
 				Div(
 					Class("flex items-center justify-between min-w-0"),
-					Span(Class("min-w-0"), g.Text(title)),
+					Div(
+						Class("flex items-center gap-2 min-w-0"),
+						g.If(userID != 0 && conversationCount > 0, RockIcons(adID, conversationCount, userID)),
+						Span(Class("min-w-0"), g.Text(title)),
+					),
 					adButtons(adID, userID, ownerID, bookmarked, active, reachable, csrfToken),
 				),
 				Div(

@@ -28,6 +28,7 @@ type Ad struct {
 
 	// Computed fields
 	Bookmarked bool `db:"bookmarked" json:"bookmarked"`
+	RockCount  int  `db:"rock_count" json:"rock_count"`
 }
 
 func (a Ad) IsDeleted() bool {
@@ -53,7 +54,12 @@ func GetAds(userID int, ids []int, loc *time.Location) ([]Ad, error) {
 			l.city,
 			l.admin_area,
 			l.country,
-			CASE WHEN b.user_id IS NOT NULL THEN 1 ELSE 0 END AS bookmarked
+			CASE WHEN b.user_id IS NOT NULL THEN 1 ELSE 0 END AS bookmarked,
+			COALESCE((
+				SELECT COUNT(*)
+				FROM conversations c
+				WHERE c.ad_id = a.id AND c.is_public = 1
+			), 0) AS rock_count
 		FROM ads a
 		LEFT JOIN locations l ON a.location_id = l.id
 		LEFT JOIN bookmarks b ON a.id = b.ad_id AND b.user_id = ?
