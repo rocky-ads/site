@@ -17,7 +17,7 @@ func menuIcon(iconSrc, alt string) g.Node {
 	)
 }
 
-func menuHeader(userName string, rockCount int) g.Node {
+func menuHeader(userName string, rockCount int, userRockIcons g.Node) g.Node {
 	return Div(
 		Class("px-4 py-3 border-b border-zinc-100 text-center"),
 		Div(
@@ -27,8 +27,9 @@ func menuHeader(userName string, rockCount int) g.Node {
 		Div(
 			Class("flex items-center justify-center gap-2 mb-1"),
 			Div(
-				Class("text-sm font-medium text-zinc-900"),
+				Class("text-sm font-medium text-zinc-900 flex items-center gap-1"),
 				g.Text(userName),
+				userRockIcons,
 			),
 			RockCountBadge(rockCount),
 		),
@@ -39,7 +40,7 @@ func menuHeader(userName string, rockCount int) g.Node {
 	)
 }
 
-func UserMenu(userName string, isAdmin bool, hasUnread bool, rockCount int) g.Node {
+func UserMenu(userName string, userID int, isAdmin bool, hasUnread bool, rockCount int, userRockCount int) g.Node {
 	var menuItems []g.Node
 
 	if isAdmin {
@@ -100,7 +101,7 @@ func UserMenu(userName string, isAdmin bool, hasUnread bool, rockCount int) g.No
 			Class("fixed z-50 top-20 right-6"),
 			Div(
 				Class("bg-white rounded-lg shadow-lg border border-zinc-200 w-40"),
-				menuHeader(userName, rockCount),
+				menuHeader(userName, rockCount, UserRockIcons(userID, userRockCount)),
 				Div(
 					Class("py-1"),
 					g.Group(menuItems),

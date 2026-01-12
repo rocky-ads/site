@@ -115,16 +115,11 @@ func renderConversationModalWithRock(c *fiber.Ctx, conv message.Conversation, cu
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get user names")
 	}
 
-	// Get rock information if it exists
-	var rockThrown *rock.Rock
-	rockData, err := rock.GetRockForConversation(conv.ID)
-	if err == nil {
-		rockThrown = &rockData
-	} else if err != rock.ErrRockNotFound {
-		logger.Error("Failed to get rock for conversation", "error", err, "conversationID", conv.ID)
-	}
+	// Get rock counts for owner and enquirer
+	enquirerRockCount, _ := rock.GetRockCountForUser(conv.EnquirerID)
+	ownerRockCount, _ := rock.GetRockCountForUser(conv.OwnerID)
 
-	messageNodes := buildMessageNodesWithRock(messages, currentUserID, loc, rockThrown, conv.OwnerID, conv.EnquirerID)
+	messageNodes := buildMessageNodesWithRock(messages, currentUserID, loc, conv, conv.OwnerID, conv.EnquirerID)
 
 	// Check if user can post (must be participant)
 	canPost, err := message.CanUserPost(conv.ID, currentUserID)
@@ -156,20 +151,25 @@ func renderConversationModalWithRock(c *fiber.Ctx, conv message.Conversation, cu
 		}
 	}
 
-	return render(c, ui.ConversationModalWithRock(
+	// Return modal with OOB swap to update the existing modal
+	modalSwapOOB := ui.ConversationModalSwapOOB(
 		conv.ID,
 		conv.AdID,
-		a.Title,
 		conv.OwnerID,
 		conv.EnquirerID,
 		currentUserID,
+		enquirerRockCount,
+		ownerRockCount,
+		a.Title,
 		ownerName,
 		enquirerName,
-		messageNodes,
 		csrfToken,
 		canPost,
 		hasThrownRock,
 		canThrowRock,
-		rockThrown,
-	))
+		messageNodes,
+		conv,
+	)
+
+	return render(c, modalSwapOOB)
 }

@@ -58,7 +58,7 @@ func GetAds(userID int, ids []int, loc *time.Location) ([]Ad, error) {
 			COALESCE((
 				SELECT COUNT(*)
 				FROM conversations c
-				WHERE c.ad_id = a.id AND c.is_public = 1
+				WHERE c.ad_id = a.id AND c.rock_thrower_id IS NOT NULL AND c.rock_thrower_id = c.enquirer_id
 			), 0) AS rock_count
 		FROM ads a
 		LEFT JOIN locations l ON a.location_id = l.id

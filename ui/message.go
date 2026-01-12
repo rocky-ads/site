@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rocky-ads/site/rock"
+	"github.com/rocky-ads/site/message"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -166,20 +166,57 @@ func ConversationContentInput(conversationID int, attrs ...g.Node) g.Node {
 		Required(),
 		Class("flex-1 px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200"),
 		g.Attr("onkeydown", "if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); this.form.requestSubmit(); }"),
+		g.Attr("hx-preserve", "true"), // Preserve input value during outerHTML swaps
 	}
 	allAttrs = append(allAttrs, attrs...)
 	return Input(g.Group(allAttrs))
 }
 
-func ConversationForm(conversationID int, csrfToken string, canPost bool) g.Node {
+func ConversationFormUpdateOOB(conversationID int, csrfToken string, hasThrownRock, canThrowRock bool) g.Node {
+	modalName := fmt.Sprintf("conversation-%d", conversationID)
+	return Form(
+		ID(fmt.Sprintf("%s-form", modalName)),
+		hx.SwapOOB("outerHTML"),
+		Class("p-4 border-t border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
+		hx.Post(fmt.Sprintf("/auth/conversation/%d/send", conversationID)),
+		hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
+		hx.Include("this"),
+		hx.Swap("none"),
+		Div(
+			Class("flex gap-2"),
+			ConversationContentInput(conversationID),
+			Button(
+				Type("submit"),
+				Class("px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"),
+				g.Text("Send"),
+			),
+		),
+		// Rock throw link below the input (conversation now has messages)
+		Div(
+			ID(fmt.Sprintf("%s-rock-link-container", modalName)),
+			Class("mt-2"),
+			RockThrowLink(conversationID, hasThrownRock, canThrowRock, csrfToken),
+		),
+	)
+}
+
+func ConversationForm(conversationID, adID int, csrfToken string, canPost bool, hasThrownRock, canThrowRock bool, messageCount int) g.Node {
 	modalName := fmt.Sprintf("conversation-%d", conversationID)
 	attrs := []g.Node{
 		ID(fmt.Sprintf("%s-form", modalName)),
 		Class("p-4 border-t border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
 	}
 	if canPost {
+		var postURL string
+		if conversationID == 0 {
+			// New conversation - use ad-based endpoint
+			postURL = fmt.Sprintf("/auth/ad/%d/send", adID)
+		} else {
+			// Existing conversation - use conversation-based endpoint
+			postURL = fmt.Sprintf("/auth/conversation/%d/send", conversationID)
+		}
 		attrs = append(attrs,
-			hx.Post(fmt.Sprintf("/auth/conversation/%d/send", conversationID)),
+			hx.Post(postURL),
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
 			hx.Include("this"),
 			hx.Swap("none"),
@@ -210,16 +247,166 @@ func ConversationForm(conversationID int, csrfToken string, canPost bool) g.Node
 				),
 			),
 		),
+		// Rock throw link below the input (only shown if conversation has messages)
+		g.If(messageCount > 0,
+			Div(
+				ID(fmt.Sprintf("%s-rock-link-container", modalName)),
+				Class("mt-2"),
+				RockThrowLink(conversationID, hasThrownRock, canThrowRock, csrfToken),
+			),
+		),
+		g.If(messageCount == 0,
+			Div(
+				ID(fmt.Sprintf("%s-rock-link-container", modalName)),
+				Class("mt-2"),
+			),
+		),
+	)
+}
+
+// RockThrowLinkSwapOOB returns an OOB swap node to insert the rock throw link into the rock link container below the form
+// oldModalID is the modal ID currently in the DOM (e.g., "conversation-0" for new conversations)
+// conversationID is the actual conversation ID for the rock link functionality
+func RockThrowLinkSwapOOB(oldModalID string, conversationID int, hasThrownRock, canThrowRock bool, csrfToken string) g.Node {
+	rockLinkContainerID := fmt.Sprintf("%s-rock-link-container", oldModalID)
+	rockLink := RockThrowLink(conversationID, hasThrownRock, canThrowRock, csrfToken)
+	// Insert into the rock link container below the form
+	return Div(
+		ID(rockLinkContainerID),
+		hx.SwapOOB("outerHTML"),
+		Class("mt-2"),
+		rockLink,
 	)
 }
 
 func ConversationModal(conversationID, adID int, adTitle string, ownerID, enquirerID, currentUserID int, otherUserName string, messageNodes []g.Node, csrfToken string) g.Node {
+	// Default conversation with no rock
+	conv := message.Conversation{
+		RockThrowerID: nil,
+		RockThrownAt:  nil,
+	}
 	// Default to allowing posting (for backward compatibility)
-	return ConversationModalWithRock(conversationID, adID, adTitle, ownerID, enquirerID, currentUserID, otherUserName, otherUserName, messageNodes, csrfToken, true, false, false, nil)
+	return ConversationModalWithRock(conversationID, adID, ownerID, enquirerID, currentUserID, 0, 0, adTitle, otherUserName, otherUserName, csrfToken, true, false, false, messageNodes, conv)
 }
 
-func ConversationModalWithRock(conversationID, adID int, adTitle string, ownerID, enquirerID, currentUserID int, ownerName, enquirerName string, messageNodes []g.Node, csrfToken string, canPost, hasThrownRock, canThrowRock bool, rockThrown *rock.Rock) g.Node {
+// ConversationModalSwapOOB returns just the modal div (without backdrop) with hx-swap-oob="outerHTML" for updating via SSE or OOB swaps
+// This is used to update the modal when messages are sent or rocks are thrown
+// targetModalID is optional - if provided, it's used as the swap target ID (for new conversations transitioning from conversation-0-modal)
+func ConversationModalSwapOOB(conversationID, adID, ownerID, enquirerID, currentUserID, enquirerRockCount, ownerRockCount int, adTitle, ownerName, enquirerName, csrfToken string, canPost, hasThrownRock, canThrowRock bool, messageNodes []g.Node, conv message.Conversation, targetModalID ...string) g.Node {
 	modalName := fmt.Sprintf("conversation-%d", conversationID)
+	modalID := modalName + "-modal"
+	// Use targetModalID if provided (for new conversations), otherwise use the conversation ID modal
+	if len(targetModalID) > 0 && targetModalID[0] != "" {
+		modalID = targetModalID[0]
+	}
+
+	var rockUserID int
+	if conv.RockThrowerID != nil {
+		rockUserID = *conv.RockThrowerID
+	}
+
+	// Return just the modal div (not the backdrop) with OOB swap
+	return Div(
+		ID(modalID),
+		hx.SwapOOB("outerHTML"),
+		Class("fixed inset-0 flex items-center justify-center z-50 p-8 pointer-events-none"),
+		Div(
+			Class("bg-white dark:bg-zinc-800 rounded-lg w-full max-w-lg shadow-2xl border-2 border-zinc-300 dark:border-zinc-600 flex flex-col pointer-events-auto"),
+			Style("max-height: min(80vh, 600px)"),
+			Div(
+				Class("flex items-start justify-between p-4 border-b border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
+				Div(
+					Class("flex-1 min-w-0 pr-4"),
+					Div(
+						Class("text-sm text-zinc-600 dark:text-zinc-400 mb-1"),
+						Span(Class("font-semibold"), g.Text("Subject: ")),
+						g.Text(adTitle),
+					),
+					Div(
+						Class("text-sm text-zinc-600 dark:text-zinc-400"),
+						Span(Class("font-semibold"), g.Text("From: ")),
+						UserRockIcons(enquirerID, enquirerRockCount),
+						g.Text(enquirerName),
+						g.Text(", "),
+						Span(Class("font-semibold"), g.Text("To: ")),
+						UserRockIcons(ownerID, ownerRockCount),
+						g.Text(ownerName),
+						g.Text(" (ad owner)"),
+						g.If(!canPost && (ownerID != currentUserID && enquirerID != currentUserID),
+							Span(
+								Class("ml-2 px-2 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-xs"),
+								g.Text("Read-only"),
+							),
+						),
+					),
+					g.If(!canPost && conv.RockThrowerID != nil,
+						Div(
+							Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1"),
+							g.Text("Rock thrown by: "),
+							g.If(rockUserID == currentUserID,
+								Span(Class("text-blue-600 dark:text-blue-400 font-medium"),
+									g.If(rockUserID == ownerID, g.Text(ownerName)),
+									g.If(rockUserID == enquirerID, g.Text(enquirerName)),
+								),
+							),
+							g.If(rockUserID != currentUserID,
+								Span(Class("text-zinc-700 dark:text-zinc-300 font-medium"),
+									g.If(rockUserID == ownerID, g.Text(ownerName)),
+									g.If(rockUserID == enquirerID, g.Text(enquirerName)),
+								),
+							),
+						),
+					),
+				),
+				Div(
+					ID(fmt.Sprintf("%s-header-actions", modalName)),
+					Class("flex items-center gap-2"),
+					Button(
+						ID(fmt.Sprintf("%s-close-button", modalName)),
+						Type("button"),
+						Class("bg-white dark:bg-zinc-700 border-2 border-zinc-800 dark:border-zinc-500 rounded-full w-8 h-8 flex items-center justify-center shadow-lg hover:bg-zinc-100 dark:hover:bg-zinc-600 focus:outline-none cursor-pointer"),
+						hx.Get(fmt.Sprintf("/api/modal-remove/%s", modalName)),
+						hx.Swap("none"),
+						Img(
+							Src("/images/close.svg"),
+							Alt("Close"),
+							Class("w-4 h-4 dark:invert"),
+						),
+					),
+				),
+			),
+			Div(
+				ID(fmt.Sprintf("%s-messages", modalName)),
+				Class("flex-1 overflow-y-auto p-4 space-y-2"),
+				g.If(len(messageNodes) == 0,
+					Div(
+						ID(fmt.Sprintf("conversation-%d-empty-message", conversationID)),
+						Class("text-center text-zinc-500 dark:text-zinc-400 py-8"),
+						g.If(canPost,
+							g.Text("No messages yet. Start the conversation!"),
+						),
+						g.If(!canPost,
+							g.Text("No messages yet."),
+						),
+					),
+				),
+				g.If(len(messageNodes) > 0,
+					g.Group(messageNodes),
+				),
+				ConversationMessagesSentinel(conversationID),
+			),
+			ConversationForm(conversationID, adID, csrfToken, canPost, hasThrownRock, canThrowRock, len(messageNodes)),
+		),
+	)
+}
+
+func ConversationModalWithRock(conversationID, adID, ownerID, enquirerID, currentUserID, enquirerRockCount, ownerRockCount int, adTitle, ownerName, enquirerName, csrfToken string, canPost, hasThrownRock, canThrowRock bool, messageNodes []g.Node, conv message.Conversation) g.Node {
+	modalName := fmt.Sprintf("conversation-%d", conversationID)
+
+	var rockUserID int
+	if conv.RockThrowerID != nil {
+		rockUserID = *conv.RockThrowerID
+	}
 
 	return g.Group([]g.Node{
 		modalBackdrop(modalName),
@@ -241,9 +428,11 @@ func ConversationModalWithRock(conversationID, adID int, adTitle string, ownerID
 						Div(
 							Class("text-sm text-zinc-600 dark:text-zinc-400"),
 							Span(Class("font-semibold"), g.Text("From: ")),
+							UserRockIcons(enquirerID, enquirerRockCount),
 							g.Text(enquirerName),
 							g.Text(", "),
 							Span(Class("font-semibold"), g.Text("To: ")),
+							UserRockIcons(ownerID, ownerRockCount),
 							g.Text(ownerName),
 							g.Text(" (ad owner)"),
 							g.If(!canPost && (ownerID != currentUserID && enquirerID != currentUserID),
@@ -253,31 +442,42 @@ func ConversationModalWithRock(conversationID, adID int, adTitle string, ownerID
 								),
 							),
 						),
-						g.If(!canPost && rockThrown != nil,
+						g.If(!canPost && conv.RockThrowerID != nil,
 							Div(
 								Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1"),
 								g.Text("Rock thrown by: "),
-								g.If(rockThrown.UserID == currentUserID,
+								g.If(rockUserID == currentUserID,
 									// Current user threw it - use blue color (like sent messages)
 									Span(Class("text-blue-600 dark:text-blue-400 font-medium"),
-										g.If(rockThrown.UserID == ownerID, g.Text(ownerName)),
-										g.If(rockThrown.UserID == enquirerID, g.Text(enquirerName)),
+										g.If(rockUserID == ownerID, g.Text(ownerName)),
+										g.If(rockUserID == enquirerID, g.Text(enquirerName)),
 									),
 								),
-								g.If(rockThrown.UserID != currentUserID,
+								g.If(rockUserID != currentUserID,
 									// Someone else threw it - use gray color (like received messages)
 									Span(Class("text-zinc-700 dark:text-zinc-300 font-medium"),
-										g.If(rockThrown.UserID == ownerID, g.Text(ownerName)),
-										g.If(rockThrown.UserID == enquirerID, g.Text(enquirerName)),
+										g.If(rockUserID == ownerID, g.Text(ownerName)),
+										g.If(rockUserID == enquirerID, g.Text(enquirerName)),
 									),
 								),
 							),
 						),
 					),
 					Div(
+						ID(fmt.Sprintf("%s-header-actions", modalName)),
 						Class("flex items-center gap-2"),
-						g.If(canPost, RockThrowButton(conversationID, hasThrownRock, canThrowRock, csrfToken)),
-						modalClose(modalName),
+						Button(
+							ID(fmt.Sprintf("%s-close-button", modalName)),
+							Type("button"),
+							Class("bg-white dark:bg-zinc-700 border-2 border-zinc-800 dark:border-zinc-500 rounded-full w-8 h-8 flex items-center justify-center shadow-lg hover:bg-zinc-100 dark:hover:bg-zinc-600 focus:outline-none cursor-pointer"),
+							hx.Get(fmt.Sprintf("/api/modal-remove/%s", modalName)),
+							hx.Swap("none"),
+							Img(
+								Src("/images/close.svg"),
+								Alt("Close"),
+								Class("w-4 h-4 dark:invert"),
+							),
+						),
 					),
 				),
 				Div(
@@ -300,13 +500,13 @@ func ConversationModalWithRock(conversationID, adID int, adTitle string, ownerID
 					),
 					ConversationMessagesSentinel(conversationID),
 				),
-				ConversationForm(conversationID, csrfToken, canPost),
+				ConversationForm(conversationID, adID, csrfToken, canPost, hasThrownRock, canThrowRock, len(messageNodes)),
 			),
 		),
 	})
 }
 
-func ConversationListItem(conversationID, adID, ownerID, enquirerID, currentUserID int, adTitle, lastMessageContent, otherUserName string, lastMessageAt *time.Time, updatedAt time.Time, hasUnread bool, conversationCount int) g.Node {
+func ConversationListItem(conversationID, adID, ownerID, enquirerID, currentUserID int, adTitle, lastMessageContent, otherUserName string, lastMessageAt *time.Time, updatedAt time.Time, hasUnread bool, rockCount int, otherUserRockCount int) g.Node {
 	lastMessagePreview := lastMessageContent
 	if len(lastMessagePreview) > 50 {
 		lastMessagePreview = lastMessagePreview[:50] + "..."
@@ -337,7 +537,7 @@ func ConversationListItem(conversationID, adID, ownerID, enquirerID, currentUser
 							Class("bg-green-500 rounded-full w-2 h-2 flex-shrink-0"),
 						),
 					),
-					g.If(currentUserID != 0 && conversationCount > 0, RockIcons(adID, conversationCount, currentUserID)),
+					g.If(rockCount > 0, RockIcons(adID, rockCount)),
 					Span(
 						Class("text-lg font-semibold text-zinc-900 dark:text-zinc-200"),
 						g.Text(adTitle),
@@ -351,12 +551,20 @@ func ConversationListItem(conversationID, adID, ownerID, enquirerID, currentUser
 			Div(
 				Class("flex items-center justify-between"),
 				Span(
-					Class("text-sm text-zinc-600 dark:text-zinc-400"),
+					Class("text-sm text-zinc-600 dark:text-zinc-400 flex items-center gap-1"),
 					g.If(enquirerID == currentUserID,
-						g.Text(fmt.Sprintf("To: %s", otherUserName)),
+						g.Group([]g.Node{
+							g.Text("To: "),
+							UserRockIcons(ownerID, otherUserRockCount),
+							g.Text(otherUserName),
+						}),
 					),
 					g.If(ownerID == currentUserID,
-						g.Text(fmt.Sprintf("From: %s", otherUserName)),
+						g.Group([]g.Node{
+							g.Text("From: "),
+							UserRockIcons(enquirerID, otherUserRockCount),
+							g.Text(otherUserName),
+						}),
 					),
 				),
 				g.If(lastMessageContent != "",

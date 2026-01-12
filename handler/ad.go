@@ -9,7 +9,10 @@ import (
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/local"
+	"github.com/rocky-ads/site/logger"
+	"github.com/rocky-ads/site/message"
 	"github.com/rocky-ads/site/param"
+	"github.com/rocky-ads/site/rock"
 	"github.com/rocky-ads/site/ui"
 	g "maragu.dev/gomponents"
 )
@@ -44,6 +47,49 @@ func AdHandler(c *fiber.Ctx) error {
 	return renderPage(c, title, ui.Ad(adID, userID, a.UserID, a.ImageCount, a.Price,
 		a.Title, a.Location(), a.Description, a.CreatedAt, a.Bookmarked,
 		!a.IsDeleted(), reachable, csrfToken, a.RockCount))
+}
+
+func AdRockConversationHandler(c *fiber.Ctx) error {
+	adID, err := c.ParamsInt("id")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
+	}
+
+	ordinal, err := c.ParamsInt("ordinal")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid rock ordinal")
+	}
+
+	currentUserID := local.GetUserID(c)
+	loc := cookie.GetLocation(c)
+	csrfToken := local.GetCSRFToken(c)
+
+	// Get conversation ID by ordinal
+	conversationID, err := rock.GetPublicConversationIDByOrdinal(adID, ordinal)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Rock conversation not found")
+	}
+
+	// Get conversation
+	conv, err := message.GetConversationByID(conversationID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
+	}
+
+	// Check if conversation is public or user is participant
+	if conv.RockThrowerID == nil && conv.OwnerID != currentUserID && conv.EnquirerID != currentUserID {
+		return fiber.NewError(fiber.StatusForbidden, "Conversation not found")
+	}
+
+	// Mark conversation as read when opened (only if user is participant)
+	if conv.OwnerID == currentUserID || conv.EnquirerID == currentUserID {
+		if err := message.MarkConversationAsRead(conversationID, currentUserID); err != nil {
+			// Log error but don't fail the request
+			logger.Error("Failed to mark conversation as read", "error", err, "conversationID", conversationID, "userID", currentUserID)
+		}
+	}
+
+	return renderConversationModal(c, conv, currentUserID, loc, csrfToken)
 }
 
 func NewAdHandler(c *fiber.Ctx) error {

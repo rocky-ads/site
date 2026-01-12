@@ -18,7 +18,8 @@ func JWTMiddleware(c *fiber.Ctx) error {
 	// Get JWT token from cookie
 	tokenString := cookie.GetJWT(c)
 	if tokenString == "" {
-		logout(c)
+		// No token present - don't clear anything, just continue
+		// (clearing would set a cookie in response even when none exists)
 		return c.Next()
 	}
 

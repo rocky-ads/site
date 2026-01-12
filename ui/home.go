@@ -140,7 +140,10 @@ func newAdButton(userID int) g.Node {
 func viewRow(userID, view int) g.Node {
 	return Div(
 		Class("flex justify-between items-center gap-2 my-4"),
-		newAdButton(userID),
+		Div(
+			Class("flex gap-2"),
+			newAdButton(userID),
+		),
 		viewToggles(view),
 	)
 }

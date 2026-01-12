@@ -52,6 +52,7 @@ func setupApp() *fiber.App {
 	app.Get("/logout", handler.LogoutHandler)
 	app.Get("/register", handler.RegisterHandler)
 	app.Get("/health", handler.HandleHealth)
+	app.Get("/error", handler.ErrorPageHandler)
 	app.Get("/ad/:id", handler.AdHandler)
 	app.Get("/ad/:id/image/:index/:size", handler.ImageHandler)
 
@@ -65,6 +66,8 @@ func setupApp() *fiber.App {
 	auth.Delete("/ad/:id/delete", handler.DeleteAdHandler)
 	auth.Post("/ad/:id/restore", handler.RestoreAdHandler)
 	auth.Get("/ad/:id/new-conversation", handler.MessageModalHandler)
+	auth.Post("/ad/:id/send", handler.SendMessageHandler)
+	auth.Get("/ad/:id/rock/:ordinal", handler.AdRockConversationHandler)
 
 	auth.Get("/user/menu", handler.UserMenuHandler)
 	auth.Get("/user/myads", handler.UserMyAdsHandler)
@@ -72,6 +75,7 @@ func setupApp() *fiber.App {
 	auth.Get("/user/messages", handler.UserMessagesHandler)
 	auth.Get("/user/settings", handler.UserSettingsHandler)
 	auth.Get("/user/about", handler.UserAboutHandler)
+	auth.Get("/user/:id/rock/:ordinal", handler.UserRockConversationHandler)
 	auth.Get("/welcome", handler.WelcomeHandler)
 
 	auth.Get("/conversation/:id", handler.ConversationModalHandler)

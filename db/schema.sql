@@ -184,18 +184,16 @@ CREATE TABLE conversations (
     ad_id INTEGER NOT NULL REFERENCES ads(id),
     owner_id INTEGER NOT NULL REFERENCES users(id),
     enquirer_id INTEGER NOT NULL REFERENCES users(id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     owner_has_unread INTEGER NOT NULL DEFAULT 0,
     enquirer_has_unread INTEGER NOT NULL DEFAULT 0,
-    is_public INTEGER NOT NULL DEFAULT 0,
+    rock_thrower_id INTEGER REFERENCES users(id), -- NULL = no rock (private), NOT NULL = public, owner_id = bound to enquirer, enquirer_id = bound to ad
+    rock_thrown_at TIMESTAMP, -- Only valid if rock_thrower_id IS NOT NULL
     UNIQUE(ad_id, enquirer_id)
 );
 CREATE INDEX idx_conversations_owner ON conversations(owner_id);
 CREATE INDEX idx_conversations_enquirer ON conversations(enquirer_id);
 CREATE INDEX idx_conversations_ad ON conversations(ad_id);
-CREATE INDEX idx_conversations_updated_at ON conversations(updated_at);
-CREATE INDEX idx_conversations_is_public ON conversations(is_public);
+CREATE INDEX idx_conversations_rock_thrower ON conversations(rock_thrower_id);
 
 -- Messages table
 CREATE TABLE messages (
@@ -208,16 +206,6 @@ CREATE TABLE messages (
 CREATE INDEX idx_messages_conversation ON messages(conversation_id);
 CREATE INDEX idx_messages_created_at ON messages(created_at);
 
--- Rocks table
-CREATE TABLE rocks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    conversation_id INTEGER NOT NULL REFERENCES conversations(id),
-    thrown_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, conversation_id)
-);
-CREATE INDEX idx_rocks_user ON rocks(user_id);
-CREATE INDEX idx_rocks_conversation ON rocks(conversation_id);
 
 -- SMS notification queue table
 CREATE TABLE sms_notification_queue (
