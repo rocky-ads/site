@@ -9,11 +9,11 @@ import (
 	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/message"
-	"github.com/rocky-ads/site/rock"
+	"github.com/rocky-ads/site/egg"
 	"github.com/rocky-ads/site/ui"
 )
 
-func ThrowRockHandler(c *fiber.Ctx) error {
+func ThrowEggHandler(c *fiber.Ctx) error {
 	conversationID, err := c.ParamsInt("id")
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid conversation ID")
@@ -29,22 +29,22 @@ func ThrowRockHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
 	}
 
-	// Check if user is participant (only participants can throw rocks)
+	// Check if user is participant (only participants can throw eggs)
 	if conv.OwnerID != currentUserID && conv.EnquirerID != currentUserID {
-		return fiber.NewError(fiber.StatusForbidden, "Only conversation participants can throw rocks")
+		return fiber.NewError(fiber.StatusForbidden, "Only conversation participants can throw eggs")
 	}
 
-	// Throw the rock
-	err = rock.ThrowRock(currentUserID, conversationID)
+	// Throw the egg
+	err = egg.ThrowEgg(currentUserID, conversationID)
 	if err != nil {
-		if err == rock.ErrMaxRocksReached {
-			return fiber.NewError(fiber.StatusBadRequest, "You have reached the maximum of 3 outstanding rocks")
+		if err == egg.ErrMaxEggsReached {
+			return fiber.NewError(fiber.StatusBadRequest, "You have reached the maximum of 3 outstanding eggs")
 		}
-		if err == rock.ErrRockAlreadyThrown {
-			return fiber.NewError(fiber.StatusBadRequest, "A rock has already been thrown at this conversation")
+		if err == egg.ErrEggAlreadyThrown {
+			return fiber.NewError(fiber.StatusBadRequest, "An egg has already been thrown at this conversation")
 		}
-		logger.Error("Failed to throw rock", "error", err, "conversationID", conversationID, "userID", currentUserID)
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to throw rock")
+		logger.Error("Failed to throw egg", "error", err, "conversationID", conversationID, "userID", currentUserID)
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to throw egg")
 	}
 
 	// Re-fetch conversation to get updated state
@@ -54,10 +54,10 @@ func ThrowRockHandler(c *fiber.Ctx) error {
 	}
 
 	// Render updated conversation modal
-	return renderConversationModalWithRock(c, conv, currentUserID, loc, csrfToken)
+	return renderConversationModalWithEgg(c, conv, currentUserID, loc, csrfToken)
 }
 
-func UnthrowRockHandler(c *fiber.Ctx) error {
+func UnthrowEggHandler(c *fiber.Ctx) error {
 	conversationID, err := c.ParamsInt("id")
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid conversation ID")
@@ -73,19 +73,19 @@ func UnthrowRockHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
 	}
 
-	// Check if user is participant (only participants can unthrow rocks)
+	// Check if user is participant (only participants can unthrow eggs)
 	if conv.OwnerID != currentUserID && conv.EnquirerID != currentUserID {
-		return fiber.NewError(fiber.StatusForbidden, "Only conversation participants can remove rocks")
+		return fiber.NewError(fiber.StatusForbidden, "Only conversation participants can remove eggs")
 	}
 
-	// Unthrow the rock
-	err = rock.UnthrowRock(currentUserID, conversationID)
+	// Unthrow the egg
+	err = egg.UnthrowEgg(currentUserID, conversationID)
 	if err != nil {
-		if err == rock.ErrRockNotFound {
-			return fiber.NewError(fiber.StatusNotFound, "Rock not found")
+		if err == egg.ErrEggNotFound {
+			return fiber.NewError(fiber.StatusNotFound, "Egg not found")
 		}
-		logger.Error("Failed to unthrow rock", "error", err, "conversationID", conversationID, "userID", currentUserID)
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to remove rock")
+		logger.Error("Failed to unthrow egg", "error", err, "conversationID", conversationID, "userID", currentUserID)
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to remove egg")
 	}
 
 	// Re-fetch conversation to get updated state
@@ -95,10 +95,10 @@ func UnthrowRockHandler(c *fiber.Ctx) error {
 	}
 
 	// Render updated conversation modal
-	return renderConversationModalWithRock(c, conv, currentUserID, loc, csrfToken)
+	return renderConversationModalWithEgg(c, conv, currentUserID, loc, csrfToken)
 }
 
-func renderConversationModalWithRock(c *fiber.Ctx, conv message.Conversation, currentUserID int, loc *time.Location, csrfToken string) error {
+func renderConversationModalWithEgg(c *fiber.Ctx, conv message.Conversation, currentUserID int, loc *time.Location, csrfToken string) error {
 	a, err := ad.GetAd(currentUserID, conv.AdID, loc)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
@@ -115,11 +115,11 @@ func renderConversationModalWithRock(c *fiber.Ctx, conv message.Conversation, cu
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get user names")
 	}
 
-	// Get rock counts for owner and enquirer
-	enquirerRockCount, _ := rock.GetRockCountForUser(conv.EnquirerID)
-	ownerRockCount, _ := rock.GetRockCountForUser(conv.OwnerID)
+	// Get egg counts for owner and enquirer
+	enquirerEggCount, _ := egg.GetEggCountForUser(conv.EnquirerID)
+	ownerEggCount, _ := egg.GetEggCountForUser(conv.OwnerID)
 
-	messageNodes := buildMessageNodesWithRock(messages, currentUserID, loc, conv, conv.OwnerID, conv.EnquirerID)
+	messageNodes := buildMessageNodesWithEgg(messages, currentUserID, loc, conv, conv.OwnerID, conv.EnquirerID)
 
 	// Check if user can post (must be participant)
 	canPost, err := message.CanUserPost(conv.ID, currentUserID)
@@ -127,27 +127,27 @@ func renderConversationModalWithRock(c *fiber.Ctx, conv message.Conversation, cu
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to check permissions")
 	}
 
-	// Check if user has thrown a rock
-	hasThrownRock, err := rock.HasUserThrownRock(currentUserID, conv.ID)
+	// Check if user has thrown an egg
+	hasThrownEgg, err := egg.HasUserThrownEgg(currentUserID, conv.ID)
 	if err != nil {
-		logger.Error("Failed to check if user threw rock", "error", err, "conversationID", conv.ID, "userID", currentUserID)
-		hasThrownRock = false
+		logger.Error("Failed to check if user threw egg", "error", err, "conversationID", conv.ID, "userID", currentUserID)
+		hasThrownEgg = false
 	}
 
-	// Check if ANY rock exists on this conversation
-	rockCount, err := rock.GetRockCountForConversation(conv.ID)
+	// Check if ANY egg exists on this conversation
+	eggCount, err := egg.GetEggCountForConversation(conv.ID)
 	if err != nil {
-		logger.Error("Failed to get rock count for conversation", "error", err, "conversationID", conv.ID)
-		rockCount = 0
+		logger.Error("Failed to get egg count for conversation", "error", err, "conversationID", conv.ID)
+		eggCount = 0
 	}
-	hasAnyRock := rockCount > 0
+	hasAnyEgg := eggCount > 0
 
-	// Check if user can throw rock (must be participant, have < 3 rocks, AND no rock exists on this conversation)
-	canThrowRock := false
-	if canPost && !hasAnyRock {
-		userRockCount, err := rock.GetUserRockCount(currentUserID)
-		if err == nil && userRockCount < 3 {
-			canThrowRock = true
+	// Check if user can throw egg (must be participant, have < 3 eggs, AND no egg exists on this conversation)
+	canThrowEgg := false
+	if canPost && !hasAnyEgg {
+		userEggCount, err := egg.GetUserEggCount(currentUserID)
+		if err == nil && userEggCount < 3 {
+			canThrowEgg = true
 		}
 	}
 
@@ -158,15 +158,15 @@ func renderConversationModalWithRock(c *fiber.Ctx, conv message.Conversation, cu
 		conv.OwnerID,
 		conv.EnquirerID,
 		currentUserID,
-		enquirerRockCount,
-		ownerRockCount,
+		enquirerEggCount,
+		ownerEggCount,
 		a.Title,
 		ownerName,
 		enquirerName,
 		csrfToken,
 		canPost,
-		hasThrownRock,
-		canThrowRock,
+		hasThrownEgg,
+		canThrowEgg,
 		messageNodes,
 		conv,
 	)

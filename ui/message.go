@@ -67,8 +67,8 @@ func MessageItem(senderID, currentUserID int, content string, createdAt time.Tim
 	)
 }
 
-// RockThrownMessage renders a message-like item showing when a rock was thrown
-func RockThrownMessage(throwerID, currentUserID int, thrownAt time.Time, loc *time.Location, ownerID, enquirerID int) g.Node {
+// EggThrownMessage renders a message-like item showing when an egg was thrown
+func EggThrownMessage(throwerID, currentUserID int, thrownAt time.Time, loc *time.Location, ownerID, enquirerID int) g.Node {
 	isSent := throwerID == currentUserID
 
 	var bubbleClass string
@@ -93,10 +93,10 @@ func RockThrownMessage(throwerID, currentUserID int, thrownAt time.Time, loc *ti
 				Class("px-4 py-2 "+bubbleClass+" flex items-center gap-2"),
 				Img(
 					Src("/images/broken-egg.svg"),
-					Alt("Rock thrown"),
+					Alt("Egg thrown"),
 					Class("w-5 h-5 flex-shrink-0"),
 				),
-				g.Text("Rock thrown"),
+				g.Text("Egg thrown"),
 			),
 			Div(
 				Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1 px-1"),
@@ -172,7 +172,7 @@ func ConversationContentInput(conversationID int, attrs ...g.Node) g.Node {
 	return Input(g.Group(allAttrs))
 }
 
-func ConversationFormUpdateOOB(conversationID int, csrfToken string, hasThrownRock, canThrowRock bool) g.Node {
+func ConversationFormUpdateOOB(conversationID int, csrfToken string, hasThrownEgg, canThrowEgg bool) g.Node {
 	modalName := fmt.Sprintf("conversation-%d", conversationID)
 	return Form(
 		ID(fmt.Sprintf("%s-form", modalName)),
@@ -191,16 +191,16 @@ func ConversationFormUpdateOOB(conversationID int, csrfToken string, hasThrownRo
 				g.Text("Send"),
 			),
 		),
-		// Rock throw link below the input (conversation now has messages)
+		// Egg throw link below the input (conversation now has messages)
 		Div(
-			ID(fmt.Sprintf("%s-rock-link-container", modalName)),
+			ID(fmt.Sprintf("%s-egg-link-container", modalName)),
 			Class("mt-2"),
-			RockThrowLink(conversationID, hasThrownRock, canThrowRock, csrfToken),
+			EggThrowLink(conversationID, hasThrownEgg, canThrowEgg, csrfToken),
 		),
 	)
 }
 
-func ConversationForm(conversationID, adID int, csrfToken string, canPost bool, hasThrownRock, canThrowRock bool, messageCount int) g.Node {
+func ConversationForm(conversationID, adID int, csrfToken string, canPost bool, hasThrownEgg, canThrowEgg bool, messageCount int) g.Node {
 	modalName := fmt.Sprintf("conversation-%d", conversationID)
 	attrs := []g.Node{
 		ID(fmt.Sprintf("%s-form", modalName)),
@@ -247,52 +247,52 @@ func ConversationForm(conversationID, adID int, csrfToken string, canPost bool, 
 				),
 			),
 		),
-		// Rock throw link below the input (only shown if conversation has messages)
+		// Egg throw link below the input (only shown if conversation has messages)
 		g.If(messageCount > 0,
 			Div(
-				ID(fmt.Sprintf("%s-rock-link-container", modalName)),
+				ID(fmt.Sprintf("%s-egg-link-container", modalName)),
 				Class("mt-2"),
-				RockThrowLink(conversationID, hasThrownRock, canThrowRock, csrfToken),
+				EggThrowLink(conversationID, hasThrownEgg, canThrowEgg, csrfToken),
 			),
 		),
 		g.If(messageCount == 0,
 			Div(
-				ID(fmt.Sprintf("%s-rock-link-container", modalName)),
+				ID(fmt.Sprintf("%s-egg-link-container", modalName)),
 				Class("mt-2"),
 			),
 		),
 	)
 }
 
-// RockThrowLinkSwapOOB returns an OOB swap node to insert the rock throw link into the rock link container below the form
+// EggThrowLinkSwapOOB returns an OOB swap node to insert the egg throw link into the egg link container below the form
 // oldModalID is the modal ID currently in the DOM (e.g., "conversation-0" for new conversations)
-// conversationID is the actual conversation ID for the rock link functionality
-func RockThrowLinkSwapOOB(oldModalID string, conversationID int, hasThrownRock, canThrowRock bool, csrfToken string) g.Node {
-	rockLinkContainerID := fmt.Sprintf("%s-rock-link-container", oldModalID)
-	rockLink := RockThrowLink(conversationID, hasThrownRock, canThrowRock, csrfToken)
-	// Insert into the rock link container below the form
+// conversationID is the actual conversation ID for the egg link functionality
+func EggThrowLinkSwapOOB(oldModalID string, conversationID int, hasThrownEgg, canThrowEgg bool, csrfToken string) g.Node {
+	eggLinkContainerID := fmt.Sprintf("%s-egg-link-container", oldModalID)
+	eggLink := EggThrowLink(conversationID, hasThrownEgg, canThrowEgg, csrfToken)
+	// Insert into the egg link container below the form
 	return Div(
-		ID(rockLinkContainerID),
+		ID(eggLinkContainerID),
 		hx.SwapOOB("outerHTML"),
 		Class("mt-2"),
-		rockLink,
+		eggLink,
 	)
 }
 
 func ConversationModal(conversationID, adID int, adTitle string, ownerID, enquirerID, currentUserID int, otherUserName string, messageNodes []g.Node, csrfToken string) g.Node {
-	// Default conversation with no rock
+	// Default conversation with no egg
 	conv := message.Conversation{
-		RockThrowerID: nil,
-		RockThrownAt:  nil,
+		EggThrowerID: nil,
+		EggThrownAt:  nil,
 	}
 	// Default to allowing posting (for backward compatibility)
-	return ConversationModalWithRock(conversationID, adID, ownerID, enquirerID, currentUserID, 0, 0, adTitle, otherUserName, otherUserName, csrfToken, true, false, false, messageNodes, conv)
+	return ConversationModalWithEgg(conversationID, adID, ownerID, enquirerID, currentUserID, 0, 0, adTitle, otherUserName, otherUserName, csrfToken, true, false, false, messageNodes, conv)
 }
 
 // ConversationModalSwapOOB returns just the modal div (without backdrop) with hx-swap-oob="outerHTML" for updating via SSE or OOB swaps
-// This is used to update the modal when messages are sent or rocks are thrown
+// This is used to update the modal when messages are sent or eggs are thrown
 // targetModalID is optional - if provided, it's used as the swap target ID (for new conversations transitioning from conversation-0-modal)
-func ConversationModalSwapOOB(conversationID, adID, ownerID, enquirerID, currentUserID, enquirerRockCount, ownerRockCount int, adTitle, ownerName, enquirerName, csrfToken string, canPost, hasThrownRock, canThrowRock bool, messageNodes []g.Node, conv message.Conversation, targetModalID ...string) g.Node {
+func ConversationModalSwapOOB(conversationID, adID, ownerID, enquirerID, currentUserID, enquirerEggCount, ownerEggCount int, adTitle, ownerName, enquirerName, csrfToken string, canPost, hasThrownEgg, canThrowEgg bool, messageNodes []g.Node, conv message.Conversation, targetModalID ...string) g.Node {
 	modalName := fmt.Sprintf("conversation-%d", conversationID)
 	modalID := modalName + "-modal"
 	// Use targetModalID if provided (for new conversations), otherwise use the conversation ID modal
@@ -300,9 +300,9 @@ func ConversationModalSwapOOB(conversationID, adID, ownerID, enquirerID, current
 		modalID = targetModalID[0]
 	}
 
-	var rockUserID int
-	if conv.RockThrowerID != nil {
-		rockUserID = *conv.RockThrowerID
+	var eggUserID int
+	if conv.EggThrowerID != nil {
+		eggUserID = *conv.EggThrowerID
 	}
 
 	// Return just the modal div (not the backdrop) with OOB swap
@@ -325,11 +325,11 @@ func ConversationModalSwapOOB(conversationID, adID, ownerID, enquirerID, current
 					Div(
 						Class("text-sm text-zinc-600 dark:text-zinc-400"),
 						Span(Class("font-semibold"), g.Text("From: ")),
-						UserRockIcons(enquirerID, enquirerRockCount),
+						UserEggIcons(enquirerID, enquirerEggCount),
 						g.Text(enquirerName),
 						g.Text(", "),
 						Span(Class("font-semibold"), g.Text("To: ")),
-						UserRockIcons(ownerID, ownerRockCount),
+						UserEggIcons(ownerID, ownerEggCount),
 						g.Text(ownerName),
 						g.Text(" (ad owner)"),
 						g.If(!canPost && (ownerID != currentUserID && enquirerID != currentUserID),
@@ -339,20 +339,20 @@ func ConversationModalSwapOOB(conversationID, adID, ownerID, enquirerID, current
 							),
 						),
 					),
-					g.If(!canPost && conv.RockThrowerID != nil,
+					g.If(!canPost && conv.EggThrowerID != nil,
 						Div(
 							Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1"),
-							g.Text("Rock thrown by: "),
-							g.If(rockUserID == currentUserID,
+							g.Text("Egg thrown by: "),
+							g.If(eggUserID == currentUserID,
 								Span(Class("text-blue-600 dark:text-blue-400 font-medium"),
-									g.If(rockUserID == ownerID, g.Text(ownerName)),
-									g.If(rockUserID == enquirerID, g.Text(enquirerName)),
+									g.If(eggUserID == ownerID, g.Text(ownerName)),
+									g.If(eggUserID == enquirerID, g.Text(enquirerName)),
 								),
 							),
-							g.If(rockUserID != currentUserID,
+							g.If(eggUserID != currentUserID,
 								Span(Class("text-zinc-700 dark:text-zinc-300 font-medium"),
-									g.If(rockUserID == ownerID, g.Text(ownerName)),
-									g.If(rockUserID == enquirerID, g.Text(enquirerName)),
+									g.If(eggUserID == ownerID, g.Text(ownerName)),
+									g.If(eggUserID == enquirerID, g.Text(enquirerName)),
 								),
 							),
 						),
@@ -395,17 +395,17 @@ func ConversationModalSwapOOB(conversationID, adID, ownerID, enquirerID, current
 				),
 				ConversationMessagesSentinel(conversationID),
 			),
-			ConversationForm(conversationID, adID, csrfToken, canPost, hasThrownRock, canThrowRock, len(messageNodes)),
+			ConversationForm(conversationID, adID, csrfToken, canPost, hasThrownEgg, canThrowEgg, len(messageNodes)),
 		),
 	)
 }
 
-func ConversationModalWithRock(conversationID, adID, ownerID, enquirerID, currentUserID, enquirerRockCount, ownerRockCount int, adTitle, ownerName, enquirerName, csrfToken string, canPost, hasThrownRock, canThrowRock bool, messageNodes []g.Node, conv message.Conversation) g.Node {
+func ConversationModalWithEgg(conversationID, adID, ownerID, enquirerID, currentUserID, enquirerEggCount, ownerEggCount int, adTitle, ownerName, enquirerName, csrfToken string, canPost, hasThrownEgg, canThrowEgg bool, messageNodes []g.Node, conv message.Conversation) g.Node {
 	modalName := fmt.Sprintf("conversation-%d", conversationID)
 
-	var rockUserID int
-	if conv.RockThrowerID != nil {
-		rockUserID = *conv.RockThrowerID
+	var eggUserID int
+	if conv.EggThrowerID != nil {
+		eggUserID = *conv.EggThrowerID
 	}
 
 	return g.Group([]g.Node{
@@ -428,11 +428,11 @@ func ConversationModalWithRock(conversationID, adID, ownerID, enquirerID, curren
 						Div(
 							Class("text-sm text-zinc-600 dark:text-zinc-400"),
 							Span(Class("font-semibold"), g.Text("From: ")),
-							UserRockIcons(enquirerID, enquirerRockCount),
+							UserEggIcons(enquirerID, enquirerEggCount),
 							g.Text(enquirerName),
 							g.Text(", "),
 							Span(Class("font-semibold"), g.Text("To: ")),
-							UserRockIcons(ownerID, ownerRockCount),
+							UserEggIcons(ownerID, ownerEggCount),
 							g.Text(ownerName),
 							g.Text(" (ad owner)"),
 							g.If(!canPost && (ownerID != currentUserID && enquirerID != currentUserID),
@@ -442,22 +442,22 @@ func ConversationModalWithRock(conversationID, adID, ownerID, enquirerID, curren
 								),
 							),
 						),
-						g.If(!canPost && conv.RockThrowerID != nil,
+						g.If(!canPost && conv.EggThrowerID != nil,
 							Div(
 								Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1"),
-								g.Text("Rock thrown by: "),
-								g.If(rockUserID == currentUserID,
+								g.Text("Egg thrown by: "),
+								g.If(eggUserID == currentUserID,
 									// Current user threw it - use blue color (like sent messages)
 									Span(Class("text-blue-600 dark:text-blue-400 font-medium"),
-										g.If(rockUserID == ownerID, g.Text(ownerName)),
-										g.If(rockUserID == enquirerID, g.Text(enquirerName)),
+										g.If(eggUserID == ownerID, g.Text(ownerName)),
+										g.If(eggUserID == enquirerID, g.Text(enquirerName)),
 									),
 								),
-								g.If(rockUserID != currentUserID,
+								g.If(eggUserID != currentUserID,
 									// Someone else threw it - use gray color (like received messages)
 									Span(Class("text-zinc-700 dark:text-zinc-300 font-medium"),
-										g.If(rockUserID == ownerID, g.Text(ownerName)),
-										g.If(rockUserID == enquirerID, g.Text(enquirerName)),
+										g.If(eggUserID == ownerID, g.Text(ownerName)),
+										g.If(eggUserID == enquirerID, g.Text(enquirerName)),
 									),
 								),
 							),
@@ -500,13 +500,13 @@ func ConversationModalWithRock(conversationID, adID, ownerID, enquirerID, curren
 					),
 					ConversationMessagesSentinel(conversationID),
 				),
-				ConversationForm(conversationID, adID, csrfToken, canPost, hasThrownRock, canThrowRock, len(messageNodes)),
+				ConversationForm(conversationID, adID, csrfToken, canPost, hasThrownEgg, canThrowEgg, len(messageNodes)),
 			),
 		),
 	})
 }
 
-func ConversationListItem(conversationID, adID, ownerID, enquirerID, currentUserID int, adTitle, lastMessageContent, otherUserName string, lastMessageAt *time.Time, updatedAt time.Time, hasUnread bool, rockCount int, otherUserRockCount int) g.Node {
+func ConversationListItem(conversationID, adID, ownerID, enquirerID, currentUserID int, adTitle, lastMessageContent, otherUserName string, lastMessageAt *time.Time, updatedAt time.Time, hasUnread bool, eggCount int, otherUserEggCount int) g.Node {
 	lastMessagePreview := lastMessageContent
 	if len(lastMessagePreview) > 50 {
 		lastMessagePreview = lastMessagePreview[:50] + "..."
@@ -525,7 +525,7 @@ func ConversationListItem(conversationID, adID, ownerID, enquirerID, currentUser
 		hx.Get(fmt.Sprintf("/auth/conversation/%d", conversationID)),
 		hx.Target("body"),
 		hx.Swap("beforeend"),
-		hx.Trigger("click[!closest(.rock-icon-container)]"),
+		hx.Trigger("click[!closest(.egg-icon-container)]"),
 		Div(
 			Class("p-4"),
 			Div(
@@ -537,7 +537,7 @@ func ConversationListItem(conversationID, adID, ownerID, enquirerID, currentUser
 							Class("bg-green-500 rounded-full w-2 h-2 flex-shrink-0"),
 						),
 					),
-					g.If(rockCount > 0, RockIcons(adID, rockCount)),
+					g.If(eggCount > 0, EggIcons(adID, eggCount)),
 					Span(
 						Class("text-lg font-semibold text-zinc-900 dark:text-zinc-200"),
 						g.Text(adTitle),
@@ -555,14 +555,14 @@ func ConversationListItem(conversationID, adID, ownerID, enquirerID, currentUser
 					g.If(enquirerID == currentUserID,
 						g.Group([]g.Node{
 							g.Text("To: "),
-							UserRockIcons(ownerID, otherUserRockCount),
+							UserEggIcons(ownerID, otherUserEggCount),
 							g.Text(otherUserName),
 						}),
 					),
 					g.If(ownerID == currentUserID,
 						g.Group([]g.Node{
 							g.Text("From: "),
-							UserRockIcons(enquirerID, otherUserRockCount),
+							UserEggIcons(enquirerID, otherUserEggCount),
 							g.Text(otherUserName),
 						}),
 					),

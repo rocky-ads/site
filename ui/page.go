@@ -32,7 +32,7 @@ func seoMetaTags() []g.Node {
 		Meta(
 			g.Attr("property", "og:description"),
 			Content(
-				"Rocky Ads - Classified ads without the newspaper. Buy and "+
+				config.ServerName+" - Classified ads without the newspaper. Buy and "+
 					"sell vehicles, parts, jobs, pets, housing, and more.",
 			),
 		),
@@ -142,7 +142,7 @@ func navigation(userID int, userName, currentPath string, hasUnread bool) g.Node
 			Href("/"),
 			Class("flex items-center gap-2"),
 			Img(
-				Src("/images/rocks.png"),
+				Src("/images/three-eggs.png"),
 				Alt("Rocks"),
 				Class("h-8"),
 			),

@@ -10,7 +10,7 @@ import (
 	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/message"
 	"github.com/rocky-ads/site/param"
-	"github.com/rocky-ads/site/rock"
+	"github.com/rocky-ads/site/egg"
 	"github.com/rocky-ads/site/service/sms"
 	"github.com/rocky-ads/site/ui"
 	"github.com/rocky-ads/site/user"
@@ -25,29 +25,29 @@ func buildMessageNodes(messages []message.Message, currentUserID int, loc *time.
 	return messageNodes
 }
 
-func buildMessageNodesWithRock(messages []message.Message, currentUserID int, loc *time.Location, conv message.Conversation, ownerID, enquirerID int) []g.Node {
+func buildMessageNodesWithEgg(messages []message.Message, currentUserID int, loc *time.Location, conv message.Conversation, ownerID, enquirerID int) []g.Node {
 	var messageNodes []g.Node
 
-	// Insert rock-thrown message if it exists
-	if conv.RockThrowerID != nil && conv.RockThrownAt != nil {
-		// Find the right position to insert the rock message (chronologically)
+	// Insert egg-thrown message if it exists
+	if conv.EggThrowerID != nil && conv.EggThrownAt != nil {
+		// Find the right position to insert the egg message (chronologically)
 		inserted := false
 		for _, msg := range messages {
-			if !inserted && msg.CreatedAt.After(*conv.RockThrownAt) {
-				// Insert rock message before this message
-				rockThrownNode := ui.RockThrownMessage(*conv.RockThrowerID, currentUserID, *conv.RockThrownAt, loc, ownerID, enquirerID)
-				messageNodes = append(messageNodes, rockThrownNode)
+			if !inserted && msg.CreatedAt.After(*conv.EggThrownAt) {
+				// Insert egg message before this message
+				eggThrownNode := ui.EggThrownMessage(*conv.EggThrowerID, currentUserID, *conv.EggThrownAt, loc, ownerID, enquirerID)
+				messageNodes = append(messageNodes, eggThrownNode)
 				inserted = true
 			}
 			messageNodes = append(messageNodes, ui.MessageItem(msg.SenderID, currentUserID, msg.Content, msg.CreatedAt, loc))
 		}
-		// If rock was thrown after all messages, append it at the end
+		// If egg was thrown after all messages, append it at the end
 		if !inserted {
-			rockThrownNode := ui.RockThrownMessage(*conv.RockThrowerID, currentUserID, *conv.RockThrownAt, loc, ownerID, enquirerID)
-			messageNodes = append(messageNodes, rockThrownNode)
+			eggThrownNode := ui.EggThrownMessage(*conv.EggThrowerID, currentUserID, *conv.EggThrownAt, loc, ownerID, enquirerID)
+			messageNodes = append(messageNodes, eggThrownNode)
 		}
 	} else {
-		// No rock, just add messages normally
+		// No egg, just add messages normally
 		for _, msg := range messages {
 			messageNodes = append(messageNodes, ui.MessageItem(msg.SenderID, currentUserID, msg.Content, msg.CreatedAt, loc))
 		}
@@ -90,7 +90,7 @@ func sendMessageUpdate(conversationID int, msg message.Message, recipientID int)
 	}
 
 	// Build message nodes
-	messageNodes := buildMessageNodesWithRock(messages, recipientID, loc, conv, conv.OwnerID, conv.EnquirerID)
+	messageNodes := buildMessageNodesWithEgg(messages, recipientID, loc, conv, conv.OwnerID, conv.EnquirerID)
 
 	// Get ad info
 	a, err := ad.GetAd(recipientID, conv.AdID, loc)
@@ -106,9 +106,9 @@ func sendMessageUpdate(conversationID int, msg message.Message, recipientID int)
 		return
 	}
 
-	// Get rock counts
-	enquirerRockCount, _ := rock.GetRockCountForUser(conv.EnquirerID)
-	ownerRockCount, _ := rock.GetRockCountForUser(conv.OwnerID)
+	// Get egg counts
+	enquirerEggCount, _ := egg.GetEggCountForUser(conv.EnquirerID)
+	ownerEggCount, _ := egg.GetEggCountForUser(conv.OwnerID)
 
 	// Check permissions
 	canPost, err := message.CanUserPost(conversationID, recipientID)
@@ -117,10 +117,10 @@ func sendMessageUpdate(conversationID int, msg message.Message, recipientID int)
 		canPost = false
 	}
 
-	hasThrownRock, _ := rock.HasUserThrownRock(recipientID, conversationID)
-	rockCount, _ := rock.GetRockCountForConversation(conversationID)
-	userRockCount, _ := rock.GetUserRockCount(recipientID)
-	canThrowRock := canPost && rockCount == 0 && userRockCount < 3
+	hasThrownEgg, _ := egg.HasUserThrownEgg(recipientID, conversationID)
+	eggCount, _ := egg.GetEggCountForConversation(conversationID)
+	userEggCount, _ := egg.GetUserEggCount(recipientID)
+	canThrowEgg := canPost && eggCount == 0 && userEggCount < 3
 
 	// Render modal div with OOB swap (no CSRF token needed for SSE - it's read-only)
 	modalSwapOOB := ui.ConversationModalSwapOOB(
@@ -129,15 +129,15 @@ func sendMessageUpdate(conversationID int, msg message.Message, recipientID int)
 		conv.OwnerID,
 		conv.EnquirerID,
 		recipientID,
-		enquirerRockCount,
-		ownerRockCount,
+		enquirerEggCount,
+		ownerEggCount,
 		a.Title,
 		ownerName,
 		enquirerName,
 		"", // No CSRF token for SSE updates
 		canPost,
-		hasThrownRock,
-		canThrowRock,
+		hasThrownEgg,
+		canThrowEgg,
 		messageNodes,
 		conv,
 	)
@@ -216,7 +216,7 @@ func sendMessageAndRenderUpdate(c *fiber.Ctx, conv message.Conversation, current
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get messages")
 	}
 
-	messageNodes := buildMessageNodesWithRock(messages, currentUserID, loc, updatedConv, updatedConv.OwnerID, updatedConv.EnquirerID)
+	messageNodes := buildMessageNodesWithEgg(messages, currentUserID, loc, updatedConv, updatedConv.OwnerID, updatedConv.EnquirerID)
 
 	a, err := ad.GetAd(currentUserID, updatedConv.AdID, loc)
 	if err != nil {
@@ -228,18 +228,18 @@ func sendMessageAndRenderUpdate(c *fiber.Ctx, conv message.Conversation, current
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get user names")
 	}
 
-	enquirerRockCount, _ := rock.GetRockCountForUser(updatedConv.EnquirerID)
-	ownerRockCount, _ := rock.GetRockCountForUser(updatedConv.OwnerID)
+	enquirerEggCount, _ := egg.GetEggCountForUser(updatedConv.EnquirerID)
+	ownerEggCount, _ := egg.GetEggCountForUser(updatedConv.OwnerID)
 
 	canPost, err := message.CanUserPost(conv.ID, currentUserID)
 	if err != nil {
 		canPost = false
 	}
 
-	hasThrownRock, _ := rock.HasUserThrownRock(currentUserID, conv.ID)
-	rockCount, _ := rock.GetRockCountForConversation(conv.ID)
-	userRockCount, _ := rock.GetUserRockCount(currentUserID)
-	canThrowRock := canPost && rockCount == 0 && userRockCount < 3
+	hasThrownEgg, _ := egg.HasUserThrownEgg(currentUserID, conv.ID)
+	eggCount, _ := egg.GetEggCountForConversation(conv.ID)
+	userEggCount, _ := egg.GetUserEggCount(currentUserID)
+	canThrowEgg := canPost && eggCount == 0 && userEggCount < 3
 
 	// Determine target modal ID for OOB swap
 	// For new conversations, target conversation-0-modal; for existing, target conversation-{id}-modal
@@ -255,15 +255,15 @@ func sendMessageAndRenderUpdate(c *fiber.Ctx, conv message.Conversation, current
 		updatedConv.OwnerID,
 		updatedConv.EnquirerID,
 		currentUserID,
-		enquirerRockCount,
-		ownerRockCount,
+		enquirerEggCount,
+		ownerEggCount,
 		a.Title,
 		ownerName,
 		enquirerName,
 		csrfToken,
 		canPost,
-		hasThrownRock,
-		canThrowRock,
+		hasThrownEgg,
+		canThrowEgg,
 		messageNodes,
 		updatedConv,
 		targetModalID,
@@ -322,8 +322,8 @@ func sendConversationListItemUpdate(conv message.Conversation, currentUserID int
 		otherUserID = conv.OwnerID
 	}
 
-	// Get rock count for the other user
-	otherUserRockCount, _ := rock.GetRockCountForUser(otherUserID)
+	// Get egg count for the other user
+	otherUserEggCount, _ := egg.GetEggCountForUser(otherUserID)
 
 	// Get last message for preview
 	messages, err := message.GetConversationMessages(conv.ID, currentUserID, time.UTC)
@@ -349,7 +349,7 @@ func sendConversationListItemUpdate(conv message.Conversation, currentUserID int
 		conv.UpdatedAt,
 		hasUnread,
 		a.RockCount,
-		otherUserRockCount,
+		otherUserEggCount,
 	)
 	conversationItemSwapOOB := ui.ConversationListItemSwapOOB(conv.ID, conversationItem)
 	itemHTML, err := renderToString(conversationItemSwapOOB)
@@ -374,8 +374,8 @@ func renderConversationModal(c *fiber.Ctx, conv message.Conversation, currentUse
 	var messages []message.Message
 	var messageNodes []g.Node
 	var canPost bool
-	var hasThrownRock bool
-	var canThrowRock bool
+	var hasThrownEgg bool
+	var canThrowEgg bool
 
 	// Handle case where conversation doesn't exist yet (ID == 0)
 	if conv.ID == 0 {
@@ -383,8 +383,8 @@ func renderConversationModal(c *fiber.Ctx, conv message.Conversation, currentUse
 		messages = []message.Message{}
 		messageNodes = []g.Node{}
 		canPost = true
-		hasThrownRock = false
-		canThrowRock = false // Can't throw rock until conversation exists
+		hasThrownEgg = false
+		canThrowEgg = false // Can't throw egg until conversation exists
 	} else {
 		// Existing conversation
 		messages, err = message.GetConversationMessages(conv.ID, currentUserID, loc)
@@ -392,7 +392,7 @@ func renderConversationModal(c *fiber.Ctx, conv message.Conversation, currentUse
 			return fiber.NewError(fiber.StatusInternalServerError, "Failed to get messages")
 		}
 
-		messageNodes = buildMessageNodesWithRock(messages, currentUserID, loc, conv, conv.OwnerID, conv.EnquirerID)
+		messageNodes = buildMessageNodesWithEgg(messages, currentUserID, loc, conv, conv.OwnerID, conv.EnquirerID)
 
 		// Check if user can post (must be participant)
 		canPost, err = message.CanUserPost(conv.ID, currentUserID)
@@ -400,27 +400,27 @@ func renderConversationModal(c *fiber.Ctx, conv message.Conversation, currentUse
 			return fiber.NewError(fiber.StatusInternalServerError, "Failed to check permissions")
 		}
 
-		// Check if user has thrown a rock
-		hasThrownRock, err = rock.HasUserThrownRock(currentUserID, conv.ID)
+		// Check if user has thrown an egg
+		hasThrownEgg, err = egg.HasUserThrownEgg(currentUserID, conv.ID)
 		if err != nil {
-			logger.Error("Failed to check if user threw rock", "error", err, "conversationID", conv.ID, "userID", currentUserID)
-			hasThrownRock = false
+			logger.Error("Failed to check if user threw egg", "error", err, "conversationID", conv.ID, "userID", currentUserID)
+			hasThrownEgg = false
 		}
 
-		// Check if ANY rock exists on this conversation
-		rockCount, err := rock.GetRockCountForConversation(conv.ID)
+		// Check if ANY egg exists on this conversation
+		eggCount, err := egg.GetEggCountForConversation(conv.ID)
 		if err != nil {
-			logger.Error("Failed to get rock count for conversation", "error", err, "conversationID", conv.ID)
-			rockCount = 0
+			logger.Error("Failed to get egg count for conversation", "error", err, "conversationID", conv.ID)
+			eggCount = 0
 		}
-		hasAnyRock := rockCount > 0
+		hasAnyEgg := eggCount > 0
 
-		// Check if user can throw rock (must be participant, have < 3 rocks, AND no rock exists on this conversation)
-		canThrowRock = false
-		if canPost && !hasAnyRock {
-			userRockCount, err := rock.GetUserRockCount(currentUserID)
-			if err == nil && userRockCount < 3 {
-				canThrowRock = true
+		// Check if user can throw egg (must be participant, have < 3 eggs, AND no egg exists on this conversation)
+		canThrowEgg = false
+		if canPost && !hasAnyEgg {
+			userEggCount, err := egg.GetUserEggCount(currentUserID)
+			if err == nil && userEggCount < 3 {
+				canThrowEgg = true
 			}
 		}
 	}
@@ -431,25 +431,25 @@ func renderConversationModal(c *fiber.Ctx, conv message.Conversation, currentUse
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get user names")
 	}
 
-	// Get rock counts for owner and enquirer
-	enquirerRockCount, _ := rock.GetRockCountForUser(conv.EnquirerID)
-	ownerRockCount, _ := rock.GetRockCountForUser(conv.OwnerID)
+	// Get egg counts for owner and enquirer
+	enquirerEggCount, _ := egg.GetEggCountForUser(conv.EnquirerID)
+	ownerEggCount, _ := egg.GetEggCountForUser(conv.OwnerID)
 
-	return render(c, ui.ConversationModalWithRock(
+	return render(c, ui.ConversationModalWithEgg(
 		conv.ID,
 		conv.AdID,
 		conv.OwnerID,
 		conv.EnquirerID,
 		currentUserID,
-		enquirerRockCount,
-		ownerRockCount,
+		enquirerEggCount,
+		ownerEggCount,
 		a.Title,
 		ownerName,
 		enquirerName,
 		csrfToken,
 		canPost,
-		hasThrownRock,
-		canThrowRock,
+		hasThrownEgg,
+		canThrowEgg,
 		messageNodes,
 		conv,
 	))
@@ -485,8 +485,8 @@ func MessageModalHandler(c *fiber.Ctx) error {
 				AdID:          adID,
 				OwnerID:       a.UserID,
 				EnquirerID:    currentUserID,
-				RockThrowerID: nil,
-				RockThrownAt:  nil,
+				EggThrowerID: nil,
+				EggThrownAt:  nil,
 			}
 		} else {
 			logger.Error("Failed to get conversation", "error", err, "adID", adID, "ownerID", a.UserID, "enquirerID", currentUserID)
@@ -574,7 +574,7 @@ func ConversationModalHandler(c *fiber.Ctx) error {
 	}
 
 	// Check if conversation is public or user is participant
-	if conv.RockThrowerID == nil && conv.OwnerID != currentUserID && conv.EnquirerID != currentUserID {
+	if conv.EggThrowerID == nil && conv.OwnerID != currentUserID && conv.EnquirerID != currentUserID {
 		return fiber.NewError(fiber.StatusForbidden, "Conversation not found")
 	}
 
@@ -626,15 +626,15 @@ func UserMessagesHandler(c *fiber.Ctx) error {
 			otherUserName = "Unknown User"
 		}
 
-		// Get ad to get rock count for rock icons
+		// Get ad to get egg count for egg icons
 		a, err := ad.GetAd(currentUserID, conv.AdID, loc)
-		rockCount := 0
+		eggCount := 0
 		if err == nil {
-			rockCount = a.RockCount
+			eggCount = a.RockCount
 		}
 
-		// Get rock count for the other user
-		otherUserRockCount, _ := rock.GetRockCountForUser(conv.OtherUserID)
+		// Get egg count for the other user
+		otherUserEggCount, _ := egg.GetEggCountForUser(conv.OtherUserID)
 
 		conversationItems = append(conversationItems, ui.ConversationListItem(
 			conv.ID,
@@ -648,8 +648,8 @@ func UserMessagesHandler(c *fiber.Ctx) error {
 			conv.LastMessageAt,
 			conv.UpdatedAt,
 			conv.HasUnread,
-			rockCount,
-			otherUserRockCount,
+			eggCount,
+			otherUserEggCount,
 		))
 	}
 

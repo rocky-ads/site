@@ -7,7 +7,7 @@ import (
 	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/message"
-	"github.com/rocky-ads/site/rock"
+	"github.com/rocky-ads/site/egg"
 	"github.com/rocky-ads/site/ui"
 )
 
@@ -16,9 +16,9 @@ func UserMenuHandler(c *fiber.Ctx) error {
 	userName := local.GetUserName(c)
 	isAdmin := local.GetUserIsAdmin(c)
 	hasUnread, _ := message.GetHasUnread(userID)
-	rockCount, _ := rock.GetUserRockCount(userID)
-	userRockCount, _ := rock.GetRockCountForUser(userID)
-	return render(c, ui.UserMenu(userName, userID, isAdmin, hasUnread, rockCount, userRockCount))
+	eggCount, _ := egg.GetUserEggCount(userID)
+	userEggCount, _ := egg.GetEggCountForUser(userID)
+	return render(c, ui.UserMenu(userName, userID, isAdmin, hasUnread, eggCount, userEggCount))
 }
 
 func UserMyAdsHandler(c *fiber.Ctx) error {
@@ -66,7 +66,7 @@ func UserAboutHandler(c *fiber.Ctx) error {
 	return renderPage(c, "About", ui.AboutPage())
 }
 
-func UserRockConversationHandler(c *fiber.Ctx) error {
+func UserEggConversationHandler(c *fiber.Ctx) error {
 	userID, err := c.ParamsInt("id")
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid user ID")
@@ -74,7 +74,7 @@ func UserRockConversationHandler(c *fiber.Ctx) error {
 
 	ordinal, err := c.ParamsInt("ordinal")
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid rock ordinal")
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid egg ordinal")
 	}
 
 	currentUserID := local.GetUserID(c)
@@ -82,9 +82,9 @@ func UserRockConversationHandler(c *fiber.Ctx) error {
 	csrfToken := local.GetCSRFToken(c)
 
 	// Get conversation ID by ordinal
-	conversationID, err := rock.GetConversationIDForUserRockByOrdinal(userID, ordinal)
+	conversationID, err := egg.GetConversationIDForUserEggByOrdinal(userID, ordinal)
 	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, "Rock conversation not found")
+		return fiber.NewError(fiber.StatusNotFound, "Egg conversation not found")
 	}
 
 	// Get conversation
@@ -94,7 +94,7 @@ func UserRockConversationHandler(c *fiber.Ctx) error {
 	}
 
 	// Check if conversation is public or user is participant
-	if conv.RockThrowerID == nil && conv.OwnerID != currentUserID && conv.EnquirerID != currentUserID {
+	if conv.EggThrowerID == nil && conv.OwnerID != currentUserID && conv.EnquirerID != currentUserID {
 		return fiber.NewError(fiber.StatusForbidden, "Conversation not found")
 	}
 

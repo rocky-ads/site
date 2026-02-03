@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 
+	"github.com/rocky-ads/site/config"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -17,7 +18,7 @@ func menuIcon(iconSrc, alt string) g.Node {
 	)
 }
 
-func menuHeader(userName string, rockCount int, userRockIcons g.Node) g.Node {
+func menuHeader(userName string, eggCount int, userEggIcons g.Node) g.Node {
 	return Div(
 		Class("px-4 py-3 border-b border-zinc-100 text-center"),
 		Div(
@@ -29,9 +30,9 @@ func menuHeader(userName string, rockCount int, userRockIcons g.Node) g.Node {
 			Div(
 				Class("text-sm font-medium text-zinc-900 flex items-center gap-1"),
 				g.Text(userName),
-				userRockIcons,
+				userEggIcons,
 			),
-			RockCountBadge(rockCount),
+			EggCountBadge(eggCount),
 		),
 		Div(
 			Class("text-xs text-zinc-500"),
@@ -40,7 +41,7 @@ func menuHeader(userName string, rockCount int, userRockIcons g.Node) g.Node {
 	)
 }
 
-func UserMenu(userName string, userID int, isAdmin bool, hasUnread bool, rockCount int, userRockCount int) g.Node {
+func UserMenu(userName string, userID int, isAdmin bool, hasUnread bool, eggCount int, userEggCount int) g.Node {
 	var menuItems []g.Node
 
 	if isAdmin {
@@ -101,7 +102,7 @@ func UserMenu(userName string, userID int, isAdmin bool, hasUnread bool, rockCou
 			Class("fixed z-50 top-20 right-6"),
 			Div(
 				Class("bg-white rounded-lg shadow-lg border border-zinc-200 w-40"),
-				menuHeader(userName, rockCount, UserRockIcons(userID, userRockCount)),
+				menuHeader(userName, eggCount, UserEggIcons(userID, userEggCount)),
 				Div(
 					Class("py-1"),
 					g.Group(menuItems),
@@ -194,7 +195,7 @@ func AboutPage() []g.Node {
 		pageTitle("About"),
 		Div(
 			Class("mt-8 text-center text-zinc-600 dark:text-zinc-400"),
-			P(g.Text("This page will show information about Rocky Ads.")),
+			P(g.Textf("This page will show information about %s.", config.ServerName)),
 		),
 	}
 }

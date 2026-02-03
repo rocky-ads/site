@@ -61,8 +61,8 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix={{branch}}-
           labels: |
-            org.opencontainers.image.title=Rocky Ads Site
-            org.opencontainers.image.description=Rocky Ads Site
+            org.opencontainers.image.title=Eggy Ads Site
+            org.opencontainers.image.description=Eggy Ads Site
 
       - name: Build and push Docker images
         uses: docker/build-push-action@v5
@@ -115,7 +115,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix={{branch}}-
           labels: |
-            org.opencontainers.image.title=Rocky Ads Jump Server
+            org.opencontainers.image.title=Eggy Ads Jump Server
             org.opencontainers.image.description=Jump server with test_db_perf for database performance testing
 
       - name: Build and push jump server image
@@ -169,8 +169,8 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix={{branch}}-
           labels: |
-            org.opencontainers.image.title=Rocky Ads MinIO Server
-            org.opencontainers.image.description=MinIO object storage server for Rocky Ads
+            org.opencontainers.image.title=Eggy Ads MinIO Server
+            org.opencontainers.image.description=MinIO object storage server for Eggy Ads
 
       - name: Build and push MinIO image
         uses: docker/build-push-action@v5

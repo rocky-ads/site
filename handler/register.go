@@ -277,6 +277,6 @@ func RegisterStep3Handler(c *fiber.Ctx) error {
 }
 
 func WelcomeHandler(c *fiber.Ctx) error {
-	rockCount := 3
-	return renderPage(c, "Welcome", ui.WelcomePage(rockCount))
+	eggCount := 3
+	return renderPage(c, "Welcome", ui.WelcomePage(eggCount))
 }

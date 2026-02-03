@@ -14,12 +14,12 @@ type Conversation struct {
 	AdID              int        `db:"ad_id" json:"ad_id"`
 	OwnerID           int        `db:"owner_id" json:"owner_id"`
 	EnquirerID        int        `db:"enquirer_id" json:"enquirer_id"`
-	CreatedAt         time.Time  `db:"created_at" json:"created_at"` // Computed: MIN(messages.created_at) or rock_thrown_at
-	UpdatedAt         time.Time  `db:"updated_at" json:"updated_at"` // Computed: MAX(MAX(messages.created_at), rock_thrown_at)
+	CreatedAt         time.Time  `db:"created_at" json:"created_at"` // Computed: MIN(messages.created_at) or egg_thrown_at
+	UpdatedAt         time.Time  `db:"updated_at" json:"updated_at"` // Computed: MAX(MAX(messages.created_at), egg_thrown_at)
 	OwnerHasUnread    bool       `db:"owner_has_unread" json:"owner_has_unread"`
 	EnquirerHasUnread bool       `db:"enquirer_has_unread" json:"enquirer_has_unread"`
-	RockThrowerID     *int       `db:"rock_thrower_id" json:"rock_thrower_id"` // nil = no rock (private), NOT NULL = public, owner_id = bound to enquirer, enquirer_id = bound to ad
-	RockThrownAt      *time.Time `db:"rock_thrown_at" json:"rock_thrown_at"`   // Only valid if rock_thrower_id IS NOT NULL
+	EggThrowerID     *int       `db:"egg_thrower_id" json:"egg_thrower_id"` // nil = no egg (private), NOT NULL = public, owner_id = bound to enquirer, enquirer_id = bound to ad
+	EggThrownAt      *time.Time `db:"egg_thrown_at" json:"egg_thrown_at"`   // Only valid if egg_thrower_id IS NOT NULL
 }
 
 type Message struct {
@@ -54,23 +54,23 @@ func GetConversationByAdAndEnquirer(adID, ownerID, enquirerID int) (Conversation
 	}
 
 	var conv Conversation
-	var rockThrownAt sql.NullTime
+	var eggThrownAt sql.NullTime
 	query := `
 		SELECT
 			c.id, c.ad_id, c.owner_id, c.enquirer_id,
-			c.owner_has_unread, c.enquirer_has_unread, c.rock_thrower_id, c.rock_thrown_at,
-			COALESCE(MIN(m.created_at), c.rock_thrown_at, datetime('now')) AS created_at,
+			c.owner_has_unread, c.enquirer_has_unread, c.egg_thrower_id, c.egg_thrown_at,
+			COALESCE(MIN(m.created_at), c.egg_thrown_at, datetime('now')) AS created_at,
 			COALESCE((SELECT MAX(ts) FROM (
 				SELECT MAX(m2.created_at) AS ts FROM messages m2 WHERE m2.conversation_id = c.id
 				UNION ALL
-				SELECT c.rock_thrown_at AS ts WHERE c.rock_thrown_at IS NOT NULL
+				SELECT c.egg_thrown_at AS ts WHERE c.egg_thrown_at IS NOT NULL
 			)), datetime('now')) AS updated_at
 		FROM conversations c
 		LEFT JOIN messages m ON c.id = m.conversation_id
 		WHERE c.ad_id = ? AND c.enquirer_id = ?
 		GROUP BY c.id
 	`
-	var rockThrowerID sql.NullInt64
+	var eggThrowerID sql.NullInt64
 	var createdAtStr string
 	var updatedAtStr string
 	err := db.QueryRow(query, adID, enquirerID).Scan(
@@ -80,8 +80,8 @@ func GetConversationByAdAndEnquirer(adID, ownerID, enquirerID int) (Conversation
 		&conv.EnquirerID,
 		&conv.OwnerHasUnread,
 		&conv.EnquirerHasUnread,
-		&rockThrowerID,
-		&rockThrownAt,
+		&eggThrowerID,
+		&eggThrownAt,
 		&createdAtStr,
 		&updatedAtStr,
 	)
@@ -112,16 +112,16 @@ func GetConversationByAdAndEnquirer(adID, ownerID, enquirerID int) (Conversation
 		}
 	}
 	conv.UpdatedAt = updatedAt
-	if rockThrowerID.Valid {
-		id := int(rockThrowerID.Int64)
-		conv.RockThrowerID = &id
+	if eggThrowerID.Valid {
+		id := int(eggThrowerID.Int64)
+		conv.EggThrowerID = &id
 	} else {
-		conv.RockThrowerID = nil
+		conv.EggThrowerID = nil
 	}
-	if rockThrownAt.Valid {
-		conv.RockThrownAt = &rockThrownAt.Time
+	if eggThrownAt.Valid {
+		conv.EggThrownAt = &eggThrownAt.Time
 	} else {
-		conv.RockThrownAt = nil
+		conv.EggThrownAt = nil
 	}
 	// Verify owner_id matches (in case ad ownership changed)
 	if conv.OwnerID != ownerID {
@@ -146,7 +146,7 @@ func CreateConversation(adID, ownerID, enquirerID int) (Conversation, error) {
 	}
 
 	result, err := db.Exec(`
-		INSERT INTO conversations (ad_id, owner_id, enquirer_id, owner_has_unread, enquirer_has_unread, rock_thrower_id)
+		INSERT INTO conversations (ad_id, owner_id, enquirer_id, owner_has_unread, enquirer_has_unread, egg_thrower_id)
 		VALUES (?, ?, ?, 0, 0, NULL)
 	`, adID, ownerID, enquirerID)
 	if err != nil {
@@ -171,32 +171,32 @@ func CreateConversation(adID, ownerID, enquirerID int) (Conversation, error) {
 	conv.AdID = adID
 	conv.OwnerID = ownerID
 	conv.EnquirerID = enquirerID
-	conv.RockThrowerID = nil
-	conv.RockThrownAt = nil
-	// CreatedAt and UpdatedAt will be computed from messages/rock_thrown_at on next query
+	conv.EggThrowerID = nil
+	conv.EggThrownAt = nil
+	// CreatedAt and UpdatedAt will be computed from messages/egg_thrown_at on next query
 
 	return conv, nil
 }
 
 func GetConversation(conversationID, userID int) (Conversation, error) {
 	var conv Conversation
-	var rockThrownAt sql.NullTime
+	var eggThrownAt sql.NullTime
 	query := `
 		SELECT 
 			c.id, c.ad_id, c.owner_id, c.enquirer_id,
-			c.owner_has_unread, c.enquirer_has_unread, c.rock_thrower_id, c.rock_thrown_at,
-			COALESCE(MIN(m.created_at), c.rock_thrown_at, datetime('now')) AS created_at,
+			c.owner_has_unread, c.enquirer_has_unread, c.egg_thrower_id, c.egg_thrown_at,
+			COALESCE(MIN(m.created_at), c.egg_thrown_at, datetime('now')) AS created_at,
 			COALESCE((SELECT MAX(ts) FROM (
 				SELECT MAX(m2.created_at) AS ts FROM messages m2 WHERE m2.conversation_id = c.id
 				UNION ALL
-				SELECT c.rock_thrown_at AS ts WHERE c.rock_thrown_at IS NOT NULL
+				SELECT c.egg_thrown_at AS ts WHERE c.egg_thrown_at IS NOT NULL
 			)), datetime('now')) AS updated_at
 		FROM conversations c
 		LEFT JOIN messages m ON c.id = m.conversation_id
-		WHERE c.id = ? AND (c.owner_id = ? OR c.enquirer_id = ? OR c.rock_thrower_id IS NOT NULL)
+		WHERE c.id = ? AND (c.owner_id = ? OR c.enquirer_id = ? OR c.egg_thrower_id IS NOT NULL)
 		GROUP BY c.id
 	`
-	var rockThrowerID sql.NullInt64
+	var eggThrowerID sql.NullInt64
 	var createdAtStr string
 	var updatedAtStr string
 	err := db.QueryRow(query, conversationID, userID, userID).Scan(
@@ -206,8 +206,8 @@ func GetConversation(conversationID, userID int) (Conversation, error) {
 		&conv.EnquirerID,
 		&conv.OwnerHasUnread,
 		&conv.EnquirerHasUnread,
-		&rockThrowerID,
-		&rockThrownAt,
+		&eggThrowerID,
+		&eggThrownAt,
 		&createdAtStr,
 		&updatedAtStr,
 	)
@@ -238,16 +238,16 @@ func GetConversation(conversationID, userID int) (Conversation, error) {
 		}
 	}
 	conv.UpdatedAt = updatedAt
-	if rockThrowerID.Valid {
-		id := int(rockThrowerID.Int64)
-		conv.RockThrowerID = &id
+	if eggThrowerID.Valid {
+		id := int(eggThrowerID.Int64)
+		conv.EggThrowerID = &id
 	} else {
-		conv.RockThrowerID = nil
+		conv.EggThrowerID = nil
 	}
-	if rockThrownAt.Valid {
-		conv.RockThrownAt = &rockThrownAt.Time
+	if eggThrownAt.Valid {
+		conv.EggThrownAt = &eggThrownAt.Time
 	} else {
-		conv.RockThrownAt = nil
+		conv.EggThrownAt = nil
 	}
 	return conv, nil
 }
@@ -255,23 +255,23 @@ func GetConversation(conversationID, userID int) (Conversation, error) {
 // GetConversationByID gets a conversation by ID without user check (for public access)
 func GetConversationByID(conversationID int) (Conversation, error) {
 	var conv Conversation
-	var rockThrownAt sql.NullTime
+	var eggThrownAt sql.NullTime
 	query := `
 		SELECT
 			c.id, c.ad_id, c.owner_id, c.enquirer_id,
-			c.owner_has_unread, c.enquirer_has_unread, c.rock_thrower_id, c.rock_thrown_at,
-			COALESCE(MIN(m.created_at), c.rock_thrown_at, datetime('now')) AS created_at,
+			c.owner_has_unread, c.enquirer_has_unread, c.egg_thrower_id, c.egg_thrown_at,
+			COALESCE(MIN(m.created_at), c.egg_thrown_at, datetime('now')) AS created_at,
 			COALESCE((SELECT MAX(ts) FROM (
 				SELECT MAX(m2.created_at) AS ts FROM messages m2 WHERE m2.conversation_id = c.id
 				UNION ALL
-				SELECT c.rock_thrown_at AS ts WHERE c.rock_thrown_at IS NOT NULL
+				SELECT c.egg_thrown_at AS ts WHERE c.egg_thrown_at IS NOT NULL
 			)), datetime('now')) AS updated_at
 		FROM conversations c
 		LEFT JOIN messages m ON c.id = m.conversation_id
 		WHERE c.id = ?
 		GROUP BY c.id
 	`
-	var rockThrowerID sql.NullInt64
+	var eggThrowerID sql.NullInt64
 	var createdAtStr string
 	var updatedAtStr string
 	err := db.QueryRow(query, conversationID).Scan(
@@ -281,8 +281,8 @@ func GetConversationByID(conversationID int) (Conversation, error) {
 		&conv.EnquirerID,
 		&conv.OwnerHasUnread,
 		&conv.EnquirerHasUnread,
-		&rockThrowerID,
-		&rockThrownAt,
+		&eggThrowerID,
+		&eggThrownAt,
 		&createdAtStr,
 		&updatedAtStr,
 	)
@@ -314,35 +314,35 @@ func GetConversationByID(conversationID int) (Conversation, error) {
 	}
 	conv.UpdatedAt = updatedAt
 
-	if rockThrowerID.Valid {
-		id := int(rockThrowerID.Int64)
-		conv.RockThrowerID = &id
+	if eggThrowerID.Valid {
+		id := int(eggThrowerID.Int64)
+		conv.EggThrowerID = &id
 	} else {
-		conv.RockThrowerID = nil
+		conv.EggThrowerID = nil
 	}
-	if rockThrownAt.Valid {
-		conv.RockThrownAt = &rockThrownAt.Time
+	if eggThrownAt.Valid {
+		conv.EggThrownAt = &eggThrownAt.Time
 	} else {
-		conv.RockThrownAt = nil
+		conv.EggThrownAt = nil
 	}
 	return conv, nil
 }
 
-// IsPublic checks if a conversation is public (has a rock thrown)
+// IsPublic checks if a conversation is public (has an egg thrown)
 func IsPublic(conversationID int) (bool, error) {
-	var rockThrowerID sql.NullInt64
+	var eggThrowerID sql.NullInt64
 	err := db.QueryRow(`
-		SELECT rock_thrower_id
+		SELECT egg_thrower_id
 		FROM conversations
 		WHERE id = ?
-	`, conversationID).Scan(&rockThrowerID)
+	`, conversationID).Scan(&eggThrowerID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return false, ErrConversationNotFound
 		}
 		return false, fmt.Errorf("failed to check if conversation is public: %w", err)
 	}
-	return rockThrowerID.Valid, nil
+	return eggThrowerID.Valid, nil
 }
 
 // CanUserPost checks if a user can post to a conversation (must be participant)
@@ -364,19 +364,19 @@ func GetPublicConversations(adID int) ([]Conversation, error) {
 	query := `
 		SELECT 
 			c.id, c.ad_id, c.owner_id, c.enquirer_id,
-			c.owner_has_unread, c.enquirer_has_unread, c.rock_thrower_id, c.rock_thrown_at,
-			COALESCE(MIN(m.created_at), c.rock_thrown_at, datetime('now')) AS created_at,
+			c.owner_has_unread, c.enquirer_has_unread, c.egg_thrower_id, c.egg_thrown_at,
+			COALESCE(MIN(m.created_at), c.egg_thrown_at, datetime('now')) AS created_at,
 			COALESCE(
 				(SELECT MAX(ts) FROM (
 					SELECT MAX(m2.created_at) AS ts FROM messages m2 WHERE m2.conversation_id = c.id
 					UNION ALL
-					SELECT c.rock_thrown_at AS ts WHERE c.rock_thrown_at IS NOT NULL
+					SELECT c.egg_thrown_at AS ts WHERE c.egg_thrown_at IS NOT NULL
 				)),
 				datetime('now')
 			) AS updated_at
 		FROM conversations c
 		LEFT JOIN messages m ON c.id = m.conversation_id
-		WHERE c.ad_id = ? AND c.rock_thrower_id IS NOT NULL
+		WHERE c.ad_id = ? AND c.egg_thrower_id IS NOT NULL
 		GROUP BY c.id
 		ORDER BY updated_at DESC
 	`
@@ -390,8 +390,8 @@ func GetPublicConversations(adID int) ([]Conversation, error) {
 	var conversations []Conversation
 	for rows.Next() {
 		var conv Conversation
-		var rockThrowerID sql.NullInt64
-		var rockThrownAt sql.NullTime
+		var eggThrowerID sql.NullInt64
+		var eggThrownAt sql.NullTime
 		var createdAtStr string
 		var updatedAtStr string
 
@@ -402,8 +402,8 @@ func GetPublicConversations(adID int) ([]Conversation, error) {
 			&conv.EnquirerID,
 			&conv.OwnerHasUnread,
 			&conv.EnquirerHasUnread,
-			&rockThrowerID,
-			&rockThrownAt,
+			&eggThrowerID,
+			&eggThrownAt,
 			&createdAtStr,
 			&updatedAtStr,
 		)
@@ -432,12 +432,12 @@ func GetPublicConversations(adID int) ([]Conversation, error) {
 		}
 		conv.UpdatedAt = updatedAt
 
-		if rockThrowerID.Valid {
-			id := int(rockThrowerID.Int64)
-			conv.RockThrowerID = &id
+		if eggThrowerID.Valid {
+			id := int(eggThrowerID.Int64)
+			conv.EggThrowerID = &id
 		}
-		if rockThrownAt.Valid {
-			conv.RockThrownAt = &rockThrownAt.Time
+		if eggThrownAt.Valid {
+			conv.EggThrownAt = &eggThrownAt.Time
 		}
 
 		conversations = append(conversations, conv)
@@ -459,17 +459,17 @@ func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLas
 			c.enquirer_id,
 			c.owner_has_unread,
 			c.enquirer_has_unread,
-			c.rock_thrower_id,
-			c.rock_thrown_at,
+			c.egg_thrower_id,
+			c.egg_thrown_at,
 			a.title AS ad_title,
 			COALESCE(m.content, '') AS last_message_content,
 			m.created_at AS last_message_at,
-			COALESCE(MIN(msg.created_at), c.rock_thrown_at, datetime('now')) AS created_at,
+			COALESCE(MIN(msg.created_at), c.egg_thrown_at, datetime('now')) AS created_at,
 			COALESCE(
 				(SELECT MAX(ts) FROM (
 					SELECT MAX(msg2.created_at) AS ts FROM messages msg2 WHERE msg2.conversation_id = c.id
 					UNION ALL
-					SELECT c.rock_thrown_at AS ts WHERE c.rock_thrown_at IS NOT NULL
+					SELECT c.egg_thrown_at AS ts WHERE c.egg_thrown_at IS NOT NULL
 				)),
 				datetime('now')
 			) AS updated_at,
@@ -505,8 +505,8 @@ func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLas
 	var conversations []ConversationWithLastMessage
 	for rows.Next() {
 		var conv ConversationWithLastMessage
-		var rockThrowerID sql.NullInt64
-		var rockThrownAt sql.NullTime
+		var eggThrowerID sql.NullInt64
+		var eggThrownAt sql.NullTime
 		var lastMessageAt sql.NullTime
 		var createdAtStr string
 		var updatedAtStr string
@@ -518,8 +518,8 @@ func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLas
 			&conv.EnquirerID,
 			&conv.OwnerHasUnread,
 			&conv.EnquirerHasUnread,
-			&rockThrowerID,
-			&rockThrownAt,
+			&eggThrowerID,
+			&eggThrownAt,
 			&conv.AdTitle,
 			&conv.LastMessageContent,
 			&lastMessageAt,
@@ -553,12 +553,12 @@ func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLas
 		}
 		conv.UpdatedAt = updatedAt
 
-		if rockThrowerID.Valid {
-			id := int(rockThrowerID.Int64)
-			conv.RockThrowerID = &id
+		if eggThrowerID.Valid {
+			id := int(eggThrowerID.Int64)
+			conv.EggThrowerID = &id
 		}
-		if rockThrownAt.Valid {
-			conv.RockThrownAt = &rockThrownAt.Time
+		if eggThrownAt.Valid {
+			conv.EggThrownAt = &eggThrownAt.Time
 		}
 		if lastMessageAt.Valid {
 			conv.LastMessageAt = &lastMessageAt.Time

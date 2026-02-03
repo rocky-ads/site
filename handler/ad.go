@@ -5,6 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/ad"
+	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/field"
@@ -12,7 +13,7 @@ import (
 	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/message"
 	"github.com/rocky-ads/site/param"
-	"github.com/rocky-ads/site/rock"
+	"github.com/rocky-ads/site/egg"
 	"github.com/rocky-ads/site/ui"
 	g "maragu.dev/gomponents"
 )
@@ -39,7 +40,7 @@ func AdHandler(c *fiber.Ctx) error {
 	// Update the ad category cookie based on the ad
 	cookie.SetCategoryID(c, a.CategoryID)
 
-	title := "Rocky Ads - " + a.Title
+	title := config.ServerName + " - " + a.Title
 	csrfToken := local.GetCSRFToken(c)
 	// TODO: Determine reachable based on owner's contact info/verification status
 	reachable := true // For now, assume owner is reachable
@@ -49,7 +50,7 @@ func AdHandler(c *fiber.Ctx) error {
 		!a.IsDeleted(), reachable, csrfToken, a.RockCount))
 }
 
-func AdRockConversationHandler(c *fiber.Ctx) error {
+func AdEggConversationHandler(c *fiber.Ctx) error {
 	adID, err := c.ParamsInt("id")
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
@@ -57,7 +58,7 @@ func AdRockConversationHandler(c *fiber.Ctx) error {
 
 	ordinal, err := c.ParamsInt("ordinal")
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid rock ordinal")
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid egg ordinal")
 	}
 
 	currentUserID := local.GetUserID(c)
@@ -65,9 +66,9 @@ func AdRockConversationHandler(c *fiber.Ctx) error {
 	csrfToken := local.GetCSRFToken(c)
 
 	// Get conversation ID by ordinal
-	conversationID, err := rock.GetPublicConversationIDByOrdinal(adID, ordinal)
+	conversationID, err := egg.GetPublicConversationIDByOrdinal(adID, ordinal)
 	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, "Rock conversation not found")
+		return fiber.NewError(fiber.StatusNotFound, "Egg conversation not found")
 	}
 
 	// Get conversation
@@ -77,7 +78,7 @@ func AdRockConversationHandler(c *fiber.Ctx) error {
 	}
 
 	// Check if conversation is public or user is participant
-	if conv.RockThrowerID == nil && conv.OwnerID != currentUserID && conv.EnquirerID != currentUserID {
+	if conv.EggThrowerID == nil && conv.OwnerID != currentUserID && conv.EnquirerID != currentUserID {
 		return fiber.NewError(fiber.StatusForbidden, "Conversation not found")
 	}
 

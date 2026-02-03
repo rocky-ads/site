@@ -186,14 +186,14 @@ CREATE TABLE conversations (
     enquirer_id INTEGER NOT NULL REFERENCES users(id),
     owner_has_unread INTEGER NOT NULL DEFAULT 0,
     enquirer_has_unread INTEGER NOT NULL DEFAULT 0,
-    rock_thrower_id INTEGER REFERENCES users(id), -- NULL = no rock (private), NOT NULL = public, owner_id = bound to enquirer, enquirer_id = bound to ad
-    rock_thrown_at TIMESTAMP, -- Only valid if rock_thrower_id IS NOT NULL
+    egg_thrower_id INTEGER REFERENCES users(id), -- NULL = no egg (private), NOT NULL = public, owner_id = bound to enquirer, enquirer_id = bound to ad
+    egg_thrown_at TIMESTAMP, -- Only valid if egg_thrower_id IS NOT NULL
     UNIQUE(ad_id, enquirer_id)
 );
 CREATE INDEX idx_conversations_owner ON conversations(owner_id);
 CREATE INDEX idx_conversations_enquirer ON conversations(enquirer_id);
 CREATE INDEX idx_conversations_ad ON conversations(ad_id);
-CREATE INDEX idx_conversations_rock_thrower ON conversations(rock_thrower_id);
+CREATE INDEX idx_conversations_egg_thrower ON conversations(egg_thrower_id);
 
 -- Messages table
 CREATE TABLE messages (

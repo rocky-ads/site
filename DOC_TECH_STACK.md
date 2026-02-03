@@ -1,6 +1,6 @@
 # Tech Stack
 
-This document outlines the technologies, frameworks, and tools used in the Rocky Ads web application.
+This document outlines the technologies, frameworks, and tools used in the Eggy Ads web application.
 
 ## Backend
 

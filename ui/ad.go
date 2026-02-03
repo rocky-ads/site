@@ -113,7 +113,7 @@ func paginationDiv(nextPage int) g.Node {
 	)
 }
 
-func AdGridNode(userID, adID, price, imageCount, nextPage int, title, location, csrfToken string, createdAt time.Time, active, bookmarked, isLast bool, rockCount int) g.Node {
+func AdGridNode(userID, adID, price, imageCount, nextPage int, title, location, csrfToken string, createdAt time.Time, active, bookmarked, isLast bool, eggCount int) g.Node {
 	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
 
 	class := "flex flex-col cursor-pointer gap-1 py-3"
@@ -137,7 +137,7 @@ func AdGridNode(userID, adID, price, imageCount, nextPage int, title, location, 
 		Div(
 			Class("flex items-center gap-2 min-w-0"),
 			g.If(userID != 0 && bookmarked, BookmarkButton(adID, bookmarked, csrfToken)),
-			g.If(rockCount > 0, RockIcons(adID, rockCount)),
+			g.If(eggCount > 0, EggIcons(adID, eggCount)),
 			Span(Class("min-w-0"), g.Text(title)),
 		),
 	)
@@ -152,7 +152,7 @@ func AdGridNode(userID, adID, price, imageCount, nextPage int, title, location, 
 	return node
 }
 
-func AdListNode(userID, adID, price int, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string, isLast bool, nextPage int, rockCount int) g.Node {
+func AdListNode(userID, adID, price int, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string, isLast bool, nextPage int, eggCount int) g.Node {
 	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
 
 	class := "flex flex-wrap items-center justify-between py-2 px-3 cursor-pointer"
@@ -168,7 +168,7 @@ func AdListNode(userID, adID, price int, title, location string, createdAt time.
 		Div(
 			Class("flex items-center gap-2 min-w-0"),
 			g.If(userID != 0 && bookmarked, BookmarkButton(adID, bookmarked, csrfToken)),
-			g.If(rockCount > 0, RockIcons(adID, rockCount)),
+			g.If(eggCount > 0, EggIcons(adID, eggCount)),
 			Span(Class("min-w-0"), g.Text(title)),
 		),
 		Div(
@@ -361,7 +361,7 @@ func AdShareModal(path string) g.Node {
 }
 
 func Ad(adID, userID, ownerID, imageCount, price int, title, location, description string,
-	createdAt time.Time, bookmarked, active, reachable bool, csrfToken string, rockCount int) []g.Node {
+	createdAt time.Time, bookmarked, active, reachable bool, csrfToken string, eggCount int) []g.Node {
 
 	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
 
@@ -377,7 +377,7 @@ func Ad(adID, userID, ownerID, imageCount, price int, title, location, descripti
 					Class("flex items-center justify-between min-w-0"),
 					Div(
 						Class("flex items-center gap-2 min-w-0"),
-						g.If(rockCount > 0, RockIcons(adID, rockCount)),
+						g.If(eggCount > 0, EggIcons(adID, eggCount)),
 						Span(Class("min-w-0"), g.Text(title)),
 					),
 					adButtons(adID, userID, ownerID, bookmarked, active, reachable, csrfToken),

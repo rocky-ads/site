@@ -44,7 +44,7 @@ const (
 
 	// Ad configuration
 	MaxImagesPerAd         = 20
-	MaxRockCount           = 2 // Maximum rock count to allow in search results
+	MaxEggCount            = 2 // Maximum egg count to allow in search results
 	DefaultAdCategoryName  = "Car & Truck Parts"
 	MaxAdDescriptionLength = 1000 // Maximum length for ad description
 
@@ -103,7 +103,7 @@ var (
 
 	// Server configuration
 	ServerPort = getEnvWithDefault("PORT", "10000")
-	ServerName = getEnvWithDefault("APP_NAME", "Rocky Ads")
+	ServerName = getEnvWithDefault("APP_NAME", "Eggy Ads")
 
 	// Test port - used when running tests to avoid conflicts with main server
 	TestPort = getEnvWithDefault("PORT_TEST", "10001")
