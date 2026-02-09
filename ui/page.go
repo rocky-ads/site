@@ -141,11 +141,6 @@ func navigation(userID int, userName, currentPath string, hasUnread bool) g.Node
 		A(
 			Href("/"),
 			Class("flex items-center gap-2"),
-			Img(
-				Src("/images/three-eggs.png"),
-				Alt("Rocks"),
-				Class("h-8"),
-			),
 			Span(Class("text-xl font-bold"), g.Text(config.ServerName)),
 		),
 		indicator(),
