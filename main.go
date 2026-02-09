@@ -75,6 +75,8 @@ func setupApp() *fiber.App {
 	auth.Get("/user/messages", handler.UserMessagesHandler)
 	auth.Get("/user/settings", handler.UserSettingsHandler)
 	auth.Get("/user/about", handler.UserAboutHandler)
+	auth.Get("/user/:id", handler.UserProfileHandler)
+	auth.Get("/user/:id/summary", handler.UserSummaryHandler)
 	auth.Get("/user/:id/egg/:ordinal", handler.UserEggConversationHandler)
 	auth.Get("/welcome", handler.WelcomeHandler)
 

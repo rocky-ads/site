@@ -4,11 +4,12 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/cookie"
+	"github.com/rocky-ads/site/egg"
 	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/message"
-	"github.com/rocky-ads/site/egg"
 	"github.com/rocky-ads/site/ui"
+	"github.com/rocky-ads/site/user"
 )
 
 func UserMenuHandler(c *fiber.Ctx) error {
@@ -64,6 +65,35 @@ func UserSettingsHandler(c *fiber.Ctx) error {
 
 func UserAboutHandler(c *fiber.Ctx) error {
 	return renderPage(c, "About", ui.AboutPage())
+}
+
+func UserProfileHandler(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid user ID")
+	}
+	u, err := user.GetByID(id)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "User not found")
+	}
+	activeAdCount, _ := ad.CountActiveAdsByUser(id)
+	userEggCount, _ := egg.GetEggCountForUser(id)
+	loc := cookie.GetLocation(c)
+	return renderPage(c, u.Name, ui.UserProfilePage(u, activeAdCount, userEggCount, loc))
+}
+
+func UserSummaryHandler(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid user ID")
+	}
+	u, err := user.GetByID(id)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "User not found")
+	}
+	activeAdCount, _ := ad.CountActiveAdsByUser(id)
+	userEggCount, _ := egg.GetEggCountForUser(id)
+	return render(c, ui.UserSummaryFragment(u.Name, u.CreatedAt, activeAdCount, userEggCount))
 }
 
 func UserEggConversationHandler(c *fiber.Ctx) error {

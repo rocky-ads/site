@@ -2,8 +2,10 @@ package ui
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/rocky-ads/site/config"
+	"github.com/rocky-ads/site/user"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -18,7 +20,7 @@ func menuIcon(iconSrc, alt string) g.Node {
 	)
 }
 
-func menuHeader(userName string, eggCount int, userEggIcons g.Node) g.Node {
+func menuHeader(userID int, userName string, eggCount int, userEggIcons g.Node) g.Node {
 	return Div(
 		Class("px-4 py-3 border-b border-zinc-100 text-center"),
 		Div(
@@ -29,8 +31,7 @@ func menuHeader(userName string, eggCount int, userEggIcons g.Node) g.Node {
 			Class("flex items-center justify-center gap-2 mb-1"),
 			Div(
 				Class("text-sm font-medium text-zinc-900 flex items-center gap-1"),
-				g.Text(userName),
-				userEggIcons,
+				UserNameLink(userID, userName, userEggIcons),
 			),
 			EggCountBadge(eggCount),
 		),
@@ -39,6 +40,79 @@ func menuHeader(userName string, eggCount int, userEggIcons g.Node) g.Node {
 			g.Text("Logged in"),
 		),
 	)
+}
+
+// UserNameLink renders a link to the user's profile with a hover popup summary
+func UserNameLink(userID int, userName string, extra ...g.Node) g.Node {
+	href := fmt.Sprintf("/auth/user/%d", userID)
+	summaryURL := fmt.Sprintf("/auth/user/%d/summary", userID)
+	popupID := fmt.Sprintf("user-summary-%d", userID)
+	return Span(
+		Class("relative group inline-flex items-center gap-1"),
+		A(
+			Href(href),
+			Class("text-blue-600 dark:text-blue-400 hover:underline"),
+			hx.Get(summaryURL),
+			hx.Trigger("mouseenter delay:200ms once"),
+			hx.Target("next .user-summary-popup"),
+			hx.Swap("innerHTML"),
+			g.Group(extra),
+			g.Text(userName),
+		),
+		Span(
+			Class("user-summary-popup absolute left-1/2 -translate-x-1/2 top-full mt-1 hidden group-hover:block z-50 w-64 p-3 bg-white dark:bg-zinc-800 rounded shadow-lg border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-700 dark:text-zinc-300"),
+			ID(popupID),
+			g.Text("Loading…"),
+		),
+	)
+}
+
+// UserSummaryFragment is the popup content loaded on hover
+func UserSummaryFragment(name string, createdAt time.Time, activeAdCount, userEggCount int) g.Node {
+	memberSince := createdAt.Format("Jan 2006")
+	return Div(
+		Class("space-y-1"),
+		Div(Class("font-semibold text-zinc-900 dark:text-zinc-100"), g.Text(name)),
+		Div(Class("text-xs text-zinc-500"), g.Text("Member since "+memberSince)),
+		Div(Class("text-xs text-zinc-500"),
+			g.Text(fmt.Sprintf("%d active ad(s)", activeAdCount)),
+		),
+		g.If(userEggCount > 0,
+			Div(Class("text-xs text-zinc-500"),
+				g.Text(fmt.Sprintf("%d rock(s)", userEggCount)),
+			),
+		),
+	)
+}
+
+// UserProfilePage renders the user profile page body
+func UserProfilePage(u user.User, activeAdCount, userEggCount int, loc *time.Location) []g.Node {
+	memberSince := u.CreatedAt.In(loc).Format("January 2, 2006")
+	return []g.Node{
+		pageTitle(u.Name),
+		Div(
+			Class("mt-8 space-y-4 max-w-md"),
+			Div(
+				Class("flex items-center gap-3"),
+				Div(
+					Class("w-16 h-16 bg-red-500 text-white rounded-full flex items-center justify-center font-semibold text-2xl"),
+					g.Text(getUserInitial(u.Name)),
+				),
+				Div(
+					Class("text-zinc-600 dark:text-zinc-400"),
+					Div(Class("text-sm"), g.Text("Member since "+memberSince)),
+					Div(Class("text-sm mt-1"),
+						g.Text(fmt.Sprintf("%d active ad(s)", activeAdCount)),
+					),
+					g.If(userEggCount > 0,
+						Div(Class("text-sm mt-1"),
+							g.Text(fmt.Sprintf("%d rock(s)", userEggCount)),
+						),
+					),
+				),
+			),
+		),
+	}
 }
 
 func UserMenu(userName string, userID int, isAdmin bool, hasUnread bool, eggCount int, userEggCount int) g.Node {
@@ -102,7 +176,7 @@ func UserMenu(userName string, userID int, isAdmin bool, hasUnread bool, eggCoun
 			Class("fixed z-50 top-20 right-6"),
 			Div(
 				Class("bg-white rounded-lg shadow-lg border border-zinc-200 w-40"),
-				menuHeader(userName, eggCount, UserEggIcons(userID, userEggCount)),
+				menuHeader(userID, userName, eggCount, UserEggIcons(userID, userEggCount)),
 				Div(
 					Class("py-1"),
 					g.Group(menuItems),

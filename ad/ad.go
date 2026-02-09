@@ -169,3 +169,13 @@ func GetUserAdIDs(userID int, filterType string) ([]int, error) {
 	err := db.QueryJSON(&adIDs, query, args...)
 	return adIDs, err
 }
+
+// CountActiveAdsByUser returns the number of non-deleted ads for a user
+func CountActiveAdsByUser(userID int) (int, error) {
+	var n int
+	err := db.QueryRow(
+		"SELECT COUNT(*) FROM ads WHERE user_id = ? AND deleted_at IS NULL",
+		userID,
+	).Scan(&n)
+	return n, err
+}
