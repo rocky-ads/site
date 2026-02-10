@@ -39,7 +39,7 @@ func categoryButton(categoryName, categoryImage string) g.Node {
 			Button(
 				Type("button"),
 				Class("py-2 px-5 flex items-center gap-2 rounded-full border-2 border-blue-500 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 dark:border-blue-400"),
-				hx.Get("/api/category-select"),
+				hx.Get("/api/category-select?return=%2F"),
 				hx.Target("body"),
 				hx.Swap("beforeend"),
 				Img(

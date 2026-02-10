@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"net/url"
 	"strconv"
 
 	g "maragu.dev/gomponents"
@@ -8,17 +9,18 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-func CategoryItem(currentCategoryID, categoryID int, name, imageFile string) g.Node {
+func CategoryItem(currentCategoryID, categoryID int, name, imageFile, returnParam string) g.Node {
 	itemClass := "flex items-center gap-3 p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer rounded-lg transition-colors text-zinc-900 dark:text-zinc-200 "
 	if categoryID == currentCategoryID {
 		itemClass += "bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700"
 	}
 
+	returnURL := "/api/category/" + strconv.Itoa(categoryID) + "/switch?return=" + url.QueryEscape(returnParam)
+
 	return Div(
 		Class(itemClass),
-		hx.Get("/api/category/"+strconv.Itoa(categoryID)+"/switch"),
-		hx.Target("#search-container"),
-		hx.Swap("outerHTML"),
+		hx.Get(returnURL),
+		hx.Swap("none"),
 		Div(
 			Class("p-2 bg-zinc-200 dark:bg-zinc-700 rounded-full flex items-center justify-center"),
 			Img(

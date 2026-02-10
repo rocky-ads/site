@@ -10,6 +10,7 @@ import (
 
 func CategorySelectHandler(c *fiber.Ctx) error {
 	categoryID := cookie.GetCategoryID(c)
+	returnParam := c.Query("return")
 
 	categories, err := ad.GetCategories()
 	if err != nil {
@@ -18,7 +19,8 @@ func CategorySelectHandler(c *fiber.Ctx) error {
 
 	var categoryItems []g.Node
 	for _, cat := range categories {
-		categoryItems = append(categoryItems, ui.CategoryItem(categoryID, cat.ID, cat.Name, cat.ImageFile))
+		categoryItems = append(categoryItems,
+			ui.CategoryItem(categoryID, cat.ID, cat.Name, cat.ImageFile, returnParam))
 	}
 
 	return render(c, ui.CategorySelectModal(categoryItems))

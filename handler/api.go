@@ -197,31 +197,18 @@ func GetLastSpecFieldHandler(c *fiber.Ctx) error {
 func SwitchCategoryHandler(c *fiber.Ctx) error {
 	categoryID := param.GetCategoryID(c)
 
-	categoryName, err := ad.GetCategoryName(categoryID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, err.Error())
-	}
-
-	categoryImage, err := ad.GetCategoryImageFile(categoryID)
-	if err != nil {
+	if _, err := ad.GetCategoryName(categoryID); err != nil {
 		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
 	cookie.SetCategoryID(c, categoryID)
 
-	userID := local.GetUserID(c)
-	view := cookie.GetView(c)
-	loc := cookie.GetLocation(c)
-	csrfToken := local.GetCSRFToken(c)
-	limit := config.SearchPageSize
-	offset := 0
-
-	results, err := searchAndRenderAds(categoryID, limit, offset, userID, view, make(field.Values), loc, csrfToken)
-	if err != nil {
-		return err
+	redirect := c.Query("return")
+	if redirect == "" || redirect[0] != '/' || (len(redirect) > 1 && redirect[1] == '/') {
+		redirect = "/"
 	}
-
-	return render(c, ui.SearchContainer(userID, view, categoryName, categoryImage, results))
+	c.Set("HX-Redirect", redirect)
+	return c.Send(nil)
 }
 
 func ShowFiltersHandler(c *fiber.Ctx) error {
