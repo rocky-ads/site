@@ -110,24 +110,12 @@ func NewAdHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	// TODO looks messy below
-
 	fv := make(field.Values)
 	renderedFields := make([]g.Node, 0, len(fields))
 	for _, f := range fields {
-		fieldData := f.GetField()
-		// Skip fields that are in a chain but not first in chain
-		// Only apply chain filtering to SpecFields; non-SpecFields (like price, location) should always be shown
-		if fieldData.PrevFieldID != 0 {
-			if specFielder, ok := f.(field.SpecFielder); ok {
-				// Field is a SpecField in a chain, check if it's first
-				specField := specFielder.GetSpecField()
-				if !specField.IsFirst {
-					// In chain but not first, skip
-					continue
-				}
-			}
-			// Not a SpecField - always show it regardless of PrevFieldID
+		// Show only first field of each chain. PrevFieldID is per-category order (not per-chain), so we need IsFirst.
+		if specFielder, ok := f.(field.SpecFielder); ok && !specFielder.GetSpecField().IsFirst {
+			continue
 		}
 		renderedFields = append(renderedFields, f.NewAdNode(fv))
 	}
