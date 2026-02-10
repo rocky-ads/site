@@ -20,7 +20,7 @@ func (f PartCategoryField) FilterNode(fv Values) g.Node {
 
 	value := fv.Get("part_category")
 
-	return ui.FieldSelect(f.Name, f.DisplayName, value, values)
+	return ui.FieldSelect(f.Name, f.DisplayName, "All", value, values)
 }
 
 func (f PartCategoryField) NewAdNode(fv Values) g.Node {
@@ -30,5 +30,5 @@ func (f PartCategoryField) NewAdNode(fv Values) g.Node {
 		return nil
 	}
 
-	return ui.FieldSelect(f.Name, f.DisplayName, "", values)
+	return ui.FieldSelect(f.Name, f.DisplayName, "Select a "+f.DisplayName, "", values)
 }

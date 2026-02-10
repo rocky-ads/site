@@ -21,5 +21,5 @@ func (f EngineField) NewAdNode(fv Values) g.Node {
 		return nil
 	}
 
-	return ui.FieldSelect(f.Name, f.DisplayName, "", values)
+	return ui.FieldSelect(f.Name, f.DisplayName, "Select a "+f.DisplayName, "", values)
 }

@@ -8,11 +8,11 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-// FieldSelect renders a select dropdown field with an "All" option
-func FieldSelect(name, displayName, selectedValue string, values []string) g.Node {
+// FieldSelect renders a select dropdown. defaultName is the label for the empty value (e.g. "All" for filters, "Select a Make" for new ad).
+func FieldSelect(name, displayName, defaultName, selectedValue string, values []string) g.Node {
 
 	var options []g.Node
-	options = append(options, Option(Value(""), g.Text("All"), g.If(selectedValue == "", Selected())))
+	options = append(options, Option(Value(""), g.Text(defaultName), g.If(selectedValue == "", Selected())))
 	for _, val := range values {
 		options = append(options, Option(Value(val), g.Text(val), g.If(val == selectedValue, Selected())))
 	}
