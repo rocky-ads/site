@@ -2082,65 +2082,54 @@ func TestSwitchCategoryHandler(t *testing.T) {
 	tests := []struct {
 		name           string
 		categoryID     string
+		returnParam    string
 		expectedStatus int
+		expectRedirect string
 	}{
-		{"Valid category", "6", 200},
-		{"Another valid category", "5", 200},
-		{"Invalid category", "999", 200},
+		{"Valid category", "6", "", 200, "/"},
+		{"Valid category with return", "5", "/auth/ad/new", 200, "/auth/ad/new"},
+		{"Invalid category ID defaults to default category", "999", "", 200, "/"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := getTestClient()
 
-			url := fmt.Sprintf("%s/api/category/%s/switch", baseURL, tt.categoryID)
-			resp, body := getRequestWithCookies(t, client, url)
+			requestURL := fmt.Sprintf("%s/api/category/%s/switch", baseURL, tt.categoryID)
+			if tt.returnParam != "" {
+				requestURL += "?return=" + url.QueryEscape(tt.returnParam)
+			}
+			resp, _ := getRequestWithCookies(t, client, requestURL)
 
 			if resp.StatusCode != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
-				if len(body) > 500 {
-					t.Logf("Response body (truncated): %s...", body[:500])
-				} else {
-					t.Logf("Response body: %s", body)
-				}
 			}
 
 			if tt.expectedStatus == 200 {
-				// Check that it returns HTML (Fiber sets Content-Type as "text/html" without charset)
-				contentType := resp.Header.Get("Content-Type")
-				if contentType != "text/html" && contentType != "text/html; charset=utf-8" {
-					t.Errorf("Expected Content-Type text/html, got %s", contentType)
+				redirect := resp.Header.Get("HX-Redirect")
+				if redirect != tt.expectRedirect {
+					t.Errorf("Expected HX-Redirect %q, got %q", tt.expectRedirect, redirect)
 				}
 
-				// Check that category cookie is set
 				hasCategoryCookie := false
 				var cookieValue string
-				for _, cookie := range resp.Cookies() {
-					if cookie.Name == "category" {
+				for _, c := range resp.Cookies() {
+					if c.Name == "category" {
 						hasCategoryCookie = true
-						cookieValue = cookie.Value
+						cookieValue = c.Value
 						break
 					}
 				}
 				if !hasCategoryCookie {
 					t.Error("Expected category cookie to be set")
 				}
-
-				// If invalid category (999), verify results are for default category
+				// ParseCategory maps invalid IDs (e.g. 999) to default category (5)
+				expectedCookie := tt.categoryID
 				if tt.categoryID == "999" {
-					// Verify HTML contains default category name (check for HTML entity version)
-					if !strings.Contains(body, "Car &amp; Truck Parts") && !strings.Contains(body, "Car & Truck Parts") {
-						t.Errorf("Expected HTML to contain default category name 'Car & Truck Parts' (or HTML entity version)")
-					}
-					// Verify cookie is set to default category ID (5)
-					if cookieValue != "5" {
-						t.Errorf("Expected category cookie to be set to default category ID (5), got %s", cookieValue)
-					}
-				} else {
-					// For valid categories, verify cookie matches requested category
-					if cookieValue != tt.categoryID {
-						t.Errorf("Expected category cookie value %s, got %s", tt.categoryID, cookieValue)
-					}
+					expectedCookie = "5"
+				}
+				if cookieValue != expectedCookie {
+					t.Errorf("Expected category cookie value %s, got %s", expectedCookie, cookieValue)
 				}
 			}
 		})
