@@ -267,3 +267,20 @@ func SearchPageHandler(c *fiber.Ctx) error {
 
 	return render(c, g.Group(results))
 }
+
+func FieldHandler(c *fiber.Ctx) error {
+	categoryID := cookie.GetCategoryID(c)
+	if categoryID == 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "category required")
+	}
+	name := c.Params("name")
+	if name == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "field name required")
+	}
+	fielder, err := field.GetFielderByName(categoryID, name)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, err.Error())
+	}
+	fv := getQueryValues(c)
+	return render(c, ui.FieldFragment(name, fielder.NewAdNode(fv)))
+}

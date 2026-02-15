@@ -117,6 +117,7 @@ func setupApp() *fiber.App {
 	api.Get("/search/", handler.SearchPageHandler)
 	api.Get("/ad/:id/share", handler.AdShareHandler)
 	api.Get("/ad/share/copy", handler.AdShareCopyHandler)
+	api.Get("/field/:name", handler.FieldHandler)
 
 	categoryRouter := api.Group("/category/:category")
 	categoryRouter.Get("/values/:field", handler.GetAllValuesHandler)

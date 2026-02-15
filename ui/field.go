@@ -1,29 +1,103 @@
 package ui
 
 import (
-	"fmt"
-	"time"
+	"strings"
 
 	g "maragu.dev/gomponents"
+	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
 )
 
-// FieldSelect renders a select dropdown. defaultName is the label for the empty value (e.g. "All" for filters, "Select a Make" for new ad).
-func FieldSelect(name, displayName, defaultName, selectedValue string, values []string) g.Node {
+// fieldURL builds the htmx GET URL for the next field, baking in previous query params.
+func fieldURL(nextField, prevParams string) string {
+	url := "/api/field/" + nextField
+	if prevParams != "" {
+		url += "?" + prevParams
+	}
+	return url
+}
 
+// FieldSelect renders a select dropdown.
+func FieldSelect(name, displayName, selectedValue, nextField, prevParams string, values []string, required bool) g.Node {
+
+	defaultOptionText := "All"
+	if required {
+		defaultOptionText = "Select a " + displayName
+	}
 	var options []g.Node
-	options = append(options, Option(Value(""), g.Text(defaultName), g.If(selectedValue == "", Selected())))
+	options = append(options, Option(Value(""), g.Text(defaultOptionText), g.If(selectedValue == "", Selected())))
 	for _, val := range values {
 		options = append(options, Option(Value(val), g.Text(val), g.If(val == selectedValue, Selected())))
 	}
 
+	selectAttrs := []g.Node{
+		Name(name),
+		Class("w-full p-2 border rounded-md"),
+		g.If(required, Required()),
+		g.Group(options),
+	}
+	if nextField != "" {
+		selectAttrs = append(selectAttrs,
+			hx.Get(fieldURL(nextField, prevParams)),
+			hx.Trigger("change"),
+			hx.Target("#div-"+nextField),
+			hx.Swap("outerHTML"),
+		)
+	}
+
 	return Div(
 		label(displayName),
-		Select(
-			Name(name),
-			Class("w-full p-2 border rounded-md"),
-			g.Group(options),
-		),
+		Select(selectAttrs...),
+		g.If(nextField != "", FieldFragment(nextField, g.Group{})),
+	)
+}
+
+// FieldFragment wraps a field node in a div with id "div-"+name for htmx swap targets.
+func FieldFragment(name string, content g.Node) g.Node {
+	return Div(ID("div-"+name), content)
+}
+
+// FieldCheckboxes renders a grid of checkboxes for the given values.
+func FieldCheckboxes(name, displayName, nextField, prevParams string, values []string) g.Node {
+	boxClass := "border rounded-md p-3"
+
+	if len(values) == 0 {
+		emptyDiv := Div(
+			Class(boxClass+" text-sm text-zinc-400 italic"),
+			g.Textf("No %ss match the selected filters", strings.ToLower(displayName)),
+		)
+		return Div(
+			Class("mt-3"),
+			label(displayName),
+			ID(name),
+			emptyDiv,
+		)
+	}
+
+	var nodes []g.Node
+	for _, val := range values {
+		nodes = append(nodes, checkbox(name, val, val, false, false))
+	}
+	gridClass := "grid grid-cols-4 sm:grid-cols-6 gap-2 " + boxClass
+	gridContent := g.Group(nodes)
+	gridDiv := Div(Class(gridClass), gridContent)
+	if nextField != "" {
+		gridDiv = Div(
+			Class(gridClass),
+			hx.Get(fieldURL(nextField, prevParams)),
+			hx.Trigger("change from:input"),
+			hx.Target("#div-"+nextField),
+			hx.Include("this"),
+			hx.Swap("outerHTML"),
+			gridContent,
+		)
+	}
+	return Div(
+		Class("mt-3"),
+		label(displayName),
+		ID(name),
+		gridDiv,
+		g.If(nextField != "", FieldFragment(nextField, g.Group{})),
 	)
 }
 
@@ -136,28 +210,5 @@ func PriceInput(isRequired bool) g.Node {
 			Title("Price must be a non-negative integer"),
 			g.Attr("oninput", "this.checkValidity()"),
 		),
-	)
-}
-
-// YearInput renders a single year input field for forms
-func YearInput(displayName, value string, isRequired bool) g.Node {
-	maxYear := time.Now().Year() + 2
-	inputAttrs := []g.Node{
-		Type("number"),
-		Name("year"),
-		Class("w-full p-2 border rounded-md"),
-		Placeholder("2024"),
-		Min("1900"),
-		Max(fmt.Sprintf("%d", maxYear)),
-		Step("1"),
-		Value(value),
-	}
-	if isRequired {
-		inputAttrs = append(inputAttrs, Required())
-	}
-
-	return Div(
-		label(displayName),
-		Input(inputAttrs...),
 	)
 }

@@ -127,6 +127,11 @@ func buildAllQuery(f SpecField, fv Values) (string, []any, error) {
 
 	fv = FilterSpecFields(f.CategoryID, fv)
 
+	// For multi-value fields, we want the intersection: only return values of f.Name
+	// that exist for ALL selected values of each filter field.
+	// Single-value fields use a simple IN clause (equivalent behavior).
+	var havingClauses []string
+
 	for fieldName, values := range fv {
 		if len(values) > 0 {
 			whereClauses = append(whereClauses,
@@ -134,10 +139,19 @@ func buildAllQuery(f SpecField, fv Values) (string, []any, error) {
 			for _, v := range values {
 				args = append(args, v)
 			}
+			if len(values) > 1 {
+				havingClauses = append(havingClauses,
+					fmt.Sprintf("COUNT(DISTINCT %s) = %d", fieldName, len(values)))
+			}
 		}
 	}
 
 	selectField := f.Name
+
+	having := ""
+	if len(havingClauses) > 0 {
+		having = "GROUP BY " + selectField + " HAVING " + strings.Join(havingClauses, " AND ")
+	}
 
 	query := fmt.Sprintf(`
 		SELECT COALESCE(json_group_array(value), '[]')
@@ -145,8 +159,9 @@ func buildAllQuery(f SpecField, fv Values) (string, []any, error) {
 			SELECT DISTINCT %s as value
 			FROM %s
 			WHERE %s
+			%s
 			ORDER BY %s COLLATE NOCASE
-		)`, selectField, f.SpecTable, strings.Join(whereClauses, " AND "), selectField)
+		)`, selectField, f.SpecTable, strings.Join(whereClauses, " AND "), having, selectField)
 
 	return query, args, nil
 }

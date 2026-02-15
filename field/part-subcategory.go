@@ -17,9 +17,9 @@ func (f PartSubcategoryField) FilterNode(fv Values) g.Node {
 func (f PartSubcategoryField) NewAdNode(fv Values) g.Node {
 	values, err := f.GetAllValues(fv)
 	if err != nil {
-		logger.Error("Failed to get values for part_subcategory field: %w", err)
+		logger.Error("Failed to get values for field", "field", f.Name, "error", err)
 		return nil
 	}
 
-	return ui.FieldSelect(f.Name, f.DisplayName, "Select a "+f.DisplayName, "", values)
+	return ui.FieldSelect(f.Name, f.DisplayName, "", f.NextFieldName, fv.Encode(), values, f.IsRequired)
 }

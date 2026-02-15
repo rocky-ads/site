@@ -6,6 +6,7 @@ import (
 
 	g "maragu.dev/gomponents"
 
+	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/ui"
 )
 
@@ -25,6 +26,11 @@ func (f YearField) FilterNode(fv Values) g.Node {
 }
 
 func (f YearField) NewAdNode(fv Values) g.Node {
-	year := fv.Get("year")
-	return ui.YearInput(f.DisplayName, year, f.IsRequired)
+	values, err := f.GetAllValues(fv)
+	if err != nil {
+		logger.Error("Failed to get values for field", "field", f.Name, "error", err)
+		return nil
+	}
+
+	return ui.FieldCheckboxes(f.Name, f.DisplayName, f.NextFieldName, fv.Encode(), values)
 }

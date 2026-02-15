@@ -8,12 +8,12 @@ import (
 	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/db"
+	"github.com/rocky-ads/site/egg"
 	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/message"
 	"github.com/rocky-ads/site/param"
-	"github.com/rocky-ads/site/egg"
 	"github.com/rocky-ads/site/ui"
 	g "maragu.dev/gomponents"
 )
@@ -113,7 +113,7 @@ func NewAdHandler(c *fiber.Ctx) error {
 	fv := make(field.Values)
 	renderedFields := make([]g.Node, 0, len(fields))
 	for _, f := range fields {
-		// Show only first field of each chain. PrevFieldID is per-category order (not per-chain), so we need IsFirst.
+		// Show only first field of each chain.
 		if specFielder, ok := f.(field.SpecFielder); ok && !specFielder.GetSpecField().IsFirst {
 			continue
 		}

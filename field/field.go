@@ -9,13 +9,14 @@ import (
 )
 
 type Field struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	DisplayName string `json:"display_name"`
-	CategoryID  int    `json:"category_id"`
-	IsRequired  bool   `json:"is_required"`
-	NextFieldID int    `json:"next_field_id"`
-	PrevFieldID int    `json:"prev_field_id"`
+	ID            int    `json:"id"`
+	Name          string `json:"name"`
+	DisplayName   string `json:"display_name"`
+	CategoryID    int    `json:"category_id"`
+	IsRequired    bool   `json:"is_required"`
+	NextFieldID   int    `json:"next_field_id"`
+	NextFieldName string // resolved at init from NextFieldID
+	PrevFieldID   int    `json:"prev_field_id"`
 }
 
 // Values represents field values keyed by field name
@@ -77,11 +78,16 @@ func Init() error {
 
 	// Build categoryFields map
 	for categoryID, fields := range fieldsByCategory {
+		idToName := make(map[int]string)
+		for _, fd := range fields {
+			idToName[fd.ID] = fd.Name
+		}
 		var fielders []Fielder
 		for _, fd := range fields {
-			fielder, err := newField(fd.ID, fd.CategoryID,
-				fd.Name, fd.DisplayName, fd.SpecTable, fd.IsRequired,
-				fd.NextFieldID, fd.PrevFieldID, fd.IsFirst, fd.IsLastOverall)
+			nextFieldName := idToName[fd.NextFieldID]
+			fielder, err := newField(fd.ID, fd.CategoryID, fd.NextFieldID, fd.PrevFieldID,
+				fd.Name, fd.DisplayName, fd.SpecTable, nextFieldName,
+				fd.IsRequired, fd.IsFirst, fd.IsLastOverall)
 			if err != nil {
 				return fmt.Errorf("creating field %s for category %d: %w", fd.Name, categoryID, err)
 			}
@@ -96,16 +102,17 @@ func Init() error {
 	return nil
 }
 
-func newField(id, categoryID int, name, displayName, specTable string, isRequired bool, nextFieldID, prevFieldID int, isFirst, isLastOverall bool) (Fielder, error) {
+func newField(id, categoryID, nextFieldID, prevFieldID int, name, displayName, specTable, nextFieldName string, isRequired, isFirst, isLastOverall bool) (Fielder, error) {
 
 	field := Field{
-		ID:          id,
-		CategoryID:  categoryID,
-		Name:        name,
-		DisplayName: displayName,
-		IsRequired:  isRequired,
-		NextFieldID: nextFieldID,
-		PrevFieldID: prevFieldID,
+		ID:            id,
+		CategoryID:    categoryID,
+		Name:          name,
+		DisplayName:   displayName,
+		IsRequired:    isRequired,
+		NextFieldID:   nextFieldID,
+		NextFieldName: nextFieldName,
+		PrevFieldID:   prevFieldID,
 	}
 	specField := SpecField{
 		Field:         field,
@@ -141,6 +148,20 @@ func GetFields(categoryID int) ([]Fielder, error) {
 		return fields, nil
 	}
 	return nil, fmt.Errorf("fields not found for category %d", categoryID)
+}
+
+// GetFielderByName returns the Fielder with the given name in the category.
+func GetFielderByName(categoryID int, name string) (Fielder, error) {
+	fields, err := GetFields(categoryID)
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range fields {
+		if f.GetField().Name == name {
+			return f, nil
+		}
+	}
+	return nil, fmt.Errorf("field %q not found in category %d", name, categoryID)
 }
 
 func (f Field) FilterNode(fv Values) g.Node {
