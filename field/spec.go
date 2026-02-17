@@ -206,6 +206,9 @@ func (f SpecField) GetSpecField() SpecField {
 }
 
 func (f SpecField) GetAllValues(fv Values) ([]string, error) {
+	if f.PrevFieldName != "" && len(fv[f.PrevFieldName]) == 0 {
+		return nil, nil
+	}
 	return buildAndExecuteQuery(func() (string, []any, error) {
 		return buildAllQuery(f, fv)
 	})

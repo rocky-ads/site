@@ -17,6 +17,7 @@ type Field struct {
 	NextFieldID   int    `json:"next_field_id"`
 	NextFieldName string // resolved at init from NextFieldID
 	PrevFieldID   int    `json:"prev_field_id"`
+	PrevFieldName string // resolved at init from PrevFieldID; empty for first field in chain
 }
 
 // Values represents field values keyed by field name
@@ -57,7 +58,7 @@ func Init() error {
 				CASE WHEN ROW_NUMBER() OVER (PARTITION BY c.category_id, c.chain_index ORDER BY cf.field_order) = 1 THEN 1 ELSE 0 END as is_first,
 				CASE WHEN ROW_NUMBER() OVER (PARTITION BY c.category_id ORDER BY c.chain_index DESC, cf.field_order DESC) = 1 THEN 1 ELSE 0 END as is_last_overall,
 				COALESCE(LEAD(f.id) OVER (PARTITION BY c.category_id, c.chain_index ORDER BY cf.field_order), 0) as next_field_id,
-				LAG(f.id) OVER (PARTITION BY c.category_id ORDER BY c.chain_index, cf.field_order) as prev_field_id
+				COALESCE(LAG(f.id) OVER (PARTITION BY c.category_id, c.chain_index ORDER BY cf.field_order), 0) as prev_field_id
 			FROM chain_fields cf
 			JOIN chains c ON cf.chain_id = c.id
 			JOIN fields f ON cf.field_id = f.id
@@ -85,8 +86,9 @@ func Init() error {
 		var fielders []Fielder
 		for _, fd := range fields {
 			nextFieldName := idToName[fd.NextFieldID]
+			prevFieldName := idToName[fd.PrevFieldID]
 			fielder, err := newField(fd.ID, fd.CategoryID, fd.NextFieldID, fd.PrevFieldID,
-				fd.Name, fd.DisplayName, fd.SpecTable, nextFieldName,
+				fd.Name, fd.DisplayName, fd.SpecTable, nextFieldName, prevFieldName,
 				fd.IsRequired, fd.IsFirst, fd.IsLastOverall)
 			if err != nil {
 				return fmt.Errorf("creating field %s for category %d: %w", fd.Name, categoryID, err)
@@ -102,7 +104,7 @@ func Init() error {
 	return nil
 }
 
-func newField(id, categoryID, nextFieldID, prevFieldID int, name, displayName, specTable, nextFieldName string, isRequired, isFirst, isLastOverall bool) (Fielder, error) {
+func newField(id, categoryID, nextFieldID, prevFieldID int, name, displayName, specTable, nextFieldName, prevFieldName string, isRequired, isFirst, isLastOverall bool) (Fielder, error) {
 
 	field := Field{
 		ID:            id,
@@ -113,6 +115,7 @@ func newField(id, categoryID, nextFieldID, prevFieldID int, name, displayName, s
 		NextFieldID:   nextFieldID,
 		NextFieldName: nextFieldName,
 		PrevFieldID:   prevFieldID,
+		PrevFieldName: prevFieldName,
 	}
 	specField := SpecField{
 		Field:         field,
