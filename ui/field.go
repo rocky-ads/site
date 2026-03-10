@@ -46,6 +46,7 @@ func FieldSelect(name, displayName, selectedValue, nextField, prevParams string,
 	}
 
 	return Div(
+		Class("mt-3"),
 		label(displayName),
 		Select(selectAttrs...),
 		g.If(nextField != "", FieldFragment(nextField, g.Group{})),

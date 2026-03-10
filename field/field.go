@@ -56,8 +56,8 @@ func Init() error {
 				cf.is_required,
 				CASE WHEN ROW_NUMBER() OVER (PARTITION BY c.category_id, c.chain_index ORDER BY cf.field_order) = 1 THEN 1 ELSE 0 END as is_first,
 				CASE WHEN ROW_NUMBER() OVER (PARTITION BY c.category_id ORDER BY c.chain_index DESC, cf.field_order DESC) = 1 THEN 1 ELSE 0 END as is_last_overall,
-				LEAD(f.id) OVER (PARTITION BY c.category_id ORDER BY c.chain_index, cf.field_order) as next_field_id,
-				LAG(f.id) OVER (PARTITION BY c.category_id ORDER BY c.chain_index, cf.field_order) as prev_field_id
+				LEAD(f.id) OVER (PARTITION BY c.category_id, c.chain_index ORDER BY cf.field_order) as next_field_id,
+				LAG(f.id) OVER (PARTITION BY c.category_id, c.chain_index ORDER BY cf.field_order) as prev_field_id
 			FROM chain_fields cf
 			JOIN chains c ON cf.chain_id = c.id
 			JOIN fields f ON cf.field_id = f.id

@@ -125,7 +125,7 @@ func buildAllQuery(f SpecField, fv Values) (string, []any, error) {
 	whereClauses := []string{"category_id = ?"}
 	args := []any{f.CategoryID}
 
-	fv = FilterSpecFields(f.CategoryID, fv)
+	//fv = FilterSpecFields(f.CategoryID, fv)
 
 	// For multi-value fields, we want the intersection: only return values of f.Name
 	// that exist for ALL selected values of each filter field.
