@@ -17,8 +17,8 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "tailwindcss": "^4.1.14",
-    "@tailwindcss/cli": "^4.1.14"
+    "@tailwindcss/cli": "^4.1.14",
+    "tailwindcss": "^4.1.18"
   },
   "bugs": {
     "url": "https://github.com/rocky-ads/site/issues"

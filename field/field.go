@@ -17,6 +17,7 @@ type Field struct {
 	NextFieldID   int    `json:"next_field_id"`
 	NextFieldName string // resolved at init from NextFieldID
 	PrevFieldID   int    `json:"prev_field_id"`
+	PrevFieldName string // resolved at init from PrevFieldID; empty for first field in chain
 }
 
 // Values represents field values keyed by field name
@@ -85,8 +86,9 @@ func Init() error {
 		var fielders []Fielder
 		for _, fd := range fields {
 			nextFieldName := idToName[fd.NextFieldID]
+			prevFieldName := idToName[fd.PrevFieldID]
 			fielder, err := newField(fd.ID, fd.CategoryID, fd.NextFieldID, fd.PrevFieldID,
-				fd.Name, fd.DisplayName, fd.SpecTable, nextFieldName,
+				fd.Name, fd.DisplayName, fd.SpecTable, nextFieldName, prevFieldName,
 				fd.IsRequired, fd.IsFirst, fd.IsLastOverall)
 			if err != nil {
 				return fmt.Errorf("creating field %s for category %d: %w", fd.Name, categoryID, err)
@@ -102,7 +104,7 @@ func Init() error {
 	return nil
 }
 
-func newField(id, categoryID, nextFieldID, prevFieldID int, name, displayName, specTable, nextFieldName string, isRequired, isFirst, isLastOverall bool) (Fielder, error) {
+func newField(id, categoryID, nextFieldID, prevFieldID int, name, displayName, specTable, nextFieldName, prevFieldName string, isRequired, isFirst, isLastOverall bool) (Fielder, error) {
 
 	field := Field{
 		ID:            id,
@@ -113,6 +115,7 @@ func newField(id, categoryID, nextFieldID, prevFieldID int, name, displayName, s
 		NextFieldID:   nextFieldID,
 		NextFieldName: nextFieldName,
 		PrevFieldID:   prevFieldID,
+		PrevFieldName: prevFieldName,
 	}
 	specField := SpecField{
 		Field:         field,
