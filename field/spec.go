@@ -79,6 +79,31 @@ func FilterSpecFields(categoryID int, fv Values) Values {
 	return filtered
 }
 
+// FilterSpecFieldsForTable returns query values for spec fields in the same spec_table as the target.
+// buildAllQuery reads one denormalized table per request; params from other chains (other tables)
+// must be ignored or the query references non-existent columns.
+func FilterSpecFieldsForTable(categoryID int, specTable string, fv Values) Values {
+	fields, ok := categoryFields[categoryID]
+	if !ok {
+		return make(Values)
+	}
+
+	filtered := make(Values)
+	for _, fielder := range fields {
+		if specFielder, ok := fielder.(SpecFielder); ok {
+			sf := specFielder.GetSpecField()
+			if sf.SpecTable != specTable {
+				continue
+			}
+			name := sf.Name
+			if values, exists := fv[name]; exists {
+				filtered[name] = values
+			}
+		}
+	}
+	return filtered
+}
+
 func buildAdValuesQuery(f SpecField, fv Values, adFilterFunc func() (string, []any)) (string, []any, error) {
 
 	adWhereClause, adArgs := adFilterFunc()
@@ -125,7 +150,7 @@ func buildAllQuery(f SpecField, fv Values) (string, []any, error) {
 	whereClauses := []string{"category_id = ?"}
 	args := []any{f.CategoryID}
 
-	//fv = FilterSpecFields(f.CategoryID, fv)
+	fv = FilterSpecFieldsForTable(f.CategoryID, f.SpecTable, fv)
 
 	// For multi-value fields, we want the intersection: only return values of f.Name
 	// that exist for ALL selected values of each filter field.

@@ -86,7 +86,7 @@ func FieldCheckboxes(name, displayName, nextField, prevParams string, values []s
 		gridDiv = Div(
 			Class(gridClass),
 			hx.Get(fieldURL(nextField, prevParams)),
-			hx.Trigger("change from:find input"),
+			hx.Trigger("change from:input"),
 			hx.Target("#div-"+nextField),
 			hx.Include("this"),
 			hx.Swap("outerHTML"),

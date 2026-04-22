@@ -650,6 +650,22 @@ func TestGetAllValues(t *testing.T) {
 			expectedResult: []string{"ACE", "ACECA", "TWO-LITRE"},
 		},
 		{
+			name:           "Car & Truck Parts - model filtered by AC 1961",
+			category:       "5",
+			field:          "model",
+			queryParams:    "?make=AC&year=1961",
+			expectedStatus: 200,
+			expectedResult: []string{"ACE", "ACECA", "GREYHOUND"},
+		},
+		{
+			name:           "Car & Truck Parts - model ignores other-chain query params",
+			category:       "5",
+			field:          "model",
+			queryParams:    "?make=AC&year=1961&part_category=Engine",
+			expectedStatus: 200,
+			expectedResult: []string{"ACE", "ACECA", "GREYHOUND"},
+		},
+		{
 			name:           "With filter - make value with spaces",
 			category:       "1",
 			field:          "year",
