@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rocky-ads/site/config"
+	"github.com/rocky-ads/site/currency"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -113,8 +114,8 @@ func paginationDiv(nextPage int) g.Node {
 	)
 }
 
-func AdGridNode(userID, adID, price, imageCount, nextPage int, title, location, csrfToken string, createdAt time.Time, active, bookmarked, isLast bool, eggCount int) g.Node {
-	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
+func AdGridNode(userID, adID, price, imageCount, nextPage int, priceCurrency, title, location, csrfToken string, createdAt time.Time, active, bookmarked, isLast bool, eggCount int) g.Node {
+	priceStr := currency.Format(price, priceCurrency)
 
 	class := "flex flex-col cursor-pointer gap-1 py-3"
 	if !active {
@@ -152,8 +153,8 @@ func AdGridNode(userID, adID, price, imageCount, nextPage int, title, location, 
 	return node
 }
 
-func AdListNode(userID, adID, price int, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string, isLast bool, nextPage int, eggCount int) g.Node {
-	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
+func AdListNode(userID, adID, price int, priceCurrency, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string, isLast bool, nextPage int, eggCount int) g.Node {
+	priceStr := currency.Format(price, priceCurrency)
 
 	class := "flex flex-wrap items-center justify-between py-2 px-3 cursor-pointer"
 	if active {
@@ -360,10 +361,10 @@ func AdShareModal(path string) g.Node {
 	})
 }
 
-func Ad(adID, userID, ownerID, imageCount, price int, title, location, description string,
+func Ad(adID, userID, ownerID, imageCount, price int, priceCurrency, title, location, description string,
 	createdAt time.Time, bookmarked, active, reachable bool, csrfToken string, eggCount int) []g.Node {
 
-	priceStr := fmt.Sprintf("$%.0f", float64(price)/100)
+	priceStr := currency.Format(price, priceCurrency)
 
 	return []g.Node{
 		Div(

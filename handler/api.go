@@ -282,5 +282,6 @@ func FieldHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 	fv := getQueryValues(c)
-	return render(c, ui.FieldFragment(name, fielder.NewAdNode(fv)))
+	opts := newAdOpts(c)
+	return render(c, ui.FieldFragment(name, fielder.NewAdNode(fv, opts)))
 }

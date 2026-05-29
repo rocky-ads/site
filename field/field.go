@@ -23,9 +23,13 @@ type Field struct {
 // Values represents field values keyed by field name
 type Values = url.Values // map[string][]string
 
+type NewAdOpts struct {
+	DefaultCurrency string
+}
+
 type Fielder interface {
 	FilterNode(fv Values) g.Node
-	NewAdNode(fv Values) g.Node
+	NewAdNode(fv Values, opts NewAdOpts) g.Node
 	GetField() Field
 }
 
@@ -171,7 +175,7 @@ func (f Field) FilterNode(fv Values) g.Node {
 	return g.Group{}
 }
 
-func (f Field) NewAdNode(fv Values) g.Node {
+func (f Field) NewAdNode(fv Values, opts NewAdOpts) g.Node {
 	return g.Group{}
 }
 

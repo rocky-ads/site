@@ -3,6 +3,7 @@ package ui
 import (
 	"strings"
 
+	"github.com/rocky-ads/site/currency"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -204,16 +205,39 @@ func LocationInput(isRequired bool) g.Node {
 	)
 }
 
-func PriceInput(isRequired bool) g.Node {
+func PriceInput(isRequired bool, defaultCurrency string) g.Node {
+	defaultCurrency = currency.Normalize(defaultCurrency)
+	if !currency.IsSupported(defaultCurrency) {
+		defaultCurrency = currency.Default
+	}
+	opts := make([]g.Node, len(currency.Supported))
+	for i, code := range currency.Supported {
+		opt := Option(Value(code), g.Text(code))
+		if code == defaultCurrency {
+			opt = Option(Value(code), g.Attr("selected", "selected"), g.Text(code))
+		}
+		opts[i] = opt
+	}
 	return Div(
 		label("Price"),
-		inputText("price", "0", isRequired,
-			Type("number"),
-			Min("0"),
-			Step("1"),
-			Pattern("^(0|[1-9][0-9]*)$"),
-			Title("Price must be a non-negative integer"),
-			g.Attr("oninput", "this.checkValidity()"),
+		Div(
+			Class("flex gap-2 flex-nowrap"),
+			inputText("price", "0", isRequired,
+				Type("number"),
+				Min("0"),
+				Step("1"),
+				Pattern("^(0|[1-9][0-9]*)$"),
+				Title("Price must be a non-negative integer"),
+				g.Attr("oninput", "this.checkValidity()"),
+				Class("flex-1 p-2 border rounded-md"),
+			),
+			Select(
+				Name("price_currency"),
+				ID("price-currency"),
+				Class("p-2 border rounded-md"),
+				g.Group(opts),
+			),
 		),
+		P(Class("text-sm text-zinc-500 mt-1"), g.Text("Enter 0 for FREE.")),
 	)
 }

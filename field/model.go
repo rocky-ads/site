@@ -14,7 +14,7 @@ func (f ModelField) FilterNode(fv Values) g.Node {
 	return nil
 }
 
-func (f ModelField) NewAdNode(fv Values) g.Node {
+func (f ModelField) NewAdNode(fv Values, opts NewAdOpts) g.Node {
 	values, err := f.GetAllValues(fv)
 	if err != nil {
 		logger.Error("Failed to get values for field", "field", f.Name, "error", err)

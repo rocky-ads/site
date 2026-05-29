@@ -7,6 +7,7 @@ import (
 	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/cookie"
+	"github.com/rocky-ads/site/currency"
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/egg"
 	"github.com/rocky-ads/site/field"
@@ -15,6 +16,7 @@ import (
 	"github.com/rocky-ads/site/message"
 	"github.com/rocky-ads/site/param"
 	"github.com/rocky-ads/site/ui"
+	"github.com/rocky-ads/site/user"
 	g "maragu.dev/gomponents"
 )
 
@@ -45,7 +47,7 @@ func AdHandler(c *fiber.Ctx) error {
 	// TODO: Determine reachable based on owner's contact info/verification status
 	reachable := true // For now, assume owner is reachable
 
-	return renderPage(c, title, ui.Ad(adID, userID, a.UserID, a.ImageCount, a.Price,
+	return renderPage(c, title, ui.Ad(adID, userID, a.UserID, a.ImageCount, a.Price, a.PriceCurrency,
 		a.Title, a.Location(), a.Description, a.CreatedAt, a.Bookmarked,
 		!a.IsDeleted(), reachable, csrfToken, a.RockCount))
 }
@@ -111,13 +113,14 @@ func NewAdHandler(c *fiber.Ctx) error {
 	}
 
 	fv := make(field.Values)
+	opts := newAdOpts(c)
 	renderedFields := make([]g.Node, 0, len(fields))
 	for _, f := range fields {
 		// Show only first field of each chain.
 		if specFielder, ok := f.(field.SpecFielder); ok && !specFielder.GetSpecField().IsFirst {
 			continue
 		}
-		renderedFields = append(renderedFields, f.NewAdNode(fv))
+		renderedFields = append(renderedFields, f.NewAdNode(fv, opts))
 	}
 
 	return renderPage(c, "New Ad", ui.NewAd(categoryName, renderedFields))
@@ -217,4 +220,18 @@ func deleteAd(adID int) error {
 func restoreAd(adID int) error {
 	_, err := db.Exec("UPDATE ads SET deleted_at = NULL WHERE id = ?", adID)
 	return err
+}
+
+func newAdOpts(c *fiber.Ctx) field.NewAdOpts {
+	userID := local.GetUserID(c)
+	if userID == 0 {
+		return field.NewAdOpts{DefaultCurrency: currency.Default}
+	}
+	u, err := user.GetByID(userID)
+	if err != nil {
+		return field.NewAdOpts{DefaultCurrency: currency.Default}
+	}
+	return field.NewAdOpts{
+		DefaultCurrency: currency.DefaultFromPhone(u.PhoneE64),
+	}
 }

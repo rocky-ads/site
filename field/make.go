@@ -23,7 +23,7 @@ func (f MakeField) FilterNode(fv Values) g.Node {
 	return ui.FieldSelect(f.Name, f.DisplayName, value, "", "", values, false)
 }
 
-func (f MakeField) NewAdNode(fv Values) g.Node {
+func (f MakeField) NewAdNode(fv Values, opts NewAdOpts) g.Node {
 
 	values, err := f.GetAllValues(fv)
 	if err != nil {

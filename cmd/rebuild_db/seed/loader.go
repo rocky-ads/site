@@ -12,6 +12,7 @@ import (
 
 	"github.com/nyaruka/phonenumbers"
 	"github.com/rocky-ads/site/config"
+	"github.com/rocky-ads/site/currency"
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/encryption"
 	"github.com/rocky-ads/site/field"
@@ -703,8 +704,9 @@ func loadAdsFromFile(categoryID int, filename string, usedIDs map[int]string) er
 			return fmt.Errorf("getting/creating location: %w", err)
 		}
 
-		// Convert price from dollars to cents
-		priceCents := int(ad.Price * 100)
+		// Store price as whole currency units (seed JSON values are dollars).
+		price := int(ad.Price + 0.5)
+		priceCurrency := currency.DefaultFromRegion(ad.Location.Country)
 
 		// Parse created_at timestamp
 		createdAt, err := time.Parse(time.RFC3339, ad.CreatedAt)
@@ -714,8 +716,8 @@ func loadAdsFromFile(categoryID int, filename string, usedIDs map[int]string) er
 
 		// Insert ad with explicit ID
 		_, err = db.Exec(
-			"INSERT INTO ads (id, category_id, title, description, price, created_at, user_id, image_count, location_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-			adID, categoryID, ad.Title, ad.Description, priceCents, createdAt, testUserID, ad.ImageCount, locationID,
+			"INSERT INTO ads (id, category_id, title, description, price, price_currency, created_at, user_id, image_count, location_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			adID, categoryID, ad.Title, ad.Description, price, priceCurrency, createdAt, testUserID, ad.ImageCount, locationID,
 		)
 		if err != nil {
 			return fmt.Errorf("inserting ad with ID %d: %w", adID, err)

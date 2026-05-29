@@ -17,6 +17,6 @@ func (f PriceField) FilterNode(fv Values) g.Node {
 	return ui.PriceRange(f.DisplayName, minPrice, maxPrice)
 }
 
-func (f PriceField) NewAdNode(fv Values) g.Node {
-	return ui.PriceInput(f.IsRequired)
+func (f PriceField) NewAdNode(fv Values, opts NewAdOpts) g.Node {
+	return ui.PriceInput(f.IsRequired, opts.DefaultCurrency)
 }

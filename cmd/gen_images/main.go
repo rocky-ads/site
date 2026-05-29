@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/rocky-ads/site/ad"
+	"github.com/rocky-ads/site/currency"
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/logger"
 	"github.com/chai2010/webp"
@@ -42,14 +43,6 @@ type FalResponse struct {
 	Images []FalImage `json:"images"`
 }
 
-func formatPrice(price int) string {
-	dollars := float64(price) / 100.0
-	if dollars == float64(int(dollars)) {
-		return fmt.Sprintf("$%.0f", dollars)
-	}
-	return fmt.Sprintf("$%.2f", dollars)
-}
-
 func formatLocation(city, adminArea, country string) string {
 	parts := []string{}
 	if city != "" {
@@ -66,7 +59,7 @@ func formatLocation(city, adminArea, country string) string {
 
 func buildPrompt(ad ad.Ad, isHandwrittenNote bool) string {
 	location := formatLocation(ad.City, ad.AdminArea, ad.Country)
-	price := formatPrice(ad.Price)
+	price := currency.Format(ad.Price, ad.PriceCurrency)
 
 	if isHandwrittenNote {
 		return fmt.Sprintf("A hand-written note on paper or cardboard about: %s. The note mentions the title '%s', description '%s', price %s, and location %s. Written in casual handwriting, like someone selling something on craigslist or facebook marketplace. Non-professional photo quality, taken with a phone camera, natural lighting, slightly messy background.",
@@ -255,6 +248,7 @@ func getAds(startID, limit int) ([]ad.Ad, error) {
 			a.title,
 			a.description,
 			a.price,
+			a.price_currency,
 			a.created_at,
 			a.deleted_at,
 			a.user_id,
