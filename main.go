@@ -166,15 +166,6 @@ func main() {
 
 	port := ":" + config.ServerPort
 	logger.Info("Server starting", "port", port)
-	logger.Info("API endpoints:")
-	logger.Info("  GET  /api/category/:category/values/:field")
-	logger.Info("  GET  /api/category/:category/any-values/:field")
-	logger.Info("  POST /api/category/:category/ad-values/:field")
-	logger.Info("  GET  /api/category/:category/chains")
-	logger.Info("  GET  /api/category/:category/first-spec-fields")
-	logger.Info("  GET  /api/category/:category/last-spec-field")
-	logger.Info("  POST /api/category/:category/search")
-	logger.Info("  GET  /api/ads/:id/filter-values")
 
 	if err := app.Listen(port); err != nil {
 		logger.Fatal("Server failed to start", "error", err)

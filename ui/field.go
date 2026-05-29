@@ -190,9 +190,13 @@ func LocationRadius(location, radius string) g.Node {
 }
 
 func LocationInput(isRequired bool) g.Node {
+	locationLabel := "Location"
+	if !isRequired {
+		locationLabel = "Location (optional)"
+	}
 	return Div(
-		label("Location"),
-		inputText("location", "City, State or ZIP (optional)", isRequired,
+		label(locationLabel),
+		inputText("location", "City, State or ZIP", isRequired,
 			MaxLength("32"),
 			Pattern("[\\x20-\\x7E]+"),
 			g.Attr("oninput", "this.checkValidity()"),
