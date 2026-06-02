@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/currency"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
@@ -443,31 +442,6 @@ func categoryNode(categoryName string) g.Node {
 	)
 }
 
-func titleInput() g.Node {
-	return Div(
-		label("Title"),
-		inputText("title", "", true,
-			MaxLength("35"),
-			Pattern("[\\x20-\\x7E]+"),
-			//Title("Title must be 1-35 characters, printable ASCII characters only"),
-			g.Attr("oninput", "this.checkValidity()"),
-		),
-	)
-}
-
-func descriptionInput() g.Node {
-	return Div(
-		label("Description"),
-		textArea("description", "", true,
-			MaxLength(fmt.Sprintf("%d", config.MaxAdDescriptionLength)),
-			Rows("4"),
-			Pattern("[\\x20-\\x7E\\n\\r]+"),
-			Title("Description must contain printable ASCII characters only"),
-			g.Attr("oninput", "this.checkValidity()"),
-		),
-	)
-}
-
 func imagesInput() g.Node {
 	return Div(
 		label("Images"),
@@ -475,15 +449,13 @@ func imagesInput() g.Node {
 	)
 }
 
-func newAdForm(fields []g.Node) g.Node {
+func newAdForm(fields g.Node) g.Node {
 	return Form(
 		Class("space-y-8 mt-8"),
-		hx.Post("/api/ad/new"),
-		hx.Swap("none"),
-		titleInput(),
-		g.Group(fields),
+		ID("new-ad-form"),
+		g.Attr("onsubmit", "document.querySelectorAll('#new-ad-form textarea[data-pattern-check]').forEach(function(el){el.oninput.call(el);});"),
+		fields,
 		imagesInput(),
-		descriptionInput(),
 		standardButton(buttonProps{
 			Type: "submit",
 			Text: "Submit",
@@ -491,7 +463,7 @@ func newAdForm(fields []g.Node) g.Node {
 	)
 }
 
-func NewAd(categoryName string, fields []g.Node) []g.Node {
+func NewAd(categoryName string, fields g.Node) []g.Node {
 	return []g.Node{
 		pageTitle("Create New Ad"),
 		categoryNode(categoryName),

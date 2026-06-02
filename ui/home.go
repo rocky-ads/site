@@ -22,7 +22,7 @@ func SearchContainer(userID, view int, categoryName, categoryImage string, resul
 func categorySearch(userID, view int, categoryName, categoryImage string, results []g.Node) g.Node {
 	return Div(
 		categoryButton(categoryName, categoryImage),
-		SearchWidget(userID, view, "", results, []g.Node{}),
+		SearchWidget(userID, view, "", results, nil),
 	)
 }
 
@@ -112,11 +112,14 @@ func filterControls(filters []g.Node) g.Node {
 	)
 }
 
-func searchFilters(q string, filters []g.Node) g.Node {
+func searchFilters(q string, filters g.Node) g.Node {
 	return Div(
 		Class("border rounded-lg p-4"),
 		searchBox(q),
-		filterControls(filters),
+		Div(
+			Class("grid grid-cols-2 gap-4 mt-4"),
+			filters,
+		),
 		filterActions(),
 	)
 }
@@ -157,16 +160,16 @@ func SearchView(userID, view int, results []g.Node) g.Node {
 	)
 }
 
-func SearchWidget(userID, view int, q string, results, filters []g.Node) g.Node {
+func SearchWidget(userID, view int, q string, results []g.Node, filters g.Node) g.Node {
 	return Form(
 		Class("flex flex-col gap-4"),
 		ID("search-widget"),
-		hx.Get("/api/search"),
+		hx.Get("/api/search/"),
 		hx.Target("#search-results"),
 		hx.Swap("outerHTML"),
 		hx.Include("form"),
-		g.If(len(filters) > 0, searchFilters(q, filters)),
-		g.If(len(filters) == 0, searchSimple(q)),
+		g.If(filters != nil, searchFilters(q, filters)),
+		g.If(filters == nil, searchSimple(q)),
 		SearchView(userID, view, results),
 	)
 }

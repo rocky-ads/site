@@ -13,6 +13,7 @@ import (
 	"github.com/rocky-ads/site/param"
 	"github.com/rocky-ads/site/search"
 	"github.com/rocky-ads/site/ui"
+	uiads "github.com/rocky-ads/site/ui/ads"
 	g "maragu.dev/gomponents"
 
 	"github.com/gofiber/fiber/v2"
@@ -167,10 +168,9 @@ func GetFirstSpecFieldsHandler(c *fiber.Ctx) error {
 
 	response := make([]map[string]string, len(fields))
 	for i, f := range fields {
-		field := f.GetField()
 		response[i] = map[string]string{
-			"name":         field.Name,
-			"display_name": field.DisplayName,
+			"name":         f.Name,
+			"display_name": f.DisplayName,
 		}
 	}
 
@@ -185,10 +185,9 @@ func GetLastSpecFieldHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	field := last.GetField()
 	response := map[string]string{
-		"name":         field.Name,
-		"display_name": field.DisplayName,
+		"name":         last.Name,
+		"display_name": last.DisplayName,
 	}
 
 	return c.JSON(response)
@@ -214,19 +213,14 @@ func SwitchCategoryHandler(c *fiber.Ctx) error {
 func ShowFiltersHandler(c *fiber.Ctx) error {
 	categoryID := cookie.GetCategoryID(c)
 
-	fields, err := field.GetFields(categoryID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-
 	fv := getQueryValues(c)
 	q := fv.Get("q")
+	searchFV := field.FilterSpecFields(categoryID, fv)
 
-	fv = field.FilterSpecFields(categoryID, fv)
-
-	filters := make([]g.Node, 0, len(fields))
-	for _, field := range fields {
-		filters = append(filters, field.FilterNode(fv))
+	adFilters := parseAdFilters(c)
+	chains, optionsMap, err := field.FilterFieldsOptions(categoryID, adFilters)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	userID := local.GetUserID(c)
@@ -236,16 +230,23 @@ func ShowFiltersHandler(c *fiber.Ctx) error {
 	limit := config.SearchPageSize
 	offset := 0
 
-	results, err := searchAndRenderAds(categoryID, limit, offset, userID, view, fv, loc, csrfToken)
+	results, err := searchAndRenderAds(categoryID, limit, offset, userID, view, searchFV, loc, csrfToken)
 	if err != nil {
 		return err
 	}
+
+	filterNode := uiads.FilterContent(uiads.FilterView{
+		CategoryID: categoryID,
+		Category:   chains,
+		OptionsMap: optionsMap,
+		Filters:    adFilters,
+	})
 
 	logger.Debug("ShowFiltersHandler results",
 		"resultsCount", len(results),
 	)
 
-	return render(c, ui.SearchWidget(userID, view, q, results, filters))
+	return render(c, ui.SearchWidget(userID, view, q, results, filterNode))
 }
 
 func SearchPageHandler(c *fiber.Ctx) error {
@@ -266,21 +267,4 @@ func SearchPageHandler(c *fiber.Ctx) error {
 	}
 
 	return render(c, g.Group(results))
-}
-
-func FieldHandler(c *fiber.Ctx) error {
-	categoryID := cookie.GetCategoryID(c)
-	if categoryID == 0 {
-		return fiber.NewError(fiber.StatusBadRequest, "category required")
-	}
-	name := c.Params("name")
-	if name == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "field name required")
-	}
-	fielder, err := field.GetFielderByName(categoryID, name)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, err.Error())
-	}
-	fv := getQueryValues(c)
-	return render(c, ui.FieldFragment(name, fielder.NewAdNode(fv)))
 }

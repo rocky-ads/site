@@ -1,46 +1,64 @@
 [
   {
+    "name": "title",
+    "display_name": "Title",
+    "input_type": "text?max=35&pattern=ascii"
+  },
+  {
+    "name": "description",
+    "display_name": "Description",
+    "input_type": "text?max=1000&pattern=ascii-multiline"
+  },
+  {
     "name": "make",
     "display_name": "Make",
+    "input_type": "select",
     "is_spec_field": true
   },
   {
     "name": "year",
     "display_name": "Year",
+    "input_type": "select_multi",
     "is_spec_field": true
   },
   {
     "name": "model",
     "display_name": "Model",
+    "input_type": "select_multi",
     "is_spec_field": true
   },
   {
     "name": "engine",
     "display_name": "Engine",
+    "input_type": "select_multi",
     "is_spec_field": true
   },
   {
     "name": "part_category",
     "display_name": "Part Category",
+    "input_type": "select",
     "is_spec_field": true
   },
   {
     "name": "part_subcategory",
     "display_name": "Part Subcategory",
+    "input_type": "select",
     "is_spec_field": true
   },
   {
     "name": "breed",
     "display_name": "Breed",
+    "input_type": "select",
     "is_spec_field": true
   },
   {
     "name": "location",
-    "display_name": "Location"
+    "display_name": "Location",
+    "input_type": "text?max=32&pattern=ascii"
   },
   {
     "name": "price",
-    "display_name": "Price"
+    "display_name": "Price",
+    "input_type": "number?min=0&pattern=nonneg-int"
   }
 ]
-

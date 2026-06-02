@@ -9,13 +9,11 @@ import (
 	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/egg"
-	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/message"
 	"github.com/rocky-ads/site/param"
 	"github.com/rocky-ads/site/ui"
-	g "maragu.dev/gomponents"
 )
 
 func AdHandler(c *fiber.Ctx) error {
@@ -91,36 +89,6 @@ func AdEggConversationHandler(c *fiber.Ctx) error {
 	}
 
 	return renderConversationModal(c, conv, currentUserID, loc, csrfToken)
-}
-
-func NewAdHandler(c *fiber.Ctx) error {
-	userID := local.GetUserID(c)
-	if userID == 0 {
-		return redirectToLogin(c)
-	}
-
-	categoryID := cookie.GetCategoryID(c)
-	categoryName, err := ad.GetCategoryName(categoryID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-
-	fields, err := field.GetFields(categoryID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-
-	fv := make(field.Values)
-	renderedFields := make([]g.Node, 0, len(fields))
-	for _, f := range fields {
-		// Show only first field of each chain.
-		if specFielder, ok := f.(field.SpecFielder); ok && !specFielder.GetSpecField().IsFirst {
-			continue
-		}
-		renderedFields = append(renderedFields, f.NewAdNode(fv))
-	}
-
-	return renderPage(c, "New Ad", ui.NewAd(categoryName, renderedFields))
 }
 
 func AdShareHandler(c *fiber.Ctx) error {

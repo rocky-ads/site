@@ -86,7 +86,12 @@ CREATE INDEX idx_chains_category ON chains(category_id);
 CREATE TABLE fields (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
-    display_name TEXT NOT NULL
+    display_name TEXT NOT NULL,
+    -- input_type: base type plus optional validation query string.
+    -- Examples: text?max=35&pattern=ascii, text?max=1000&pattern=ascii-multiline,
+    -- number?min=0&pattern=nonneg-int, select, select_multi.
+    -- Pattern shorthands map to regex + validation messages in application code.
+    input_type TEXT NOT NULL DEFAULT 'text'
 );
 
 -- Chain fields table (defines fields for each chain and their relationships)

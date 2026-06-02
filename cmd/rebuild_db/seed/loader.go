@@ -24,6 +24,7 @@ import (
 type FieldData struct {
 	Name        string `json:"name"`
 	DisplayName string `json:"display_name"`
+	InputType   string `json:"input_type"`
 	IsSpecField bool   `json:"is_spec_field"`
 }
 
@@ -243,9 +244,13 @@ func LoadFields() error {
 	}
 
 	for _, f := range fields {
+		inputType := f.InputType
+		if inputType == "" {
+			inputType = "text"
+		}
 		_, err := db.Exec(
-			"INSERT OR REPLACE INTO fields (name, display_name) VALUES (?, ?)",
-			f.Name, f.DisplayName,
+			"INSERT OR REPLACE INTO fields (name, display_name, input_type) VALUES (?, ?, ?)",
+			f.Name, f.DisplayName, inputType,
 		)
 		if err != nil {
 			return fmt.Errorf("inserting field %s: %w", f.Name, err)
