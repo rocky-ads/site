@@ -14,8 +14,9 @@ type Ad struct {
 	CategoryID  int        `db:"category_id" json:"category_id"`
 	Title       string     `db:"title" json:"title"`
 	Description string     `db:"description" json:"description"`
-	Price       int        `db:"price" json:"price"`
-	CreatedAt   time.Time  `db:"created_at" json:"created_at"`
+	Price         int        `db:"price" json:"price"`
+	PriceCurrency string     `db:"price_currency" json:"price_currency"`
+	CreatedAt     time.Time  `db:"created_at" json:"created_at"`
 	DeletedAt   *time.Time `db:"deleted_at" json:"deleted_at,omitempty"`
 	UserID      int        `db:"user_id" json:"user_id"`
 	ImageCount  int        `db:"image_count" json:"image_count"`
@@ -46,6 +47,7 @@ func GetAds(userID int, ids []int, loc *time.Location) ([]Ad, error) {
 			a.title,
 			a.description,
 			a.price,
+			a.price_currency,
 			a.created_at,
 			a.deleted_at,
 			a.user_id,

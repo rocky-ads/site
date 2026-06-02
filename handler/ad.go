@@ -45,7 +45,7 @@ func AdHandler(c *fiber.Ctx) error {
 	// TODO: Determine reachable based on owner's contact info/verification status
 	reachable := true // For now, assume owner is reachable
 
-	return renderPage(c, title, ui.Ad(adID, userID, a.UserID, a.ImageCount, a.Price,
+	return renderPage(c, title, ui.Ad(adID, userID, a.UserID, a.ImageCount, a.Price, a.PriceCurrency,
 		a.Title, a.Location(), a.Description, a.CreatedAt, a.Bookmarked,
 		!a.IsDeleted(), reachable, csrfToken, a.RockCount))
 }

@@ -108,7 +108,8 @@ CREATE TABLE ads (
     category_id INTEGER NOT NULL REFERENCES categories(id),
     title TEXT NOT NULL,
     description TEXT NOT NULL,
-    price INTEGER NOT NULL, -- in cents
+    price INTEGER NOT NULL DEFAULT 0, -- whole units of price_currency; 0 means free
+    price_currency TEXT NOT NULL DEFAULT 'USD',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP,
     user_id INTEGER NOT NULL REFERENCES users(id),
