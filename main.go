@@ -63,6 +63,7 @@ func setupApp() *fiber.App {
 	auth.Get("/sse", handler.SSEHandler)
 
 	auth.Get("/ad/new", handler.NewAdHandler)
+	auth.Get("/ad/new/fields", handler.NewAdFieldsHandler)
 	auth.Get("/ad/new/next-field", handler.NewAdNextFieldHandler)
 	auth.Get("/ad/new/price-field", handler.NewAdPriceFieldHandler)
 	auth.Delete("/ad/:id/delete", handler.DeleteAdHandler)
@@ -115,9 +116,6 @@ func setupApp() *fiber.App {
 	api.Get("/image-full/:id", handler.ImageFullScreenHandler)
 	api.Get("/show-filters", handler.ShowFiltersHandler)
 	api.Get("/filter/next-field", handler.FilterNextFieldHandler)
-	api.Get("/ad/new/fields", handler.NewAdFieldsHandler)
-	api.Get("/ad/new/next-field", handler.NewAdNextFieldHandler)
-	api.Get("/ad/new/price-field", handler.NewAdPriceFieldHandler)
 	api.Get("/category-select", handler.CategorySelectHandler)
 	api.Get("/modal-remove/:name", handler.ModalRemoveHandler)
 	api.Get("/search/", handler.SearchPageHandler)

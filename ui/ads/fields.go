@@ -506,12 +506,12 @@ func nextFieldURL(categoryID, chainID int, afterField, fieldName string) string 
 	v.Set("chain_id", strconv.Itoa(chainID))
 	v.Set("after", afterField)
 	v.Set("field", fieldName)
-	return "/api/ad/new/next-field?" + v.Encode()
+	return "/auth/ad/new/next-field?" + v.Encode()
 }
 
 func priceFieldURL(categoryID, chainID int) string {
 	v := url.Values{}
 	v.Set("category_id", strconv.Itoa(categoryID))
 	v.Set("chain_id", strconv.Itoa(chainID))
-	return "/api/ad/new/price-field?" + v.Encode()
+	return "/auth/ad/new/price-field?" + v.Encode()
 }
