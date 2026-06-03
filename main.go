@@ -7,7 +7,6 @@ import (
 	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/db"
-	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/handler"
 	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/service/sms"
@@ -63,9 +62,6 @@ func setupApp() *fiber.App {
 	auth.Get("/sse", handler.SSEHandler)
 
 	auth.Get("/ad/new", handler.NewAdHandler)
-	auth.Get("/ad/new/fields", handler.NewAdFieldsHandler)
-	auth.Get("/ad/new/next-field", handler.NewAdNextFieldHandler)
-	auth.Get("/ad/new/price-field", handler.NewAdPriceFieldHandler)
 	auth.Delete("/ad/:id/delete", handler.DeleteAdHandler)
 	auth.Post("/ad/:id/restore", handler.RestoreAdHandler)
 	auth.Get("/ad/:id/new-conversation", handler.MessageModalHandler)
@@ -115,24 +111,13 @@ func setupApp() *fiber.App {
 	api.Get("/image-nav/:id", handler.ImageNavigationHandler)
 	api.Get("/image-full/:id", handler.ImageFullScreenHandler)
 	api.Get("/show-filters", handler.ShowFiltersHandler)
-	api.Get("/filter/next-field", handler.FilterNextFieldHandler)
 	api.Get("/category-select", handler.CategorySelectHandler)
 	api.Get("/modal-remove/:name", handler.ModalRemoveHandler)
 	api.Get("/search/", handler.SearchPageHandler)
 	api.Get("/ad/:id/share", handler.AdShareHandler)
 	api.Get("/ad/share/copy", handler.AdShareCopyHandler)
 
-	categoryRouter := api.Group("/category/:category")
-	categoryRouter.Get("/values/:field", handler.GetAllValuesHandler)
-	categoryRouter.Get("/any-values/:field", handler.GetAnyValuesHandler)
-	categoryRouter.Post("/ad-values/:field", handler.GetAdValuesHandler)
-	categoryRouter.Get("/chains", handler.GetChainsHandler)
-	categoryRouter.Get("/first-spec-fields", handler.GetFirstSpecFieldsHandler)
-	categoryRouter.Get("/last-spec-field", handler.GetLastSpecFieldHandler)
-	categoryRouter.Post("/search", handler.SearchHandler)
-	categoryRouter.Get("/switch", handler.SwitchCategoryHandler)
-
-	api.Get("/ads/:id/filter-values", handler.GetAdFilterValuesHandler)
+	api.Get("/category/:category/switch", handler.SwitchCategoryHandler)
 
 	return app
 }
@@ -154,10 +139,6 @@ func main() {
 		logger.Fatal("Failed to open database", "error", err)
 	}
 	defer db.Close()
-
-	if err := field.Init(); err != nil {
-		logger.Fatal("Failed to initialize fields", "error", err)
-	}
 
 	if err := ad.Init(); err != nil {
 		logger.Fatal("Failed to initialize ads", "error", err)

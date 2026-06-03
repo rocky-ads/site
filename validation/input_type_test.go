@@ -1,4 +1,4 @@
-package field
+package validation
 
 import "testing"
 
@@ -64,14 +64,5 @@ func TestAnchoredPattern(t *testing.T) {
 	}
 	if got := AnchoredPattern(`^(0|[1-9][0-9]*)$`); got != `^(0|[1-9][0-9]*)$` {
 		t.Fatalf("already anchored = %q", got)
-	}
-}
-
-func TestIsMultiInput_parsed(t *testing.T) {
-	if !IsMultiInput("select_multi") {
-		t.Fatal("expected select_multi")
-	}
-	if IsMultiInput("text?max=10") {
-		t.Fatal("expected text not multi")
 	}
 }

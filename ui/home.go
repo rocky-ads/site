@@ -1,29 +1,30 @@
 package ui
 
 import (
+	uiads "github.com/rocky-ads/site/ui/ads"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
 )
 
-func HomePage(userID, view int, categoryName, categoryImage string, results []g.Node) []g.Node {
-	return []g.Node{SearchContainer(userID, view, categoryName, categoryImage, results)}
+func HomePageWithFilters(userID, view int, categoryName, categoryImage, q string, filtersExpanded bool, filters uiads.SearchFilters, results []g.Node) []g.Node {
+	return []g.Node{SearchContainerWithFilters(userID, view, categoryName, categoryImage, q, filtersExpanded, filters, results)}
 }
 
-func SearchContainer(userID, view int, categoryName, categoryImage string, results []g.Node) g.Node {
+func SearchContainerWithFilters(userID, view int, categoryName, categoryImage, q string, filtersExpanded bool, filters uiads.SearchFilters, results []g.Node) g.Node {
 	return g.Group(append([]g.Node{
 		Div(
 			ID("search-container"),
-			categorySearch(userID, view, categoryName, categoryImage, results),
+			Div(
+				categoryButton(categoryName, categoryImage),
+				SearchWidget(userID, view, q, filtersExpanded, filters, results),
+			),
 		),
 	}, RemoveModal("category")...))
 }
 
-func categorySearch(userID, view int, categoryName, categoryImage string, results []g.Node) g.Node {
-	return Div(
-		categoryButton(categoryName, categoryImage),
-		SearchWidget(userID, view, "", results, nil),
-	)
+func SearchResults(view int, results []g.Node) g.Node {
+	return searchResults(view, results)
 }
 
 func categoryButton(categoryName, categoryImage string) g.Node {
@@ -53,18 +54,6 @@ func categoryButton(categoryName, categoryImage string) g.Node {
 	)
 }
 
-func filtersButton() g.Node {
-	return standardButton(buttonProps{
-		Type: "button",
-		Text: "Filters",
-		Attrs: []g.Node{
-			hx.Get("/api/show-filters"),
-			hx.Target("#search-widget"),
-			hx.Swap("outerHTML"),
-		},
-	})
-}
-
 func searchBox(q string) g.Node {
 	return Input(
 		Class("w-full p-2 border rounded"),
@@ -74,6 +63,44 @@ func searchBox(q string) g.Node {
 		Value(q),
 		hx.Trigger("search"),
 		Placeholder("What are you looking for?"),
+	)
+}
+
+func searchSimple(q string) g.Node {
+	return Div(
+		Class("flex gap-2 items-center"),
+		searchBox(q),
+		filtersButton(),
+	)
+}
+
+func filtersButton() g.Node {
+	return standardButton(buttonProps{
+		Type: "button",
+		Text: "Filters",
+		Attrs: []g.Node{
+			hx.Get("/api/show-filters"),
+			hx.Target("#search-widget"),
+			hx.Swap("outerHTML"),
+			hx.Include("form"),
+		},
+	})
+}
+
+func searchFiltersExpanded(q string, filters uiads.SearchFilters) g.Node {
+	return Div(
+		Class("border rounded-lg p-4"),
+		searchBox(q),
+		Div(Class("mt-4"), uiads.SearchFiltersPanel(filters)),
+		filterActions(),
+	)
+}
+
+func filterActions() g.Node {
+	return Div(
+		Class("flex justify-end gap-2 mt-4"),
+		clearFilters(),
+		applyFilters(),
 	)
 }
 
@@ -97,47 +124,13 @@ func applyFilters() g.Node {
 	})
 }
 
-func filterActions() g.Node {
+func SearchView(userID, view int, results []g.Node) g.Node {
 	return Div(
-		Class("flex justify-end gap-2 mt-4"),
-		clearFilters(),
-		applyFilters(),
+		Class("flex flex-col gap-4"),
+		ID("search-view"),
+		viewRow(userID, view),
+		searchResults(view, results),
 	)
-}
-
-func filterControls(filters []g.Node) g.Node {
-	return Div(
-		Class("grid grid-cols-2 gap-4 mt-4"),
-		g.Group(filters),
-	)
-}
-
-func searchFilters(q string, filters g.Node) g.Node {
-	return Div(
-		Class("border rounded-lg p-4"),
-		searchBox(q),
-		Div(
-			Class("grid grid-cols-2 gap-4 mt-4"),
-			filters,
-		),
-		filterActions(),
-	)
-}
-
-func searchSimple(q string) g.Node {
-	return Div(
-		Class("flex gap-2 items-center"),
-		searchBox(q),
-		filtersButton(),
-	)
-}
-
-func newAdButton(userID int) g.Node {
-	return standardButton(buttonProps{
-		Href:     "/auth/ad/new",
-		Text:     "New Ad",
-		Disabled: userID == 0,
-	})
 }
 
 func viewRow(userID, view int) g.Node {
@@ -151,16 +144,21 @@ func viewRow(userID, view int) g.Node {
 	)
 }
 
-func SearchView(userID, view int, results []g.Node) g.Node {
-	return Div(
-		Class("flex flex-col gap-4"),
-		ID("search-view"),
-		viewRow(userID, view),
-		searchResults(view, results),
-	)
+func newAdButton(userID int) g.Node {
+	return standardButton(buttonProps{
+		Href:     "/auth/ad/new",
+		Text:     "New Ad",
+		Disabled: userID == 0,
+	})
 }
 
-func SearchWidget(userID, view int, q string, results []g.Node, filters g.Node) g.Node {
+func SearchWidget(userID, view int, q string, filtersExpanded bool, filters uiads.SearchFilters, results []g.Node) g.Node {
+	var searchArea g.Node
+	if filtersExpanded {
+		searchArea = searchFiltersExpanded(q, filters)
+	} else {
+		searchArea = searchSimple(q)
+	}
 	return Form(
 		Class("flex flex-col gap-4"),
 		ID("search-widget"),
@@ -168,8 +166,7 @@ func SearchWidget(userID, view int, q string, results []g.Node, filters g.Node) 
 		hx.Target("#search-results"),
 		hx.Swap("outerHTML"),
 		hx.Include("form"),
-		g.If(filters != nil, searchFilters(q, filters)),
-		g.If(filters == nil, searchSimple(q)),
+		searchArea,
 		SearchView(userID, view, results),
 	)
 }

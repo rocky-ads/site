@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/rocky-ads/site/db"
-	"github.com/rocky-ads/site/field"
 )
 
 type Ad struct {
@@ -65,7 +64,7 @@ func GetAds(userID int, ids []int, loc *time.Location) ([]Ad, error) {
 		FROM ads a
 		LEFT JOIN locations l ON a.location_id = l.id
 		LEFT JOIN bookmarks b ON a.id = b.ad_id AND b.user_id = ?
-		WHERE a.id IN (` + field.Placeholders(len(ids)) + `)
+		WHERE a.id IN (` + db.Placeholders(len(ids)) + `)
 	`
 	args := make([]any, len(ids)+1)
 	args[0] = userID
@@ -99,36 +98,6 @@ func GetAd(userID int, id int, loc *time.Location) (Ad, error) {
 		return Ad{}, fmt.Errorf("ad not found")
 	}
 	return ads[0], nil
-}
-
-func LoadFieldValues(adID int) (field.Values, error) {
-	type fieldValue struct {
-		Name  string `json:"name"`
-		Value string `json:"value"`
-	}
-
-	var pairs []fieldValue
-	query := `
-		SELECT COALESCE(json_group_array(json_object(
-			'name', f.name,
-			'value', av.value
-		)), '[]')
-		FROM ad_values av
-		JOIN fields f ON av.field_id = f.id
-		WHERE av.ad_id = ?
-		ORDER BY f.name, av.value
-	`
-	err := db.QueryJSON(&pairs, query, adID)
-	if err != nil {
-		return nil, err
-	}
-
-	fv := make(field.Values)
-	for _, p := range pairs {
-		fv[p.Name] = append(fv[p.Name], p.Value)
-	}
-
-	return fv, nil
 }
 
 // GetUserAdIDs returns ad IDs for a user based on filter type

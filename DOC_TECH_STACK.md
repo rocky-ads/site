@@ -159,10 +159,9 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
   - Request logging
 
 ### Data Patterns
-- **JSON Columns** - Flexible schema for location data
-- **Normalized Database** - Categories, chains, fields, ads, values
-- **Spec Tables** - Category-specific specification tables (bicycle, ag, vehicle, part)
-- **Composite Indexes** - Optimized for search queries
+- **Normalized Database** - Users, categories, ads, locations, bookmarks, conversations
+- **Hard-filter search** - Category, price range, location + radius (bounding box on lat/lon); interim text match on title/description (`q`)
+- **Planned semantic search** - Postgres + pgvector + embeddings on `q` (see `service/gemini`)
 
 ### Security Patterns
 - **Encryption at Rest** - AES-GCM for sensitive user data

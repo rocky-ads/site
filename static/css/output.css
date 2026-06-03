@@ -263,9 +263,6 @@
   .pointer-events-none {
     pointer-events: none;
   }
-  .\!visible {
-    visibility: visible !important;
-  }
   .visible {
     visibility: visible;
   }
@@ -624,9 +621,6 @@
   }
   .grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .grid-cols-4 {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .grid-cols-6 {
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -1420,11 +1414,6 @@
     &:focus {
       --tw-outline-style: none;
       outline-style: none;
-    }
-  }
-  .sm\:grid-cols-6 {
-    @media (width >= 40rem) {
-      grid-template-columns: repeat(6, minmax(0, 1fr));
     }
   }
   .md\:mx-auto {

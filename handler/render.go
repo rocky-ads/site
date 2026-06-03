@@ -9,7 +9,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/ad"
-	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/message"
 	"github.com/rocky-ads/site/search"
@@ -41,13 +40,13 @@ func renderPage(c *fiber.Ctx, title string, body []gomponents.Node) error {
 }
 
 // searchAndRenderAds searches for ads and renders them into gomponents nodes
-func searchAndRenderAds(categoryID, limit, offset, userID, view int, fv field.Values, loc *time.Location, csrfToken string) ([]g.Node, error) {
-	adIDs, err := search.Search(categoryID, limit, offset, fv)
+func searchAndRenderAds(p search.Params, userID, view int, loc *time.Location, csrfToken string) ([]g.Node, error) {
+	adIDs, err := search.Search(p)
 	if err != nil {
 		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	page := (offset / limit) + 1
+	page := (p.Offset / p.Limit) + 1
 	results, err := ad.AdNodes(adIDs, userID, view, page, loc, csrfToken, true)
 	if err != nil {
 		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())

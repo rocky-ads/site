@@ -1,7 +1,6 @@
 package seed
 
 import (
-	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -15,45 +14,21 @@ import (
 	"github.com/rocky-ads/site/currency"
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/encryption"
-	"github.com/rocky-ads/site/field"
 	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/password"
 )
 
-// FieldData represents a field from fields.json
-type FieldData struct {
-	Name        string `json:"name"`
-	DisplayName string `json:"display_name"`
-	InputType   string `json:"input_type"`
-	IsSpecField bool   `json:"is_spec_field"`
-}
-
 // categoryJSON represents a category from ad-category.json
 type categoryJSON struct {
-	Name       string      `json:"name"`
-	ImageFile  string      `json:"image_file"`
-	SeedAdFile string      `json:"seed_ad_file"`
-	Chains     []chainJSON `json:"chains"`
-}
-
-// chainJSON represents a chain within a category
-type chainJSON struct {
-	SpecTable string      `json:"spec_table"`
-	ChainFile string      `json:"chain_file"`
-	Fields    []fieldJSON `json:"fields"`
-}
-
-// fieldJSON represents a field within a chain
-type fieldJSON struct {
-	Name       string `json:"field_name"`
-	IsRequired bool   `json:"is_required"`
+	Name       string `json:"name"`
+	ImageFile  string `json:"image_file"`
+	SeedAdFile string `json:"seed_ad_file"`
 }
 
 // CategoryFiles stores file information for a category
 type CategoryFiles struct {
 	ID         int
 	SeedAdFile string
-	ChainFiles map[string]string // Maps spec_table to chain_file
 }
 
 var categoryFiles = make(map[string]CategoryFiles)
@@ -67,22 +42,10 @@ func LoadAll(includeTestAds bool) error {
 	logger.Info("LoadUsers completed", "duration", time.Since(startTime))
 
 	startTime = time.Now()
-	if err := LoadFields(); err != nil {
-		return fmt.Errorf("loading fields: %w", err)
-	}
-	logger.Info("LoadFields completed", "duration", time.Since(startTime))
-
-	startTime = time.Now()
 	if err := LoadCategories(); err != nil {
 		return fmt.Errorf("loading categories: %w", err)
 	}
 	logger.Info("LoadCategories completed", "duration", time.Since(startTime))
-
-	startTime = time.Now()
-	if err := LoadChains(); err != nil {
-		return fmt.Errorf("loading chains: %w", err)
-	}
-	logger.Info("LoadChains completed", "duration", time.Since(startTime))
 
 	if includeTestAds {
 		startTime = time.Now()
@@ -122,7 +85,6 @@ type Ad struct {
 	UserID      int
 	ImageCount  int
 	Location    LocationData
-	SpecValues  field.Values
 }
 
 // LoadUsers loads users from user.json into the users table
@@ -138,17 +100,14 @@ func LoadUsers() error {
 	}
 
 	for _, u := range users {
-		// Generate password hash using the password package
 		passwordHash, passwordSalt, err := password.HashPassword(u.Password)
 		if err != nil {
 			return fmt.Errorf("hashing password for user %s: %w", u.Name, err)
 		}
 
-		// Parse and normalize phone number to E.164 format
 		var phoneE64 string
 		num, err := phonenumbers.Parse(u.Phone, "")
 		if err != nil {
-			// If parsing fails and number doesn't start with +, try US region
 			if !strings.HasPrefix(u.Phone, "+") {
 				num, err = phonenumbers.Parse(u.Phone, "US")
 				if err != nil {
@@ -159,17 +118,12 @@ func LoadUsers() error {
 			}
 		}
 
-		// Validate the phone number format (use IsPossibleNumber for seed data to allow test numbers)
-		// Note: IsValidNumber is strict and may reject even reserved test ranges like 555-01XX
 		if !phonenumbers.IsPossibleNumber(num) {
 			return fmt.Errorf("invalid phone number format for user %s: %s", u.Name, u.Phone)
 		}
 
-		// Format in E.164 (e.g., +15551234567)
 		phoneE64 = phonenumbers.Format(num, phonenumbers.E164)
 
-		// Insert user with minimal fields first to get ID (needed for encryption)
-		// Use placeholder values that will be updated
 		result, err := db.Exec(
 			"INSERT INTO users (encrypted_name, name_nonce, name_hash, password_hash, password_salt, password_algo, encrypted_phone, phone_nonce, phone_hash, encrypted_email, email_nonce, email_hash, is_admin) VALUES (?, ?, ?, ?, ?, 'argon2id', ?, ?, ?, ?, ?, ?, ?)",
 			[]byte{}, []byte{}, db.HashString(u.Name), passwordHash, passwordSalt,
@@ -181,29 +135,24 @@ func LoadUsers() error {
 		}
 		userID, _ := result.LastInsertId()
 
-		// Encrypt name
 		encryptedName, nameNonce, err := encryption.Encrypt(int(userID), u.Name, config.UserEncryptionKey)
 		if err != nil {
 			return fmt.Errorf("encrypting name for user %s: %w", u.Name, err)
 		}
 		nameHash := db.HashString(u.Name)
 
-		// Encrypt phone (using E.164 formatted number)
 		encryptedPhone, phoneNonce, err := encryption.Encrypt(int(userID), phoneE64, config.UserEncryptionKey)
 		if err != nil {
 			return fmt.Errorf("encrypting phone for user %s: %w", u.Name, err)
 		}
 		phoneHash := db.HashString(phoneE64)
 
-		// Encrypt email (empty for seed users)
-		// Set email_hash to NULL when email is empty (UNIQUE constraint allows multiple NULLs)
 		encryptedEmail, emailNonce, err := encryption.Encrypt(int(userID), "", config.UserEncryptionKey)
 		if err != nil {
 			return fmt.Errorf("encrypting email for user %s: %w", u.Name, err)
 		}
-		var emailHash any = nil // NULL for empty emails
+		var emailHash any = nil
 
-		// Decode base64 strings to bytes for BYTEA storage
 		encryptedNameBytes, _ := base64.StdEncoding.DecodeString(encryptedName)
 		nameNonceBytes, _ := base64.StdEncoding.DecodeString(nameNonce)
 		encryptedPhoneBytes, _ := base64.StdEncoding.DecodeString(encryptedPhone)
@@ -211,7 +160,6 @@ func LoadUsers() error {
 		encryptedEmailBytes, _ := base64.StdEncoding.DecodeString(encryptedEmail)
 		emailNonceBytes, _ := base64.StdEncoding.DecodeString(emailNonce)
 
-		// Update user with encrypted fields
 		_, err = db.Exec(
 			`UPDATE users SET 
 				encrypted_name = ?, name_nonce = ?, name_hash = ?,
@@ -231,36 +179,7 @@ func LoadUsers() error {
 	return nil
 }
 
-// LoadFields loads fields.json into the fields table
-func LoadFields() error {
-	data, err := os.ReadFile("cmd/rebuild_db/seed/fields.json")
-	if err != nil {
-		return err
-	}
-
-	var fields []FieldData
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return err
-	}
-
-	for _, f := range fields {
-		inputType := f.InputType
-		if inputType == "" {
-			inputType = "text"
-		}
-		_, err := db.Exec(
-			"INSERT OR REPLACE INTO fields (name, display_name, input_type) VALUES (?, ?, ?)",
-			f.Name, f.DisplayName, inputType,
-		)
-		if err != nil {
-			return fmt.Errorf("inserting field %s: %w", f.Name, err)
-		}
-	}
-
-	return nil
-}
-
-// LoadCategories loads ad-category.json into categories, chains, and chain_fields tables
+// LoadCategories loads ad-category.json into categories
 func LoadCategories() error {
 	data, err := os.ReadFile("cmd/rebuild_db/seed/ad-category.json")
 	if err != nil {
@@ -272,13 +191,11 @@ func LoadCategories() error {
 		return err
 	}
 
-	// Sort categories by name to ensure deterministic processing order
 	sort.Slice(categories, func(i, j int) bool {
 		return categories[i].Name < categories[j].Name
 	})
 
 	for _, cat := range categories {
-		// Insert category
 		result, err := db.Exec(
 			"INSERT INTO categories (name, seed_ad_file, image_file) VALUES (?, ?, ?)",
 			cat.Name, cat.SeedAdFile, cat.ImageFile,
@@ -288,307 +205,32 @@ func LoadCategories() error {
 		}
 
 		categoryID, _ := result.LastInsertId()
-
-		// Store category file mappings for later use
-		chainFiles := make(map[string]string)
-		for _, chain := range cat.Chains {
-			if chain.SpecTable != "" && chain.ChainFile != "" {
-				chainFiles[chain.SpecTable] = chain.ChainFile
-			}
-		}
-
 		categoryFiles[cat.Name] = CategoryFiles{
 			ID:         int(categoryID),
 			SeedAdFile: cat.SeedAdFile,
-			ChainFiles: chainFiles,
-		}
-
-		// Process chains and fields
-		for chainIndex, chain := range cat.Chains {
-			// Insert chain
-			chainResult, err := db.Exec(
-				"INSERT INTO chains (category_id, spec_table, chain_file, chain_index) VALUES (?, ?, ?, ?)",
-				categoryID, chain.SpecTable, chain.ChainFile, chainIndex,
-			)
-			if err != nil {
-				return fmt.Errorf("inserting chain %d for category %s: %w", chainIndex, cat.Name, err)
-			}
-
-			chainID, _ := chainResult.LastInsertId()
-
-			// Process fields within this chain
-			for fieldIndex, field := range chain.Fields {
-				// Get field ID
-				var fieldID int
-				err := db.QueryRow("SELECT id FROM fields WHERE name = ?", field.Name).Scan(&fieldID)
-				if err != nil {
-					return fmt.Errorf("finding field %s: %w", field.Name, err)
-				}
-
-				// Calculate next_in_chain: if not last field in chain, point to next field's order
-				nextInChain := 0
-				if fieldIndex < len(chain.Fields)-1 {
-					nextInChain = fieldIndex + 1
-				}
-
-				// Insert chain field
-				_, err = db.Exec(
-					"INSERT INTO chain_fields (chain_id, field_id, next_in_chain, is_required, field_order) VALUES (?, ?, ?, ?, ?)",
-					chainID, fieldID, nextInChain, field.IsRequired, fieldIndex,
-				)
-				if err != nil {
-					return fmt.Errorf("inserting chain field %s: %w", field.Name, err)
-				}
-			}
 		}
 	}
 
 	return nil
 }
 
-// LoadChains loads vehicle and part chain files into chain combinations tables
-func LoadChains() error {
-	// Sort category names to ensure deterministic processing order
-	categoryNames := make([]string, 0, len(categoryFiles))
-	for name := range categoryFiles {
-		categoryNames = append(categoryNames, name)
-	}
-	sort.Strings(categoryNames)
-
-	// Use categoryFiles map populated during LoadCategories
-	for _, categoryName := range categoryNames {
-		files := categoryFiles[categoryName]
-		categoryID := files.ID
-
-		// Load chains based on spec_table -> chain_file mapping
-		for specTable, chainFile := range files.ChainFiles {
-			if specTable == "spec_part" {
-				if err := loadPartChain(categoryID, chainFile); err != nil {
-					return fmt.Errorf("loading part chain for category %s: %w", categoryName, err)
-				}
-			} else {
-				// Vehicle chains (spec_vehicle, spec_bicycle, spec_ag)
-				if err := loadVehicleChain(categoryID, chainFile, specTable); err != nil {
-					return fmt.Errorf("loading vehicle chain for category %s: %w", categoryName, err)
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-// loadVehicleChain loads a nested vehicle chain JSON file into the specified spec table
-// specTable determines which table to insert into (spec_bicycle, spec_ag, or spec_vehicle)
-func loadVehicleChain(categoryID int, filename string, specTable string) error {
-	data, err := os.ReadFile("cmd/rebuild_db/seed/" + filename)
-	if err != nil {
-		return err
-	}
-
-	var chainData map[string]any
-	if err := json.Unmarshal(data, &chainData); err != nil {
-		return err
-	}
-
-	type bicycleRow struct {
-		make  string
-		model string
-	}
-	type agRow struct {
-		make  string
-		year  string
-		model string
-	}
-	type vehicleRow struct {
-		make   string
-		year   string
-		model  string
-		engine string
-	}
-
-	var bicycleRows []bicycleRow
-	var agRows []agRow
-	var vehicleRows []vehicleRow
-
-	// Recursively traverse the nested structure and collect rows
-	var traverse func(map[string]any, []string, int)
-	traverse = func(m map[string]any, path []string, depth int) {
-		for key, value := range m {
-			currentPath := append(path, key)
-			switch v := value.(type) {
-			case map[string]any:
-				traverse(v, currentPath, depth+1)
-			case []any:
-				make := ""
-				year := ""
-				model := ""
-
-				if len(currentPath) > 0 {
-					make = currentPath[0]
-				}
-				if len(currentPath) > 1 {
-					year = currentPath[1]
-				}
-				if len(currentPath) > 2 {
-					model = currentPath[2]
-				}
-
-				pathLen := len(currentPath)
-				if specTable == "spec_bicycle" {
-					if pathLen == 1 {
-						for _, modelVal := range v {
-							modelStr := fmt.Sprintf("%v", modelVal)
-							bicycleRows = append(bicycleRows, bicycleRow{make: make, model: modelStr})
-						}
-					}
-				} else if specTable == "spec_ag" {
-					if pathLen == 2 {
-						for _, modelVal := range v {
-							modelStr := fmt.Sprintf("%v", modelVal)
-							agRows = append(agRows, agRow{make: make, year: year, model: modelStr})
-						}
-					}
-				} else if specTable == "spec_vehicle" {
-					if pathLen == 3 {
-						for _, engineVal := range v {
-							engineStr := fmt.Sprintf("%v", engineVal)
-							vehicleRows = append(vehicleRows, vehicleRow{make: make, year: year, model: model, engine: engineStr})
-						}
-					}
-				}
-			}
-		}
-	}
-
-	traverse(chainData, []string{}, 1)
-
-	// Batch insert using transaction
-	var tx *sql.Tx
-	tx, err = db.Begin()
-	if err != nil {
-		return fmt.Errorf("beginning transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	switch specTable {
-	case "spec_bicycle":
-		stmt, err := tx.Prepare("INSERT OR IGNORE INTO spec_bicycle (category_id, make, model) VALUES (?, ?, ?)")
-		if err != nil {
-			return fmt.Errorf("preparing statement: %w", err)
-		}
-		defer stmt.Close()
-		for _, row := range bicycleRows {
-			if _, err := stmt.Exec(categoryID, row.make, row.model); err != nil {
-				return fmt.Errorf("inserting row: %w", err)
-			}
-		}
-	case "spec_ag":
-		stmt, err := tx.Prepare("INSERT OR IGNORE INTO spec_ag (category_id, make, year, model) VALUES (?, ?, ?, ?)")
-		if err != nil {
-			return fmt.Errorf("preparing statement: %w", err)
-		}
-		defer stmt.Close()
-		for _, row := range agRows {
-			if _, err := stmt.Exec(categoryID, row.make, row.year, row.model); err != nil {
-				return fmt.Errorf("inserting row: %w", err)
-			}
-		}
-	case "spec_vehicle":
-		stmt, err := tx.Prepare("INSERT OR IGNORE INTO spec_vehicle (category_id, make, year, model, engine) VALUES (?, ?, ?, ?, ?)")
-		if err != nil {
-			return fmt.Errorf("preparing statement: %w", err)
-		}
-		defer stmt.Close()
-		for _, row := range vehicleRows {
-			if _, err := stmt.Exec(categoryID, row.make, row.year, row.model, row.engine); err != nil {
-				return fmt.Errorf("inserting row: %w", err)
-			}
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("committing transaction: %w", err)
-	}
-
-	return nil
-}
-
-// loadPartChain loads a flat part chain JSON file (part_category->part_subcategory)
-func loadPartChain(categoryID int, filename string) error {
-	data, err := os.ReadFile("cmd/rebuild_db/seed/" + filename)
-	if err != nil {
-		return err
-	}
-
-	var chainData map[string][]string
-	if err := json.Unmarshal(data, &chainData); err != nil {
-		return err
-	}
-
-	// Collect all rows first
-	type partRow struct {
-		partCategory    string
-		partSubcategory string
-	}
-	var rows []partRow
-	for partCategory, subcategories := range chainData {
-		for _, partSubcategory := range subcategories {
-			rows = append(rows, partRow{partCategory: partCategory, partSubcategory: partSubcategory})
-		}
-	}
-
-	// Batch insert using transaction
-	var tx *sql.Tx
-	tx, err = db.Begin()
-	if err != nil {
-		return fmt.Errorf("beginning transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	stmt, err := tx.Prepare("INSERT OR IGNORE INTO spec_part (category_id, part_category, part_subcategory) VALUES (?, ?, ?)")
-	if err != nil {
-		return fmt.Errorf("preparing statement: %w", err)
-	}
-	defer stmt.Close()
-
-	for _, row := range rows {
-		if _, err := stmt.Exec(categoryID, row.partCategory, row.partSubcategory); err != nil {
-			return fmt.Errorf("inserting row: %w", err)
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("committing transaction: %w", err)
-	}
-
-	return nil
-}
-
-// LoadAds loads ad files into ads and ad_values tables
-// If includeTestAds is false, ads are not loaded (only schema and spec data)
+// LoadAds loads ad files into ads table
 func LoadAds(includeTestAds bool) error {
 	if !includeTestAds {
-		// Skip loading ads - only load schema and spec data
 		return nil
 	}
 
-	// Track used ad IDs to detect collisions
-	usedIDs := make(map[int]string) // Maps ad ID to filename for error reporting
+	usedIDs := make(map[int]string)
 
-	// Sort category names to ensure deterministic processing order
 	categoryNames := make([]string, 0, len(categoryFiles))
 	for name := range categoryFiles {
 		categoryNames = append(categoryNames, name)
 	}
 	sort.Strings(categoryNames)
 
-	// Use categoryFiles map populated during LoadCategories
 	for _, categoryName := range categoryNames {
 		files := categoryFiles[categoryName]
-		categoryID := files.ID
-
-		if err := loadAdsFromFile(categoryID, files.SeedAdFile, usedIDs); err != nil {
+		if err := loadAdsFromFile(files.ID, files.SeedAdFile, usedIDs); err != nil {
 			return fmt.Errorf("loading ads from %s for category %s: %w", files.SeedAdFile, categoryName, err)
 		}
 	}
@@ -598,28 +240,19 @@ func LoadAds(includeTestAds bool) error {
 
 // adJSON represents the flat JSON structure from ad-*.json files
 type adJSON struct {
-	ID              int          `json:"id"`
-	CategoryID      int          `json:"category_id,omitempty"`
-	Make            string       `json:"make,omitempty"`
-	Years           []string     `json:"years,omitempty"`
-	Models          []string     `json:"models,omitempty"`
-	Engines         []string     `json:"engines,omitempty"`
-	PartCategory    string       `json:"part_category,omitempty"`
-	PartSubcategory string       `json:"part_subcategory,omitempty"`
-	Title           string       `json:"title"`
-	Description     string       `json:"description,omitempty"`
-	Price           float64      `json:"price"`
-	CreatedAt       string       `json:"created_at"`
-	UserID          int          `json:"user_id"`
-	ImageCount      int          `json:"image_count"`
-	Location        LocationData `json:"location"`
+	ID          int          `json:"id"`
+	Title       string       `json:"title"`
+	Description string       `json:"description,omitempty"`
+	Price       float64      `json:"price"`
+	CreatedAt   string       `json:"created_at"`
+	UserID      int          `json:"user_id"`
+	ImageCount  int          `json:"image_count"`
+	Location    LocationData `json:"location"`
 }
 
-// convertAdJSON converts adJSON (flat structure) to Ad (with SpecValues map)
 func convertAdJSON(aj adJSON) Ad {
-	ad := Ad{
+	return Ad{
 		ID:          aj.ID,
-		CategoryID:  aj.CategoryID,
 		Title:       aj.Title,
 		Description: aj.Description,
 		Price:       aj.Price,
@@ -628,32 +261,8 @@ func convertAdJSON(aj adJSON) Ad {
 		ImageCount:  aj.ImageCount,
 		Location:    aj.Location,
 	}
-
-	// Build SpecValues map from flat fields
-	ad.SpecValues = make(field.Values)
-	if aj.Make != "" {
-		ad.SpecValues["make"] = []string{aj.Make}
-	}
-	if len(aj.Years) > 0 {
-		ad.SpecValues["year"] = aj.Years
-	}
-	if len(aj.Models) > 0 {
-		ad.SpecValues["model"] = aj.Models
-	}
-	if len(aj.Engines) > 0 {
-		ad.SpecValues["engine"] = aj.Engines
-	}
-	if aj.PartCategory != "" {
-		ad.SpecValues["part_category"] = []string{aj.PartCategory}
-	}
-	if aj.PartSubcategory != "" {
-		ad.SpecValues["part_subcategory"] = []string{aj.PartSubcategory}
-	}
-
-	return ad
 }
 
-// loadAdsFromFile loads ads from a single ad file
 func loadAdsFromFile(categoryID int, filename string, usedIDs map[int]string) error {
 	data, err := os.ReadFile("cmd/rebuild_db/seed/" + filename)
 	if err != nil {
@@ -665,61 +274,38 @@ func loadAdsFromFile(categoryID int, filename string, usedIDs map[int]string) er
 		return err
 	}
 
-	// Get test user ID
 	var testUserID int
 	err = db.QueryRow("SELECT id FROM users WHERE name_hash = ?", db.HashString("test")).Scan(&testUserID)
 	if err != nil {
 		return fmt.Errorf("finding test user: %w", err)
 	}
 
-	// Convert adJSON to Ad
-	ads := make([]Ad, len(adsJSON))
 	for i, aj := range adsJSON {
-		ads[i] = convertAdJSON(aj)
-	}
-
-	// Get field IDs for common fields
-	fieldIDs := make(map[string]int)
-	fieldNames := []string{"make", "year", "model", "engine", "part_category", "part_subcategory"}
-	for _, name := range fieldNames {
-		var fieldID int
-		err := db.QueryRow("SELECT id FROM fields WHERE name = ?", name).Scan(&fieldID)
-		if err == nil {
-			fieldIDs[name] = fieldID
-		}
-	}
-
-	for i, ad := range ads {
-		// Check if ad has an ID specified
-		if adsJSON[i].ID == 0 {
+		if aj.ID == 0 {
 			return fmt.Errorf("ad at index %d in %s is missing required 'id' field", i, filename)
 		}
 
-		adID := adsJSON[i].ID
-
-		// Check for ID collision
+		adID := aj.ID
 		if existingFile, exists := usedIDs[adID]; exists {
 			return fmt.Errorf("duplicate ad ID %d: found in both %s and %s", adID, filename, existingFile)
 		}
 		usedIDs[adID] = filename
 
-		// Get or create location
-		locationID, err := getOrCreateLocation(adsJSON[i].Location)
+		ad := convertAdJSON(aj)
+
+		locationID, err := getOrCreateLocation(aj.Location)
 		if err != nil {
 			return fmt.Errorf("getting/creating location: %w", err)
 		}
 
-		// Store price as whole currency units (seed JSON values are dollars).
 		price := int(ad.Price + 0.5)
-		priceCurrency := currency.DefaultFromRegion(adsJSON[i].Location.Country)
+		priceCurrency := currency.DefaultFromRegion(aj.Location.Country)
 
-		// Parse created_at timestamp
 		createdAt, err := time.Parse(time.RFC3339, ad.CreatedAt)
 		if err != nil {
 			return fmt.Errorf("parsing created_at: %w", err)
 		}
 
-		// Insert ad with explicit ID
 		_, err = db.Exec(
 			"INSERT INTO ads (id, category_id, title, description, price, price_currency, created_at, user_id, image_count, location_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			adID, categoryID, ad.Title, ad.Description, price, priceCurrency, createdAt, testUserID, ad.ImageCount, locationID,
@@ -727,44 +313,20 @@ func loadAdsFromFile(categoryID int, filename string, usedIDs map[int]string) er
 		if err != nil {
 			return fmt.Errorf("inserting ad with ID %d: %w", adID, err)
 		}
-
-		// Insert spec field values from SpecValues map
-		// All values go to ad_values table (one row per value)
-		for fieldName, values := range ad.SpecValues {
-			if len(values) == 0 {
-				continue
-			}
-
-			fieldID, ok := fieldIDs[fieldName]
-			if !ok {
-				continue
-			}
-
-			// Insert all values (one row per value)
-			for _, value := range values {
-				if value != "" {
-					db.Exec("INSERT OR IGNORE INTO ad_values (ad_id, field_id, value) VALUES (?, ?, ?)", adID, fieldID, value)
-				}
-			}
-		}
 	}
 
 	return nil
 }
 
-// getOrCreateLocation gets or creates a location in the locations table
 func getOrCreateLocation(loc LocationData) (int, error) {
-	// Create raw_text from location data
 	rawText := fmt.Sprintf("%s, %s, %s", loc.City, loc.AdminArea, loc.Country)
 
-	// Try to get existing location
 	var locationID int
 	err := db.QueryRow("SELECT id FROM locations WHERE raw_text = ?", rawText).Scan(&locationID)
 	if err == nil {
 		return locationID, nil
 	}
 
-	// Location doesn't exist, create it
 	result, err := db.Exec(
 		"INSERT INTO locations (raw_text, city, admin_area, country, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?)",
 		rawText, loc.City, loc.AdminArea, loc.Country, loc.Latitude, loc.Longitude,

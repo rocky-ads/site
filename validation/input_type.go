@@ -1,4 +1,4 @@
-package field
+package validation
 
 import (
 	"net/url"
@@ -12,7 +12,7 @@ const (
 	InputSelectMulti = "select_multi"
 )
 
-// InputSpec is the parsed fields.input_type value (base type plus validation query params).
+// InputSpec is a parsed input_type value (base type plus validation query params).
 type InputSpec struct {
 	Type   string
 	Params url.Values
@@ -117,8 +117,4 @@ func (s InputSpec) Param(key string) string {
 		return v[0]
 	}
 	return ""
-}
-
-func IsMultiInput(inputType string) bool {
-	return ParseInputType(inputType).Type == InputSelectMulti
 }
