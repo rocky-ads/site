@@ -23,5 +23,5 @@ func ViewHandler(c *fiber.Ctx) error {
 
 	cookie.SetView(c, view)
 
-	return render(c, ui.SearchResults(view, results))
+	return render(c, ui.SearchView(userID, view, results))
 }
