@@ -21,4 +21,3 @@ func Placeholders(n int) string {
 	}
 	return strings.Join(ph, ",")
 }
-

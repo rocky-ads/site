@@ -13,6 +13,7 @@ import (
 	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/password"
+	"github.com/rocky-ads/site/phoneverification"
 	"github.com/rocky-ads/site/service/grok"
 	"github.com/rocky-ads/site/service/sms"
 	"github.com/rocky-ads/site/ui"
@@ -153,14 +154,14 @@ func RegisterStep1Handler(c *fiber.Ctx) error {
 		return showError(c, resp)
 	}
 
-	code, err := generateVerificationCode()
+	code, err := phoneverification.GenerateCode()
 	if err != nil {
 		logger.Error("Failed to generate verification code",
 			"error", err)
 		return showError(c, "Unable to generate verification code. Please try again.")
 	}
 
-	err = storeVerificationCode(phoneE64, code)
+	err = phoneverification.StoreCode(phoneE64, code)
 	if err != nil {
 		logger.Error("Failed to store verification code",
 			"error", err, "phone", phoneE64)
@@ -205,7 +206,7 @@ func RegisterStep2Handler(c *fiber.Ctx) error {
 		return showError(c, "Please enter the verification code")
 	}
 
-	valid, err := validateVerificationCode(phoneE64, code)
+	valid, err := phoneverification.ValidateCode(phoneE64, code)
 	if err != nil {
 		logger.Warn("Verification code validation error",
 			"error", err, "phone", phoneE64)

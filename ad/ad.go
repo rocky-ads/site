@@ -9,17 +9,17 @@ import (
 
 type Ad struct {
 	// Core database fields
-	ID          int        `db:"id"`
-	CategoryID  int        `db:"category_id"`
-	Title       string     `db:"title"`
-	Description string     `db:"description"`
+	ID            int        `db:"id"`
+	CategoryID    int        `db:"category_id"`
+	Title         string     `db:"title"`
+	Description   string     `db:"description"`
 	Price         int        `db:"price"`
 	PriceCurrency string     `db:"price_currency"`
 	CreatedAt     time.Time  `db:"created_at"`
-	DeletedAt   *time.Time `db:"deleted_at"`
-	UserID      int        `db:"user_id"`
-	ImageCount  int        `db:"image_count"`
-	LocationID  int        `db:"location_id"`
+	DeletedAt     *time.Time `db:"deleted_at"`
+	UserID        int        `db:"user_id"`
+	ImageCount    int        `db:"image_count"`
+	LocationID    int        `db:"location_id"`
 
 	// Location fields from join
 	City      string `db:"city"`
@@ -149,4 +149,17 @@ func CountActiveAdsByUser(userID int) (int, error) {
 		userID,
 	).Scan(&n)
 	return n, err
+}
+
+func Delete(id int) error {
+	_, err := db.Exec(
+		"UPDATE ads SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
+		id,
+	)
+	return err
+}
+
+func Restore(id int) error {
+	_, err := db.Exec("UPDATE ads SET deleted_at = NULL WHERE id = ?", id)
+	return err
 }

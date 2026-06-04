@@ -6,10 +6,10 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/cookie"
+	"github.com/rocky-ads/site/egg"
 	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/message"
-	"github.com/rocky-ads/site/egg"
 	"github.com/rocky-ads/site/ui"
 )
 

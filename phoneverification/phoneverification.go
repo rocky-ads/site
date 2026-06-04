@@ -1,8 +1,9 @@
-package handler
+package phoneverification
 
 import (
 	"crypto/rand"
 	"crypto/subtle"
+	"database/sql"
 	"fmt"
 	"math/big"
 	"time"
@@ -32,7 +33,7 @@ type phoneVerification struct {
 	CreatedAt        time.Time
 }
 
-func generateVerificationCode() (string, error) {
+func GenerateCode() (string, error) {
 	code := ""
 	for i := 0; i < CodeLength; i++ {
 		num, err := rand.Int(rand.Reader, big.NewInt(10))
@@ -44,7 +45,7 @@ func generateVerificationCode() (string, error) {
 	return code, nil
 }
 
-func storeVerificationCode(phoneE64, code string) error {
+func StoreCode(phoneE64, code string) error {
 	_, err := db.Exec(`
 		INSERT INTO phone_verification (phone_e64, verification_code, attempts) 
 		VALUES ($1, $2, 0)
@@ -93,7 +94,7 @@ func getPhoneVerification(phoneE64 string) (phoneVerification, error) {
 	return pv, nil
 }
 
-func validateVerificationCode(phoneE64, code string) (bool, error) {
+func ValidateCode(phoneE64, code string) (bool, error) {
 	vc, err := getPhoneVerification(phoneE64)
 	if err != nil {
 		// If no valid record found, it could be expired or max attempts exceeded
@@ -152,36 +153,31 @@ func cleanupExpiredCodes() error {
 	return nil
 }
 
-func markPhoneVerified(userID int) error {
-	_, err := db.Exec(`
-		UPDATE users 
-		SET phone_verified = 1 
-		WHERE id = $1
-	`, userID)
-
-	if err != nil {
-		return fmt.Errorf("failed to mark phone verified: %w", err)
-	}
-
-	logger.Info("Marked phone verified for user",
-		"component", "verification", "userID", userID)
-	return nil
-}
-
-// invalidateVerificationCodes invalidates all verification codes for a phone number
-// This is called when a user replies STOP or when SMS delivery fails
-func invalidateVerificationCodes(phoneE64 string) error {
-	_, err := db.Exec(`
-		DELETE FROM phone_verification 
-		WHERE phone_e64 = $1
-	`, phoneE64)
-
-	if err != nil {
-		return fmt.Errorf("failed to invalidate verification codes for %s: %w", phoneE64, err)
+// InvalidateCodes invalidates all verification codes for a phone number.
+// This is called when a user replies STOP or when SMS delivery fails.
+func InvalidateCodes(phoneE64 string) error {
+	if err := invalidateCodes(phoneE64, db.Exec); err != nil {
+		return err
 	}
 
 	logger.Info("Invalidated all verification codes for phone",
 		"component", "verification", "phoneE64", phoneE64)
+	return nil
+}
+
+// InvalidateCodesTx invalidates verification codes within an existing transaction.
+func InvalidateCodesTx(tx *sql.Tx, phoneE64 string) error {
+	return invalidateCodes(phoneE64, tx.Exec)
+}
+
+func invalidateCodes(phoneE64 string, exec func(string, ...any) (sql.Result, error)) error {
+	_, err := exec(`
+		DELETE FROM phone_verification 
+		WHERE phone_e64 = $1
+	`, phoneE64)
+	if err != nil {
+		return fmt.Errorf("failed to invalidate verification codes for %s: %w", phoneE64, err)
+	}
 	return nil
 }
 
@@ -216,15 +212,16 @@ func cleanupFailedAccount(phoneE64 string) error {
 	defer tx.Rollback()
 
 	// Delete verification codes
-	_, err = tx.Exec(`DELETE FROM phone_verification WHERE phone_e64 = $1`, phoneE64)
-	if err != nil {
+	if err := invalidateCodes(phoneE64, tx.Exec); err != nil {
 		return fmt.Errorf("failed to delete verification codes: %w", err)
 	}
 
 	// Delete any partial user records (users created but not verified)
-	// Use phone_hash since users table stores phone_hash, not plain phone
 	phoneHash := db.HashString(phoneE64)
-	_, err = tx.Exec(`DELETE FROM users WHERE phone_hash = $1 AND phone_verified = 0`, phoneHash)
+	_, err = tx.Exec(
+		`DELETE FROM users WHERE phone_hash = $1 AND phone_verified = 0`,
+		phoneHash,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to delete unverified user: %w", err)
 	}

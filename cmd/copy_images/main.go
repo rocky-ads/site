@@ -10,8 +10,8 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/rocky-ads/site/logger"
 	"github.com/chai2010/webp"
+	"github.com/rocky-ads/site/logger"
 	"golang.org/x/image/draw"
 )
 
@@ -171,4 +171,3 @@ func main() {
 		"total_created", totalCreated,
 		"errors", errors)
 }
-

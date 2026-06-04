@@ -20,19 +20,19 @@ var mileRegions = map[string]struct{}{
 }
 
 var canadaTimezones = map[string]struct{}{
-	"America/Toronto":      {},
-	"America/Vancouver":    {},
-	"America/Winnipeg":     {},
-	"America/Halifax":      {},
-	"America/St_Johns":     {},
-	"America/Edmonton":     {},
-	"America/Regina":       {},
-	"America/Whitehorse":   {},
-	"America/Yellowknife":  {},
-	"America/Iqaluit":      {},
-	"America/Moncton":      {},
-	"America/Glace_Bay":    {},
-	"America/Goose_Bay":    {},
+	"America/Toronto":     {},
+	"America/Vancouver":   {},
+	"America/Winnipeg":    {},
+	"America/Halifax":     {},
+	"America/St_Johns":    {},
+	"America/Edmonton":    {},
+	"America/Regina":      {},
+	"America/Whitehorse":  {},
+	"America/Yellowknife": {},
+	"America/Iqaluit":     {},
+	"America/Moncton":     {},
+	"America/Glace_Bay":   {},
+	"America/Goose_Bay":   {},
 }
 
 // DistanceUnitFromPhone returns mi or km based on the phone number region.

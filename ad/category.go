@@ -20,7 +20,7 @@ var (
 	defaultCategory int
 )
 
-func Init() error {
+func LoadCategories() error {
 	query := `
 		SELECT COALESCE(
 			json_group_array(

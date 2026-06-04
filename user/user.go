@@ -10,6 +10,7 @@ import (
 
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/password"
+	"github.com/rocky-ads/site/phoneverification"
 )
 
 // Notification method constants
@@ -306,8 +307,7 @@ func CreateUser(username, phoneE64, plainPassword string) (User, error) {
 	}
 
 	// Cleanup registration validation codes
-	_, err = tx.Exec(`DELETE FROM phone_verification WHERE phone_e64 = $1`, phoneE64)
-	if err != nil {
+	if err := phoneverification.InvalidateCodesTx(tx, phoneE64); err != nil {
 		return User{}, fmt.Errorf("failed to cleanup verification codes: %w", err)
 	}
 
