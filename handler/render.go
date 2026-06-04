@@ -54,20 +54,47 @@ func searchFromRequest(c *fiber.Ctx, state cookie.SearchState) (view, page int, 
 	return view, page, results, err
 }
 
-// searchAndRenderAds searches for ads and renders them into gomponents nodes.
-func searchAndRenderAds(p search.Params, userID, view int, loc *time.Location, csrfToken string) ([]g.Node, error) {
+// searchAdsForUI runs search and returns presentation-ready ad cards.
+func searchAdsForUI(p search.Params, userID int, loc *time.Location) ([]ui.AdCard, error) {
 	adIDs, err := search.Search(p)
 	if err != nil {
 		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	page := (p.Offset / p.Limit) + 1
-	results, err := ad.AdNodes(adIDs, userID, view, page, loc, csrfToken, true)
+	ads, err := ad.GetAds(userID, adIDs, loc)
 	if err != nil {
 		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	return results, nil
+	return adCardsFrom(ads, loc), nil
+}
+
+// searchAndRenderAds searches for ads and renders them into gomponents nodes.
+func searchAndRenderAds(p search.Params, userID, view int, loc *time.Location, csrfToken string) ([]g.Node, error) {
+	cards, err := searchAdsForUI(p, userID, loc)
+	if err != nil {
+		return nil, err
+	}
+
+	page := (p.Offset / p.Limit) + 1
+	return ui.AdNodes(cards, userID, view, page, csrfToken, true), nil
+}
+
+func adCardFrom(a ad.Ad, loc *time.Location) ui.AdCard {
+	return ui.AdCardFromFields(
+		a.ID, a.Price, a.ImageCount, a.RockCount,
+		a.PriceCurrency, a.Title, a.Location(),
+		a.CreatedAt.In(loc),
+		!a.IsDeleted(), a.Bookmarked,
+	)
+}
+
+func adCardsFrom(ads []ad.Ad, loc *time.Location) []ui.AdCard {
+	cards := make([]ui.AdCard, len(ads))
+	for i, a := range ads {
+		cards[i] = adCardFrom(a, loc)
+	}
+	return cards
 }
 
 // renderToString renders a gomponents Node to an HTML string
