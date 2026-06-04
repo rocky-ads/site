@@ -2,6 +2,7 @@ package ad
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/rocky-ads/site/db"
@@ -33,6 +34,29 @@ type Ad struct {
 
 func (a Ad) IsDeleted() bool {
 	return a.DeletedAt != nil
+}
+
+func (a Ad) Location() string {
+	if a.City == "" && a.AdminArea == "" && a.Country == "" {
+		return ""
+	}
+
+	var locationText string
+	if a.City != "" && a.AdminArea != "" {
+		locationText = a.City + ", " + a.AdminArea
+	} else if a.City != "" {
+		locationText = a.City
+	} else if a.AdminArea != "" {
+		locationText = a.AdminArea
+	}
+
+	var flag string
+	if len(a.Country) == 2 {
+		code := strings.ToUpper(a.Country)
+		flag = string(rune(int32(code[0])-'A'+0x1F1E6)) + string(rune(int32(code[1])-'A'+0x1F1E6))
+	}
+
+	return flag + " " + locationText
 }
 
 func GetAds(userID int, ids []int, loc *time.Location) ([]Ad, error) {

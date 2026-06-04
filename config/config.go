@@ -156,9 +156,9 @@ func getEncryptionKey(envKey string) []byte {
 	return key
 }
 
-// ValidateJWTSecret validates that JWT secret is set and sufficiently strong
+// validateJWTSecret validates that JWT secret is set and sufficiently strong
 // Minimum requirements: at least 32 bytes (256 bits) of entropy
-func ValidateJWTSecret(secret []byte) error {
+func validateJWTSecret(secret []byte) error {
 	if len(secret) == 0 {
 		return fmt.Errorf("JWT_SECRET environment variable is required but not set")
 	}
@@ -176,7 +176,7 @@ func ValidateJWTSecret(secret []byte) error {
 // Logs fatal errors for required configs, warnings for insecure defaults
 func SecurityCheck() {
 	// Validate JWT secret (required)
-	if err := ValidateJWTSecret(JWTSecret); err != nil {
+	if err := validateJWTSecret(JWTSecret); err != nil {
 		logger.Fatal("Security configuration error", "error", err.Error())
 	}
 
