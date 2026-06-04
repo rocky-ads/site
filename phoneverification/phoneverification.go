@@ -1,4 +1,4 @@
-package handler
+package phoneverification
 
 import (
 	"crypto/rand"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/logger"
+	"github.com/rocky-ads/site/user"
 )
 
 const (
@@ -32,7 +33,7 @@ type phoneVerification struct {
 	CreatedAt        time.Time
 }
 
-func generateVerificationCode() (string, error) {
+func GenerateCode() (string, error) {
 	code := ""
 	for i := 0; i < CodeLength; i++ {
 		num, err := rand.Int(rand.Reader, big.NewInt(10))
@@ -44,7 +45,7 @@ func generateVerificationCode() (string, error) {
 	return code, nil
 }
 
-func storeVerificationCode(phoneE64, code string) error {
+func StoreCode(phoneE64, code string) error {
 	_, err := db.Exec(`
 		INSERT INTO phone_verification (phone_e64, verification_code, attempts) 
 		VALUES ($1, $2, 0)
@@ -93,7 +94,7 @@ func getPhoneVerification(phoneE64 string) (phoneVerification, error) {
 	return pv, nil
 }
 
-func validateVerificationCode(phoneE64, code string) (bool, error) {
+func ValidateCode(phoneE64, code string) (bool, error) {
 	vc, err := getPhoneVerification(phoneE64)
 	if err != nil {
 		// If no valid record found, it could be expired or max attempts exceeded
@@ -152,25 +153,9 @@ func cleanupExpiredCodes() error {
 	return nil
 }
 
-func markPhoneVerified(userID int) error {
-	_, err := db.Exec(`
-		UPDATE users 
-		SET phone_verified = 1 
-		WHERE id = $1
-	`, userID)
-
-	if err != nil {
-		return fmt.Errorf("failed to mark phone verified: %w", err)
-	}
-
-	logger.Info("Marked phone verified for user",
-		"component", "verification", "userID", userID)
-	return nil
-}
-
-// invalidateVerificationCodes invalidates all verification codes for a phone number
-// This is called when a user replies STOP or when SMS delivery fails
-func invalidateVerificationCodes(phoneE64 string) error {
+// InvalidateCodes invalidates all verification codes for a phone number.
+// This is called when a user replies STOP or when SMS delivery fails.
+func InvalidateCodes(phoneE64 string) error {
 	_, err := db.Exec(`
 		DELETE FROM phone_verification 
 		WHERE phone_e64 = $1
@@ -221,17 +206,13 @@ func cleanupFailedAccount(phoneE64 string) error {
 		return fmt.Errorf("failed to delete verification codes: %w", err)
 	}
 
-	// Delete any partial user records (users created but not verified)
-	// Use phone_hash since users table stores phone_hash, not plain phone
-	phoneHash := db.HashString(phoneE64)
-	_, err = tx.Exec(`DELETE FROM users WHERE phone_hash = $1 AND phone_verified = 0`, phoneHash)
-	if err != nil {
-		return fmt.Errorf("failed to delete unverified user: %w", err)
-	}
-
 	// Commit the transaction
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit cleanup transaction: %w", err)
+	}
+
+	if err := user.DeleteUnverifiedByPhone(phoneE64); err != nil {
+		return fmt.Errorf("failed to delete unverified user: %w", err)
 	}
 
 	logger.Info("Successfully cleaned up failed account",

@@ -150,3 +150,16 @@ func CountActiveAdsByUser(userID int) (int, error) {
 	).Scan(&n)
 	return n, err
 }
+
+func Delete(id int) error {
+	_, err := db.Exec(
+		"UPDATE ads SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
+		id,
+	)
+	return err
+}
+
+func Restore(id int) error {
+	_, err := db.Exec("UPDATE ads SET deleted_at = NULL WHERE id = ?", id)
+	return err
+}

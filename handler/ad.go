@@ -7,7 +7,6 @@ import (
 	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/cookie"
-	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/egg"
 	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/logger"
@@ -138,7 +137,7 @@ func DeleteAdHandler(c *fiber.Ctx) error {
 	}
 
 	// Delete the ad
-	if err := deleteAd(adID); err != nil {
+	if err := ad.Delete(adID); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to delete ad")
 	}
 
@@ -168,21 +167,11 @@ func RestoreAdHandler(c *fiber.Ctx) error {
 	}
 
 	// Restore the ad
-	if err := restoreAd(adID); err != nil {
+	if err := ad.Restore(adID); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to restore ad")
 	}
 
 	// Redirect to the ad page
 	c.Set("HX-Redirect", fmt.Sprintf("/ad/%d", adID))
 	return c.SendStatus(fiber.StatusOK)
-}
-
-func deleteAd(adID int) error {
-	_, err := db.Exec("UPDATE ads SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?", adID)
-	return err
-}
-
-func restoreAd(adID int) error {
-	_, err := db.Exec("UPDATE ads SET deleted_at = NULL WHERE id = ?", adID)
-	return err
 }

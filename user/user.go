@@ -404,6 +404,15 @@ func DeleteUser(userID int) error {
 	return err
 }
 
+func DeleteUnverifiedByPhone(phoneE64 string) error {
+	phoneHash := db.HashString(phoneE64)
+	_, err := db.Exec(
+		"DELETE FROM users WHERE phone_hash = ? AND phone_verified = 0",
+		phoneHash,
+	)
+	return err
+}
+
 func RestoreUser(userID int) error {
 	_, err := db.Exec("UPDATE users SET deleted_at = NULL WHERE id = ?", userID)
 	return err

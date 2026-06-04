@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"github.com/rocky-ads/site/db"
+	"github.com/rocky-ads/site/bookmark"
 	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/param"
 	"github.com/rocky-ads/site/ui"
@@ -23,10 +23,10 @@ func BookmarkHandler(c *fiber.Ctx) error {
 	switch c.Method() {
 	case fiber.MethodPost:
 		bookmarked = true
-		handlerErr = bookmarkPost(userID, adID)
+		handlerErr = bookmark.Add(userID, adID)
 	case fiber.MethodDelete:
 		bookmarked = false
-		handlerErr = bookmarkDelete(userID, adID)
+		handlerErr = bookmark.Remove(userID, adID)
 	default:
 		return fiber.NewError(fiber.StatusMethodNotAllowed, "Method not allowed")
 	}
@@ -36,23 +36,4 @@ func BookmarkHandler(c *fiber.Ctx) error {
 	}
 
 	return render(c, ui.BookmarkButton(adID, bookmarked, csrfToken))
-}
-
-func bookmarkPost(userID int, adID int) error {
-	_, err := db.Exec(
-		`INSERT INTO bookmarks (user_id, ad_id)
-		VALUES (?, ?)
-		ON CONFLICT (user_id, ad_id)
-		DO UPDATE SET bookmarked_at = CURRENT_TIMESTAMP`,
-		userID, adID,
-	)
-	return err
-}
-
-func bookmarkDelete(userID int, adID int) error {
-	_, err := db.Exec(
-		"DELETE FROM bookmarks WHERE user_id = ? AND ad_id = ?",
-		userID, adID,
-	)
-	return err
 }

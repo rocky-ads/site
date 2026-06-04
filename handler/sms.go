@@ -5,6 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/logger"
+	"github.com/rocky-ads/site/phoneverification"
 	"github.com/rocky-ads/site/service/sms"
 )
 
@@ -57,7 +58,7 @@ func SMSWebhookHandler(c *fiber.Ctx) error {
 			})
 		}
 		// Invalidate any pending verification codes for this phone
-		err = invalidateVerificationCodes(phone)
+		err = phoneverification.InvalidateCodes(phone)
 		if err != nil {
 			logger.Error("Failed to invalidate verification codes",
 				"error", err, "component", "SMS", "phoneNumber", phone)
