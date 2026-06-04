@@ -103,6 +103,33 @@ func EggThrownMessage(d EggEventData) g.Node {
 	)
 }
 
+// MessageTimeline renders chat messages with an optional egg event inserted
+// chronologically. Message and egg timestamps must already be in the viewer's
+// timezone.
+func MessageTimeline(messages []MessageItemData, egg *EggEventData) []g.Node {
+	if egg == nil {
+		nodes := make([]g.Node, len(messages))
+		for i, m := range messages {
+			nodes[i] = MessageItem(m)
+		}
+		return nodes
+	}
+
+	var nodes []g.Node
+	inserted := false
+	for _, m := range messages {
+		if !inserted && m.CreatedAt.After(egg.ThrownAt) {
+			nodes = append(nodes, EggThrownMessage(*egg))
+			inserted = true
+		}
+		nodes = append(nodes, MessageItem(m))
+	}
+	if !inserted {
+		nodes = append(nodes, EggThrownMessage(*egg))
+	}
+	return nodes
+}
+
 func ConversationMessagesSentinel(conversationID int) g.Node {
 	return Div(
 		ID(fmt.Sprintf("conversation-%d-sentinel", conversationID)),

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -8,7 +9,6 @@ import (
 	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/egg"
 	"github.com/rocky-ads/site/local"
-	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/message"
 	"github.com/rocky-ads/site/ui"
 	"github.com/rocky-ads/site/user"
@@ -136,23 +136,12 @@ func UserEggConversationHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Egg conversation not found")
 	}
 
-	// Get conversation
-	conv, err := message.GetConversationByID(conversationID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
-	}
-
-	// Check if conversation is public or user is participant
-	if conv.EggThrowerID == nil && conv.OwnerID != currentUserID && conv.EnquirerID != currentUserID {
+	conv, _, err := message.OpenConversation(conversationID, currentUserID)
+	if errors.Is(err, message.ErrModalAccess) {
 		return fiber.NewError(fiber.StatusForbidden, "Conversation not found")
 	}
-
-	// Mark conversation as read when opened (only if user is participant)
-	if conv.OwnerID == currentUserID || conv.EnquirerID == currentUserID {
-		if err := message.MarkConversationAsRead(conversationID, currentUserID); err != nil {
-			// Log error but don't fail the request
-			logger.Error("Failed to mark conversation as read", "error", err, "conversationID", conversationID, "userID", currentUserID)
-		}
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
 	}
 
 	return renderConversationModal(c, conv, currentUserID, loc, csrfToken)

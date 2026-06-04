@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,6 +16,13 @@ import (
 	"github.com/rocky-ads/site/ui"
 	"github.com/rocky-ads/site/user"
 	g "maragu.dev/gomponents"
+)
+
+type conversationModalRenderMode int
+
+const (
+	modalRenderInitial conversationModalRenderMode = iota
+	modalRenderSwapOOB
 )
 
 func conversationModalData(
@@ -93,38 +101,75 @@ func conversationListItemData(
 	return d
 }
 
-func buildMessageNodesWithEgg(messages []message.Message, currentUserID int, loc *time.Location, conv message.Conversation, ownerID, enquirerID int) []g.Node {
-	var messageNodes []g.Node
-
-	// Insert egg-thrown message if it exists
-	if conv.EggThrowerID != nil && conv.EggThrownAt != nil {
-		// Find the right position to insert the egg message (chronologically)
-		inserted := false
-		for _, msg := range messages {
-			if !inserted && msg.CreatedAt.After(*conv.EggThrownAt) {
-				// Insert egg message before this message
-				eggThrownNode := ui.EggThrownMessage(eggEventData(
-					*conv.EggThrowerID, currentUserID, ownerID, enquirerID,
-					*conv.EggThrownAt, loc))
-				messageNodes = append(messageNodes, eggThrownNode)
-				inserted = true
-			}
-			messageNodes = append(messageNodes, ui.MessageItem(messageItemData(msg, currentUserID, loc)))
-		}
-		// If egg was thrown after all messages, append it at the end
-		if !inserted {
-			eggThrownNode := ui.EggThrownMessage(eggEventData(
-				*conv.EggThrowerID, currentUserID, ownerID, enquirerID,
-				*conv.EggThrownAt, loc))
-			messageNodes = append(messageNodes, eggThrownNode)
-		}
-	} else {
-		// No egg, just add messages normally
-		for _, msg := range messages {
-			messageNodes = append(messageNodes, ui.MessageItem(messageItemData(msg, currentUserID, loc)))
-		}
+func messageTimelineFromView(view message.ConversationModalView, currentUserID int, loc *time.Location) []g.Node {
+	msgs := make([]ui.MessageItemData, len(view.Messages))
+	for i, msg := range view.Messages {
+		msgs[i] = messageItemData(msg, currentUserID, loc)
 	}
-	return messageNodes
+	var egg *ui.EggEventData
+	conv := view.Conversation
+	if conv.EggThrowerID != nil && conv.EggThrownAt != nil {
+		e := eggEventData(
+			*conv.EggThrowerID, currentUserID, conv.OwnerID, conv.EnquirerID,
+			*conv.EggThrownAt, loc)
+		egg = &e
+	}
+	return ui.MessageTimeline(msgs, egg)
+}
+
+func conversationModalDataFromView(
+	view message.ConversationModalView,
+	currentUserID int,
+	csrfToken, targetModalID string,
+	messageNodes []g.Node,
+) ui.ConversationModalData {
+	return conversationModalData(
+		view.Conversation, currentUserID,
+		view.EnquirerEggCount, view.OwnerEggCount,
+		view.AdTitle, view.OwnerName, view.EnquirerName, csrfToken,
+		view.CanPost, view.HasThrownEgg, view.CanThrowEgg,
+		messageNodes, targetModalID,
+	)
+}
+
+func buildConversationModalError(err error) error {
+	if errors.Is(err, message.ErrModalAdNotFound) {
+		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
+	}
+	logger.Error("Failed to build conversation modal", "error", err)
+	return fiber.NewError(fiber.StatusInternalServerError, "Failed to load conversation")
+}
+
+func renderConversationModalView(
+	c *fiber.Ctx,
+	view message.ConversationModalView,
+	currentUserID int,
+	loc *time.Location,
+	csrfToken, targetModalID string,
+	mode conversationModalRenderMode,
+) error {
+	messageNodes := messageTimelineFromView(view, currentUserID, loc)
+	data := conversationModalDataFromView(view, currentUserID, csrfToken, targetModalID, messageNodes)
+	if mode == modalRenderInitial {
+		return render(c, ui.ConversationModalWithEgg(data))
+	}
+	return render(c, ui.ConversationModalSwapOOB(data))
+}
+
+func renderConversationModal(c *fiber.Ctx, conv message.Conversation, currentUserID int, loc *time.Location, csrfToken string) error {
+	view, err := message.BuildConversationModal(conv, currentUserID, loc)
+	if err != nil {
+		return buildConversationModalError(err)
+	}
+	return renderConversationModalView(c, view, currentUserID, loc, csrfToken, "", modalRenderInitial)
+}
+
+func renderConversationModalSwapOOB(c *fiber.Ctx, conv message.Conversation, currentUserID int, loc *time.Location, csrfToken string) error {
+	view, err := message.BuildConversationModal(conv, currentUserID, loc)
+	if err != nil {
+		return buildConversationModalError(err)
+	}
+	return renderConversationModalView(c, view, currentUserID, loc, csrfToken, "", modalRenderSwapOOB)
 }
 
 func sendMessageSSE(conv message.Conversation, senderID int, msg message.Message) {
@@ -145,68 +190,28 @@ func sendMessageSSE(conv message.Conversation, senderID int, msg message.Message
 }
 
 func sendMessageUpdate(conversationID int, msg message.Message, recipientID int) {
-	// Get the conversation to render the full modal
 	conv, err := message.GetConversationByID(conversationID)
 	if err != nil {
 		logger.Error("Failed to get conversation for SSE modal update", "error", err, "conversationID", conversationID, "recipientID", recipientID)
 		return
 	}
 
-	// Render the entire modal with updated messages
-	// Use UTC for SSE updates (no user-specific timezone available)
 	loc := time.UTC
-	messages, err := message.GetConversationMessages(conversationID, recipientID, loc)
+	view, err := message.BuildConversationModal(conv, recipientID, loc)
 	if err != nil {
-		logger.Error("Failed to get messages for SSE modal update", "error", err, "conversationID", conversationID, "recipientID", recipientID)
+		logger.Error("Failed to build conversation modal for SSE", "error", err, "conversationID", conversationID, "recipientID", recipientID)
 		return
 	}
 
-	// Build message nodes
-	messageNodes := buildMessageNodesWithEgg(messages, recipientID, loc, conv, conv.OwnerID, conv.EnquirerID)
-
-	// Get ad info
-	a, err := ad.GetAd(recipientID, conv.AdID, loc)
-	if err != nil {
-		logger.Error("Failed to get ad for SSE modal update", "error", err, "conversationID", conversationID, "adID", conv.AdID)
-		return
-	}
-
-	// Get owner and enquirer names
-	ownerName, enquirerName, err := getOwnerAndEnquirerNames(conv)
-	if err != nil {
-		logger.Error("Failed to get user names for SSE modal update", "error", err, "conversationID", conversationID)
-		return
-	}
-
-	// Get egg counts
-	enquirerEggCount, _ := egg.GetEggCountForUser(conv.EnquirerID)
-	ownerEggCount, _ := egg.GetEggCountForUser(conv.OwnerID)
-
-	// Check permissions
-	canPost, err := message.CanUserPost(conversationID, recipientID)
-	if err != nil {
-		logger.Error("Failed to check permissions for SSE modal update", "error", err, "conversationID", conversationID)
-		canPost = false
-	}
-
-	hasThrownEgg, _ := egg.HasUserThrownEgg(recipientID, conversationID)
-	eggCount, _ := egg.GetEggCountForConversation(conversationID)
-	userEggCount, _ := egg.GetUserEggCount(recipientID)
-	canThrowEgg := canPost && eggCount == 0 && userEggCount < 3
-
-	// Render modal div with OOB swap (no CSRF token needed for SSE - it's read-only)
-	modalSwapOOB := ui.ConversationModalSwapOOB(conversationModalData(
-		conv, recipientID, enquirerEggCount, ownerEggCount,
-		a.Title, ownerName, enquirerName, "",
-		canPost, hasThrownEgg, canThrowEgg, messageNodes, "",
-	))
+	messageNodes := messageTimelineFromView(view, recipientID, loc)
+	modalSwapOOB := ui.ConversationModalSwapOOB(conversationModalDataFromView(
+		view, recipientID, "", "", messageNodes))
 	modalHTML, err := renderToString(modalSwapOOB)
 	if err != nil {
 		logger.Error("Failed to render modal for SSE", "error", err, "conversationID", conversationID, "recipientID", recipientID)
 		return
 	}
 
-	// Send modal update
 	SendSSEEvent(recipientID, SSEEvent{
 		Event: "",
 		Data:  modalHTML,
@@ -268,80 +273,17 @@ func sendMessageAndRenderUpdate(c *fiber.Ctx, conv message.Conversation, current
 	}
 
 	csrfToken := local.GetCSRFToken(c)
-
-	// Get all data needed for modal
-	messages, err := message.GetConversationMessages(conv.ID, currentUserID, loc)
+	view, err := message.BuildConversationModal(updatedConv, currentUserID, loc)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get messages")
+		return buildConversationModalError(err)
 	}
 
-	messageNodes := buildMessageNodesWithEgg(messages, currentUserID, loc, updatedConv, updatedConv.OwnerID, updatedConv.EnquirerID)
-
-	a, err := ad.GetAd(currentUserID, updatedConv.AdID, loc)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
-	}
-
-	ownerName, enquirerName, err := getOwnerAndEnquirerNames(updatedConv)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get user names")
-	}
-
-	enquirerEggCount, _ := egg.GetEggCountForUser(updatedConv.EnquirerID)
-	ownerEggCount, _ := egg.GetEggCountForUser(updatedConv.OwnerID)
-
-	canPost, err := message.CanUserPost(conv.ID, currentUserID)
-	if err != nil {
-		canPost = false
-	}
-
-	hasThrownEgg, _ := egg.HasUserThrownEgg(currentUserID, conv.ID)
-	eggCount, _ := egg.GetEggCountForConversation(conv.ID)
-	userEggCount, _ := egg.GetUserEggCount(currentUserID)
-	canThrowEgg := canPost && eggCount == 0 && userEggCount < 3
-
-	// Determine target modal ID for OOB swap
-	// For new conversations, target conversation-0-modal; for existing, target conversation-{id}-modal
 	targetModalID := ""
 	if isNewConversation {
 		targetModalID = "conversation-0-modal"
 	}
 
-	// Render modal div with OOB swap
-	modalSwapOOB := ui.ConversationModalSwapOOB(conversationModalData(
-		updatedConv, currentUserID, enquirerEggCount, ownerEggCount,
-		a.Title, ownerName, enquirerName, csrfToken,
-		canPost, hasThrownEgg, canThrowEgg, messageNodes, targetModalID,
-	))
-
-	return render(c, modalSwapOOB)
-}
-
-func getOtherUserName(conv message.Conversation, currentUserID int) (string, error) {
-	var otherUserID int
-	if conv.OwnerID == currentUserID {
-		otherUserID = conv.EnquirerID
-	} else {
-		otherUserID = conv.OwnerID
-	}
-
-	otherUser, err := user.GetByID(otherUserID)
-	if err != nil {
-		return "", err
-	}
-	return otherUser.Name, nil
-}
-
-func getOwnerAndEnquirerNames(conv message.Conversation) (ownerName, enquirerName string, err error) {
-	owner, err := user.GetByID(conv.OwnerID)
-	if err != nil {
-		return "", "", err
-	}
-	enquirer, err := user.GetByID(conv.EnquirerID)
-	if err != nil {
-		return "", "", err
-	}
-	return owner.Name, enquirer.Name, nil
+	return renderConversationModalView(c, view, currentUserID, loc, csrfToken, targetModalID, modalRenderSwapOOB)
 }
 
 func sendConversationListItemUpdate(conv message.Conversation, currentUserID int, hasUnread bool) {
@@ -353,7 +295,7 @@ func sendConversationListItemUpdate(conv message.Conversation, currentUserID int
 	}
 
 	// Get other user name
-	otherUserName, err := getOtherUserName(conv, currentUserID)
+	otherUserName, err := message.OtherUserName(conv, currentUserID)
 	if err != nil {
 		logger.Error("Failed to get other user name for conversation list item update", "error", err, "conversationID", conv.ID)
 		return
@@ -400,83 +342,6 @@ func sendConversationListItemUpdate(conv message.Conversation, currentUserID int
 		Event: "",
 		Data:  itemHTML,
 	})
-}
-
-func renderConversationModal(c *fiber.Ctx, conv message.Conversation, currentUserID int, loc *time.Location, csrfToken string) error {
-	a, err := ad.GetAd(currentUserID, conv.AdID, loc)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
-	}
-
-	var messages []message.Message
-	var messageNodes []g.Node
-	var canPost bool
-	var hasThrownEgg bool
-	var canThrowEgg bool
-
-	// Handle case where conversation doesn't exist yet (ID == 0)
-	if conv.ID == 0 {
-		// New conversation - no messages yet, user can post first message
-		messages = []message.Message{}
-		messageNodes = []g.Node{}
-		canPost = true
-		hasThrownEgg = false
-		canThrowEgg = false // Can't throw egg until conversation exists
-	} else {
-		// Existing conversation
-		messages, err = message.GetConversationMessages(conv.ID, currentUserID, loc)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Failed to get messages")
-		}
-
-		messageNodes = buildMessageNodesWithEgg(messages, currentUserID, loc, conv, conv.OwnerID, conv.EnquirerID)
-
-		// Check if user can post (must be participant)
-		canPost, err = message.CanUserPost(conv.ID, currentUserID)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Failed to check permissions")
-		}
-
-		// Check if user has thrown an egg
-		hasThrownEgg, err = egg.HasUserThrownEgg(currentUserID, conv.ID)
-		if err != nil {
-			logger.Error("Failed to check if user threw egg", "error", err, "conversationID", conv.ID, "userID", currentUserID)
-			hasThrownEgg = false
-		}
-
-		// Check if ANY egg exists on this conversation
-		eggCount, err := egg.GetEggCountForConversation(conv.ID)
-		if err != nil {
-			logger.Error("Failed to get egg count for conversation", "error", err, "conversationID", conv.ID)
-			eggCount = 0
-		}
-		hasAnyEgg := eggCount > 0
-
-		// Check if user can throw egg (must be participant, have < 3 eggs, AND no egg exists on this conversation)
-		canThrowEgg = false
-		if canPost && !hasAnyEgg {
-			userEggCount, err := egg.GetUserEggCount(currentUserID)
-			if err == nil && userEggCount < 3 {
-				canThrowEgg = true
-			}
-		}
-	}
-
-	// Get owner and enquirer names
-	ownerName, enquirerName, err := getOwnerAndEnquirerNames(conv)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get user names")
-	}
-
-	// Get egg counts for owner and enquirer
-	enquirerEggCount, _ := egg.GetEggCountForUser(conv.EnquirerID)
-	ownerEggCount, _ := egg.GetEggCountForUser(conv.OwnerID)
-
-	return render(c, ui.ConversationModalWithEgg(conversationModalData(
-		conv, currentUserID, enquirerEggCount, ownerEggCount,
-		a.Title, ownerName, enquirerName, csrfToken,
-		canPost, hasThrownEgg, canThrowEgg, messageNodes, "",
-	)))
 }
 
 func MessageModalHandler(c *fiber.Ctx) error {
@@ -591,32 +456,20 @@ func ConversationModalHandler(c *fiber.Ctx) error {
 	loc := cookie.GetLocation(c)
 	csrfToken := local.GetCSRFToken(c)
 
-	// Get conversation (public conversations are accessible to all logged-in users)
-	conv, err := message.GetConversationByID(conversationID)
+	conv, markedRead, err := message.OpenConversation(conversationID, currentUserID)
+	if errors.Is(err, message.ErrModalAccess) {
+		return fiber.NewError(fiber.StatusForbidden, "Conversation not found")
+	}
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
 	}
 
-	// Check if conversation is public or user is participant
-	if conv.EggThrowerID == nil && conv.OwnerID != currentUserID && conv.EnquirerID != currentUserID {
-		return fiber.NewError(fiber.StatusForbidden, "Conversation not found")
-	}
+	if markedRead {
+		sendConversationListItemUpdate(conv, currentUserID, false)
 
-	// Mark conversation as read when opened (only if user is participant)
-	if conv.OwnerID == currentUserID || conv.EnquirerID == currentUserID {
-		if err := message.MarkConversationAsRead(conversationID, currentUserID); err != nil {
-			// Log error but don't fail the request
-			logger.Error("Failed to mark conversation as read", "error", err, "conversationID", conversationID, "userID", currentUserID)
-		} else {
-			// Send conversation list item update - remove green dot since conversation is now read
-			sendConversationListItemUpdate(conv, currentUserID, false)
-
-			// Check if there are any remaining unread conversations
-			hasUnread, err := message.GetHasUnread(currentUserID)
-			if err == nil {
-				// Update avatar indicator based on whether there are any remaining unread conversations
-				sendUnreadIndicatorUpdate(currentUserID, hasUnread)
-			}
+		hasUnread, err := message.GetHasUnread(currentUserID)
+		if err == nil {
+			sendUnreadIndicatorUpdate(currentUserID, hasUnread)
 		}
 	}
 
