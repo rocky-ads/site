@@ -14,7 +14,6 @@ import (
 	"github.com/rocky-ads/site/param"
 	"github.com/rocky-ads/site/service/sms"
 	"github.com/rocky-ads/site/ui"
-	"github.com/rocky-ads/site/user"
 	g "maragu.dev/gomponents"
 )
 
@@ -99,6 +98,24 @@ func conversationListItemData(
 		d.LastMessageAt = &t
 	}
 	return d
+}
+
+func conversationListItemFromConv(conv message.ConversationWithLastMessage, currentUserID int) ui.ConversationListItemData {
+	return ui.ConversationListItemData{
+		ConversationID:     conv.ID,
+		AdID:               conv.AdID,
+		OwnerID:            conv.OwnerID,
+		EnquirerID:         conv.EnquirerID,
+		CurrentUserID:      currentUserID,
+		AdTitle:            conv.AdTitle,
+		LastMessageContent: conv.LastMessageContent,
+		OtherUserName:      conv.OtherUserName,
+		LastMessageAt:      conv.LastMessageAt,
+		UpdatedAt:          conv.UpdatedAt,
+		HasUnread:          conv.HasUnread,
+		EggCount:           conv.RockCount,
+		OtherUserEggCount:  conv.OtherUserEggCount,
+	}
 }
 
 func messageTimelineFromView(view message.ConversationModalView, currentUserID int, loc *time.Location) []g.Node {
@@ -486,41 +503,10 @@ func UserMessagesHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to load conversations")
 	}
 
-	userMap := make(map[int]string)
-	for _, conv := range conversations {
-		if _, ok := userMap[conv.OtherUserID]; !ok {
-			u, err := user.GetByID(conv.OtherUserID)
-			if err == nil {
-				userMap[conv.OtherUserID] = u.Name
-			}
-		}
+	items := make([]ui.ConversationListItemData, len(conversations))
+	for i, conv := range conversations {
+		items[i] = conversationListItemFromConv(conv, currentUserID)
 	}
 
-	var conversationItems []g.Node
-	for _, conv := range conversations {
-		otherUserName := userMap[conv.OtherUserID]
-		if otherUserName == "" {
-			otherUserName = "Unknown User"
-		}
-
-		// Get ad to get egg count for egg icons
-		a, err := ad.GetAd(currentUserID, conv.AdID, loc)
-		eggCount := 0
-		if err == nil {
-			eggCount = a.RockCount
-		}
-
-		// Get egg count for the other user
-		otherUserEggCount, _ := egg.GetEggCountForUser(conv.OtherUserID)
-
-		conversationItems = append(conversationItems, ui.ConversationListItem(conversationListItemData(
-			conv.ID, conv.AdID, conv.OwnerID, conv.EnquirerID, currentUserID,
-			conv.AdTitle, conv.LastMessageContent, otherUserName,
-			conv.LastMessageAt, conv.UpdatedAt,
-			conv.HasUnread, eggCount, otherUserEggCount,
-			loc,
-		)))
-	}
-
-	return renderPage(c, "Messages", ui.MessagesPage(conversationItems))
+	return renderPage(c, "Messages", ui.MessagesPage(items))
 }

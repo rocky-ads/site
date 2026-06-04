@@ -508,9 +508,9 @@ func ConversationListItem(d ConversationListItemData) g.Node {
 	)
 }
 
-func MessagesPage(conversationItems []g.Node) []g.Node {
+func MessagesPage(items []ConversationListItemData) []g.Node {
 	var conversationNodes []g.Node
-	if len(conversationItems) == 0 {
+	if len(items) == 0 {
 		conversationNodes = append(conversationNodes,
 			Div(
 				Class("text-center text-zinc-600 dark:text-zinc-400 py-16"),
@@ -527,7 +527,9 @@ func MessagesPage(conversationItems []g.Node) []g.Node {
 			),
 		)
 	} else {
-		conversationNodes = conversationItems
+		for _, item := range items {
+			conversationNodes = append(conversationNodes, ConversationListItem(item))
+		}
 	}
 
 	return []g.Node{

@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/rocky-ads/site/db"
+	"github.com/rocky-ads/site/egg"
+	"github.com/rocky-ads/site/user"
 )
 
 type Conversation struct {
@@ -41,6 +43,9 @@ type ConversationWithLastMessage struct {
 	LastMessageAt      *time.Time `db:"last_message_at"`
 	OtherUserID        int        `db:"other_user_id"`
 	HasUnread          bool       `db:"has_unread"`
+	RockCount          int        `db:"rock_count"`
+	OtherUserName      string
+	OtherUserEggCount  int
 }
 
 var ErrConversationNotFound = errors.New("conversation not found")
@@ -464,6 +469,13 @@ func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLas
 			a.title AS ad_title,
 			COALESCE(m.content, '') AS last_message_content,
 			m.created_at AS last_message_at,
+			COALESCE((
+				SELECT COUNT(*)
+				FROM conversations c2
+				WHERE c2.ad_id = a.id
+					AND c2.egg_thrower_id IS NOT NULL
+					AND c2.egg_thrower_id = c2.enquirer_id
+			), 0) AS rock_count,
 			COALESCE(MIN(msg.created_at), c.egg_thrown_at, datetime('now')) AS created_at,
 			COALESCE(
 				(SELECT MAX(ts) FROM (
@@ -523,6 +535,7 @@ func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLas
 			&conv.AdTitle,
 			&conv.LastMessageContent,
 			&lastMessageAt,
+			&conv.RockCount,
 			&createdAtStr,
 			&updatedAtStr,
 			&conv.OtherUserID,
@@ -580,7 +593,42 @@ func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLas
 		}
 	}
 
+	enrichConversationListItems(conversations)
+
 	return conversations, nil
+}
+
+func enrichConversationListItems(conversations []ConversationWithLastMessage) {
+	if len(conversations) == 0 {
+		return
+	}
+
+	otherIDs := make(map[int]struct{})
+	for _, conv := range conversations {
+		otherIDs[conv.OtherUserID] = struct{}{}
+	}
+
+	names := make(map[int]string, len(otherIDs))
+	eggCounts := make(map[int]int, len(otherIDs))
+	for id := range otherIDs {
+		if u, err := user.GetByID(id); err == nil {
+			names[id] = u.Name
+		}
+		count, err := egg.GetEggCountForUser(id)
+		if err == nil {
+			eggCounts[id] = count
+		}
+	}
+
+	for i := range conversations {
+		id := conversations[i].OtherUserID
+		if name, ok := names[id]; ok {
+			conversations[i].OtherUserName = name
+		} else {
+			conversations[i].OtherUserName = "Unknown User"
+		}
+		conversations[i].OtherUserEggCount = eggCounts[id]
+	}
 }
 
 func GetConversationMessages(conversationID, userID int, loc *time.Location) ([]Message, error) {
