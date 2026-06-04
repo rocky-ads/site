@@ -141,7 +141,7 @@ func main() {
 	}
 	defer db.Close()
 
-	if err := ad.Init(); err != nil {
+	if err := ad.LoadCategories(); err != nil {
 		logger.Fatal("Failed to initialize ads", "error", err)
 	}
 

@@ -116,8 +116,8 @@ func TestMain(m *testing.M) {
 		panic(fmt.Sprintf("Failed to load seed data: %v", err))
 	}
 
-	// Database is already initialized and seeded, now initialize ad and field packages
-	if err := ad.Init(); err != nil {
+	// Database is already initialized and seeded, now load categories
+	if err := ad.LoadCategories(); err != nil {
 		db.Close()
 		os.Remove(testDBPath)
 		panic(fmt.Sprintf("Failed to initialize ads: %v", err))
