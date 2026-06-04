@@ -6,11 +6,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/cookie"
+	"github.com/rocky-ads/site/egg"
 	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/message"
 	"github.com/rocky-ads/site/param"
-	"github.com/rocky-ads/site/egg"
 	"github.com/rocky-ads/site/service/sms"
 	"github.com/rocky-ads/site/ui"
 	"github.com/rocky-ads/site/user"
@@ -481,10 +481,10 @@ func MessageModalHandler(c *fiber.Ctx) error {
 			// No conversation exists yet - create a temporary conversation struct for the modal
 			// The conversation will be created when the first message is sent
 			conv = message.Conversation{
-				ID:            0, // 0 indicates conversation doesn't exist yet
-				AdID:          adID,
-				OwnerID:       a.UserID,
-				EnquirerID:    currentUserID,
+				ID:           0, // 0 indicates conversation doesn't exist yet
+				AdID:         adID,
+				OwnerID:      a.UserID,
+				EnquirerID:   currentUserID,
 				EggThrowerID: nil,
 				EggThrownAt:  nil,
 			}

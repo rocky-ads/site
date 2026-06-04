@@ -333,7 +333,6 @@ func TestHealthCheck(t *testing.T) {
 	}
 }
 
-
 // Test GET /api/search/ hard filters
 func TestSearchPageHandler(t *testing.T) {
 	tests := []struct {
@@ -356,9 +355,9 @@ func TestSearchPageHandler(t *testing.T) {
 			expectContains: []string{"search-results"},
 		},
 		{
-			name:       "location and radius",
-			categoryID: 6,
-			query:      "?location=Denver&radius=50",
+			name:           "location and radius",
+			categoryID:     6,
+			query:          "?location=Denver&radius=50",
 			expectContains: []string{"search-results"},
 		},
 	}
@@ -997,4 +996,3 @@ func TestCategorySelectHandler(t *testing.T) {
 		}
 	})
 }
-

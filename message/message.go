@@ -18,8 +18,8 @@ type Conversation struct {
 	UpdatedAt         time.Time  `db:"updated_at"` // Computed: MAX(MAX(messages.created_at), egg_thrown_at)
 	OwnerHasUnread    bool       `db:"owner_has_unread"`
 	EnquirerHasUnread bool       `db:"enquirer_has_unread"`
-	EggThrowerID     *int       `db:"egg_thrower_id"` // nil = no egg (private), NOT NULL = public, owner_id = bound to enquirer, enquirer_id = bound to ad
-	EggThrownAt      *time.Time `db:"egg_thrown_at"`   // Only valid if egg_thrower_id IS NOT NULL
+	EggThrowerID      *int       `db:"egg_thrower_id"` // nil = no egg (private), NOT NULL = public, owner_id = bound to enquirer, enquirer_id = bound to ad
+	EggThrownAt       *time.Time `db:"egg_thrown_at"`  // Only valid if egg_thrower_id IS NOT NULL
 }
 
 type Message struct {
