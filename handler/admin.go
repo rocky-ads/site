@@ -11,6 +11,25 @@ import (
 	"github.com/rocky-ads/site/user"
 )
 
+func userRowData(u user.User) ui.UserRowData {
+	return ui.UserRowData{
+		ID:        u.ID,
+		Name:      u.Name,
+		PhoneE64:  u.PhoneE64,
+		IsAdmin:   u.IsAdmin,
+		CreatedAt: u.CreatedAt,
+		DeletedAt: u.DeletedAt,
+	}
+}
+
+func userRowsData(users []user.User) []ui.UserRowData {
+	rows := make([]ui.UserRowData, len(users))
+	for i, u := range users {
+		rows[i] = userRowData(u)
+	}
+	return rows
+}
+
 func AdminDashboardHandler(c *fiber.Ctx) error {
 	// Load users for the default users tab
 	sortBy := c.Query("sort", "id")
@@ -24,7 +43,7 @@ func AdminDashboardHandler(c *fiber.Ctx) error {
 	}
 
 	// Render page with users tab active and users table loaded
-	page := ui.AdminDashboardPage(users, sortBy, sortOrder, currentUserID)
+	page := ui.AdminDashboardPage(userRowsData(users), sortBy, sortOrder, currentUserID)
 	return renderPage(c, "Admin Dashboard", page)
 }
 
@@ -45,7 +64,7 @@ func AdminTabHandler(c *fiber.Ctx) error {
 			return showError(c, "Failed to load users")
 		}
 
-		return render(c, ui.AdminDashboardContainer("users", users, sortBy, sortOrder, currentUserID))
+		return render(c, ui.AdminDashboardContainer("users", userRowsData(users), sortBy, sortOrder, currentUserID))
 	}
 
 	if tabID == "sms-queue" {
@@ -115,7 +134,7 @@ func AdminUsersHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to load users")
 	}
 
-	return render(c, ui.UsersTable(users, sortBy, sortOrder, currentUserID))
+	return render(c, ui.UsersTable(userRowsData(users), sortBy, sortOrder, currentUserID))
 }
 
 func AdminUserDeleteHandler(c *fiber.Ctx) error {
@@ -194,5 +213,5 @@ func refreshUserRow(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to load user")
 	}
 
-	return render(c, ui.UserRow(u, currentUserID))
+	return render(c, ui.UserRow(userRowData(u), currentUserID))
 }

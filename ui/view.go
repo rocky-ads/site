@@ -12,7 +12,6 @@ import (
 const (
 	ViewGrid int = iota + 1
 	ViewList
-	//ViewTree
 )
 
 var viewNames = map[int]string{

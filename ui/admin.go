@@ -4,20 +4,19 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/rocky-ads/site/user"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
 )
 
-func AdminDashboardPage(users []user.User, sortBy, sortOrder string, currentUserID int) []g.Node {
+func AdminDashboardPage(users []UserRowData, sortBy, sortOrder string, currentUserID int) []g.Node {
 	return []g.Node{
 		pageTitle("Admin Dashboard"),
 		AdminDashboardContainer("users", users, sortBy, sortOrder, currentUserID),
 	}
 }
 
-func AdminDashboardContainer(activeTab string, users []user.User, sortBy, sortOrder string, currentUserID int) g.Node {
+func AdminDashboardContainer(activeTab string, users []UserRowData, sortBy, sortOrder string, currentUserID int) g.Node {
 	return Div(
 		ID("admin-dashboard-container"),
 		Class("space-y-6 mt-6"),
@@ -26,7 +25,7 @@ func AdminDashboardContainer(activeTab string, users []user.User, sortBy, sortOr
 	)
 }
 
-func AdminDashboardContainerWithQueue(activeTab string, users []user.User, sortBy, sortOrder string, currentUserID int, queueStats QueueStats, queueEntries []SMSQueueEntry) g.Node {
+func AdminDashboardContainerWithQueue(activeTab string, users []UserRowData, sortBy, sortOrder string, currentUserID int, queueStats QueueStats, queueEntries []SMSQueueEntry) g.Node {
 	return Div(
 		ID("admin-dashboard-container"),
 		Class("space-y-6 mt-6"),
@@ -75,7 +74,7 @@ func adminTab(name, tabID string, active bool) g.Node {
 	)
 }
 
-func AdminContent(activeTab string, users []user.User, sortBy, sortOrder string, currentUserID int) g.Node {
+func AdminContent(activeTab string, users []UserRowData, sortBy, sortOrder string, currentUserID int) g.Node {
 	return Div(
 		ID("admin-content"),
 		g.If(activeTab == "users", Div(
@@ -87,7 +86,7 @@ func AdminContent(activeTab string, users []user.User, sortBy, sortOrder string,
 	)
 }
 
-func AdminContentWithQueue(activeTab string, users []user.User, sortBy, sortOrder string, currentUserID int, queueStats QueueStats, queueEntries []SMSQueueEntry) g.Node {
+func AdminContentWithQueue(activeTab string, users []UserRowData, sortBy, sortOrder string, currentUserID int, queueStats QueueStats, queueEntries []SMSQueueEntry) g.Node {
 	return Div(
 		ID("admin-content"),
 		g.If(activeTab == "users", Div(
@@ -305,7 +304,7 @@ func AdminSettingsTab() g.Node {
 	)
 }
 
-func UsersTable(users []user.User, sortBy, sortOrder string, currentUserID int) g.Node {
+func UsersTable(users []UserRowData, sortBy, sortOrder string, currentUserID int) g.Node {
 	return Div(
 		ID("users-table"),
 		Class("w-full text-xs"),
@@ -373,7 +372,7 @@ func sortableHeader(column, label, currentSort, currentOrder string) g.Node {
 	)
 }
 
-func userRows(users []user.User, currentUserID int) []g.Node {
+func userRows(users []UserRowData, currentUserID int) []g.Node {
 	rows := make([]g.Node, len(users))
 	for i, u := range users {
 		rows[i] = UserRow(u, currentUserID)
@@ -381,7 +380,7 @@ func userRows(users []user.User, currentUserID int) []g.Node {
 	return rows
 }
 
-func UserRow(u user.User, currentUserID int) g.Node {
+func UserRow(u UserRowData, currentUserID int) g.Node {
 	isDeleted := u.DeletedAt != nil
 	adminStatus := "No"
 	if u.IsAdmin {
@@ -447,7 +446,7 @@ func UserRow(u user.User, currentUserID int) g.Node {
 	)
 }
 
-func userActions(u user.User, currentUserID int) g.Node {
+func userActions(u UserRowData, currentUserID int) g.Node {
 	var actions []g.Node
 	rowID := fmt.Sprintf("user-row-%d", u.ID)
 

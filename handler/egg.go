@@ -152,24 +152,11 @@ func renderConversationModalWithEgg(c *fiber.Ctx, conv message.Conversation, cur
 	}
 
 	// Return modal with OOB swap to update the existing modal
-	modalSwapOOB := ui.ConversationModalSwapOOB(
-		conv.ID,
-		conv.AdID,
-		conv.OwnerID,
-		conv.EnquirerID,
-		currentUserID,
-		enquirerEggCount,
-		ownerEggCount,
-		a.Title,
-		ownerName,
-		enquirerName,
-		csrfToken,
-		canPost,
-		hasThrownEgg,
-		canThrowEgg,
-		messageNodes,
-		conv,
-	)
+	modalSwapOOB := ui.ConversationModalSwapOOB(conversationModalData(
+		conv, currentUserID, enquirerEggCount, ownerEggCount,
+		a.Title, ownerName, enquirerName, csrfToken,
+		canPost, hasThrownEgg, canThrowEgg, messageNodes, "",
+	))
 
 	return render(c, modalSwapOOB)
 }

@@ -17,6 +17,82 @@ import (
 	g "maragu.dev/gomponents"
 )
 
+func conversationModalData(
+	conv message.Conversation,
+	currentUserID, enquirerEggCount, ownerEggCount int,
+	adTitle, ownerName, enquirerName, csrfToken string,
+	canPost, hasThrownEgg, canThrowEgg bool,
+	messageNodes []g.Node,
+	targetModalID string,
+) ui.ConversationModalData {
+	return ui.ConversationModalData{
+		ConversationID:   conv.ID,
+		AdID:             conv.AdID,
+		OwnerID:          conv.OwnerID,
+		EnquirerID:       conv.EnquirerID,
+		CurrentUserID:    currentUserID,
+		EnquirerEggCount: enquirerEggCount,
+		OwnerEggCount:    ownerEggCount,
+		AdTitle:          adTitle,
+		OwnerName:        ownerName,
+		EnquirerName:     enquirerName,
+		CSRFToken:        csrfToken,
+		CanPost:          canPost,
+		HasThrownEgg:     hasThrownEgg,
+		CanThrowEgg:      canThrowEgg,
+		MessageNodes:     messageNodes,
+		EggThrowerID:     conv.EggThrowerID,
+		TargetModalID:    targetModalID,
+	}
+}
+
+func messageItemData(msg message.Message, currentUserID int, loc *time.Location) ui.MessageItemData {
+	return ui.MessageItemData{
+		SenderID:      msg.SenderID,
+		CurrentUserID: currentUserID,
+		Content:       msg.Content,
+		CreatedAt:     msg.CreatedAt.In(loc),
+	}
+}
+
+func eggEventData(throwerID, currentUserID, ownerID, enquirerID int, thrownAt time.Time, loc *time.Location) ui.EggEventData {
+	return ui.EggEventData{
+		ThrowerID:     throwerID,
+		CurrentUserID: currentUserID,
+		ThrownAt:      thrownAt.In(loc),
+		OwnerID:       ownerID,
+		EnquirerID:    enquirerID,
+	}
+}
+
+func conversationListItemData(
+	conversationID, adID, ownerID, enquirerID, currentUserID int,
+	adTitle, lastMessageContent, otherUserName string,
+	lastMessageAt *time.Time, updatedAt time.Time,
+	hasUnread bool, eggCount, otherUserEggCount int,
+	loc *time.Location,
+) ui.ConversationListItemData {
+	d := ui.ConversationListItemData{
+		ConversationID:     conversationID,
+		AdID:               adID,
+		OwnerID:            ownerID,
+		EnquirerID:         enquirerID,
+		CurrentUserID:      currentUserID,
+		AdTitle:            adTitle,
+		LastMessageContent: lastMessageContent,
+		OtherUserName:      otherUserName,
+		UpdatedAt:          updatedAt.In(loc),
+		HasUnread:          hasUnread,
+		EggCount:           eggCount,
+		OtherUserEggCount:  otherUserEggCount,
+	}
+	if lastMessageAt != nil {
+		t := lastMessageAt.In(loc)
+		d.LastMessageAt = &t
+	}
+	return d
+}
+
 func buildMessageNodesWithEgg(messages []message.Message, currentUserID int, loc *time.Location, conv message.Conversation, ownerID, enquirerID int) []g.Node {
 	var messageNodes []g.Node
 
@@ -27,21 +103,25 @@ func buildMessageNodesWithEgg(messages []message.Message, currentUserID int, loc
 		for _, msg := range messages {
 			if !inserted && msg.CreatedAt.After(*conv.EggThrownAt) {
 				// Insert egg message before this message
-				eggThrownNode := ui.EggThrownMessage(*conv.EggThrowerID, currentUserID, *conv.EggThrownAt, loc, ownerID, enquirerID)
+				eggThrownNode := ui.EggThrownMessage(eggEventData(
+					*conv.EggThrowerID, currentUserID, ownerID, enquirerID,
+					*conv.EggThrownAt, loc))
 				messageNodes = append(messageNodes, eggThrownNode)
 				inserted = true
 			}
-			messageNodes = append(messageNodes, ui.MessageItem(msg.SenderID, currentUserID, msg.Content, msg.CreatedAt, loc))
+			messageNodes = append(messageNodes, ui.MessageItem(messageItemData(msg, currentUserID, loc)))
 		}
 		// If egg was thrown after all messages, append it at the end
 		if !inserted {
-			eggThrownNode := ui.EggThrownMessage(*conv.EggThrowerID, currentUserID, *conv.EggThrownAt, loc, ownerID, enquirerID)
+			eggThrownNode := ui.EggThrownMessage(eggEventData(
+				*conv.EggThrowerID, currentUserID, ownerID, enquirerID,
+				*conv.EggThrownAt, loc))
 			messageNodes = append(messageNodes, eggThrownNode)
 		}
 	} else {
 		// No egg, just add messages normally
 		for _, msg := range messages {
-			messageNodes = append(messageNodes, ui.MessageItem(msg.SenderID, currentUserID, msg.Content, msg.CreatedAt, loc))
+			messageNodes = append(messageNodes, ui.MessageItem(messageItemData(msg, currentUserID, loc)))
 		}
 	}
 	return messageNodes
@@ -115,24 +195,11 @@ func sendMessageUpdate(conversationID int, msg message.Message, recipientID int)
 	canThrowEgg := canPost && eggCount == 0 && userEggCount < 3
 
 	// Render modal div with OOB swap (no CSRF token needed for SSE - it's read-only)
-	modalSwapOOB := ui.ConversationModalSwapOOB(
-		conversationID,
-		conv.AdID,
-		conv.OwnerID,
-		conv.EnquirerID,
-		recipientID,
-		enquirerEggCount,
-		ownerEggCount,
-		a.Title,
-		ownerName,
-		enquirerName,
-		"", // No CSRF token for SSE updates
-		canPost,
-		hasThrownEgg,
-		canThrowEgg,
-		messageNodes,
-		conv,
-	)
+	modalSwapOOB := ui.ConversationModalSwapOOB(conversationModalData(
+		conv, recipientID, enquirerEggCount, ownerEggCount,
+		a.Title, ownerName, enquirerName, "",
+		canPost, hasThrownEgg, canThrowEgg, messageNodes, "",
+	))
 	modalHTML, err := renderToString(modalSwapOOB)
 	if err != nil {
 		logger.Error("Failed to render modal for SSE", "error", err, "conversationID", conversationID, "recipientID", recipientID)
@@ -241,25 +308,11 @@ func sendMessageAndRenderUpdate(c *fiber.Ctx, conv message.Conversation, current
 	}
 
 	// Render modal div with OOB swap
-	modalSwapOOB := ui.ConversationModalSwapOOB(
-		conv.ID,
-		updatedConv.AdID,
-		updatedConv.OwnerID,
-		updatedConv.EnquirerID,
-		currentUserID,
-		enquirerEggCount,
-		ownerEggCount,
-		a.Title,
-		ownerName,
-		enquirerName,
-		csrfToken,
-		canPost,
-		hasThrownEgg,
-		canThrowEgg,
-		messageNodes,
-		updatedConv,
-		targetModalID,
-	)
+	modalSwapOOB := ui.ConversationModalSwapOOB(conversationModalData(
+		updatedConv, currentUserID, enquirerEggCount, ownerEggCount,
+		a.Title, ownerName, enquirerName, csrfToken,
+		canPost, hasThrownEgg, canThrowEgg, messageNodes, targetModalID,
+	))
 
 	return render(c, modalSwapOOB)
 }
@@ -328,21 +381,13 @@ func sendConversationListItemUpdate(conv message.Conversation, currentUserID int
 	}
 
 	// Render conversation list item (always includes ID)
-	conversationItem := ui.ConversationListItem(
-		conv.ID,
-		conv.AdID,
-		conv.OwnerID,
-		conv.EnquirerID,
-		currentUserID,
-		a.Title,
-		lastMessageContent,
-		otherUserName,
-		lastMessageAt,
-		conv.UpdatedAt,
-		hasUnread,
-		a.RockCount,
-		otherUserEggCount,
-	)
+	conversationItem := ui.ConversationListItem(conversationListItemData(
+		conv.ID, conv.AdID, conv.OwnerID, conv.EnquirerID, currentUserID,
+		a.Title, lastMessageContent, otherUserName,
+		lastMessageAt, conv.UpdatedAt,
+		hasUnread, a.RockCount, otherUserEggCount,
+		time.UTC,
+	))
 	conversationItemSwapOOB := ui.ConversationListItemSwapOOB(conv.ID, conversationItem)
 	itemHTML, err := renderToString(conversationItemSwapOOB)
 	if err != nil {
@@ -427,24 +472,11 @@ func renderConversationModal(c *fiber.Ctx, conv message.Conversation, currentUse
 	enquirerEggCount, _ := egg.GetEggCountForUser(conv.EnquirerID)
 	ownerEggCount, _ := egg.GetEggCountForUser(conv.OwnerID)
 
-	return render(c, ui.ConversationModalWithEgg(
-		conv.ID,
-		conv.AdID,
-		conv.OwnerID,
-		conv.EnquirerID,
-		currentUserID,
-		enquirerEggCount,
-		ownerEggCount,
-		a.Title,
-		ownerName,
-		enquirerName,
-		csrfToken,
-		canPost,
-		hasThrownEgg,
-		canThrowEgg,
-		messageNodes,
-		conv,
-	))
+	return render(c, ui.ConversationModalWithEgg(conversationModalData(
+		conv, currentUserID, enquirerEggCount, ownerEggCount,
+		a.Title, ownerName, enquirerName, csrfToken,
+		canPost, hasThrownEgg, canThrowEgg, messageNodes, "",
+	)))
 }
 
 func MessageModalHandler(c *fiber.Ctx) error {
@@ -628,21 +660,13 @@ func UserMessagesHandler(c *fiber.Ctx) error {
 		// Get egg count for the other user
 		otherUserEggCount, _ := egg.GetEggCountForUser(conv.OtherUserID)
 
-		conversationItems = append(conversationItems, ui.ConversationListItem(
-			conv.ID,
-			conv.AdID,
-			conv.OwnerID,
-			conv.EnquirerID,
-			currentUserID,
-			conv.AdTitle,
-			conv.LastMessageContent,
-			otherUserName,
-			conv.LastMessageAt,
-			conv.UpdatedAt,
-			conv.HasUnread,
-			eggCount,
-			otherUserEggCount,
-		))
+		conversationItems = append(conversationItems, ui.ConversationListItem(conversationListItemData(
+			conv.ID, conv.AdID, conv.OwnerID, conv.EnquirerID, currentUserID,
+			conv.AdTitle, conv.LastMessageContent, otherUserName,
+			conv.LastMessageAt, conv.UpdatedAt,
+			conv.HasUnread, eggCount, otherUserEggCount,
+			loc,
+		)))
 	}
 
 	return renderPage(c, "Messages", ui.MessagesPage(conversationItems))

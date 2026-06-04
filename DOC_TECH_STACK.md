@@ -147,16 +147,33 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
 
 ### Application Structure
 - **Layered Architecture**
-  - Handlers (HTTP request handling)
-  - Services (business logic)
-  - Models (data structures)
-  - Database (data access layer)
+  - Handlers (HTTP request handling, map domain data to UI inputs)
+  - Domain packages (business logic, data access)
+  - UI (`ui/`, server-side HTML rendering via gomponents)
+  - Database (SQLite via sqlx)
 - **Middleware Chain**
   - Security headers (Helmet)
   - Rate limiting
   - JWT authentication
   - CSRF protection
   - Request logging
+
+### UI Layer Boundary
+Request flow: **handler → domain → handler maps to UI inputs → `ui/` renders**.
+
+- **`ui/` must not import domain packages** (`ad`, `user`, `message`, etc.)
+- **Domain packages must not import `ui/`**
+- **Exported UI functions** accept only:
+  - Go primitives and stdlib types (`int`, `string`, `bool`, `time.Time`, …)
+  - UI-local view structs defined in `ui/` (e.g. `UserProfileData`, `ConversationModalData` in [`ui/types.go`](ui/types.go))
+- **Do not pass `*time.Location` to exported UI functions** — it is request context, not presentation data
+- **Time presentation** (default: handler maps; UI renders):
+  - **Fixed-format display strings** (e.g. member since date): pre-format in the handler and set a `string` field on the view struct (`UserProfileData.MemberSince`)
+  - **Relative or multi-format times** (e.g. `"5m ago"` plus a tooltip): handler converts to the viewer's timezone (`t.In(loc)`) on the view struct's `time.Time` field; UI applies shared relative formatting at render time
+- **Handlers** fetch domain objects, then map them to UI view structs (or primitives) before calling render functions
+- **Presentation formatting** (dates, currency, derived display strings) belongs in the handler mapper or `ui/`, not in domain types passed across the boundary
+
+Example view structs live in [`ui/types.go`](ui/types.go).
 
 ### Data Patterns
 - **Normalized Database** - Users, categories, ads, locations, bookmarks, conversations

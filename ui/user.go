@@ -2,10 +2,8 @@ package ui
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/rocky-ads/site/config"
-	"github.com/rocky-ads/site/user"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -67,48 +65,48 @@ func UserNameLink(userID int, userName string, extra ...g.Node) g.Node {
 	)
 }
 
+func userProfileStats(d UserProfileData, memberSinceClass, statClass string) []g.Node {
+	nodes := []g.Node{
+		Div(Class(memberSinceClass), g.Text("Member since "+d.MemberSince)),
+		Div(Class(statClass),
+			g.Text(fmt.Sprintf("%d active ad(s)", d.ActiveAdCount)),
+		),
+	}
+	if d.UserEggCount > 0 {
+		nodes = append(nodes,
+			Div(Class(statClass),
+				g.Text(fmt.Sprintf("%d rock(s)", d.UserEggCount)),
+			),
+		)
+	}
+	return nodes
+}
+
 // UserSummaryFragment is the popup content loaded on hover
-func UserSummaryFragment(name string, createdAt time.Time, activeAdCount, userEggCount int) g.Node {
-	memberSince := createdAt.Format("Jan 2006")
+func UserSummaryFragment(d UserProfileData) g.Node {
+	statClass := "text-xs text-zinc-500"
 	return Div(
 		Class("space-y-1"),
-		Div(Class("font-semibold text-zinc-900 dark:text-zinc-100"), g.Text(name)),
-		Div(Class("text-xs text-zinc-500"), g.Text("Member since "+memberSince)),
-		Div(Class("text-xs text-zinc-500"),
-			g.Text(fmt.Sprintf("%d active ad(s)", activeAdCount)),
-		),
-		g.If(userEggCount > 0,
-			Div(Class("text-xs text-zinc-500"),
-				g.Text(fmt.Sprintf("%d rock(s)", userEggCount)),
-			),
-		),
+		Div(Class("font-semibold text-zinc-900 dark:text-zinc-100"), g.Text(d.Name)),
+		g.Group(userProfileStats(d, statClass, statClass)),
 	)
 }
 
 // UserProfilePage renders the user profile page body
-func UserProfilePage(u user.User, activeAdCount, userEggCount int, loc *time.Location) []g.Node {
-	memberSince := u.CreatedAt.In(loc).Format("January 2, 2006")
+func UserProfilePage(d UserProfileData) []g.Node {
 	return []g.Node{
-		pageTitle(u.Name),
+		pageTitle(d.Name),
 		Div(
 			Class("mt-8 space-y-4 max-w-md"),
 			Div(
 				Class("flex items-center gap-3"),
 				Div(
 					Class("w-16 h-16 bg-red-500 text-white rounded-full flex items-center justify-center font-semibold text-2xl"),
-					g.Text(getUserInitial(u.Name)),
+					g.Text(getUserInitial(d.Name)),
 				),
 				Div(
 					Class("text-zinc-600 dark:text-zinc-400"),
-					Div(Class("text-sm"), g.Text("Member since "+memberSince)),
-					Div(Class("text-sm mt-1"),
-						g.Text(fmt.Sprintf("%d active ad(s)", activeAdCount)),
-					),
-					g.If(userEggCount > 0,
-						Div(Class("text-sm mt-1"),
-							g.Text(fmt.Sprintf("%d rock(s)", userEggCount)),
-						),
-					),
+					g.Group(userProfileStats(d, "text-sm", "text-sm mt-1")),
 				),
 			),
 		),

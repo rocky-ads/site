@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rocky-ads/site/message"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -30,8 +29,8 @@ func formatMessageTime(t time.Time) string {
 	return t.Format("Jan 2, 2006")
 }
 
-func MessageItem(senderID, currentUserID int, content string, createdAt time.Time, loc *time.Location, attrs ...g.Node) g.Node {
-	isSent := senderID == currentUserID
+func MessageItem(d MessageItemData, attrs ...g.Node) g.Node {
+	isSent := d.SenderID == d.CurrentUserID
 
 	var bubbleClass string
 	var containerClass string
@@ -43,8 +42,7 @@ func MessageItem(senderID, currentUserID int, content string, createdAt time.Tim
 		containerClass = "flex justify-start"
 	}
 
-	localTime := createdAt.In(loc)
-	fullTimestamp := localTime.Format("2006-01-02 03:04:05 PM MST")
+	fullTimestamp := d.CreatedAt.Format("2006-01-02 03:04:05 PM MST")
 
 	allAttrs := append([]g.Node{
 		Class(containerClass + " mb-2"),
@@ -57,19 +55,19 @@ func MessageItem(senderID, currentUserID int, content string, createdAt time.Tim
 			Class("max-w-[70%]"),
 			Div(
 				Class("px-4 py-2 "+bubbleClass),
-				g.Text(content),
+				g.Text(d.Content),
 			),
 			Div(
 				Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1 px-1"),
-				g.Text(formatMessageTime(localTime)),
+				g.Text(formatMessageTime(d.CreatedAt)),
 			),
 		),
 	)
 }
 
 // EggThrownMessage renders a message-like item showing when an egg was thrown
-func EggThrownMessage(throwerID, currentUserID int, thrownAt time.Time, loc *time.Location, ownerID, enquirerID int) g.Node {
-	isSent := throwerID == currentUserID
+func EggThrownMessage(d EggEventData) g.Node {
+	isSent := d.ThrowerID == d.CurrentUserID
 
 	var bubbleClass string
 	var containerClass string
@@ -81,8 +79,7 @@ func EggThrownMessage(throwerID, currentUserID int, thrownAt time.Time, loc *tim
 		containerClass = "flex justify-start"
 	}
 
-	localTime := thrownAt.In(loc)
-	fullTimestamp := localTime.Format("2006-01-02 03:04:05 PM MST")
+	fullTimestamp := d.ThrownAt.Format("2006-01-02 03:04:05 PM MST")
 
 	return Div(
 		Class(containerClass+" mb-2"),
@@ -100,7 +97,7 @@ func EggThrownMessage(throwerID, currentUserID int, thrownAt time.Time, loc *tim
 			),
 			Div(
 				Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1 px-1"),
-				g.Text(formatMessageTime(localTime)),
+				g.Text(formatMessageTime(d.ThrownAt)),
 			),
 		),
 	)
@@ -203,18 +200,16 @@ func ConversationForm(conversationID, adID int, csrfToken string, canPost bool, 
 
 // ConversationModalSwapOOB returns just the modal div (without backdrop) with hx-swap-oob="outerHTML" for updating via SSE or OOB swaps
 // This is used to update the modal when messages are sent or eggs are thrown
-// targetModalID is optional - if provided, it's used as the swap target ID (for new conversations transitioning from conversation-0-modal)
-func ConversationModalSwapOOB(conversationID, adID, ownerID, enquirerID, currentUserID, enquirerEggCount, ownerEggCount int, adTitle, ownerName, enquirerName, csrfToken string, canPost, hasThrownEgg, canThrowEgg bool, messageNodes []g.Node, conv message.Conversation, targetModalID ...string) g.Node {
-	modalName := fmt.Sprintf("conversation-%d", conversationID)
+func ConversationModalSwapOOB(d ConversationModalData) g.Node {
+	modalName := fmt.Sprintf("conversation-%d", d.ConversationID)
 	modalID := modalName + "-modal"
-	// Use targetModalID if provided (for new conversations), otherwise use the conversation ID modal
-	if len(targetModalID) > 0 && targetModalID[0] != "" {
-		modalID = targetModalID[0]
+	if d.TargetModalID != "" {
+		modalID = d.TargetModalID
 	}
 
 	var eggUserID int
-	if conv.EggThrowerID != nil {
-		eggUserID = *conv.EggThrowerID
+	if d.EggThrowerID != nil {
+		eggUserID = *d.EggThrowerID
 	}
 
 	// Return just the modal div (not the backdrop) with OOB swap
@@ -232,39 +227,39 @@ func ConversationModalSwapOOB(conversationID, adID, ownerID, enquirerID, current
 					Div(
 						Class("text-sm text-zinc-600 dark:text-zinc-400 mb-1"),
 						Span(Class("font-semibold"), g.Text("Subject: ")),
-						g.Text(adTitle),
+						g.Text(d.AdTitle),
 					),
 					Div(
 						Class("text-sm text-zinc-600 dark:text-zinc-400"),
 						Span(Class("font-semibold"), g.Text("From: ")),
-						UserEggIcons(enquirerID, enquirerEggCount),
-						UserNameLink(enquirerID, enquirerName),
+						UserEggIcons(d.EnquirerID, d.EnquirerEggCount),
+						UserNameLink(d.EnquirerID, d.EnquirerName),
 						g.Text(", "),
 						Span(Class("font-semibold"), g.Text("To: ")),
-						UserEggIcons(ownerID, ownerEggCount),
-						UserNameLink(ownerID, ownerName),
+						UserEggIcons(d.OwnerID, d.OwnerEggCount),
+						UserNameLink(d.OwnerID, d.OwnerName),
 						g.Text(" (ad owner)"),
-						g.If(!canPost && (ownerID != currentUserID && enquirerID != currentUserID),
+						g.If(!d.CanPost && (d.OwnerID != d.CurrentUserID && d.EnquirerID != d.CurrentUserID),
 							Span(
 								Class("ml-2 px-2 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-xs"),
 								g.Text("Read-only"),
 							),
 						),
 					),
-					g.If(!canPost && conv.EggThrowerID != nil,
+					g.If(!d.CanPost && d.EggThrowerID != nil,
 						Div(
 							Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1"),
 							g.Text("Egg thrown by: "),
-							g.If(eggUserID == currentUserID,
+							g.If(eggUserID == d.CurrentUserID,
 								Span(Class("text-blue-600 dark:text-blue-400 font-medium"),
-									g.If(eggUserID == ownerID, UserNameLink(ownerID, ownerName)),
-									g.If(eggUserID == enquirerID, UserNameLink(enquirerID, enquirerName)),
+									g.If(eggUserID == d.OwnerID, UserNameLink(d.OwnerID, d.OwnerName)),
+									g.If(eggUserID == d.EnquirerID, UserNameLink(d.EnquirerID, d.EnquirerName)),
 								),
 							),
-							g.If(eggUserID != currentUserID,
+							g.If(eggUserID != d.CurrentUserID,
 								Span(Class("text-zinc-700 dark:text-zinc-300 font-medium"),
-									g.If(eggUserID == ownerID, UserNameLink(ownerID, ownerName)),
-									g.If(eggUserID == enquirerID, UserNameLink(enquirerID, enquirerName)),
+									g.If(eggUserID == d.OwnerID, UserNameLink(d.OwnerID, d.OwnerName)),
+									g.If(eggUserID == d.EnquirerID, UserNameLink(d.EnquirerID, d.EnquirerName)),
 								),
 							),
 						),
@@ -290,34 +285,34 @@ func ConversationModalSwapOOB(conversationID, adID, ownerID, enquirerID, current
 			Div(
 				ID(fmt.Sprintf("%s-messages", modalName)),
 				Class("flex-1 overflow-y-auto p-4 space-y-2"),
-				g.If(len(messageNodes) == 0,
+				g.If(len(d.MessageNodes) == 0,
 					Div(
-						ID(fmt.Sprintf("conversation-%d-empty-message", conversationID)),
+						ID(fmt.Sprintf("conversation-%d-empty-message", d.ConversationID)),
 						Class("text-center text-zinc-500 dark:text-zinc-400 py-8"),
-						g.If(canPost,
+						g.If(d.CanPost,
 							g.Text("No messages yet. Start the conversation!"),
 						),
-						g.If(!canPost,
+						g.If(!d.CanPost,
 							g.Text("No messages yet."),
 						),
 					),
 				),
-				g.If(len(messageNodes) > 0,
-					g.Group(messageNodes),
+				g.If(len(d.MessageNodes) > 0,
+					g.Group(d.MessageNodes),
 				),
-				ConversationMessagesSentinel(conversationID),
+				ConversationMessagesSentinel(d.ConversationID),
 			),
-			ConversationForm(conversationID, adID, csrfToken, canPost, hasThrownEgg, canThrowEgg, len(messageNodes)),
+			ConversationForm(d.ConversationID, d.AdID, d.CSRFToken, d.CanPost, d.HasThrownEgg, d.CanThrowEgg, len(d.MessageNodes)),
 		),
 	)
 }
 
-func ConversationModalWithEgg(conversationID, adID, ownerID, enquirerID, currentUserID, enquirerEggCount, ownerEggCount int, adTitle, ownerName, enquirerName, csrfToken string, canPost, hasThrownEgg, canThrowEgg bool, messageNodes []g.Node, conv message.Conversation) g.Node {
-	modalName := fmt.Sprintf("conversation-%d", conversationID)
+func ConversationModalWithEgg(d ConversationModalData) g.Node {
+	modalName := fmt.Sprintf("conversation-%d", d.ConversationID)
 
 	var eggUserID int
-	if conv.EggThrowerID != nil {
-		eggUserID = *conv.EggThrowerID
+	if d.EggThrowerID != nil {
+		eggUserID = *d.EggThrowerID
 	}
 
 	return g.Group([]g.Node{
@@ -335,41 +330,39 @@ func ConversationModalWithEgg(conversationID, adID, ownerID, enquirerID, current
 						Div(
 							Class("text-sm text-zinc-600 dark:text-zinc-400 mb-1"),
 							Span(Class("font-semibold"), g.Text("Subject: ")),
-							g.Text(adTitle),
+							g.Text(d.AdTitle),
 						),
 						Div(
 							Class("text-sm text-zinc-600 dark:text-zinc-400"),
 							Span(Class("font-semibold"), g.Text("From: ")),
-							UserEggIcons(enquirerID, enquirerEggCount),
-							UserNameLink(enquirerID, enquirerName),
+							UserEggIcons(d.EnquirerID, d.EnquirerEggCount),
+							UserNameLink(d.EnquirerID, d.EnquirerName),
 							g.Text(", "),
 							Span(Class("font-semibold"), g.Text("To: ")),
-							UserEggIcons(ownerID, ownerEggCount),
-							UserNameLink(ownerID, ownerName),
+							UserEggIcons(d.OwnerID, d.OwnerEggCount),
+							UserNameLink(d.OwnerID, d.OwnerName),
 							g.Text(" (ad owner)"),
-							g.If(!canPost && (ownerID != currentUserID && enquirerID != currentUserID),
+							g.If(!d.CanPost && (d.OwnerID != d.CurrentUserID && d.EnquirerID != d.CurrentUserID),
 								Span(
 									Class("ml-2 px-2 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-xs"),
 									g.Text("Read-only"),
 								),
 							),
 						),
-						g.If(!canPost && conv.EggThrowerID != nil,
+						g.If(!d.CanPost && d.EggThrowerID != nil,
 							Div(
 								Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1"),
 								g.Text("Egg thrown by: "),
-								g.If(eggUserID == currentUserID,
-									// Current user threw it - use blue color (like sent messages)
+								g.If(eggUserID == d.CurrentUserID,
 									Span(Class("text-blue-600 dark:text-blue-400 font-medium"),
-										g.If(eggUserID == ownerID, UserNameLink(ownerID, ownerName)),
-										g.If(eggUserID == enquirerID, UserNameLink(enquirerID, enquirerName)),
+										g.If(eggUserID == d.OwnerID, UserNameLink(d.OwnerID, d.OwnerName)),
+										g.If(eggUserID == d.EnquirerID, UserNameLink(d.EnquirerID, d.EnquirerName)),
 									),
 								),
-								g.If(eggUserID != currentUserID,
-									// Someone else threw it - use gray color (like received messages)
+								g.If(eggUserID != d.CurrentUserID,
 									Span(Class("text-zinc-700 dark:text-zinc-300 font-medium"),
-										g.If(eggUserID == ownerID, UserNameLink(ownerID, ownerName)),
-										g.If(eggUserID == enquirerID, UserNameLink(enquirerID, enquirerName)),
+										g.If(eggUserID == d.OwnerID, UserNameLink(d.OwnerID, d.OwnerName)),
+										g.If(eggUserID == d.EnquirerID, UserNameLink(d.EnquirerID, d.EnquirerName)),
 									),
 								),
 							),
@@ -395,46 +388,46 @@ func ConversationModalWithEgg(conversationID, adID, ownerID, enquirerID, current
 				Div(
 					ID(fmt.Sprintf("%s-messages", modalName)),
 					Class("flex-1 overflow-y-auto p-4 space-y-2"),
-					g.If(len(messageNodes) == 0,
+					g.If(len(d.MessageNodes) == 0,
 						Div(
-							ID(fmt.Sprintf("conversation-%d-empty-message", conversationID)),
+							ID(fmt.Sprintf("conversation-%d-empty-message", d.ConversationID)),
 							Class("text-center text-zinc-500 dark:text-zinc-400 py-8"),
-							g.If(canPost,
+							g.If(d.CanPost,
 								g.Text("No messages yet. Start the conversation!"),
 							),
-							g.If(!canPost,
+							g.If(!d.CanPost,
 								g.Text("No messages yet."),
 							),
 						),
 					),
-					g.If(len(messageNodes) > 0,
-						g.Group(messageNodes),
+					g.If(len(d.MessageNodes) > 0,
+						g.Group(d.MessageNodes),
 					),
-					ConversationMessagesSentinel(conversationID),
+					ConversationMessagesSentinel(d.ConversationID),
 				),
-				ConversationForm(conversationID, adID, csrfToken, canPost, hasThrownEgg, canThrowEgg, len(messageNodes)),
+				ConversationForm(d.ConversationID, d.AdID, d.CSRFToken, d.CanPost, d.HasThrownEgg, d.CanThrowEgg, len(d.MessageNodes)),
 			),
 		),
 	})
 }
 
-func ConversationListItem(conversationID, adID, ownerID, enquirerID, currentUserID int, adTitle, lastMessageContent, otherUserName string, lastMessageAt *time.Time, updatedAt time.Time, hasUnread bool, eggCount int, otherUserEggCount int) g.Node {
-	lastMessagePreview := lastMessageContent
+func ConversationListItem(d ConversationListItemData) g.Node {
+	lastMessagePreview := d.LastMessageContent
 	if len(lastMessagePreview) > 50 {
 		lastMessagePreview = lastMessagePreview[:50] + "..."
 	}
 
 	var timeStr string
-	if lastMessageAt != nil {
-		timeStr = formatMessageTime(*lastMessageAt)
+	if d.LastMessageAt != nil {
+		timeStr = formatMessageTime(*d.LastMessageAt)
 	} else {
-		timeStr = formatMessageTime(updatedAt)
+		timeStr = formatMessageTime(d.UpdatedAt)
 	}
 
 	return Div(
-		ID(fmt.Sprintf("conversation-item-%d", conversationID)),
+		ID(fmt.Sprintf("conversation-item-%d", d.ConversationID)),
 		Class("border-b border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer transition-colors"),
-		hx.Get(fmt.Sprintf("/auth/conversation/%d", conversationID)),
+		hx.Get(fmt.Sprintf("/auth/conversation/%d", d.ConversationID)),
 		hx.Target("body"),
 		hx.Swap("beforeend"),
 		hx.Trigger("click[!closest(.egg-icon-container)]"),
@@ -444,15 +437,15 @@ func ConversationListItem(conversationID, adID, ownerID, enquirerID, currentUser
 				Class("flex items-start justify-between mb-2"),
 				Div(
 					Class("flex items-center gap-2 flex-1 min-w-0"),
-					g.If(hasUnread,
+					g.If(d.HasUnread,
 						Div(
 							Class("bg-green-500 rounded-full w-2 h-2 flex-shrink-0"),
 						),
 					),
-					g.If(eggCount > 0, EggIcons(adID, eggCount)),
+					g.If(d.EggCount > 0, EggIcons(d.AdID, d.EggCount)),
 					Span(
 						Class("text-lg font-semibold text-zinc-900 dark:text-zinc-200"),
-						g.Text(adTitle),
+						g.Text(d.AdTitle),
 					),
 				),
 				Span(
@@ -464,20 +457,20 @@ func ConversationListItem(conversationID, adID, ownerID, enquirerID, currentUser
 				Class("flex items-center justify-between"),
 				Span(
 					Class("text-sm text-zinc-600 dark:text-zinc-400 flex items-center gap-1"),
-					g.If(enquirerID == currentUserID,
+					g.If(d.EnquirerID == d.CurrentUserID,
 						g.Group([]g.Node{
 							g.Text("To: "),
-							UserNameLink(ownerID, otherUserName, UserEggIcons(ownerID, otherUserEggCount)),
+							UserNameLink(d.OwnerID, d.OtherUserName, UserEggIcons(d.OwnerID, d.OtherUserEggCount)),
 						}),
 					),
-					g.If(ownerID == currentUserID,
+					g.If(d.OwnerID == d.CurrentUserID,
 						g.Group([]g.Node{
 							g.Text("From: "),
-							UserNameLink(enquirerID, otherUserName, UserEggIcons(enquirerID, otherUserEggCount)),
+							UserNameLink(d.EnquirerID, d.OtherUserName, UserEggIcons(d.EnquirerID, d.OtherUserEggCount)),
 						}),
 					),
 				),
-				g.If(lastMessageContent != "",
+				g.If(d.LastMessageContent != "",
 					Span(
 						Class("text-sm text-zinc-500 dark:text-zinc-500 truncate ml-4 max-w-[50%%]"),
 						g.Text(lastMessagePreview),

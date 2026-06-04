@@ -1,0 +1,121 @@
+package ui
+
+import (
+	"time"
+
+	g "maragu.dev/gomponents"
+)
+
+// UserProfileData holds presentation fields for a user profile or summary.
+type UserProfileData struct {
+	Name          string
+	MemberSince   string
+	ActiveAdCount int
+	UserEggCount  int
+}
+
+// UserRowData holds presentation fields for an admin user table row.
+type UserRowData struct {
+	ID        int
+	Name      string
+	PhoneE64  string
+	IsAdmin   bool
+	CreatedAt time.Time
+	DeletedAt *time.Time
+}
+
+// AdDetail holds presentation fields for a single ad page.
+type AdDetail struct {
+	ID            int
+	OwnerID       int
+	ImageCount    int
+	Price         int
+	PriceCurrency string
+	Title         string
+	Location      string
+	Description   string
+	CreatedAt     time.Time
+	Bookmarked    bool
+	Active        bool
+	Reachable     bool
+	RockCount     int
+}
+
+// AdCard holds presentation fields for an ad in search or list views.
+type AdCard struct {
+	ID            int
+	Price         int
+	PriceCurrency string
+	Title         string
+	Location      string
+	CreatedAt     time.Time
+	ImageCount    int
+	Active        bool
+	Bookmarked    bool
+	RockCount     int
+}
+
+// ConversationModalData holds presentation fields for a conversation modal.
+type ConversationModalData struct {
+	ConversationID   int
+	AdID             int
+	OwnerID          int
+	EnquirerID       int
+	CurrentUserID    int
+	EnquirerEggCount int
+	OwnerEggCount    int
+	AdTitle          string
+	OwnerName        string
+	EnquirerName     string
+	CSRFToken        string
+	CanPost          bool
+	HasThrownEgg     bool
+	CanThrowEgg      bool
+	MessageNodes     []g.Node
+	EggThrowerID     *int
+	TargetModalID    string
+}
+
+// ConversationListItemData holds presentation fields for a messages list row.
+// LastMessageAt and UpdatedAt are in the viewer's timezone when set.
+type ConversationListItemData struct {
+	ConversationID     int
+	AdID               int
+	OwnerID            int
+	EnquirerID         int
+	CurrentUserID      int
+	AdTitle            string
+	LastMessageContent string
+	OtherUserName      string
+	LastMessageAt      *time.Time
+	UpdatedAt          time.Time
+	HasUnread          bool
+	EggCount           int
+	OtherUserEggCount  int
+}
+
+// CategoryOption holds presentation fields for a category picker item.
+type CategoryOption struct {
+	ID        int
+	Name      string
+	ImageFile string
+}
+
+// MessageItemData holds presentation fields for a single chat message.
+// CreatedAt is in the viewer's timezone.
+type MessageItemData struct {
+	SenderID      int
+	CurrentUserID int
+	Content       string
+	CreatedAt     time.Time
+}
+
+// EggEventData holds presentation fields for an egg-thrown timeline entry.
+// ThrownAt is in the viewer's timezone.
+type EggEventData struct {
+	ThrowerID     int
+	CurrentUserID int
+	ThrownAt      time.Time
+	OwnerID       int
+	EnquirerID    int
+}

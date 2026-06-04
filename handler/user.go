@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"time"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/cookie"
@@ -11,6 +13,20 @@ import (
 	"github.com/rocky-ads/site/ui"
 	"github.com/rocky-ads/site/user"
 )
+
+const (
+	memberSinceLayoutPage    = "January 2, 2006"
+	memberSinceLayoutSummary = "Jan 2006"
+)
+
+func userProfileData(u user.User, activeAdCount, userEggCount int, loc *time.Location, memberSinceLayout string) ui.UserProfileData {
+	return ui.UserProfileData{
+		Name:          u.Name,
+		MemberSince:   u.CreatedAt.In(loc).Format(memberSinceLayout),
+		ActiveAdCount: activeAdCount,
+		UserEggCount:  userEggCount,
+	}
+}
 
 func UserMenuHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
@@ -79,7 +95,8 @@ func UserProfileHandler(c *fiber.Ctx) error {
 	activeAdCount, _ := ad.CountActiveAdsByUser(id)
 	userEggCount, _ := egg.GetEggCountForUser(id)
 	loc := cookie.GetLocation(c)
-	return renderPage(c, u.Name, ui.UserProfilePage(u, activeAdCount, userEggCount, loc))
+	d := userProfileData(u, activeAdCount, userEggCount, loc, memberSinceLayoutPage)
+	return renderPage(c, u.Name, ui.UserProfilePage(d))
 }
 
 func UserSummaryHandler(c *fiber.Ctx) error {
@@ -93,7 +110,9 @@ func UserSummaryHandler(c *fiber.Ctx) error {
 	}
 	activeAdCount, _ := ad.CountActiveAdsByUser(id)
 	userEggCount, _ := egg.GetEggCountForUser(id)
-	return render(c, ui.UserSummaryFragment(u.Name, u.CreatedAt, activeAdCount, userEggCount))
+	loc := cookie.GetLocation(c)
+	d := userProfileData(u, activeAdCount, userEggCount, loc, memberSinceLayoutSummary)
+	return render(c, ui.UserSummaryFragment(d))
 }
 
 func UserEggConversationHandler(c *fiber.Ctx) error {
