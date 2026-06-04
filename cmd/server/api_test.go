@@ -14,6 +14,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -61,8 +62,32 @@ func initDatabaseWithSchema(dbPath string) error {
 	return nil
 }
 
+// chdirModuleRoot sets the working directory to the module root (directory
+// containing go.mod). Tests run with cwd in cmd/server; paths and seed data
+// expect the repo root.
+func chdirModuleRoot() error {
+	dir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return os.Chdir(dir)
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return fmt.Errorf("go.mod not found")
+		}
+		dir = parent
+	}
+}
+
 // TestMain starts the test server before running tests and shuts it down after
 func TestMain(m *testing.M) {
+	if err := chdirModuleRoot(); err != nil {
+		panic(fmt.Sprintf("Failed to chdir to module root: %v", err))
+	}
+
 	// Set test encryption keys before anything else
 	// These must match the keys used when seeding the test database
 	testUserEncryptionKey := "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" // base64 encoded 32 bytes of zeros

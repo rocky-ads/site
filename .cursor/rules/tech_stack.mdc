@@ -2,5 +2,5 @@
 alwaysApply: true
 ---
 
-Use DOC_TECH_STACK.md for technology stack for this project.
+Use doc/DOC_TECH_STACK.md for technology stack for this project.
 

@@ -4,7 +4,7 @@
 FROM golang:1.25.3 AS go-builder
 WORKDIR /app
 COPY . .
-RUN go build -o /site ./
+RUN go build -o /site ./cmd/server
 
 # Stage 2: Final image
 FROM debian:bookworm-slim

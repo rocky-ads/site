@@ -2,4 +2,4 @@
 alwaysApply: true
 ---
 
-Use DOC_CODING_STANDARDS.md for coding standards for this project.
+Use doc/DOC_CODING_STANDARDS.md for coding standards for this project.
