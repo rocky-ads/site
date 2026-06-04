@@ -17,14 +17,6 @@ import (
 	g "maragu.dev/gomponents"
 )
 
-func buildMessageNodes(messages []message.Message, currentUserID int, loc *time.Location) []g.Node {
-	var messageNodes []g.Node
-	for _, msg := range messages {
-		messageNodes = append(messageNodes, ui.MessageItem(msg.SenderID, currentUserID, msg.Content, msg.CreatedAt, loc))
-	}
-	return messageNodes
-}
-
 func buildMessageNodesWithEgg(messages []message.Message, currentUserID int, loc *time.Location, conv message.Conversation, ownerID, enquirerID int) []g.Node {
 	var messageNodes []g.Node
 

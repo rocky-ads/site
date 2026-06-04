@@ -291,14 +291,6 @@ type SMSQueueEntry struct {
 	ProcessedAt   *string
 }
 
-func UsersRows(users []user.User, currentUserID int) g.Node {
-	return Div(
-		ID("users-rows"),
-		Class("bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-700"),
-		g.Group(userRows(users, currentUserID)),
-	)
-}
-
 func AdminSettingsTab() g.Node {
 	return Div(
 		Class("mt-4 p-6 bg-white dark:bg-zinc-800 rounded-lg shadow"),

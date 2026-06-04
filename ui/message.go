@@ -106,45 +106,10 @@ func EggThrownMessage(throwerID, currentUserID int, thrownAt time.Time, loc *tim
 	)
 }
 
-func ConversationMessages(conversationID, currentUserID int, otherUserName string, messageNodes []g.Node, csrfToken string) g.Node {
-	return Div(
-		ID(fmt.Sprintf("conversation-%d-messages", conversationID)),
-		Class("flex-1 overflow-y-auto p-4 space-y-2"),
-		g.Group(messageNodes),
-	)
-}
-
 func ConversationMessagesSentinel(conversationID int) g.Node {
 	return Div(
 		ID(fmt.Sprintf("conversation-%d-sentinel", conversationID)),
 		g.Attr("style", "display: none;"),
-	)
-}
-
-func MessageItemSwapOOB(conversationID int, messageNode g.Node) g.Node {
-	sentinelID := fmt.Sprintf("conversation-%d-sentinel", conversationID)
-	return Div(
-		hx.SwapOOB(fmt.Sprintf("beforebegin:#%s", sentinelID)),
-		messageNode,
-	)
-}
-
-func ConversationEmptyMessageDeleteOOB(conversationID int, isFirstMessage bool) g.Node {
-	if !isFirstMessage {
-		return g.Raw("")
-	}
-	return Div(
-		ID(fmt.Sprintf("conversation-%d-empty-message", conversationID)),
-		hx.SwapOOB("delete"),
-	)
-}
-
-func ConversationMessagesUpdate(conversationID int, messageNodes []g.Node) g.Node {
-	nodesWithSentinel := append(messageNodes, ConversationMessagesSentinel(conversationID))
-	return Div(
-		ID(fmt.Sprintf("conversation-%d-messages", conversationID)),
-		Class("flex-1 overflow-y-auto p-4 space-y-2"),
-		g.Group(nodesWithSentinel),
 	)
 }
 
@@ -170,34 +135,6 @@ func ConversationContentInput(conversationID int, attrs ...g.Node) g.Node {
 	}
 	allAttrs = append(allAttrs, attrs...)
 	return Input(g.Group(allAttrs))
-}
-
-func ConversationFormUpdateOOB(conversationID int, csrfToken string, hasThrownEgg, canThrowEgg bool) g.Node {
-	modalName := fmt.Sprintf("conversation-%d", conversationID)
-	return Form(
-		ID(fmt.Sprintf("%s-form", modalName)),
-		hx.SwapOOB("outerHTML"),
-		Class("p-4 border-t border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
-		hx.Post(fmt.Sprintf("/auth/conversation/%d/send", conversationID)),
-		hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
-		hx.Include("this"),
-		hx.Swap("none"),
-		Div(
-			Class("flex gap-2"),
-			ConversationContentInput(conversationID),
-			Button(
-				Type("submit"),
-				Class("px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"),
-				g.Text("Send"),
-			),
-		),
-		// Egg throw link below the input (conversation now has messages)
-		Div(
-			ID(fmt.Sprintf("%s-egg-link-container", modalName)),
-			Class("mt-2"),
-			EggThrowLink(conversationID, hasThrownEgg, canThrowEgg, csrfToken),
-		),
-	)
 }
 
 func ConversationForm(conversationID, adID int, csrfToken string, canPost bool, hasThrownEgg, canThrowEgg bool, messageCount int) g.Node {
@@ -262,31 +199,6 @@ func ConversationForm(conversationID, adID int, csrfToken string, canPost bool, 
 			),
 		),
 	)
-}
-
-// EggThrowLinkSwapOOB returns an OOB swap node to insert the egg throw link into the egg link container below the form
-// oldModalID is the modal ID currently in the DOM (e.g., "conversation-0" for new conversations)
-// conversationID is the actual conversation ID for the egg link functionality
-func EggThrowLinkSwapOOB(oldModalID string, conversationID int, hasThrownEgg, canThrowEgg bool, csrfToken string) g.Node {
-	eggLinkContainerID := fmt.Sprintf("%s-egg-link-container", oldModalID)
-	eggLink := EggThrowLink(conversationID, hasThrownEgg, canThrowEgg, csrfToken)
-	// Insert into the egg link container below the form
-	return Div(
-		ID(eggLinkContainerID),
-		hx.SwapOOB("outerHTML"),
-		Class("mt-2"),
-		eggLink,
-	)
-}
-
-func ConversationModal(conversationID, adID int, adTitle string, ownerID, enquirerID, currentUserID int, otherUserName string, messageNodes []g.Node, csrfToken string) g.Node {
-	// Default conversation with no egg
-	conv := message.Conversation{
-		EggThrowerID: nil,
-		EggThrownAt:  nil,
-	}
-	// Default to allowing posting (for backward compatibility)
-	return ConversationModalWithEgg(conversationID, adID, ownerID, enquirerID, currentUserID, 0, 0, adTitle, otherUserName, otherUserName, csrfToken, true, false, false, messageNodes, conv)
 }
 
 // ConversationModalSwapOOB returns just the modal div (without backdrop) with hx-swap-oob="outerHTML" for updating via SSE or OOB swaps

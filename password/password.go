@@ -57,23 +57,3 @@ func VerifyPassword(password, hash, salt string) bool {
 
 	return computedHash == hash
 }
-
-// GenerateSalt generates a new random salt
-func GenerateSalt() (string, error) {
-	saltBytes, err := generateSaltBytes()
-	if err != nil {
-		return "", err
-	}
-	return base64.RawStdEncoding.EncodeToString(saltBytes), nil
-}
-
-// HashPasswordWithSalt hashes a password with a provided salt
-func HashPasswordWithSalt(password, salt string) (string, error) {
-	saltBytes, err := base64.RawStdEncoding.DecodeString(salt)
-	if err != nil {
-		return "", err
-	}
-
-	hashBytes := argon2.IDKey([]byte(password), saltBytes, Time, Memory, Threads, KeyLen)
-	return base64.RawStdEncoding.EncodeToString(hashBytes), nil
-}

@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"context"
 	"io"
 	"log/slog"
 	"os"
@@ -145,39 +144,6 @@ func Fatal(msg string, fields ...any) {
 	}
 	defaultLogger.Error(msg, fields...)
 	os.Exit(1)
-}
-
-// WithFields returns a logger with the specified fields attached
-func WithFields(fields ...any) *slog.Logger {
-	return defaultLogger.With(fields...)
-}
-
-// WithContext returns a logger with context attached
-func WithContext(ctx context.Context) *slog.Logger {
-	return defaultLogger.With(toFields(ctx)...)
-}
-
-// toFields extracts fields from context
-func toFields(ctx context.Context) []any {
-	fields := []any{}
-	if ctx == nil {
-		return fields
-	}
-
-	// Extract common context values
-	if userID, ok := ctx.Value("userID").(int); ok {
-		fields = append(fields, "userID", userID)
-	}
-	if requestID, ok := ctx.Value("requestID").(string); ok {
-		fields = append(fields, "requestID", requestID)
-	}
-
-	return fields
-}
-
-// GetLogger returns the default logger instance
-func GetLogger() *slog.Logger {
-	return defaultLogger
 }
 
 // Writer returns an io.Writer that writes to the logger at Info level.

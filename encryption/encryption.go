@@ -113,23 +113,3 @@ func deriveKey(id int, masterKey []byte) ([]byte, error) {
 
 	return key, nil
 }
-
-// VerifyEncryptedData verifies that encrypted data is valid
-func VerifyEncryptedData(encryptedContent, nonce string) error {
-	if encryptedContent == "" {
-		return fmt.Errorf("encrypted content is empty")
-	}
-	if nonce == "" {
-		return fmt.Errorf("nonce is empty")
-	}
-
-	// Verify base64 encoding
-	if _, err := base64.StdEncoding.DecodeString(encryptedContent); err != nil {
-		return fmt.Errorf("invalid encrypted content encoding: %w", err)
-	}
-	if _, err := base64.StdEncoding.DecodeString(nonce); err != nil {
-		return fmt.Errorf("invalid nonce encoding: %w", err)
-	}
-
-	return nil
-}

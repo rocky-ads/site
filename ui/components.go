@@ -159,18 +159,6 @@ func inputText(name, placeholder string, isRequired bool, attrs ...g.Node) g.Nod
 	return Input(inputAttrs...)
 }
 
-func textArea(name, placeholder string, isRequired bool, attrs ...g.Node) g.Node {
-	inputAttrs := []g.Node{
-		Type("textarea"),
-		Name(name),
-		Class("w-full p-2 border rounded-md"),
-		Placeholder(placeholder),
-		g.If(isRequired, Required()),
-	}
-	inputAttrs = append(inputAttrs, attrs...)
-	return Textarea(inputAttrs...)
-}
-
 // pageTitle creates a standardized H1 page title element
 func pageTitle(text string) g.Node {
 	return H1(
