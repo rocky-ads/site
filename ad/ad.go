@@ -59,6 +59,26 @@ func (a Ad) Location() string {
 	return flag + " " + locationText
 }
 
+var placeholderString = strings.Repeat("?,", 1000)
+
+func placeholders(n int) string {
+	if n == 0 {
+		return ""
+	}
+	if n == 1 {
+		return "?"
+	}
+	needed := 2*n - 1
+	if needed <= len(placeholderString) {
+		return placeholderString[:needed]
+	}
+	ph := make([]string, n)
+	for i := range ph {
+		ph[i] = "?"
+	}
+	return strings.Join(ph, ",")
+}
+
 func GetAds(userID int, ids []int, loc *time.Location) ([]Ad, error) {
 	if len(ids) == 0 {
 		return []Ad{}, nil
@@ -88,7 +108,7 @@ func GetAds(userID int, ids []int, loc *time.Location) ([]Ad, error) {
 		FROM ads a
 		LEFT JOIN locations l ON a.location_id = l.id
 		LEFT JOIN bookmarks b ON a.id = b.ad_id AND b.user_id = ?
-		WHERE a.id IN (` + db.Placeholders(len(ids)) + `)
+		WHERE a.id IN (` + placeholders(len(ids)) + `)
 	`
 	args := make([]any, len(ids)+1)
 	args[0] = userID
