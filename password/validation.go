@@ -1,9 +1,14 @@
 package password
 
 import (
+	"errors"
 	"fmt"
 	"unicode"
 )
+
+// StrengthRequirements is the full password rule text for user-facing errors.
+const StrengthRequirements = "Password must be at least 8 characters and include " +
+	"uppercase and lowercase letters, a number, and a special character (e.g., !@#$%^&*)."
 
 func ValidatePasswordConfirmation(password, confirmation string) error {
 	if password != confirmation {
@@ -12,14 +17,8 @@ func ValidatePasswordConfirmation(password, confirmation string) error {
 	return nil
 }
 
-// ValidatePasswordStrength checks if a password meets minimum requirements
 func ValidatePasswordStrength(password string) error {
-	if len(password) < 8 {
-		return fmt.Errorf("password must be at least 8 characters long")
-	}
-
-	// Check for at least one letter, one number, one uppercase, one lowercase, and one special character
-	hasLetter := false
+	okLen := len(password) >= 8
 	hasNumber := false
 	hasUpper := false
 	hasLower := false
@@ -27,7 +26,6 @@ func ValidatePasswordStrength(password string) error {
 
 	for _, char := range password {
 		if unicode.IsLetter(char) {
-			hasLetter = true
 			if unicode.IsUpper(char) {
 				hasUpper = true
 			}
@@ -38,33 +36,17 @@ func ValidatePasswordStrength(password string) error {
 		if unicode.IsNumber(char) {
 			hasNumber = true
 		}
-		// Check for special characters (printable ASCII that's not letter, number, or space)
-		if !unicode.IsLetter(char) && !unicode.IsNumber(char) && !unicode.IsSpace(char) && char >= 33 && char <= 126 {
+		if !unicode.IsLetter(char) && !unicode.IsNumber(char) &&
+			!unicode.IsSpace(char) && char >= 33 && char <= 126 {
 			hasSpecial = true
 		}
 	}
 
-	if !hasLetter {
-		return fmt.Errorf("password must contain at least one letter")
+	if okLen && hasUpper && hasLower && hasNumber && hasSpecial {
+		return nil
 	}
 
-	if !hasNumber {
-		return fmt.Errorf("password must contain at least one number")
-	}
-
-	if !hasUpper {
-		return fmt.Errorf("password must contain at least one uppercase letter")
-	}
-
-	if !hasLower {
-		return fmt.Errorf("password must contain at least one lowercase letter")
-	}
-
-	if !hasSpecial {
-		return fmt.Errorf("password must contain at least one special character (e.g., !@#$%%^&*)")
-	}
-
-	return nil
+	return errors.New(StrengthRequirements)
 }
 
 // ValidatePasswordChange validates a password change operation
