@@ -17,6 +17,10 @@ const Default = "USD"
 var Supported = []string{
 	"USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CHF", "CNY", "INR", "MXN",
 	"BRL", "KRW", "NZD", "SEK", "NOK", "DKK", "PLN", "ZAR",
+	"HKD", "SGD", "TWD", "THB", "MYR", "IDR", "PHP", "VND",
+	"AED", "SAR", "ILS", "TRY", "CZK", "HUF", "RON",
+	"ARS", "CLP", "COP", "PEN",
+	"EGP", "NGN", "KES", "PKR", "BDT",
 }
 
 var supportedSet map[string]struct{}
