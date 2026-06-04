@@ -164,7 +164,8 @@ func LoadUsers() error {
 			`UPDATE users SET 
 				encrypted_name = ?, name_nonce = ?, name_hash = ?,
 				encrypted_phone = ?, phone_nonce = ?, phone_hash = ?,
-				encrypted_email = ?, email_nonce = ?, email_hash = ?
+				encrypted_email = ?, email_nonce = ?, email_hash = ?,
+				phone_verified = 1
 			WHERE id = ?`,
 			encryptedNameBytes, nameNonceBytes, nameHash,
 			encryptedPhoneBytes, phoneNonceBytes, phoneHash,

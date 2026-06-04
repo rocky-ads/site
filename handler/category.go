@@ -17,13 +17,16 @@ func CategorySelectHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	var categoryItems []g.Node
-	for _, cat := range categories {
-		categoryItems = append(categoryItems,
-			ui.CategoryItem(categoryID, cat.ID, cat.Name, cat.ImageFile, returnParam))
+	options := make([]ui.CategoryOption, len(categories))
+	for i, cat := range categories {
+		options[i] = ui.CategoryOption{
+			ID:        cat.ID,
+			Name:      cat.Name,
+			ImageFile: cat.ImageFile,
+		}
 	}
 
-	return render(c, ui.CategorySelectModal(categoryItems))
+	return render(c, ui.CategorySelectModal(categoryID, returnParam, options))
 }
 
 func ModalRemoveHandler(c *fiber.Ctx) error {

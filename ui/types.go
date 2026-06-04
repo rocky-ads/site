@@ -101,6 +101,16 @@ type CategoryOption struct {
 	ImageFile string
 }
 
+// SMSQueueEntryInput holds raw queue entry fields for UI formatting.
+type SMSQueueEntryInput struct {
+	ID            int
+	RecipientName string
+	AdTitle       string
+	Status        string
+	CreatedAt     time.Time
+	ProcessedAt   *time.Time
+}
+
 // MessageItemData holds presentation fields for a single chat message.
 // CreatedAt is in the viewer's timezone.
 type MessageItemData struct {

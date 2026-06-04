@@ -95,24 +95,18 @@ func AdminSMSQueueHandler(c *fiber.Ctx) error {
 	}
 
 	// Convert queue entries to UI format
-	uiEntries := make([]ui.SMSQueueEntry, len(queueEntries))
+	inputs := make([]ui.SMSQueueEntryInput, len(queueEntries))
 	for i, entry := range queueEntries {
-		createdAtStr := entry.CreatedAt.Format("2006-01-02 15:04:05")
-		var processedAtStr *string
-		if entry.ProcessedAt != nil {
-			processedAtStrVal := entry.ProcessedAt.Format("2006-01-02 15:04:05")
-			processedAtStr = &processedAtStrVal
-		}
-
-		uiEntries[i] = ui.SMSQueueEntry{
+		inputs[i] = ui.SMSQueueEntryInput{
 			ID:            entry.ID,
 			RecipientName: entry.RecipientName,
 			AdTitle:       entry.AdTitle,
 			Status:        entry.Status,
-			CreatedAt:     createdAtStr,
-			ProcessedAt:   processedAtStr,
+			CreatedAt:     entry.CreatedAt,
+			ProcessedAt:   entry.ProcessedAt,
 		}
 	}
+	uiEntries := ui.SMSQueueEntriesFrom(inputs)
 
 	uiStats := ui.QueueStats{
 		Pending:    stats.Pending,

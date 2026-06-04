@@ -59,36 +59,28 @@ func pageLimitOffset(c *fiber.Ctx) (limit, offset int) {
 
 func parseSearchParamsFromState(c *fiber.Ctx, state cookie.SearchState, categoryID int) search.Params {
 	limit, offset := pageLimitOffset(c)
-	p := search.Params{
-		CategoryID: categoryID,
-		Limit:      limit,
-		Offset:     offset,
-		Q:          state.Q,
-	}
 	if !state.Expanded {
-		return p
+		return search.Params{
+			CategoryID: categoryID,
+			Limit:      limit,
+			Offset:     offset,
+			Q:          state.Q,
+		}
 	}
 
 	unit := distanceUnit(c)
 	f := searchStateToFilters(state, unit)
-	p.PriceMin = f.PriceMin
-	p.PriceMax = f.PriceMax
-
-	if f.Location != "" && f.Radius > 0 {
-		lat, lon, ok, err := location.ResolveLocation(f.Location)
-		if err == nil && ok {
-			p.CenterLat = lat
-			p.CenterLon = lon
-			if f.RadiusUnit == location.UnitKm {
-				p.RadiusKm = float64(f.Radius)
-			} else {
-				p.RadiusKm = location.MilesToKm(float64(f.Radius))
-			}
-			p.HasGeo = true
-		}
-	}
-
-	return p
+	return search.BuildParams(search.BuildInput{
+		CategoryID: categoryID,
+		Limit:      limit,
+		Offset:     offset,
+		Q:          state.Q,
+		PriceMin:   f.PriceMin,
+		PriceMax:   f.PriceMax,
+		Location:   f.Location,
+		Radius:     f.Radius,
+		RadiusUnit: f.RadiusUnit,
+	})
 }
 
 // saveSearchStateFromRequest updates the search cookie and returns the new

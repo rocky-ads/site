@@ -360,38 +360,36 @@ func AdShareModal(path string) g.Node {
 	})
 }
 
-func Ad(adID, userID, ownerID, imageCount, price int, priceCurrency, title, location, description string,
-	createdAt time.Time, bookmarked, active, reachable bool, csrfToken string, eggCount int) []g.Node {
-
-	priceStr := currency.Format(price, priceCurrency)
+func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
+	priceStr := currency.Format(d.Price, d.PriceCurrency)
 
 	return []g.Node{
 		Div(
 			Class("flex flex-col relative rounded-lg shadow-lg dark:shadow-xl dark:shadow-zinc-900/50 my-4 mx-2 col-span-full overflow-hidden bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700"),
-			g.If(imageCount > 0, ImageNodeWithThumbnails(adID, imageCount, 1, "1200w", "aspect-[4/3] w-full", true)),
-			g.If(imageCount == 0, noImage("aspect-[4/3] w-full")),
-			g.If(!active, deletedWatermark()),
+			g.If(d.ImageCount > 0, ImageNodeWithThumbnails(d.ID, d.ImageCount, 1, "1200w", "aspect-[4/3] w-full", true)),
+			g.If(d.ImageCount == 0, noImage("aspect-[4/3] w-full")),
+			g.If(!d.Active, deletedWatermark()),
 			Div(
 				Class("p-6 flex flex-col bg-white dark:bg-zinc-800"),
 				Div(
 					Class("flex items-center justify-between min-w-0"),
 					Div(
 						Class("flex items-center gap-2 min-w-0"),
-						g.If(eggCount > 0, EggIcons(adID, eggCount)),
-						Span(Class("min-w-0"), g.Text(title)),
+						g.If(d.RockCount > 0, EggIcons(d.ID, d.RockCount)),
+						Span(Class("min-w-0"), g.Text(d.Title)),
 					),
-					adButtons(adID, userID, ownerID, bookmarked, active, reachable, csrfToken),
+					adButtons(d.ID, userID, d.OwnerID, d.Bookmarked, d.Active, d.Reachable, csrfToken),
 				),
 				Div(
 					Class("flex items-center gap-2"),
 					Span(Class("text-green-600 font-semibold"), g.Text(priceStr)),
 					Div(
 						Class("flex items-center gap-2 text-xs text-zinc-500"),
-						ageNode(createdAt),
-						g.Text(location),
+						ageNode(d.CreatedAt),
+						g.Text(d.Location),
 					),
 				),
-				Div(Class("text-base mt-2 whitespace-pre-wrap"), g.Text(description)),
+				Div(Class("text-base mt-2 whitespace-pre-wrap"), g.Text(d.Description)),
 			),
 		),
 	}

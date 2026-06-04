@@ -418,3 +418,14 @@ func DemoteFromAdmin(userID int) error {
 	_, err := db.Exec("UPDATE users SET is_admin = 0 WHERE id = ?", userID)
 	return err
 }
+
+// IsReachable reports whether the user can be contacted via the platform.
+// Users must verify their phone during registration before they can receive messages.
+// TODO: incorporate notification preferences and SMS opt-out.
+func IsReachable(userID int) (bool, error) {
+	u, err := GetByID(userID)
+	if err != nil {
+		return false, err
+	}
+	return u.PhoneVerified, nil
+}

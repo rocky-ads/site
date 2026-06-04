@@ -290,6 +290,27 @@ type SMSQueueEntry struct {
 	ProcessedAt   *string
 }
 
+func SMSQueueEntriesFrom(entries []SMSQueueEntryInput) []SMSQueueEntry {
+	result := make([]SMSQueueEntry, len(entries))
+	for i, e := range entries {
+		createdAtStr := e.CreatedAt.Format("2006-01-02 15:04:05")
+		var processedAtStr *string
+		if e.ProcessedAt != nil {
+			s := e.ProcessedAt.Format("2006-01-02 15:04:05")
+			processedAtStr = &s
+		}
+		result[i] = SMSQueueEntry{
+			ID:            e.ID,
+			RecipientName: e.RecipientName,
+			AdTitle:       e.AdTitle,
+			Status:        e.Status,
+			CreatedAt:     createdAtStr,
+			ProcessedAt:   processedAtStr,
+		}
+	}
+	return result
+}
+
 func AdminSettingsTab() g.Node {
 	return Div(
 		Class("mt-4 p-6 bg-white dark:bg-zinc-800 rounded-lg shadow"),

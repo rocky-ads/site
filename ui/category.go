@@ -34,7 +34,12 @@ func CategoryItem(currentCategoryID, categoryID int, name, imageFile, returnPara
 	)
 }
 
-func CategorySelectModal(categoryItems []g.Node) g.Node {
+func CategorySelectModal(selectedID int, returnParam string, categories []CategoryOption) g.Node {
+	items := make([]g.Node, len(categories))
+	for i, cat := range categories {
+		items[i] = CategoryItem(selectedID, cat.ID, cat.Name, cat.ImageFile, returnParam)
+	}
+
 	return g.Group([]g.Node{
 		modalBackdrop("category"),
 		Div(
@@ -52,7 +57,7 @@ func CategorySelectModal(categoryItems []g.Node) g.Node {
 					Class("flex-1 overflow-y-auto p-6 pt-4"),
 					Div(
 						Class("space-y-2"),
-						g.Group(categoryItems),
+						g.Group(items),
 					),
 				),
 			),

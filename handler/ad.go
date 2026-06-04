@@ -13,6 +13,7 @@ import (
 	"github.com/rocky-ads/site/message"
 	"github.com/rocky-ads/site/param"
 	"github.com/rocky-ads/site/ui"
+	"github.com/rocky-ads/site/user"
 )
 
 func AdHandler(c *fiber.Ctx) error {
@@ -39,12 +40,31 @@ func AdHandler(c *fiber.Ctx) error {
 
 	title := config.ServerName + " - " + a.Title
 	csrfToken := local.GetCSRFToken(c)
-	// TODO: Determine reachable based on owner's contact info/verification status
-	reachable := true // For now, assume owner is reachable
 
-	return renderPage(c, title, ui.Ad(adID, userID, a.UserID, a.ImageCount, a.Price, a.PriceCurrency,
-		a.Title, a.Location(), a.Description, a.CreatedAt, a.Bookmarked,
-		!a.IsDeleted(), reachable, csrfToken, a.RockCount))
+	reachable, err := user.IsReachable(a.UserID)
+	if err != nil {
+		reachable = false
+	}
+
+	return renderPage(c, title, ui.Ad(adDetailFrom(a, reachable), userID, csrfToken))
+}
+
+func adDetailFrom(a ad.Ad, reachable bool) ui.AdDetail {
+	return ui.AdDetail{
+		ID:            a.ID,
+		OwnerID:       a.UserID,
+		ImageCount:    a.ImageCount,
+		Price:         a.Price,
+		PriceCurrency: a.PriceCurrency,
+		Title:         a.Title,
+		Location:      a.Location(),
+		Description:   a.Description,
+		CreatedAt:     a.CreatedAt,
+		Bookmarked:    a.Bookmarked,
+		Active:        !a.IsDeleted(),
+		Reachable:     reachable,
+		RockCount:     a.RockCount,
+	}
 }
 
 func AdEggConversationHandler(c *fiber.Ctx) error {
