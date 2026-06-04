@@ -3,13 +3,13 @@ package phoneverification
 import (
 	"crypto/rand"
 	"crypto/subtle"
+	"database/sql"
 	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/logger"
-	"github.com/rocky-ads/site/user"
 )
 
 const (
@@ -156,17 +156,28 @@ func cleanupExpiredCodes() error {
 // InvalidateCodes invalidates all verification codes for a phone number.
 // This is called when a user replies STOP or when SMS delivery fails.
 func InvalidateCodes(phoneE64 string) error {
-	_, err := db.Exec(`
-		DELETE FROM phone_verification 
-		WHERE phone_e64 = $1
-	`, phoneE64)
-
-	if err != nil {
-		return fmt.Errorf("failed to invalidate verification codes for %s: %w", phoneE64, err)
+	if err := invalidateCodes(phoneE64, db.Exec); err != nil {
+		return err
 	}
 
 	logger.Info("Invalidated all verification codes for phone",
 		"component", "verification", "phoneE64", phoneE64)
+	return nil
+}
+
+// InvalidateCodesTx invalidates verification codes within an existing transaction.
+func InvalidateCodesTx(tx *sql.Tx, phoneE64 string) error {
+	return invalidateCodes(phoneE64, tx.Exec)
+}
+
+func invalidateCodes(phoneE64 string, exec func(string, ...any) (sql.Result, error)) error {
+	_, err := exec(`
+		DELETE FROM phone_verification 
+		WHERE phone_e64 = $1
+	`, phoneE64)
+	if err != nil {
+		return fmt.Errorf("failed to invalidate verification codes for %s: %w", phoneE64, err)
+	}
 	return nil
 }
 
@@ -201,18 +212,23 @@ func cleanupFailedAccount(phoneE64 string) error {
 	defer tx.Rollback()
 
 	// Delete verification codes
-	_, err = tx.Exec(`DELETE FROM phone_verification WHERE phone_e64 = $1`, phoneE64)
-	if err != nil {
+	if err := invalidateCodes(phoneE64, tx.Exec); err != nil {
 		return fmt.Errorf("failed to delete verification codes: %w", err)
+	}
+
+	// Delete any partial user records (users created but not verified)
+	phoneHash := db.HashString(phoneE64)
+	_, err = tx.Exec(
+		`DELETE FROM users WHERE phone_hash = $1 AND phone_verified = 0`,
+		phoneHash,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to delete unverified user: %w", err)
 	}
 
 	// Commit the transaction
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit cleanup transaction: %w", err)
-	}
-
-	if err := user.DeleteUnverifiedByPhone(phoneE64); err != nil {
-		return fmt.Errorf("failed to delete unverified user: %w", err)
 	}
 
 	logger.Info("Successfully cleaned up failed account",
