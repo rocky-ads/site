@@ -105,7 +105,16 @@ func AdShareHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
 	}
 
-	// Construct full URL
+	userID := local.GetUserID(c)
+	loc := cookie.GetLocation(c)
+	a, err := ad.GetAd(userID, adID, loc)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
+	}
+	if a.IsDeleted() && a.UserID != userID {
+		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
+	}
+
 	protocol := "https"
 	if c.Protocol() == "http" {
 		protocol = "http"

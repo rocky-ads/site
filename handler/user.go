@@ -28,14 +28,24 @@ func userProfileData(u user.User, activeAdCount, userEggCount int, loc *time.Loc
 	}
 }
 
+func loadUserMenuContext(userID int) (name string, isAdmin, hasUnread bool, eggCount, userEggCount int, err error) {
+	u, err := user.GetByID(userID)
+	if err != nil {
+		return "", false, false, 0, 0, err
+	}
+	hasUnread, _ = message.GetHasUnread(userID)
+	eggCount, _ = egg.GetUserEggCount(userID)
+	userEggCount, _ = egg.GetEggCountForUser(userID)
+	return u.Name, u.IsAdmin, hasUnread, eggCount, userEggCount, nil
+}
+
 func UserMenuHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
-	userName := local.GetUserName(c)
-	isAdmin := local.GetUserIsAdmin(c)
-	hasUnread, _ := message.GetHasUnread(userID)
-	eggCount, _ := egg.GetUserEggCount(userID)
-	userEggCount, _ := egg.GetEggCountForUser(userID)
-	return render(c, ui.UserMenu(userName, userID, isAdmin, hasUnread, eggCount, userEggCount))
+	name, isAdmin, hasUnread, eggCount, userEggCount, err := loadUserMenuContext(userID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to load user menu")
+	}
+	return render(c, ui.UserMenu(name, userID, isAdmin, hasUnread, eggCount, userEggCount))
 }
 
 func UserMyAdsHandler(c *fiber.Ctx) error {

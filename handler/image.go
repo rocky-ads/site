@@ -7,6 +7,9 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/rocky-ads/site/ad"
+	"github.com/rocky-ads/site/cookie"
+	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/param"
 	"github.com/rocky-ads/site/ui"
@@ -48,21 +51,20 @@ func ImageNavigationHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	imageID := c.QueryInt("index", 1)
-	if imageID < 1 {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid image index")
+	count, err := adImageCount(c, adID)
+	if err != nil {
+		return err
 	}
 
-	count := c.QueryInt("count", 1)
-	if count < 0 {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid image count")
+	imageID := c.QueryInt("index", 1)
+	if err := validateImageIndex(imageID, count); err != nil {
+		return err
 	}
 
 	size := c.Query("size", "480w")
 	heightClass := c.Query("heightClass", "h-48")
 	clickable := c.Query("clickable", "false") == "true"
 
-	// Use ImageNodeWithThumbnails for full ad view (1200w size)
 	if size == "1200w" && clickable {
 		return render(c, ui.ImageNodeWithThumbnails(adID, count, imageID, size, heightClass, clickable))
 	}
@@ -76,23 +78,48 @@ func ImageFullScreenHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	imageID := c.QueryInt("index", 1)
-	if imageID < 1 {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid image index")
+	count, err := adImageCount(c, adID)
+	if err != nil {
+		return err
 	}
 
-	count := c.QueryInt("count", 1)
-	if count < 0 {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid image count")
+	imageID := c.QueryInt("index", 1)
+	if err := validateImageIndex(imageID, count); err != nil {
+		return err
 	}
 
 	size := c.Query("size", "1200w")
 
-	// If update query parameter is present, it's a navigation update (use swap-oob)
-	// Otherwise, it's an initial render (append to body)
 	if c.Query("update") == "true" {
 		return render(c, ui.ImageFullScreenUpdate(adID, imageID, count, size))
 	}
 
 	return render(c, ui.ImageFullScreen(adID, imageID, count, size))
+}
+
+func adImageCount(c *fiber.Ctx, adID int) (int, error) {
+	userID := local.GetUserID(c)
+	loc := cookie.GetLocation(c)
+	a, err := ad.GetAd(userID, adID, loc)
+	if err != nil {
+		return 0, fiber.NewError(fiber.StatusNotFound, "Ad not found")
+	}
+	if a.IsDeleted() && a.UserID != userID {
+		return 0, fiber.NewError(fiber.StatusNotFound, "Ad not found")
+	}
+	return a.ImageCount, nil
+}
+
+func validateImageIndex(imageID, count int) error {
+	if imageID < 1 {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid image index")
+	}
+	maxIndex := count
+	if maxIndex == 0 {
+		maxIndex = 1
+	}
+	if imageID > maxIndex {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid image index")
+	}
+	return nil
 }
