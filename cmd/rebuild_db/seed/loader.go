@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/nyaruka/phonenumbers"
-	"github.com/rocky-ads/site/config"
-	"github.com/rocky-ads/site/currency"
-	"github.com/rocky-ads/site/db"
-	"github.com/rocky-ads/site/encryption"
-	"github.com/rocky-ads/site/logger"
-	"github.com/rocky-ads/site/password"
+	"github.com/rocky-ads/site/internal/config"
+	"github.com/rocky-ads/site/internal/currency"
+	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/encryption"
+	"github.com/rocky-ads/site/internal/logger"
+	"github.com/rocky-ads/site/internal/password"
 )
 
 // categoryJSON represents a category from ad-category.json

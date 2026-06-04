@@ -4,12 +4,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/rocky-ads/site/ad"
-	"github.com/rocky-ads/site/config"
-	"github.com/rocky-ads/site/db"
-	"github.com/rocky-ads/site/handler"
-	"github.com/rocky-ads/site/logger"
-	"github.com/rocky-ads/site/service/sms"
+	"github.com/rocky-ads/site/internal/ad"
+	"github.com/rocky-ads/site/internal/config"
+	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/handler"
+	"github.com/rocky-ads/site/internal/logger"
+	"github.com/rocky-ads/site/internal/service/sms"
 	"github.com/sasha-s/go-deadlock"
 
 	"github.com/gofiber/fiber/v2"

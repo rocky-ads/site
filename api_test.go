@@ -22,13 +22,13 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/cmd/rebuild_db/seed"
-	"github.com/rocky-ads/site/config"
-	"github.com/rocky-ads/site/cookie"
-	"github.com/rocky-ads/site/db"
-	"github.com/rocky-ads/site/logger"
-	"github.com/rocky-ads/site/user"
+	"github.com/rocky-ads/site/internal/ad"
+	"github.com/rocky-ads/site/internal/config"
+	"github.com/rocky-ads/site/internal/cookie"
+	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/logger"
+	"github.com/rocky-ads/site/internal/user"
 )
 
 var baseURL = "http://localhost:" + config.TestPort
@@ -43,11 +43,11 @@ func initDatabaseWithSchema(dbPath string) error {
 	}
 
 	// Read and execute schema
-	schemaPath := "db/schema.sql"
+	schemaPath := "internal/db/schema.sql"
 	if _, err := os.Stat(schemaPath); os.IsNotExist(err) {
 		// Try from current working directory
 		cwd, _ := os.Getwd()
-		schemaPath = cwd + "/db/schema.sql"
+		schemaPath = cwd + "/internal/db/schema.sql"
 	}
 	schema, err := os.ReadFile(schemaPath)
 	if err != nil {

@@ -11,7 +11,7 @@ import (
 	"strconv"
 
 	"github.com/chai2010/webp"
-	"github.com/rocky-ads/site/logger"
+	"github.com/rocky-ads/site/internal/logger"
 	"golang.org/x/image/draw"
 )
 

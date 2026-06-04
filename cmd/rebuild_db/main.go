@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/rocky-ads/site/cmd/rebuild_db/seed"
-	"github.com/rocky-ads/site/db"
-	"github.com/rocky-ads/site/logger"
+	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/logger"
 )
 
 // initDatabaseWithSchema initializes the database and loads the schema
@@ -19,11 +19,11 @@ func initDatabaseWithSchema(dbPath string) error {
 	}
 
 	// Read and execute schema
-	schemaPath := "db/schema.sql"
+	schemaPath := "internal/db/schema.sql"
 	if _, err := os.Stat(schemaPath); os.IsNotExist(err) {
 		// Try from current working directory
 		cwd, _ := os.Getwd()
-		schemaPath = cwd + "/db/schema.sql"
+		schemaPath = cwd + "/internal/db/schema.sql"
 	}
 	schema, err := os.ReadFile(schemaPath)
 	if err != nil {

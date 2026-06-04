@@ -1,0 +1,467 @@
+package sms
+
+import (
+	"fmt"
+	"net"
+	"net/url"
+	"regexp"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/rocky-ads/site/internal/config"
+	"github.com/rocky-ads/site/internal/logger"
+	"github.com/rocky-ads/site/internal/user"
+	"github.com/twilio/twilio-go"
+	"github.com/twilio/twilio-go/client"
+	Api "github.com/twilio/twilio-go/rest/api/v2010"
+)
+
+// isTestPhoneNumber checks if a phone number is a test number (+1555010xxxx)
+func isTestPhoneNumber(phoneE64 string) bool {
+	testPattern := regexp.MustCompile(`^\+1555010\d{4}$`)
+	return testPattern.MatchString(phoneE64)
+}
+
+// SMSStatus represents the status of an SMS message
+type SMSStatus string
+
+const (
+	SMSStatusDelivered   SMSStatus = "delivered"
+	SMSStatusFailed      SMSStatus = "failed"
+	SMSStatusUndelivered SMSStatus = "undelivered"
+	SMSStatusSent        SMSStatus = "sent"
+)
+
+// SMSWebhookData represents the data sent by Twilio webhooks
+type SMSWebhookData struct {
+	MessageSid    string `form:"MessageSid"`
+	MessageStatus string `form:"MessageStatus"`
+	To            string `form:"To"`
+	From          string `form:"From"`
+	Body          string `form:"Body"`
+	ErrorCode     string `form:"ErrorCode"`
+	ErrorMessage  string `form:"ErrorMessage"`
+}
+
+var twilioClient = twilio.NewRestClientWithParams(twilio.ClientParams{
+	Username: config.TwilioAccountSID,
+	Password: config.TwilioAuthToken,
+})
+
+var tracker sync.Map
+
+// MessageTracker tracks the status and metadata of an SMS message
+type MessageTracker struct {
+	Status      SMSStatus
+	SentTime    time.Time
+	PhoneNumber string
+}
+
+// init starts the background worker to track SMS delivery
+func init() {
+	go trackSMSDelivery()
+}
+
+// SetMessageStatus sets the status of a message
+func SetMessageStatus(messageSid string, status SMSStatus) {
+	if value, exists := tracker.Load(messageSid); exists {
+		if track, ok := value.(*MessageTracker); ok {
+			oldStatus := track.Status
+			track.Status = status
+			// Log delivery status changes
+			logger.Info("Message status updated",
+				"component", "SMS",
+				"messageSid", messageSid,
+				"phoneNumber", track.PhoneNumber,
+				"oldStatus", oldStatus,
+				"newStatus", status)
+			switch status {
+			case SMSStatusDelivered:
+				logger.Info("Message delivered successfully",
+					"component", "SMS", "messageSid", messageSid,
+					"phoneNumber", track.PhoneNumber)
+			case SMSStatusFailed, SMSStatusUndelivered:
+				logger.Warn("Message delivery failed",
+					"component", "SMS", "messageSid", messageSid,
+					"phoneNumber", track.PhoneNumber, "status", status)
+			}
+		}
+	} else {
+		logger.Debug("Status update for unknown message",
+			"component", "SMS", "messageSid", messageSid, "status", status)
+	}
+}
+
+// trackMessage registers a message for tracking
+func trackMessage(messageSid, phoneNumber string) {
+	tracker.Store(messageSid, &MessageTracker{
+		Status:      SMSStatusSent,
+		SentTime:    time.Now(),
+		PhoneNumber: phoneNumber,
+	})
+}
+
+// trackSMSDelivery monitors outstanding SMS messages for delivery confirmation
+func trackSMSDelivery() {
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		checkOutstandingMessages()
+	}
+}
+
+// checkOutstandingMessages checks all outstanding messages for final states or timeout
+func checkOutstandingMessages() {
+	const timeout = 30 * time.Second
+	now := time.Now()
+
+	tracker.Range(func(key, value any) bool {
+		messageSid := key.(string)
+		track := value.(*MessageTracker)
+
+		// Delete messages that are already in a final state
+		switch track.Status {
+		case SMSStatusDelivered, SMSStatusFailed, SMSStatusUndelivered:
+			tracker.Delete(messageSid)
+			return true
+		}
+
+		// Check for timeout
+		if now.Sub(track.SentTime) > timeout {
+			logger.Warn("Message timed out",
+				"component", "SMS", "messageSid", messageSid,
+				"phoneNumber", track.PhoneNumber)
+			tracker.Delete(messageSid)
+		}
+
+		return true
+	})
+}
+
+// ErrBlockedNumber indicates the phone number is blocked/opted out at Twilio
+var ErrBlockedNumber = fmt.Errorf("phone number blocked")
+
+// IsBlockedError checks if an error indicates the phone number is blocked/opted out
+func IsBlockedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	// Check for Twilio error codes and messages that indicate blocked/opted out
+	blockedIndicators := []string{
+		"21614", // Unsubscribed recipient
+		"unsubscribed",
+		"opted out",
+		"blocked",
+		"not a valid",
+	}
+	for _, indicator := range blockedIndicators {
+		if strings.Contains(strings.ToLower(errStr), strings.ToLower(indicator)) {
+			return true
+		}
+	}
+	return false
+}
+
+// SendMessage sends an SMS message and tracks delivery
+func SendMessage(phoneE64, message string) error {
+
+	// Respect user opt-out - fail silently
+	if IsOptedOut(phoneE64) {
+		logger.Debug("Message blocked: user opted out",
+			"component", "SMS", "phoneNumber", phoneE64)
+		return nil
+	}
+	statusCallbackURL := fmt.Sprintf("%s/api/sms/webhook", config.TwilioWebhookURL)
+	logger.Debug("Setting SMS status callback",
+		"component", "SMS",
+		"statusCallbackURL", statusCallbackURL,
+		"baseWebhookURL", config.TwilioWebhookURL)
+
+	params := &Api.CreateMessageParams{}
+	params.SetTo(phoneE64)
+	params.SetFrom(config.TwilioFromNumber)
+	params.SetBody(message)
+	params.SetStatusCallback(statusCallbackURL)
+
+	result, err := twilioClient.Api.CreateMessage(params)
+	if err != nil {
+		// Check if this is a blocked number error
+		if IsBlockedError(err) {
+			return fmt.Errorf("%w: %v", ErrBlockedNumber, err)
+		}
+		return fmt.Errorf("failed to send SMS: %w", err)
+	}
+
+	messageSid := *result.Sid
+	messageStatus := ""
+	if result.Status != nil {
+		messageStatus = string(*result.Status)
+	}
+
+	// Register message for delivery tracking
+	trackMessage(messageSid, phoneE64)
+
+	logger.Info("Message sent to Twilio",
+		"component", "SMS",
+		"messageSid", messageSid,
+		"phoneNumber", phoneE64,
+		"initialStatus", messageStatus,
+		"messageLength", len(message))
+
+	return nil
+}
+
+// setSMSOptOut sets the SMS opt-out flag for a user by phone number
+func setSMSOptOut(phoneNumber string, optOut bool, logMessage string) error {
+	logger.Info(logMessage,
+		"component", "SMS", "phoneNumber", phoneNumber)
+
+	u, err := user.GetByPhoneE64(phoneNumber)
+	if err == nil {
+		if err := user.SetSMSOptOut(u.ID, optOut); err != nil {
+			logger.Error("Failed to set opt-out for user",
+				"error", err, "component", "SMS", "userID", u.ID)
+		}
+	}
+
+	return nil
+}
+
+// HandleStopResponse processes when a user replies STOP to an SMS
+func HandleStopResponse(phoneNumber string) error {
+	return setSMSOptOut(phoneNumber, true, "STOP response received")
+}
+
+// HandleUnstopResponse processes when a user replies UNSTOP to opt back in
+func HandleUnstopResponse(phoneNumber string) error {
+	return setSMSOptOut(phoneNumber, false, "UNSTOP response received")
+}
+
+// IsOptedOut checks if a phone number's user has opted out
+func IsOptedOut(phoneNumber string) bool {
+	u, err := user.GetByPhoneE64(phoneNumber)
+	if err != nil {
+		return false
+	}
+	return u.SMSOptedOut
+}
+
+/*
+// HandleDeliveryFailure processes when an SMS fails to deliver
+func HandleDeliveryFailure(phoneNumber, errorMessage string) error {
+	logger.Warn("Delivery failure",
+		"component", "SMS", "phoneNumber", phoneNumber,
+		"errorMessage", errorMessage)
+
+	// Invalidate verification codes for failed deliveries
+	err := handler.InvalidateVerificationCodes(phoneNumber)
+	if err != nil {
+		logger.Error("Failed to invalidate verification codes",
+			"error", err, "component", "SMS", "phoneNumber",
+			phoneNumber)
+		return err
+	}
+
+	return nil
+}
+*/
+
+// VerifyTwilioSignature verifies that the webhook request is authentic from Twilio
+// using the official Twilio SDK's RequestValidator
+func VerifyTwilioSignature(c *fiber.Ctx) bool {
+	signature := c.Get("X-Twilio-Signature")
+	if signature == "" {
+		logger.Debug("No Twilio signature header found",
+			"component", "SMS",
+			"headers", c.GetReqHeaders())
+		return false
+	}
+	if config.TwilioAuthToken == "" {
+		logger.Warn("Twilio auth token not configured",
+			"component", "SMS")
+		return false
+	}
+
+	// Construct the full URL that Twilio called
+	protocol := c.Get("X-Forwarded-Proto")
+	if protocol == "" {
+		protocol = c.Protocol()
+	}
+	if protocol == "" {
+		protocol = "https"
+	}
+
+	host := c.Get("X-Forwarded-Host")
+	if host == "" {
+		host = c.Hostname()
+	}
+
+	webhookURL := fmt.Sprintf("%s://%s%s", protocol, host, c.OriginalURL())
+	logger.Debug("Verifying Twilio signature",
+		"component", "SMS",
+		"webhookURL", webhookURL,
+		"protocol", protocol,
+		"host", host,
+		"originalURL", c.OriginalURL())
+
+	// Extract all form parameters (POST body and query string)
+	params := make(map[string]string)
+	c.Request().PostArgs().VisitAll(func(key, value []byte) {
+		params[string(key)] = string(value)
+	})
+	c.Request().URI().QueryArgs().VisitAll(func(key, value []byte) {
+		keyStr := string(key)
+		if _, exists := params[keyStr]; !exists {
+			params[keyStr] = string(value)
+		}
+	})
+
+	// Validate using Twilio SDK
+	validator := client.NewRequestValidator(config.TwilioAuthToken)
+	isValid := validator.Validate(webhookURL, params, signature)
+	logger.Debug("Twilio signature validation result",
+		"component", "SMS",
+		"isValid", isValid,
+		"webhookURL", webhookURL,
+		"paramCount", len(params))
+	return isValid
+}
+
+// ParseWebhook parses webhook data from Fiber context
+func ParseWebhook(c *fiber.Ctx) (*SMSWebhookData, error) {
+	var webhookData SMSWebhookData
+	if err := c.BodyParser(&webhookData); err != nil {
+		logger.Error("Failed to parse webhook data",
+			"error", err, "component", "SMS")
+		return nil, fmt.Errorf("failed to parse webhook data: %w", err)
+	}
+	return &webhookData, nil
+}
+
+// isLocalhost checks if a hostname represents localhost (hostname string or loopback IP)
+func isLocalhost(hostname string) bool {
+	if hostname == "" {
+		return false
+	}
+	// Check for localhost hostname
+	if hostname == "localhost" {
+		return true
+	}
+	// Check if it's a loopback IP address
+	ip := net.ParseIP(hostname)
+	if ip != nil && ip.IsLoopback() {
+		return true
+	}
+	return false
+}
+
+// Init validates Twilio configuration and initializes SMS service
+// Validates format and completeness of Twilio environment variables
+// This should be called at application startup
+// Returns an error if configuration is invalid, nil if SMS is ready or disabled
+func Init() error {
+
+	// Validate Twilio SMS configuration
+	// All SMS variables are required to be non-empty
+	if config.TwilioAccountSID == "" {
+		return fmt.Errorf("TWILIO_ACCOUNT_SID is required")
+	}
+	if config.TwilioAuthToken == "" {
+		return fmt.Errorf("TWILIO_AUTH_TOKEN is required")
+	}
+	if config.TwilioFromNumber == "" {
+		return fmt.Errorf("TWILIO_FROM_NUMBER is required")
+	}
+	if config.TwilioWebhookURL == "" {
+		return fmt.Errorf("TWILIO_WEBHOOK_URL is required")
+	}
+
+	// Validate Account SID format (should start with "AC" for Twilio)
+	if !strings.HasPrefix(config.TwilioAccountSID, "AC") {
+		return fmt.Errorf("TWILIO_ACCOUNT_SID must start with 'AC'")
+	}
+
+	// Validate Auth Token is not empty (basic check)
+	if len(config.TwilioAuthToken) < 32 {
+		return fmt.Errorf("TWILIO_AUTH_TOKEN appears to be invalid (too short)")
+	}
+
+	// Validate FromNumber format (should be E.164 format: +1234567890)
+	phoneRegex := regexp.MustCompile(`^\+[1-9][0-9]{7,14}$`)
+	if !phoneRegex.MatchString(config.TwilioFromNumber) {
+		return fmt.Errorf("TWILIO_FROM_NUMBER must be in E.164 format (e.g., +12025550123)")
+	}
+
+	// Validate WebhookURL is a valid URL
+	parsedURL, err := url.Parse(config.TwilioWebhookURL)
+	if err != nil {
+		return fmt.Errorf("TWILIO_WEBHOOK_URL must be a valid URL: %w", err)
+	}
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return fmt.Errorf("TWILIO_WEBHOOK_URL must use http or https scheme")
+	}
+	if parsedURL.Host == "" {
+		return fmt.Errorf("TWILIO_WEBHOOK_URL must include a host")
+	}
+
+	// Check if TWILIO_WEBHOOK_URL is localhost (webhooks won't work)
+	hostname := parsedURL.Hostname()
+	if isLocalhost(hostname) {
+		return fmt.Errorf("TWILIO_WEBHOOK_URL cannot be localhost (webhooks won't work). Use ngrok or set TWILIO_WEBHOOK_URL to a public URL")
+	}
+
+	logger.Info("SMS enabled",
+		"component", "SMS", "twilioWebhookURL", config.TwilioWebhookURL)
+
+	// Update Twilio phone number webhook URL on startup
+	if err := UpdatePhoneNumberWebhook(); err != nil {
+		logger.Warn("Failed to update phone number webhook",
+			"error", err, "component", "SMS")
+		logger.Info("You may need to manually configure the webhook in Twilio Console",
+			"component", "SMS")
+	}
+
+	return nil
+}
+
+// UpdatePhoneNumberWebhook updates the Twilio phone number's incoming message webhook URL
+// This should be called at startup to automatically configure the webhook based on TWILIO_WEBHOOK_URL
+// Only called from Init() after validation passes, so no need for defensive checks
+func UpdatePhoneNumberWebhook() error {
+
+	webhookURL := fmt.Sprintf("%s/api/sms/webhook", config.TwilioWebhookURL)
+
+	// Get the phone number SID first
+	params := &Api.ListIncomingPhoneNumberParams{}
+	params.SetPhoneNumber(config.TwilioFromNumber)
+
+	resp, err := twilioClient.Api.ListIncomingPhoneNumber(params)
+	if err != nil {
+		return fmt.Errorf("failed to list phone numbers: %w", err)
+	}
+
+	if len(resp) == 0 {
+		return fmt.Errorf("phone number %s not found in Twilio account", config.TwilioFromNumber)
+	}
+
+	phoneNumberSid := *resp[0].Sid
+
+	// Update the phone number webhook
+	updateParams := &Api.UpdateIncomingPhoneNumberParams{}
+	updateParams.SetSmsUrl(webhookURL)
+	updateParams.SetSmsMethod("POST")
+
+	_, err = twilioClient.Api.UpdateIncomingPhoneNumber(phoneNumberSid, updateParams)
+	if err != nil {
+		return fmt.Errorf("failed to update phone number webhook: %w", err)
+	}
+
+	logger.Info("Successfully updated phone number webhook",
+		"component", "SMS", "phoneNumber", config.TwilioFromNumber,
+		"webhookURL", webhookURL)
+	return nil
+}

@@ -14,10 +14,10 @@ import (
 	"time"
 
 	"github.com/chai2010/webp"
-	"github.com/rocky-ads/site/ad"
-	"github.com/rocky-ads/site/currency"
-	"github.com/rocky-ads/site/db"
-	"github.com/rocky-ads/site/logger"
+	"github.com/rocky-ads/site/internal/ad"
+	"github.com/rocky-ads/site/internal/currency"
+	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/logger"
 	"golang.org/x/image/draw"
 )
 
