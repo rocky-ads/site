@@ -28,25 +28,25 @@ const (
 )
 
 type User struct {
-	ID                 int        `json:"id"`
-	Name               string     // Decrypted (calculated field)
-	EncryptedName      string     `json:"encrypted_name"`
-	NameNonce          string     `json:"name_nonce"`
-	PasswordHash       string     `json:"password_hash"`
-	PasswordSalt       string     `json:"password_salt"`
-	PasswordAlgo       string     `json:"password_algo"`
-	PhoneE64           string     // Decrypted (calculated field)
-	EncryptedPhone     string     `json:"encrypted_phone"`
-	PhoneNonce         string     `json:"phone_nonce"`
-	EmailAddress       *string    // Decrypted (calculated field)
-	EncryptedEmail     *string    `json:"encrypted_email_address"`
-	EmailNonce         *string    `json:"email_address_nonce"`
-	CreatedAt          time.Time  `json:"created_at"`
-	IsAdmin            bool       `json:"is_admin"`
-	PhoneVerified      bool       `json:"phone_verified"`
-	NotificationMethod string     `json:"notification_method"`
-	SMSOptedOut        bool       `json:"sms_opted_out"`
-	DeletedAt          *time.Time `json:"deleted_at"`
+	ID                 int
+	Name               string // Decrypted (calculated field)
+	EncryptedName      string
+	NameNonce          string
+	PasswordHash       string
+	PasswordSalt       string
+	PasswordAlgo       string
+	PhoneE64           string // Decrypted (calculated field)
+	EncryptedPhone     string
+	PhoneNonce         string
+	EmailAddress       *string // Decrypted (calculated field)
+	EncryptedEmail     *string
+	EmailNonce         *string
+	CreatedAt          time.Time
+	IsAdmin            bool
+	PhoneVerified      bool
+	NotificationMethod string
+	SMSOptedOut        bool
+	DeletedAt          *time.Time
 }
 
 const userSelectFields = `SELECT 

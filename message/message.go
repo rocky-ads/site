@@ -10,37 +10,37 @@ import (
 )
 
 type Conversation struct {
-	ID                int        `db:"id" json:"id"`
-	AdID              int        `db:"ad_id" json:"ad_id"`
-	OwnerID           int        `db:"owner_id" json:"owner_id"`
-	EnquirerID        int        `db:"enquirer_id" json:"enquirer_id"`
-	CreatedAt         time.Time  `db:"created_at" json:"created_at"` // Computed: MIN(messages.created_at) or egg_thrown_at
-	UpdatedAt         time.Time  `db:"updated_at" json:"updated_at"` // Computed: MAX(MAX(messages.created_at), egg_thrown_at)
-	OwnerHasUnread    bool       `db:"owner_has_unread" json:"owner_has_unread"`
-	EnquirerHasUnread bool       `db:"enquirer_has_unread" json:"enquirer_has_unread"`
-	EggThrowerID     *int       `db:"egg_thrower_id" json:"egg_thrower_id"` // nil = no egg (private), NOT NULL = public, owner_id = bound to enquirer, enquirer_id = bound to ad
-	EggThrownAt      *time.Time `db:"egg_thrown_at" json:"egg_thrown_at"`   // Only valid if egg_thrower_id IS NOT NULL
+	ID                int        `db:"id"`
+	AdID              int        `db:"ad_id"`
+	OwnerID           int        `db:"owner_id"`
+	EnquirerID        int        `db:"enquirer_id"`
+	CreatedAt         time.Time  `db:"created_at"` // Computed: MIN(messages.created_at) or egg_thrown_at
+	UpdatedAt         time.Time  `db:"updated_at"` // Computed: MAX(MAX(messages.created_at), egg_thrown_at)
+	OwnerHasUnread    bool       `db:"owner_has_unread"`
+	EnquirerHasUnread bool       `db:"enquirer_has_unread"`
+	EggThrowerID     *int       `db:"egg_thrower_id"` // nil = no egg (private), NOT NULL = public, owner_id = bound to enquirer, enquirer_id = bound to ad
+	EggThrownAt      *time.Time `db:"egg_thrown_at"`   // Only valid if egg_thrower_id IS NOT NULL
 }
 
 type Message struct {
-	ID             int       `db:"id" json:"id"`
-	ConversationID int       `db:"conversation_id" json:"conversation_id"`
-	SenderID       int       `db:"sender_id" json:"sender_id"`
-	Content        string    `db:"content" json:"content"`
-	CreatedAt      time.Time `db:"created_at" json:"created_at"`
+	ID             int       `db:"id"`
+	ConversationID int       `db:"conversation_id"`
+	SenderID       int       `db:"sender_id"`
+	Content        string    `db:"content"`
+	CreatedAt      time.Time `db:"created_at"`
 }
 
 type ConversationWithAd struct {
 	Conversation
-	AdTitle string `db:"ad_title" json:"ad_title"`
+	AdTitle string `db:"ad_title"`
 }
 
 type ConversationWithLastMessage struct {
 	ConversationWithAd
-	LastMessageContent string     `db:"last_message_content" json:"last_message_content"`
-	LastMessageAt      *time.Time `db:"last_message_at" json:"last_message_at"`
-	OtherUserID        int        `db:"other_user_id" json:"other_user_id"`
-	HasUnread          bool       `db:"has_unread" json:"has_unread"`
+	LastMessageContent string     `db:"last_message_content"`
+	LastMessageAt      *time.Time `db:"last_message_at"`
+	OtherUserID        int        `db:"other_user_id"`
+	HasUnread          bool       `db:"has_unread"`
 }
 
 var ErrConversationNotFound = errors.New("conversation not found")

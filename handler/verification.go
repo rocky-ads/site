@@ -25,11 +25,11 @@ const (
 )
 
 type phoneVerification struct {
-	ID               int       `json:"id"`
-	PhoneE64         string    `json:"phone_e64"`
-	VerificationCode string    `json:"verification_code"`
-	Attempts         int       `json:"attempts"`
-	CreatedAt        time.Time `json:"created_at"`
+	ID               int
+	PhoneE64         string
+	VerificationCode string
+	Attempts         int
+	CreatedAt        time.Time
 }
 
 func generateVerificationCode() (string, error) {

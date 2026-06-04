@@ -9,26 +9,26 @@ import (
 
 type Ad struct {
 	// Core database fields
-	ID          int        `db:"id" json:"id"`
-	CategoryID  int        `db:"category_id" json:"category_id"`
-	Title       string     `db:"title" json:"title"`
-	Description string     `db:"description" json:"description"`
-	Price         int        `db:"price" json:"price"`
-	PriceCurrency string     `db:"price_currency" json:"price_currency"`
-	CreatedAt     time.Time  `db:"created_at" json:"created_at"`
-	DeletedAt   *time.Time `db:"deleted_at" json:"deleted_at,omitempty"`
-	UserID      int        `db:"user_id" json:"user_id"`
-	ImageCount  int        `db:"image_count" json:"image_count"`
-	LocationID  int        `db:"location_id" json:"location_id"`
+	ID          int        `db:"id"`
+	CategoryID  int        `db:"category_id"`
+	Title       string     `db:"title"`
+	Description string     `db:"description"`
+	Price         int        `db:"price"`
+	PriceCurrency string     `db:"price_currency"`
+	CreatedAt     time.Time  `db:"created_at"`
+	DeletedAt   *time.Time `db:"deleted_at"`
+	UserID      int        `db:"user_id"`
+	ImageCount  int        `db:"image_count"`
+	LocationID  int        `db:"location_id"`
 
 	// Location fields from join
-	City      string `db:"city" json:"city"`
-	AdminArea string `db:"admin_area" json:"admin_area"`
-	Country   string `db:"country" json:"country"`
+	City      string `db:"city"`
+	AdminArea string `db:"admin_area"`
+	Country   string `db:"country"`
 
 	// Computed fields
-	Bookmarked bool `db:"bookmarked" json:"bookmarked"`
-	RockCount  int  `db:"rock_count" json:"rock_count"`
+	Bookmarked bool `db:"bookmarked"`
+	RockCount  int  `db:"rock_count"`
 }
 
 func (a Ad) IsDeleted() bool {
