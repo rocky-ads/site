@@ -3,16 +3,18 @@ package ads
 import (
 	"strconv"
 
+	"github.com/rocky-ads/site/location"
 	"github.com/rocky-ads/site/search"
 	g "maragu.dev/gomponents"
 	. "maragu.dev/gomponents/html"
 )
 
 type SearchFilters struct {
-	PriceMin    *int
-	PriceMax    *int
-	Location    string
-	RadiusMiles int
+	PriceMin   *int
+	PriceMax   *int
+	Location   string
+	Radius     int
+	RadiusUnit string // "mi" or "km"
 }
 
 // SearchFiltersPanel renders price, location, and radius controls for the search widget.
@@ -28,12 +30,12 @@ func searchPriceRow(f SearchFilters) g.Node {
 	return Div(
 		Class("col-span-2"),
 		Label(For("filter-price-min"), Class("field-label"), g.Text("Price")),
-		Div(Class("ad-filter-price-range"),
+		Div(Class("ad-filter-price-range flex flex-wrap items-center gap-2"),
 			Input(
 				Type("number"),
 				Name("price_min"),
 				ID("filter-price-min"),
-				Class("w-full p-2 border rounded-md"),
+				Class("w-36 p-2 border rounded-md"),
 				g.Attr("placeholder", "Min"),
 				g.Attr("min", "0"),
 				g.Attr("inputmode", "numeric"),
@@ -44,7 +46,7 @@ func searchPriceRow(f SearchFilters) g.Node {
 				Type("number"),
 				Name("price_max"),
 				ID("filter-price-max"),
-				Class("w-full p-2 border rounded-md"),
+				Class("w-36 p-2 border rounded-md"),
 				g.Attr("placeholder", "Max"),
 				g.Attr("min", "0"),
 				g.Attr("inputmode", "numeric"),
@@ -55,6 +57,14 @@ func searchPriceRow(f SearchFilters) g.Node {
 }
 
 func searchLocationRadiusRow(f SearchFilters) g.Node {
+	unit := f.RadiusUnit
+	if unit == "" {
+		unit = location.UnitMiles
+	}
+	radiusLabel := "Radius (miles)"
+	if unit == location.UnitKm {
+		radiusLabel = "Radius (km)"
+	}
 	return Div(
 		Class("col-span-2 grid grid-cols-2 gap-4"),
 		Div(
@@ -62,18 +72,28 @@ func searchLocationRadiusRow(f SearchFilters) g.Node {
 			LocationInput("filter-location", "location", f.Location, "City or state"),
 		),
 		Div(
-			Label(For("filter-radius"), Class("field-label"), g.Text("Radius (miles)")),
-			radiusSelect(f.RadiusMiles),
+			Label(For("filter-radius"), Class("field-label"), g.Text(radiusLabel)),
+			radiusSelect(f.Radius, unit),
 		),
 	)
 }
 
-func radiusSelect(selected int) g.Node {
-	opts := []g.Node{Option(Value(""), g.Text("Any distance"))}
-	for _, miles := range search.RadiusMileOptions {
-		opt := Option(Value(strconv.Itoa(miles)), g.Text(strconv.Itoa(miles)+" mi"))
-		if miles == selected {
-			opt = Option(Value(strconv.Itoa(miles)), g.Attr("selected", "selected"), g.Text(strconv.Itoa(miles)+" mi"))
+func radiusSelect(selected int, unit string) g.Node {
+	if selected == 0 {
+		selected = defaultRadius
+	}
+	radiusOpts := search.RadiusMileOptions
+	suffix := " mi"
+	if unit == location.UnitKm {
+		radiusOpts = search.RadiusKmOptions
+		suffix = " km"
+	}
+	opts := make([]g.Node, 0, len(radiusOpts))
+	for _, n := range radiusOpts {
+		label := strconv.Itoa(n) + suffix
+		opt := Option(Value(strconv.Itoa(n)), g.Text(label))
+		if n == selected {
+			opt = Option(Value(strconv.Itoa(n)), g.Attr("selected", "selected"), g.Text(label))
 		}
 		opts = append(opts, opt)
 	}
@@ -84,6 +104,8 @@ func radiusSelect(selected int) g.Node {
 		g.Group(opts),
 	)
 }
+
+const defaultRadius = 25
 
 func priceAmount(p *int) string {
 	if p == nil {

@@ -4,12 +4,14 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/cookie"
-	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/param"
 	"github.com/rocky-ads/site/ui"
+	g "maragu.dev/gomponents"
 )
 
 func SwitchCategoryHandler(c *fiber.Ctx) error {
+	saveSearchStateFromRequest(c, nil, true)
+
 	categoryID := param.GetCategoryID(c)
 
 	if _, err := ad.GetCategoryName(categoryID); err != nil {
@@ -26,36 +28,37 @@ func SwitchCategoryHandler(c *fiber.Ctx) error {
 	return c.Send(nil)
 }
 
-func ShowFiltersHandler(c *fiber.Ctx) error {
-	categoryID := cookie.GetCategoryID(c)
-
-	userID := local.GetUserID(c)
-	view := cookie.GetView(c)
-	loc := cookie.GetLocation(c)
-	csrfToken := local.GetCSRFToken(c)
-
-	p := parseSearchParams(c, categoryID)
-	results, err := searchAndRenderAds(p, userID, view, loc, csrfToken)
+func renderFilterPanelResponse(c *fiber.Ctx, state cookie.SearchState, panel g.Node) error {
+	view, _, results, err := searchFromRequest(c, state)
 	if err != nil {
 		return err
 	}
 
-	return render(c, ui.SearchWidget(userID, view, c.Query("q"), true, parseSearchFilters(c), results))
+	return render(c, g.Group([]g.Node{
+		panel,
+		ui.FilterToggleOOB(state.Expanded),
+		ui.SearchResultsOOB(view, results),
+	}))
+}
+
+func ShowFiltersHandler(c *fiber.Ctx) error {
+	expanded := true
+	state := saveSearchStateFromRequest(c, &expanded, false)
+	unit := distanceUnit(c)
+	return renderFilterPanelResponse(c, state, ui.FilterPanel(searchStateToFilters(state, unit)))
+}
+
+func HideFiltersHandler(c *fiber.Ctx) error {
+	expanded := false
+	state := saveSearchStateFromRequest(c, &expanded, true)
+	return renderFilterPanelResponse(c, state, g.Text(""))
 }
 
 func SearchPageHandler(c *fiber.Ctx) error {
-	categoryID := cookie.GetCategoryID(c)
-
-	userID := local.GetUserID(c)
-	view := cookie.GetView(c)
-	loc := cookie.GetLocation(c)
-	csrfToken := local.GetCSRFToken(c)
-
-	p := parseSearchParams(c, categoryID)
-	results, err := searchAndRenderAds(p, userID, view, loc, csrfToken)
+	state := saveSearchStateFromRequest(c, nil, true)
+	view, page, results, err := searchFromRequest(c, state)
 	if err != nil {
 		return err
 	}
-
-	return render(c, ui.SearchResults(view, results))
+	return render(c, ui.SearchResultsResponse(view, page, results))
 }

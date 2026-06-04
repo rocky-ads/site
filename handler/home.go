@@ -34,6 +34,8 @@ func HomeHandler(c *fiber.Ctx) error {
 		return err
 	}
 
+	state := cookie.GetSearchState(c)
 	return renderPage(c, config.ServerName,
-		ui.HomePageWithFilters(userID, view, categoryName, categoryImage, c.Query("q"), false, parseSearchFilters(c), results))
+		ui.HomePage(userID, view, categoryName, categoryImage,
+			state.Q, state.Expanded, parseSearchFilters(c), results))
 }

@@ -1,7 +1,10 @@
 package search
 
-// RadiusMileOptions are valid search radius dropdown values.
-var RadiusMileOptions = []int{1, 5, 10, 25, 50, 100}
+// RadiusMileOptions are valid search radius dropdown values (miles).
+var RadiusMileOptions = []int{1, 5, 10, 25, 50, 100, 500}
+
+// RadiusKmOptions are valid search radius dropdown values (kilometers).
+var RadiusKmOptions = []int{1, 5, 10, 25, 50, 100, 500, 1000}
 
 // Params holds hard filters for listing search.
 type Params struct {

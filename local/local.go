@@ -32,6 +32,15 @@ func SetUserIsAdmin(c *fiber.Ctx, isAdmin bool) {
 	c.Locals("user-is-admin", isAdmin)
 }
 
+func GetDistanceUnit(c *fiber.Ctx) (string, bool) {
+	unit, ok := c.Locals("distance-unit").(string)
+	return unit, ok
+}
+
+func SetDistanceUnit(c *fiber.Ctx, unit string) {
+	c.Locals("distance-unit", unit)
+}
+
 // GetCSRFToken extracts the CSRF token from context (set by CSRF middleware)
 // The middleware should set this for all requests, but if it's empty,
 // the middleware may not be running or token generation failed

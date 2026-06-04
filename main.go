@@ -111,6 +111,7 @@ func setupApp() *fiber.App {
 	api.Get("/image-nav/:id", handler.ImageNavigationHandler)
 	api.Get("/image-full/:id", handler.ImageFullScreenHandler)
 	api.Get("/show-filters", handler.ShowFiltersHandler)
+	api.Get("/hide-filters", handler.HideFiltersHandler)
 	api.Get("/category-select", handler.CategorySelectHandler)
 	api.Get("/modal-remove/:name", handler.ModalRemoveHandler)
 	api.Get("/search/", handler.SearchPageHandler)

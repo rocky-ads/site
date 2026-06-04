@@ -25,6 +25,7 @@ import (
 	"github.com/rocky-ads/site/ad"
 	"github.com/rocky-ads/site/cmd/rebuild_db/seed"
 	"github.com/rocky-ads/site/config"
+	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/db"
 	"github.com/rocky-ads/site/logger"
 	"github.com/rocky-ads/site/user"
@@ -88,6 +89,8 @@ func TestMain(m *testing.M) {
 	// Set JWTSecret
 	configValue := reflect.ValueOf(&config.JWTSecret).Elem()
 	configValue.Set(reflect.ValueOf([]byte(testJWTSecret)))
+
+	reflect.ValueOf(&config.CookieSecure).Elem().SetBool(false)
 
 	// Initialize logger for tests (use minimal logging)
 	if err := logger.Init("error", "text", ""); err != nil {
@@ -366,6 +369,11 @@ func TestSearchPageHandler(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create client: %v", err)
 			}
+			if tt.query != "?q=Honda" {
+				if err := setSearchCookieOnClient(client, cookie.SearchState{Expanded: true}); err != nil {
+					t.Fatalf("set search cookie: %v", err)
+				}
+			}
 			url := baseURL + "/api/search/" + tt.query
 			resp, body := getRequestWithCookies(t, client, url)
 			if resp.StatusCode != http.StatusOK {
@@ -442,6 +450,23 @@ func getClientWithCategoryCookie(categoryID int) (*http.Client, error) {
 	}
 
 	return client, nil
+}
+
+func setSearchCookieOnClient(client *http.Client, state cookie.SearchState) error {
+	data, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+	baseURLParsed, err := url.Parse(baseURL)
+	if err != nil {
+		return err
+	}
+	client.Jar.SetCookies(baseURLParsed, []*http.Cookie{{
+		Name:  "search",
+		Value: base64.RawURLEncoding.EncodeToString(data),
+		Path:  "/",
+	}})
+	return nil
 }
 
 // Helper function to make GET request with cookies
@@ -562,6 +587,37 @@ func TestHomeHandler(t *testing.T) {
 			t.Error("Expected category cookie to be set when accessing home page without cookie")
 		}
 	})
+}
+
+func TestHomeHandlerFiltersExpanded(t *testing.T) {
+	client, err := getClientWithCategoryCookie(6)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	if err := setSearchCookieOnClient(client, cookie.SearchState{
+		Q: "Honda", Expanded: true,
+	}); err != nil {
+		t.Fatalf("set search cookie: %v", err)
+	}
+	resp, body := getRequestWithCookies(t, client, baseURL+"/")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", resp.StatusCode)
+	}
+	if !strings.Contains(body, "filter-price-min") {
+		t.Error("Expected expanded filter panel with price field")
+	}
+	if !strings.Contains(body, `id="filter-panel"`) {
+		t.Error("Expected #filter-panel on home page")
+	}
+	if !strings.Contains(body, `id="search-bar"`) {
+		t.Error("Expected #search-bar on home page")
+	}
+	if !strings.Contains(body, `id="filter-toggle"`) {
+		t.Error("Expected filter toggle on home page")
+	}
+	if !strings.Contains(body, `title="Collapse filters"`) {
+		t.Error("Expected expanded filter toggle (^) when search cookie expanded")
+	}
 }
 
 // Test GET /login
@@ -716,15 +772,24 @@ func TestLoginSubmitHandler(t *testing.T) {
 // Test GET /api/category/:category/switch
 func TestSwitchCategoryHandler(t *testing.T) {
 	tests := []struct {
-		name           string
-		categoryID     string
-		returnParam    string
-		expectedStatus int
-		expectRedirect string
+		name                   string
+		categoryID             string
+		returnParam            string
+		queryParams            string
+		expectedStatus         int
+		expectRedirect         string
+		expectRedirectContains []string
 	}{
-		{"Valid category", "6", "", 200, "/"},
-		{"Valid category with return", "5", "/auth/ad/new", 200, "/auth/ad/new"},
-		{"Invalid category ID defaults to default category", "999", "", 200, "/"},
+		{"Valid category", "6", "", "", 200, "/", nil},
+		{"Valid category with return", "5", "/auth/ad/new", "", 200, "/auth/ad/new", nil},
+		{"Invalid category ID defaults to default category", "999", "", "", 200, "/", nil},
+		{
+			name:           "Redirect URL has no filter query params",
+			categoryID:     "6",
+			queryParams:    "q=Honda&price_min=10000",
+			expectedStatus: 200,
+			expectRedirect: "/",
+		},
 	}
 
 	for _, tt := range tests {
@@ -732,8 +797,20 @@ func TestSwitchCategoryHandler(t *testing.T) {
 			client := getTestClient()
 
 			requestURL := fmt.Sprintf("%s/api/category/%s/switch", baseURL, tt.categoryID)
+			q := url.Values{}
 			if tt.returnParam != "" {
-				requestURL += "?return=" + url.QueryEscape(tt.returnParam)
+				q.Set("return", tt.returnParam)
+			}
+			if tt.queryParams != "" {
+				for _, part := range strings.Split(tt.queryParams, "&") {
+					kv := strings.SplitN(part, "=", 2)
+					if len(kv) == 2 {
+						q.Set(kv[0], kv[1])
+					}
+				}
+			}
+			if encoded := q.Encode(); encoded != "" {
+				requestURL += "?" + encoded
 			}
 			resp, _ := getRequestWithCookies(t, client, requestURL)
 
@@ -743,8 +820,13 @@ func TestSwitchCategoryHandler(t *testing.T) {
 
 			if tt.expectedStatus == 200 {
 				redirect := resp.Header.Get("HX-Redirect")
-				if redirect != tt.expectRedirect {
+				if tt.expectRedirect != "" && redirect != tt.expectRedirect {
 					t.Errorf("Expected HX-Redirect %q, got %q", tt.expectRedirect, redirect)
+				}
+				for _, s := range tt.expectRedirectContains {
+					if !strings.Contains(redirect, s) {
+						t.Errorf("Expected HX-Redirect to contain %q, got %q", s, redirect)
+					}
 				}
 
 				hasCategoryCookie := false
@@ -769,6 +851,72 @@ func TestSwitchCategoryHandler(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestSwitchCategoryPreservesSearchCookie(t *testing.T) {
+	client, err := getClientWithCategoryCookie(6)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	switchURL := baseURL + "/api/category/5/switch?q=Honda&price_min=10000"
+	resp, _ := getRequestWithCookies(t, client, switchURL)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("switch: expected 200, got %d", resp.StatusCode)
+	}
+	if got := resp.Header.Get("HX-Redirect"); got != "/" {
+		t.Fatalf("expected redirect /, got %q", got)
+	}
+
+	resp, body := getRequestWithCookies(t, client, baseURL+"/")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("home: expected 200, got %d", resp.StatusCode)
+	}
+	if !strings.Contains(body, "Honda") {
+		t.Error("expected home page to show search query from cookie")
+	}
+}
+
+// Test GET /api/hide-filters clears the filter panel and OOB-refreshes results.
+func TestHideFiltersHandler(t *testing.T) {
+	client, err := getClientWithCategoryCookie(6)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	min := 10000
+	if err := setSearchCookieOnClient(client, cookie.SearchState{
+		Q: "Honda", PriceMin: &min, Expanded: true,
+	}); err != nil {
+		t.Fatalf("set search cookie: %v", err)
+	}
+
+	resp, body := getRequestWithCookies(t, client, baseURL+"/api/show-filters")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("show-filters: expected 200, got %d", resp.StatusCode)
+	}
+	if !strings.Contains(body, "filter-price-min") {
+		t.Error("show-filters should render filter panel fragment")
+	}
+	if !strings.Contains(body, `id="filter-toggle"`) {
+		t.Error("show-filters should OOB-swap filter toggle")
+	}
+	if !strings.Contains(body, `title="Collapse filters"`) {
+		t.Error("show-filters should swap toggle to collapse (^)")
+	}
+
+	hideURL := baseURL + "/api/hide-filters?q=Honda&price_min=10000"
+	resp, body = getRequestWithCookies(t, client, hideURL)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("hide-filters: expected 200, got %d", resp.StatusCode)
+	}
+	if strings.Contains(body, "filter-price-min") {
+		t.Error("hide-filters should clear filter panel")
+	}
+	if !strings.Contains(body, `title="Expand filters"`) {
+		t.Error("hide-filters should swap toggle to expand (v)")
+	}
+	if !strings.Contains(body, `id="search-results"`) {
+		t.Error("hide-filters should OOB-swap search results")
 	}
 }
 

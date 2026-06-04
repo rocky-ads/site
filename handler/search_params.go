@@ -5,47 +5,78 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/rocky-ads/site/cookie"
+	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/location"
 	"github.com/rocky-ads/site/param"
 	"github.com/rocky-ads/site/search"
+	"github.com/rocky-ads/site/user"
 	uiads "github.com/rocky-ads/site/ui/ads"
 )
 
+func distanceUnit(c *fiber.Ctx) string {
+	if unit, ok := local.GetDistanceUnit(c); ok {
+		return unit
+	}
+
+	userID := local.GetUserID(c)
+	unit := location.DistanceUnitFromTimezone(c.Cookies("timezone"))
+	if userID != 0 {
+		u, err := user.GetByID(userID)
+		if err == nil && u.PhoneE64 != "" {
+			unit = location.DistanceUnitFromPhone(u.PhoneE64)
+		}
+	}
+
+	local.SetDistanceUnit(c, unit)
+	return unit
+}
+
+func searchStateToFilters(state cookie.SearchState, unit string) uiads.SearchFilters {
+	return uiads.SearchFilters{
+		PriceMin:   state.PriceMin,
+		PriceMax:   state.PriceMax,
+		Location:   state.Location,
+		Radius:     state.Radius,
+		RadiusUnit: unit,
+	}
+}
+
 func parseSearchFilters(c *fiber.Ctx) uiads.SearchFilters {
-	f := uiads.SearchFilters{}
-	if v := strings.TrimSpace(c.Query("price_min")); v != "" {
-		if amount, err := strconv.Atoi(v); err == nil && amount >= 0 {
-			f.PriceMin = &amount
-		}
-	}
-	if v := strings.TrimSpace(c.Query("price_max")); v != "" {
-		if amount, err := strconv.Atoi(v); err == nil && amount >= 0 {
-			f.PriceMax = &amount
-		}
-	}
-	f.Location = strings.TrimSpace(c.Query("location"))
-	f.RadiusMiles = parseRadiusMiles(c.Query("radius"))
-	return f
+	return searchStateToFilters(cookie.GetSearchState(c), distanceUnit(c))
 }
 
 func parseSearchParams(c *fiber.Ctx, categoryID int) search.Params {
+	return parseSearchParamsFromState(c, cookie.GetSearchState(c), categoryID)
+}
+
+func parseSearchParamsFromState(c *fiber.Ctx, state cookie.SearchState, categoryID int) search.Params {
 	limit, offset := param.GetPageLimitOffset(c)
-	f := parseSearchFilters(c)
 	p := search.Params{
 		CategoryID: categoryID,
 		Limit:      limit,
 		Offset:     offset,
-		Q:          strings.TrimSpace(c.Query("q")),
-		PriceMin:   f.PriceMin,
-		PriceMax:   f.PriceMax,
+		Q:          state.Q,
+	}
+	if !state.Expanded {
+		return p
 	}
 
-	if f.Location != "" && f.RadiusMiles > 0 {
+	unit := distanceUnit(c)
+	f := searchStateToFilters(state, unit)
+	p.PriceMin = f.PriceMin
+	p.PriceMax = f.PriceMax
+
+	if f.Location != "" && f.Radius > 0 {
 		lat, lon, ok, err := location.ResolveLocation(f.Location)
 		if err == nil && ok {
 			p.CenterLat = lat
 			p.CenterLon = lon
-			p.RadiusKm = location.MilesToKm(float64(f.RadiusMiles))
+			if f.RadiusUnit == location.UnitKm {
+				p.RadiusKm = float64(f.Radius)
+			} else {
+				p.RadiusKm = location.MilesToKm(float64(f.Radius))
+			}
 			p.HasGeo = true
 		}
 	}
@@ -53,7 +84,43 @@ func parseSearchParams(c *fiber.Ctx, categoryID int) search.Params {
 	return p
 }
 
-func parseRadiusMiles(raw string) int {
+// saveSearchStateFromRequest updates the search cookie and returns the new
+// state (the request cookie is unchanged until the response is received).
+func saveSearchStateFromRequest(c *fiber.Ctx, expanded *bool, fromForm bool) cookie.SearchState {
+	unit := distanceUnit(c)
+	state := cookie.GetSearchState(c)
+	if fromForm {
+		state.Q = strings.TrimSpace(c.Query("q"))
+		if state.Expanded {
+			state.PriceMin = parseOptionalAmount(c.Query("price_min"))
+			state.PriceMax = parseOptionalAmount(c.Query("price_max"))
+			state.Location = strings.TrimSpace(c.Query("location"))
+			state.Radius = parseRadius(c.Query("radius"), unit)
+			if state.Location == "" {
+				state.Radius = 0
+			}
+		}
+	}
+	if expanded != nil {
+		state.Expanded = *expanded
+	}
+	cookie.SetSearchState(c, state)
+	return state
+}
+
+func parseOptionalAmount(raw string) *int {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	amount, err := strconv.Atoi(raw)
+	if err != nil || amount < 0 {
+		return nil
+	}
+	return &amount
+}
+
+func parseRadius(raw, unit string) int {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return 0
@@ -62,7 +129,11 @@ func parseRadiusMiles(raw string) int {
 	if err != nil {
 		return 0
 	}
-	for _, opt := range search.RadiusMileOptions {
+	opts := search.RadiusMileOptions
+	if unit == location.UnitKm {
+		opts = search.RadiusKmOptions
+	}
+	for _, opt := range opts {
 		if n == opt {
 			return n
 		}

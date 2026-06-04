@@ -21,6 +21,7 @@ func CategoryItem(currentCategoryID, categoryID int, name, imageFile, returnPara
 		Class(itemClass),
 		hx.Get(returnURL),
 		hx.Swap("none"),
+		hx.Include("#search-widget"),
 		Div(
 			Class("p-2 bg-zinc-200 dark:bg-zinc-700 rounded-full flex items-center justify-center"),
 			Img(
