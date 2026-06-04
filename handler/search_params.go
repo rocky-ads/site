@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/rocky-ads/site/config"
 	"github.com/rocky-ads/site/cookie"
 	"github.com/rocky-ads/site/local"
 	"github.com/rocky-ads/site/location"
-	"github.com/rocky-ads/site/param"
 	"github.com/rocky-ads/site/search"
 	uiads "github.com/rocky-ads/site/ui/ads"
 	"github.com/rocky-ads/site/user"
@@ -50,8 +50,15 @@ func parseSearchParams(c *fiber.Ctx, categoryID int) search.Params {
 	return parseSearchParamsFromState(c, cookie.GetSearchState(c), categoryID)
 }
 
+func pageLimitOffset(c *fiber.Ctx) (limit, offset int) {
+	page := c.QueryInt("page", 1)
+	limit = config.SearchPageSize
+	offset = (page - 1) * limit
+	return limit, offset
+}
+
 func parseSearchParamsFromState(c *fiber.Ctx, state cookie.SearchState, categoryID int) search.Params {
-	limit, offset := param.GetPageLimitOffset(c)
+	limit, offset := pageLimitOffset(c)
 	p := search.Params{
 		CategoryID: categoryID,
 		Limit:      limit,

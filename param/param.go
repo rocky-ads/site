@@ -5,7 +5,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/ad"
-	"github.com/rocky-ads/site/config"
 )
 
 func GetCategoryID(c *fiber.Ctx) int {
@@ -20,11 +19,4 @@ func GetAdID(c *fiber.Ctx) (int, error) {
 		return 0, err
 	}
 	return id, nil
-}
-
-func GetPageLimitOffset(c *fiber.Ctx) (limit, offset int) {
-	page := c.QueryInt("page", 1)
-	limit = config.SearchPageSize
-	offset = (page - 1) * limit
-	return limit, offset
 }

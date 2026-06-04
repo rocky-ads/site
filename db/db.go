@@ -105,11 +105,6 @@ func QueryJSON(dst any, query string, args ...any) error {
 	return json.Unmarshal([]byte(jsonResult), dst)
 }
 
-// DB returns the underlying sqlx.DB instance
-func DB() *sqlx.DB {
-	return db
-}
-
 func Close() error {
 	if db != nil {
 		return db.Close()
