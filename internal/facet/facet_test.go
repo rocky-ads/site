@@ -168,3 +168,50 @@ func TestEnumFacet(t *testing.T) {
 		t.Errorf("empty enum should be valid (optional): %v", err)
 	}
 }
+
+func TestFormDefaultCurrency(t *testing.T) {
+	price, ok := Get("price")
+	if !ok {
+		t.Fatal("price facet not registered")
+	}
+	if got := price.FormDefaultCurrency(FormDefaults{Currency: "eur"}); got != "EUR" {
+		t.Errorf("FormDefaultCurrency = %q, want EUR", got)
+	}
+	if got := price.FormDefaultCurrency(FormDefaults{Currency: "XYZ"}); got != currency.Default {
+		t.Errorf("unsupported currency should fall back to default, got %q", got)
+	}
+
+	mileage, _ := Get("mileage")
+	if got := mileage.FormDefaultCurrency(FormDefaults{Currency: "USD"}); got != "" {
+		t.Errorf("non-money facet should return empty currency, got %q", got)
+	}
+}
+
+func TestSupportedCurrencies(t *testing.T) {
+	price, _ := Get("price")
+	if len(price.SupportedCurrencies()) == 0 {
+		t.Error("money facet should return supported currencies")
+	}
+	mileage, _ := Get("mileage")
+	if mileage.SupportedCurrencies() != nil {
+		t.Error("non-money facet should return nil currencies")
+	}
+}
+
+func TestFormDefaultUnit(t *testing.T) {
+	mileage, ok := Get("mileage")
+	if !ok {
+		t.Fatal("mileage facet not registered")
+	}
+	if got := mileage.FormDefaultUnit(FormDefaults{Unit: "km"}); got != "km" {
+		t.Errorf("FormDefaultUnit = %q, want km", got)
+	}
+	if got := mileage.FormDefaultUnit(FormDefaults{Unit: "invalid"}); got != "mi" {
+		t.Errorf("invalid unit should fall back to first allowed, got %q", got)
+	}
+
+	hours, _ := Get("hours")
+	if got := hours.FormDefaultUnit(FormDefaults{Unit: "km"}); got != "" {
+		t.Errorf("facet without units should return empty, got %q", got)
+	}
+}

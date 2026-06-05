@@ -17,15 +17,20 @@ const (
 	asciiMultilineMsg     = "Please enter printable ASCII characters only (line breaks allowed)"
 )
 
+type adFields struct {
+	defaults facet.FormDefaults
+}
+
 // NewAdFieldsPartial renders new-ad fields for the given category facets.
-func NewAdFieldsPartial(facets []facet.Def, supportedCurrencies []string, defaultCurrency, defaultUnit string) g.Node {
+func NewAdFieldsPartial(facets []facet.Def, defaults facet.FormDefaults) g.Node {
+	f := adFields{defaults: defaults}
 	nodes := []g.Node{
 		fieldBlock("Title", titleInput()),
 		fieldBlock("Description", descriptionInput()),
 		fieldBlock("Location (optional)", LocationInput("new-ad-location", "location", "", "City or state")),
 	}
 	for _, d := range facets {
-		nodes = append(nodes, facetFieldBlock(d, facetInput(d, defaultCurrency, defaultUnit, supportedCurrencies)))
+		nodes = append(nodes, facetFieldBlock(d, f.facetInput(d)))
 	}
 
 	return Div(
@@ -35,17 +40,17 @@ func NewAdFieldsPartial(facets []facet.Def, supportedCurrencies []string, defaul
 	)
 }
 
-func facetInput(d facet.Def, defaultCurrency, defaultUnit string, supportedCurrencies []string) g.Node {
+func (f adFields) facetInput(d facet.Def) g.Node {
 	switch d.Form {
 	case facet.FormMoney:
-		return newAdPriceRow(d, defaultCurrency, supportedCurrencies)
+		return f.newAdPriceRow(d)
 	case facet.FormSelect:
 		return formSelect(d)
 	case facet.FormRadio:
 		return formRadio(d)
 	default:
 		if len(d.Units) > 0 {
-			return intWithUnitRow(d, defaultUnit)
+			return f.intWithUnitRow(d)
 		}
 		return facetNumberInput(d)
 	}
@@ -108,8 +113,8 @@ func facetNumberInput(d facet.Def) g.Node {
 	return Input(attrs...)
 }
 
-func intWithUnitRow(d facet.Def, defaultUnit string) g.Node {
-	selected := d.NormalizeUnit(defaultUnit)
+func (f adFields) intWithUnitRow(d facet.Def) g.Node {
+	selected := d.FormDefaultUnit(f.defaults)
 	unitName := d.Key + "_unit"
 	numAttrs := []g.Node{
 		Type("number"),
@@ -199,7 +204,7 @@ func descriptionInput() g.Node {
 	)
 }
 
-func newAdPriceRow(d facet.Def, currencyCode string, supportedCurrencies []string) g.Node {
+func (f adFields) newAdPriceRow(d facet.Def) g.Node {
 	// No HTML required on the amount: FREE checkbox is an alternate valid submission.
 	return Div(
 		Class("flex flex-wrap items-center gap-2"),
@@ -212,7 +217,7 @@ func newAdPriceRow(d facet.Def, currencyCode string, supportedCurrencies []strin
 			g.Attr("step", "1"),
 			g.Attr("inputmode", "numeric"),
 		),
-		priceCurrencySelect(currencyCode, supportedCurrencies),
+		priceCurrencySelect(d.FormDefaultCurrency(f.defaults), d.SupportedCurrencies()),
 		Label(
 			Class("flex items-center gap-2"),
 			Input(Type("checkbox"), Name("price_free"), Value("1"), ID("new-ad-price-free")),

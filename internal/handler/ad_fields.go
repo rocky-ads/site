@@ -5,6 +5,7 @@ import (
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/currency"
+	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/ui"
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
@@ -24,9 +25,16 @@ func NewAdHandler(c *fiber.Ctx) error {
 	}
 	categoryName := category.Name
 
-	fieldsNode := uiads.NewAdFieldsPartial(category.Facets(), currency.Supported, defaultCurrencyForUser(c), distanceUnit(c))
+	fieldsNode := uiads.NewAdFieldsPartial(category.Facets(), newAdFormDefaults(c))
 
 	return renderPage(c, "New Ad", ui.NewAd(categoryName, fieldsNode))
+}
+
+func newAdFormDefaults(c *fiber.Ctx) facet.FormDefaults {
+	return facet.FormDefaults{
+		Currency: defaultCurrencyForUser(c),
+		Unit:     distanceUnit(c),
+	}
 }
 
 func defaultCurrencyForUser(c *fiber.Ctx) string {

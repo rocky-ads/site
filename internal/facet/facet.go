@@ -45,6 +45,12 @@ const (
 	FilterCheckboxes                     // multi-select (Enum checkboxes)
 )
 
+// FormDefaults holds per-request values for new-ad form widgets.
+type FormDefaults struct {
+	Currency string // default selected currency for money facets
+	Unit     string // preferred unit for facets with Units (e.g. mi/km)
+}
+
 // Def is the definition of a single facet.
 type Def struct {
 	Key        string
@@ -71,6 +77,34 @@ func (d Def) ValidUnit(unit string) bool {
 		}
 	}
 	return false
+}
+
+// SupportedCurrencies returns currency dropdown options for money facets.
+func (d Def) SupportedCurrencies() []string {
+	if d.Form != FormMoney {
+		return nil
+	}
+	return currency.Supported
+}
+
+// FormDefaultCurrency returns the selected currency for a money facet.
+func (d Def) FormDefaultCurrency(defaults FormDefaults) string {
+	if d.Form != FormMoney {
+		return ""
+	}
+	code := currency.Normalize(defaults.Currency)
+	if currency.IsSupported(code) {
+		return code
+	}
+	return currency.Default
+}
+
+// FormDefaultUnit returns the selected unit for a facet with Units.
+func (d Def) FormDefaultUnit(defaults FormDefaults) string {
+	if len(d.Units) == 0 {
+		return ""
+	}
+	return d.NormalizeUnit(defaults.Unit)
 }
 
 // NormalizeUnit returns unit if allowed, otherwise the first allowed unit.
