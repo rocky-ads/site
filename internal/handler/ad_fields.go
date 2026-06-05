@@ -25,11 +25,9 @@ func NewAdHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	categoryName := category.Name
-
 	fieldsNode := uiads.NewAdFieldsPartial(category.Facets(), newAdFormDefaults(c))
 
-	return renderPage(c, "New Ad", ui.NewAd(categoryName, fieldsNode))
+	return renderPage(c, "New Ad", ui.NewAd(categoryOption(category), fieldsNode))
 }
 
 func NewAdPriceFieldHandler(c *fiber.Ctx) error {

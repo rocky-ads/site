@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"net/url"
+
 	"github.com/rocky-ads/site/internal/facet"
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
 	g "maragu.dev/gomponents"
@@ -17,7 +19,7 @@ func SearchContainer(userID, view int, q string, filtersExpanded bool, category 
 		Div(
 			ID("search-container"),
 			Div(
-				categoryButton(category),
+				categoryButton(category, "/"),
 				SearchWidget(userID, view, q, filtersExpanded, category, filterFacets, filters, results),
 			),
 		),
@@ -51,7 +53,7 @@ func FilterPanel(filterFacets []facet.Def, filters uiads.SearchFilters) g.Node {
 	)
 }
 
-func categoryButton(category CategoryOption) g.Node {
+func categoryButton(category CategoryOption, returnParam string) g.Node {
 	imagePath := "/images/category/" + category.ImageFile
 
 	return Div(
@@ -64,7 +66,7 @@ func categoryButton(category CategoryOption) g.Node {
 			Button(
 				Type("button"),
 				Class("py-2 px-5 flex items-center gap-2 rounded-full border-2 border-blue-500 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 dark:border-blue-400"),
-				hx.Get("/api/category-select?return=%2F"),
+				hx.Get("/api/category-select?return="+url.QueryEscape(returnParam)),
 				hx.Target("body"),
 				hx.Swap("beforeend"),
 				Img(

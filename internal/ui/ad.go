@@ -432,23 +432,6 @@ func AdDeleted() []g.Node {
 	}
 }
 
-func categoryNode(categoryName string) g.Node {
-	return Div(
-		Class("text-lg italic text-zinc-600 dark:text-zinc-400 flex items-baseline gap-2"),
-		g.Text("Category: "),
-		g.Text(categoryName),
-		g.Text(" "),
-		A(
-			Href("#"),
-			Class("text-xs font-normal not-italic text-blue-600 dark:text-blue-400 hover:underline"),
-			hx.Get("/api/category-select?return=%2Fauth%2Fad%2Fnew"),
-			hx.Target("body"),
-			hx.Swap("beforeend"),
-			g.Text("Change"),
-		),
-	)
-}
-
 func imagesInput() g.Node {
 	return Div(
 		label("Images"),
@@ -472,10 +455,10 @@ func newAdForm(fields g.Node) g.Node {
 	)
 }
 
-func NewAd(categoryName string, fields g.Node) []g.Node {
-	return []g.Node{
+func NewAd(category CategoryOption, fields g.Node) []g.Node {
+	return append([]g.Node{
+		categoryButton(category, "/auth/ad/new"),
 		pageTitle("Create New Ad"),
-		categoryNode(categoryName),
 		newAdForm(fields),
-	}
+	}, RemoveModal("category")...)
 }

@@ -119,5 +119,5 @@ func parseOptionalFacet(raw string) (*int, error) {
 
 func showCreateAdError(c *fiber.Ctx, category ad.Category, errMsg string) error {
 	fieldsNode := uiads.NewAdFieldsPartial(category.Facets(), newAdFormDefaults(c))
-	return renderPage(c, "New Ad", append(ui.NewAd(category.Name, fieldsNode), ui.ErrorDiv(errMsg)))
+	return renderPage(c, "New Ad", append(ui.NewAd(categoryOption(category), fieldsNode), ui.ErrorDiv(errMsg)))
 }
