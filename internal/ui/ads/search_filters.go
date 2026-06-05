@@ -9,14 +9,6 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-type SearchFilters struct {
-	Facets        map[string]facet.Filter
-	Location      string
-	Radius        int
-	RadiusUnit    string // "mi" or "km"
-	RadiusOptions []int
-}
-
 // SearchFiltersPanel renders facet, location, and radius controls for the search widget.
 func SearchFiltersPanel(facets []facet.Def, f SearchFilters) g.Node {
 	var nodes []g.Node

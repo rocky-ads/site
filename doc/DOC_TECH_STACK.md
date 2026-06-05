@@ -166,15 +166,14 @@ Request flow: **handler → domain → handler maps to UI inputs → `ui/` rende
 - **Domain packages must not import `ui/`**
 - **Exported UI functions** accept only:
   - Go primitives and stdlib types (`int`, `string`, `bool`, `time.Time`, …)
-  - UI-local view structs defined in `ui/` (e.g. `UserProfileData`, `ConversationModalData` in [`ui/types.go`](ui/types.go))
+  - Handler→UI boundary structs (e.g. `UserProfileData`, `AdCard` in [`ui/types.go`](ui/types.go); `SearchFilters` in [`ui/ads/types.go`](ui/ads/types.go))
+- **Boundary structs** — defined in `types.go` at the package that owns the render entry point. Handlers map domain data to these before calling `ui/`. Keep them separate from **internal UI structs** (e.g. `SMSQueueEntry` in `admin.go`, derived inside `ui/` from `SMSQueueEntryInput` via `SMSQueueEntriesFrom`).
 - **Do not pass `*time.Location` to exported UI functions** — it is request context, not presentation data
 - **Time presentation** (default: handler maps; UI renders):
   - **Fixed-format display strings** (e.g. member since date): pre-format in the handler and set a `string` field on the view struct (`UserProfileData.MemberSince`)
   - **Relative or multi-format times** (e.g. `"5m ago"` plus a tooltip): handler converts to the viewer's timezone (`t.In(loc)`) on the view struct's `time.Time` field; UI applies shared relative formatting at render time
 - **Handlers** fetch domain objects, then map them to UI view structs (or primitives) before calling render functions
 - **Presentation formatting** (dates, currency, derived display strings) belongs in the handler mapper or `ui/`, not in domain types passed across the boundary
-
-Example view structs live in [`ui/types.go`](ui/types.go).
 
 ### Data Patterns
 - **Normalized Database** - Users, categories, ads, locations, bookmarks, conversations

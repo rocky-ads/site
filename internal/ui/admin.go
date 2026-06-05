@@ -34,13 +34,6 @@ func AdminDashboardContainerWithQueue(activeTab string, users []UserRowData, sor
 	)
 }
 
-// QueueStats represents queue statistics for UI
-type QueueStats struct {
-	Pending    int
-	Processed  int
-	Suppressed int
-}
-
 func AdminTabs(activeTab string) g.Node {
 	return Div(
 		ID("admin-tabs"),

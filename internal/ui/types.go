@@ -131,3 +131,10 @@ type EggEventData struct {
 	OwnerID       int
 	EnquirerID    int
 }
+
+// QueueStats holds SMS queue counts for the admin dashboard.
+type QueueStats struct {
+	Pending    int
+	Processed  int
+	Suppressed int
+}
