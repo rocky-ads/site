@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rocky-ads/site/internal/currency"
@@ -129,16 +130,14 @@ func adCardTitle(title, facetLabel string) g.Node {
 	)
 }
 
-func adDetailFacetLabel(d AdDetail) string {
-	if d.MileageLabel != "" {
-		return d.MileageLabel
+func priceSpan(price int, priceCurrency string, hasPrice bool) g.Node {
+	if !hasPrice {
+		return g.Text("")
 	}
-	return d.HoursLabel
+	return Span(Class("text-green-600 font-semibold"), g.Text(currency.Format(price, priceCurrency)))
 }
 
-func AdGridNode(userID, adID, price, imageCount, nextPage int, priceCurrency, title, location, facetLabel, csrfToken string, createdAt time.Time, active, bookmarked, isLast bool, eggCount int) g.Node {
-	priceStr := currency.Format(price, priceCurrency)
-
+func AdGridNode(userID, adID, price, imageCount, nextPage int, priceCurrency, title, location, facetLabel, csrfToken string, hasPrice bool, createdAt time.Time, active, bookmarked, isLast bool, eggCount int) g.Node {
 	class := "flex flex-col cursor-pointer gap-1 py-3"
 	if !active {
 		class += " bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg"
@@ -150,7 +149,7 @@ func AdGridNode(userID, adID, price, imageCount, nextPage int, priceCurrency, ti
 		gridImageNode(adID, imageCount, 1),
 		Div(
 			Class("flex items-center justify-between pt-1"),
-			Span(Class("text-green-600 font-semibold"), g.Text(priceStr)),
+			priceSpan(price, priceCurrency, hasPrice),
 			adCardMeta(location, createdAt),
 		),
 		Div(
@@ -171,9 +170,7 @@ func AdGridNode(userID, adID, price, imageCount, nextPage int, priceCurrency, ti
 	return node
 }
 
-func AdListNode(userID, adID, price int, priceCurrency, title, location, facetLabel string, createdAt time.Time, active, bookmarked bool, csrfToken string, isLast bool, nextPage int, eggCount int) g.Node {
-	priceStr := currency.Format(price, priceCurrency)
-
+func AdListNode(userID, adID, price int, priceCurrency, title, location, facetLabel string, hasPrice bool, createdAt time.Time, active, bookmarked bool, csrfToken string, isLast bool, nextPage int, eggCount int) g.Node {
 	class := "flex flex-wrap items-center justify-between py-2 px-3 cursor-pointer"
 	if active {
 		class += " hover:bg-zinc-50 dark:hover:bg-zinc-800"
@@ -193,7 +190,7 @@ func AdListNode(userID, adID, price int, priceCurrency, title, location, facetLa
 		Div(
 			Class("flex items-center gap-2 ml-auto"),
 			adCardMeta(location, createdAt),
-			Span(Class("text-green-600 font-semibold"), g.Text(priceStr)),
+			priceSpan(price, priceCurrency, hasPrice),
 		),
 	)
 
@@ -376,8 +373,6 @@ func AdShareModal(path string) g.Node {
 }
 
 func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
-	priceStr := currency.Format(d.Price, d.PriceCurrency)
-
 	return []g.Node{
 		Div(
 			Class("flex flex-col relative rounded-lg shadow-lg dark:shadow-xl dark:shadow-zinc-900/50 my-4 mx-2 col-span-full overflow-hidden bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700"),
@@ -391,13 +386,13 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 					Div(
 						Class("flex items-center gap-2 min-w-0"),
 						g.If(d.RockCount > 0, EggIcons(d.ID, d.RockCount)),
-						adCardTitle(d.Title, adDetailFacetLabel(d)),
+						adCardTitle(d.Title, strings.Join(d.FacetLabels, " · ")),
 					),
 					adButtons(d.ID, userID, d.OwnerID, d.Bookmarked, d.Active, d.Reachable, csrfToken),
 				),
 				Div(
 					Class("flex items-center gap-2"),
-					Span(Class("text-green-600 font-semibold"), g.Text(priceStr)),
+					priceSpan(d.Price, d.PriceCurrency, d.HasPrice),
 					Div(
 						Class("flex items-center gap-2 text-xs text-zinc-500"),
 						ageNode(d.CreatedAt),

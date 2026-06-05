@@ -1,14 +1,16 @@
 package handler
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cookie"
+	"github.com/rocky-ads/site/internal/currency"
+	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/local"
-	"github.com/rocky-ads/site/internal/location"
 	"github.com/rocky-ads/site/internal/ui"
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
 )
@@ -25,63 +27,82 @@ func CreateAdHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	price := 0
-	if c.FormValue("price_free") != "1" {
-		priceStr := strings.TrimSpace(c.FormValue("price"))
-		if priceStr != "" {
-			parsed, err := strconv.Atoi(priceStr)
-			if err != nil || parsed < 0 {
-				return showCreateAdError(c, category, "Price must be a non-negative whole number")
-			}
-			price = parsed
-		}
-	}
-
-	var mileage *int
-	var mileageUnit *string
-	if category.HasMileage() {
-		mileage, err = parseOptionalFacet(c.FormValue("mileage"))
-		if err != nil {
-			return showCreateAdError(c, category, "Mileage must be a non-negative whole number")
-		}
-		if mileage != nil {
-			rawUnit := strings.TrimSpace(c.FormValue("mileage_unit"))
-			if rawUnit == "" {
-				rawUnit = distanceUnit(c)
-			}
-			if !location.ValidMileageUnit(rawUnit) {
-				return showCreateAdError(c, category, "Mileage unit must be miles or km")
-			}
-			unit := location.NormalizeMileageUnit(rawUnit)
-			mileageUnit = &unit
-		}
-	}
-
-	var hours *int
-	if category.HasHours() {
-		hours, err = parseOptionalFacet(c.FormValue("hours"))
-		if err != nil {
-			return showCreateAdError(c, category, "Hours must be a non-negative whole number")
-		}
+	facets, err := parseCreateFacets(c, category)
+	if err != nil {
+		return showCreateAdError(c, category, err.Error())
 	}
 
 	adID, err := ad.CreateAd(ad.CreateInput{
-		CategoryID:    categoryID,
-		UserID:        userID,
-		Title:         c.FormValue("title"),
-		Description:   c.FormValue("description"),
-		Price:         price,
-		PriceCurrency: c.FormValue("price_currency"),
-		LocationText:  c.FormValue("location"),
-		Mileage:       mileage,
-		MileageUnit:   mileageUnit,
-		Hours:         hours,
+		CategoryID:   categoryID,
+		UserID:       userID,
+		Title:        c.FormValue("title"),
+		Description:  c.FormValue("description"),
+		LocationText: c.FormValue("location"),
+		Facets:       facets,
 	})
 	if err != nil {
 		return showCreateAdError(c, category, err.Error())
 	}
 
 	return c.Redirect("/ad/"+strconv.Itoa(adID), fiber.StatusFound)
+}
+
+func parseCreateFacets(c *fiber.Ctx, category ad.Category) (map[string]facet.Value, error) {
+	values := make(map[string]facet.Value)
+	for _, d := range category.Facets() {
+		switch d.Kind {
+		case facet.Money:
+			free := c.FormValue("price_free") == "1"
+			raw := strings.TrimSpace(c.FormValue(d.Key))
+			code := currency.Normalize(c.FormValue("price_currency"))
+			if !currency.IsSupported(code) {
+				code = defaultCurrencyForUser(c)
+			}
+			if free {
+				amount := 0
+				values[d.Key] = facet.Value{Num: &amount, Text: &code}
+				continue
+			}
+			if raw == "" {
+				if d.Required {
+					return nil, fmt.Errorf("%s is required", d.Label)
+				}
+				continue
+			}
+			n, err := strconv.Atoi(raw)
+			if err != nil || n < 0 {
+				return nil, fmt.Errorf("%s must be a non-negative whole number", d.Label)
+			}
+			values[d.Key] = facet.Value{Num: &n, Text: &code}
+		case facet.Enum:
+			val := strings.TrimSpace(c.FormValue(d.Key))
+			if val != "" {
+				values[d.Key] = facet.Value{Text: &val}
+			}
+		default:
+			num, err := parseOptionalFacet(c.FormValue(d.Key))
+			if err != nil {
+				return nil, fmt.Errorf("%s must be a non-negative whole number", d.Label)
+			}
+			if num == nil {
+				continue
+			}
+			v := facet.Value{Num: num}
+			if len(d.Units) > 0 {
+				unit := strings.TrimSpace(c.FormValue(d.Key + "_unit"))
+				if unit == "" {
+					unit = distanceUnit(c)
+				}
+				if !d.ValidUnit(unit) {
+					return nil, fmt.Errorf("%s requires a valid unit", d.Label)
+				}
+				u := d.NormalizeUnit(unit)
+				v.Text = &u
+			}
+			values[d.Key] = v
+		}
+	}
+	return values, nil
 }
 
 func parseOptionalFacet(raw string) (*int, error) {

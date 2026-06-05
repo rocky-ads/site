@@ -8,6 +8,7 @@ import (
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/cookie"
+	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/location"
 	"github.com/rocky-ads/site/internal/search"
@@ -35,12 +36,7 @@ func distanceUnit(c *fiber.Ctx) string {
 
 func searchStateToFilters(state cookie.SearchState, unit string) uiads.SearchFilters {
 	return uiads.SearchFilters{
-		PriceMin:   state.PriceMin,
-		PriceMax:   state.PriceMax,
-		MileageMin: state.MileageMin,
-		MileageMax: state.MileageMax,
-		HoursMin:   state.HoursMin,
-		HoursMax:   state.HoursMax,
+		Facets:     state.Facets,
 		Location:   state.Location,
 		Radius:     state.Radius,
 		RadiusUnit: unit,
@@ -74,21 +70,15 @@ func parseSearchParamsFromState(c *fiber.Ctx, state cookie.SearchState, category
 	}
 
 	unit := distanceUnit(c)
-	f := searchStateToFilters(state, unit)
 	return search.BuildParams(search.BuildInput{
-		CategoryID: categoryID,
-		Limit:      limit,
-		Offset:     offset,
-		Q:          state.Q,
-		PriceMin:   f.PriceMin,
-		PriceMax:   f.PriceMax,
-		MileageMin: f.MileageMin,
-		MileageMax: f.MileageMax,
-		HoursMin:   f.HoursMin,
-		HoursMax:   f.HoursMax,
-		Location:   f.Location,
-		Radius:     f.Radius,
-		RadiusUnit: f.RadiusUnit,
+		CategoryID:   categoryID,
+		Limit:        limit,
+		Offset:       offset,
+		Q:            state.Q,
+		Location:     state.Location,
+		Radius:       state.Radius,
+		RadiusUnit:   unit,
+		FacetFilters: state.Facets,
 	})
 }
 
@@ -100,12 +90,10 @@ func saveSearchStateFromRequest(c *fiber.Ctx, expanded *bool, fromForm bool) coo
 	if fromForm {
 		state.Q = strings.TrimSpace(c.Query("q"))
 		if state.Expanded {
-			state.PriceMin = parseOptionalAmount(c.Query("price_min"))
-			state.PriceMax = parseOptionalAmount(c.Query("price_max"))
-			state.MileageMin = parseOptionalAmount(c.Query("mileage_min"))
-			state.MileageMax = parseOptionalAmount(c.Query("mileage_max"))
-			state.HoursMin = parseOptionalAmount(c.Query("hours_min"))
-			state.HoursMax = parseOptionalAmount(c.Query("hours_max"))
+			category, err := ad.GetCategory(cookie.GetCategoryID(c))
+			if err == nil {
+				state.Facets = parseFacetFilters(c, category)
+			}
 			state.Location = strings.TrimSpace(c.Query("location"))
 			state.Radius = parseRadius(c.Query("radius"), unit)
 			if state.Location == "" {
@@ -118,6 +106,60 @@ func saveSearchStateFromRequest(c *fiber.Ctx, expanded *bool, fromForm bool) coo
 	}
 	cookie.SetSearchState(c, state)
 	return state
+}
+
+func parseFacetFilters(c *fiber.Ctx, category ad.Category) map[string]facet.Filter {
+	filters := map[string]facet.Filter{}
+	for _, d := range category.Facets() {
+		if !d.Filterable {
+			continue
+		}
+		switch d.Filter {
+		case facet.FilterExact:
+			val := strings.TrimSpace(c.Query(d.Key))
+			if val != "" {
+				filters[d.Key] = facet.Filter{Value: &val}
+			}
+		case facet.FilterCheckboxes:
+			if vals := parseEnumCheckboxQuery(c, d.Key, d.Enum); len(vals) > 0 {
+				filters[d.Key] = facet.Filter{Values: vals}
+			}
+		default:
+			min := parseOptionalAmount(c.Query(d.Key + "_min"))
+			max := parseOptionalAmount(c.Query(d.Key + "_max"))
+			if min != nil || max != nil {
+				filters[d.Key] = facet.Filter{Min: min, Max: max}
+			}
+		}
+	}
+	if len(filters) == 0 {
+		return nil
+	}
+	return filters
+}
+
+func parseEnumCheckboxQuery(c *fiber.Ctx, key string, allowed []string) []string {
+	allowedSet := make(map[string]bool, len(allowed))
+	for _, a := range allowed {
+		allowedSet[a] = true
+	}
+	var vals []string
+	c.Context().QueryArgs().VisitAll(func(k, v []byte) {
+		if string(k) != key {
+			return
+		}
+		s := strings.TrimSpace(string(v))
+		if s == "" || !allowedSet[s] {
+			return
+		}
+		for _, existing := range vals {
+			if existing == s {
+				return
+			}
+		}
+		vals = append(vals, s)
+	})
+	return vals
 }
 
 func parseOptionalAmount(raw string) *int {
@@ -158,13 +200,17 @@ func clearFacetFilters(state cookie.SearchState, categoryID int) cookie.SearchSt
 	if err != nil {
 		return state
 	}
-	if !category.HasMileage() {
-		state.MileageMin = nil
-		state.MileageMax = nil
+	allowed := make(map[string]bool, len(category.FacetKeys))
+	for _, d := range category.Facets() {
+		allowed[d.Key] = true
 	}
-	if !category.HasHours() {
-		state.HoursMin = nil
-		state.HoursMax = nil
+	for key := range state.Facets {
+		if !allowed[key] {
+			delete(state.Facets, key)
+		}
+	}
+	if len(state.Facets) == 0 {
+		state.Facets = nil
 	}
 	return state
 }

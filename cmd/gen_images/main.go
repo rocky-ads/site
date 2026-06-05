@@ -63,7 +63,8 @@ func formatLocation(city, adminArea, country string) string {
 
 func buildPrompt(ad ad.Ad, isHandwrittenNote bool) string {
 	location := formatLocation(ad.City, ad.AdminArea, ad.Country)
-	price := formatPrice(ad.Price, ad.PriceCurrency)
+	priceAmount, priceCurrency, _ := ad.PriceValue()
+	price := formatPrice(priceAmount, priceCurrency)
 
 	if isHandwrittenNote {
 		return fmt.Sprintf("A hand-written note on paper or cardboard about: %s. The note mentions the title '%s', description '%s', price %s, and location %s. Written in casual handwriting, like someone selling something on craigslist or facebook marketplace. Non-professional photo quality, taken with a phone camera, natural lighting, slightly messy background.",

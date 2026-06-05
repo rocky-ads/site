@@ -29,6 +29,7 @@ import (
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/user"
 )
@@ -907,7 +908,7 @@ func TestHideFiltersHandler(t *testing.T) {
 	}
 	min := 10000
 	if err := setSearchCookieOnClient(client, cookie.SearchState{
-		Q: "Honda", PriceMin: &min, Expanded: true,
+		Q: "Honda", Facets: map[string]facet.Filter{"price": {Min: &min}}, Expanded: true,
 	}); err != nil {
 		t.Fatalf("set search cookie: %v", err)
 	}
@@ -1045,7 +1046,7 @@ func TestSearchPageHandlerMileageDirect(t *testing.T) {
 
 func TestMileageSearchFilter(t *testing.T) {
 	var withMileage int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM ads WHERE category_id = 6 AND mileage IS NOT NULL`).Scan(&withMileage); err != nil {
+	if err := db.QueryRow(`SELECT COUNT(*) FROM ad_facets f JOIN ads a ON a.id = f.ad_id WHERE a.category_id = 6 AND f.key = 'mileage'`).Scan(&withMileage); err != nil {
 		t.Fatalf("query seed mileage: %v", err)
 	}
 	if withMileage == 0 {
@@ -1114,7 +1115,7 @@ func TestSwitchCategoryClearsMileageFilter(t *testing.T) {
 	}
 	min := 10000
 	if err := setSearchCookieOnClient(client, cookie.SearchState{
-		Q: "Honda", MileageMin: &min, Expanded: true,
+		Q: "Honda", Facets: map[string]facet.Filter{"mileage": {Min: &min}}, Expanded: true,
 	}); err != nil {
 		t.Fatalf("set search cookie: %v", err)
 	}
@@ -1155,6 +1156,7 @@ func TestCreateAdWithMileage(t *testing.T) {
 	formData := map[string]interface{}{
 		"title":          "Test Car Ad",
 		"description":    "A test vehicle listing.",
+		"year":           "2020",
 		"price":          "15000",
 		"price_currency": "USD",
 		"mileage":        "12000",

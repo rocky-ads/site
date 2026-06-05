@@ -6,22 +6,18 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/config"
+	"github.com/rocky-ads/site/internal/facet"
 )
 
 const searchCookieName = "search"
 
 // SearchState holds persisted search filters and panel expand/collapse.
 type SearchState struct {
-	Q          string `json:"q,omitempty"`
-	PriceMin   *int   `json:"price_min,omitempty"`
-	PriceMax   *int   `json:"price_max,omitempty"`
-	MileageMin *int   `json:"mileage_min,omitempty"`
-	MileageMax *int   `json:"mileage_max,omitempty"`
-	HoursMin   *int   `json:"hours_min,omitempty"`
-	HoursMax   *int   `json:"hours_max,omitempty"`
-	Location   string `json:"location,omitempty"`
-	Radius     int    `json:"radius,omitempty"`
-	Expanded   bool   `json:"expanded,omitempty"`
+	Q        string                  `json:"q,omitempty"`
+	Facets   map[string]facet.Filter `json:"facets,omitempty"`
+	Location string                  `json:"location,omitempty"`
+	Radius   int                     `json:"radius,omitempty"`
+	Expanded bool                    `json:"expanded,omitempty"`
 }
 
 func GetSearchState(c *fiber.Ctx) SearchState {

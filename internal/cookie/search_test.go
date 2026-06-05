@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/rocky-ads/site/internal/facet"
 )
 
 func TestSearchStateRoundTrip(t *testing.T) {
@@ -14,8 +15,7 @@ func TestSearchStateRoundTrip(t *testing.T) {
 	max := 5000
 	want := SearchState{
 		Q:        "Honda",
-		PriceMin: &min,
-		PriceMax: &max,
+		Facets:   map[string]facet.Filter{"price": {Min: &min, Max: &max}},
 		Location: "Denver",
 		Radius:   25,
 		Expanded: true,
@@ -55,8 +55,9 @@ func TestSearchStateRoundTrip(t *testing.T) {
 		got.Radius != want.Radius || got.Expanded != want.Expanded {
 		t.Fatalf("got %+v, want %+v", got, want)
 	}
-	if got.PriceMin == nil || *got.PriceMin != min {
-		t.Fatalf("price_min: got %v", got.PriceMin)
+	pf, ok := got.Facets["price"]
+	if !ok || pf.Min == nil || *pf.Min != min {
+		t.Fatalf("price filter: got %+v", got.Facets)
 	}
 }
 
@@ -78,7 +79,7 @@ func TestGetSearchStateInvalidCookie(t *testing.T) {
 
 func TestSearchStateJSON(t *testing.T) {
 	min := 10
-	state := SearchState{Q: "test", PriceMin: &min, Expanded: true}
+	state := SearchState{Q: "test", Facets: map[string]facet.Filter{"price": {Min: &min}}, Expanded: true}
 	data, err := json.Marshal(state)
 	if err != nil {
 		t.Fatal(err)

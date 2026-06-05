@@ -3,9 +3,11 @@ package search
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 
 	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/facet"
 )
 
 func Search(p Params) ([]int, error) {
@@ -21,30 +23,40 @@ func Search(p Params) ([]int, error) {
 
 	query += `
 		WHERE a.category_id = ? AND a.deleted_at IS NULL`
-	if p.PriceMin != nil {
-		query += ` AND a.price >= ?`
-		args = append(args, *p.PriceMin)
+
+	for _, key := range sortedFacetKeys(p.FacetFilters) {
+		f := p.FacetFilters[key]
+		if !f.Active() {
+			continue
+		}
+		clause := ` AND EXISTS (SELECT 1 FROM ad_facets f
+			WHERE f.ad_id = a.id AND f.key = ?`
+		facetArgs := []any{key}
+		switch {
+		case len(f.Values) > 0:
+			placeholders := make([]string, len(f.Values))
+			for i, v := range f.Values {
+				placeholders[i] = "?"
+				facetArgs = append(facetArgs, v)
+			}
+			clause += ` AND f."text" IN (` + strings.Join(placeholders, ",") + `)`
+		case f.Value != nil:
+			clause += ` AND f."text" = ?`
+			facetArgs = append(facetArgs, *f.Value)
+		}
+		if f.Min != nil {
+			clause += ` AND f.num >= ?`
+			facetArgs = append(facetArgs, *f.Min)
+		}
+		if f.Max != nil {
+			clause += ` AND f.num <= ?`
+			facetArgs = append(facetArgs, *f.Max)
+		}
+		clause += `)`
+		query += clause
+		args = append(args, facetArgs...)
 	}
-	if p.PriceMax != nil {
-		query += ` AND a.price <= ?`
-		args = append(args, *p.PriceMax)
-	}
-	if p.MileageMin != nil {
-		query += ` AND a.mileage >= ?`
-		args = append(args, *p.MileageMin)
-	}
-	if p.MileageMax != nil {
-		query += ` AND a.mileage <= ?`
-		args = append(args, *p.MileageMax)
-	}
-	if p.HoursMin != nil {
-		query += ` AND a.hours >= ?`
-		args = append(args, *p.HoursMin)
-	}
-	if p.HoursMax != nil {
-		query += ` AND a.hours <= ?`
-		args = append(args, *p.HoursMax)
-	}
+
 	if p.HasTextQuery() {
 		pattern := "%" + escapeLike(p.Q) + "%"
 		query += ` AND (LOWER(a.title) LIKE LOWER(?) OR LOWER(a.description) LIKE LOWER(?))`
@@ -81,6 +93,15 @@ func geoBoundingBox(lat, lon, radiusKm float64) (minLat, maxLat, minLon, maxLon 
 		deltaLon = radiusKm / (kmPerDegreeLat * cosLat)
 	}
 	return lat - deltaLat, lat + deltaLat, lon - deltaLon, lon + deltaLon
+}
+
+func sortedFacetKeys(filters map[string]facet.Filter) []string {
+	keys := make([]string, 0, len(filters))
+	for k := range filters {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func escapeLike(s string) string {

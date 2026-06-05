@@ -1,0 +1,170 @@
+package facet
+
+import (
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/rocky-ads/site/internal/currency"
+)
+
+func intPtr(n int) *int       { return &n }
+func strPtr(s string) *string { return &s }
+
+func TestIntFacetFormatting(t *testing.T) {
+	mileage, ok := Get("mileage")
+	if !ok {
+		t.Fatal("mileage facet not registered")
+	}
+	v := Value{Num: intPtr(45300), Text: strPtr("mi")}
+	if got := mileage.FormatCompact(v); got != "45K mi" {
+		t.Errorf("FormatCompact = %q, want %q", got, "45K mi")
+	}
+	if got := mileage.FormatFull(v); got != "45,300 mi" {
+		t.Errorf("FormatFull = %q, want %q", got, "45,300 mi")
+	}
+
+	hours, _ := Get("hours")
+	hv := Value{Num: intPtr(1200)}
+	if got := hours.FormatFull(hv); got != "1,200 hrs" {
+		t.Errorf("hours FormatFull = %q, want %q", got, "1,200 hrs")
+	}
+}
+
+func TestIntFacetValidate(t *testing.T) {
+	mileage, _ := Get("mileage")
+	if err := mileage.Validate(Value{Num: intPtr(100), Text: strPtr("mi")}); err != nil {
+		t.Errorf("valid mileage rejected: %v", err)
+	}
+	if err := mileage.Validate(Value{Num: intPtr(100)}); err == nil {
+		t.Error("mileage without unit should be invalid")
+	}
+	if err := mileage.Validate(Value{Num: intPtr(100), Text: strPtr("ft")}); err == nil {
+		t.Error("unknown unit should be invalid")
+	}
+	if err := mileage.Validate(Value{Num: intPtr(-1), Text: strPtr("mi")}); err == nil {
+		t.Error("negative mileage should be invalid")
+	}
+
+	optionalMileage := Def{Key: "mileage", Label: "Mileage", Kind: Int, Form: FormNumber, Units: []string{"mi", "km"}}
+	if err := optionalMileage.Validate(Value{}); err != nil {
+		t.Errorf("empty optional value should be valid: %v", err)
+	}
+}
+
+func TestYearFormSelect(t *testing.T) {
+	year, ok := Get("year")
+	if !ok {
+		t.Fatal("year facet not registered")
+	}
+	if year.Form != FormSelect {
+		t.Fatalf("year Form = %v, want FormSelect", year.Form)
+	}
+	if year.Kind != Int {
+		t.Fatalf("year Kind = %v, want Int", year.Kind)
+	}
+	if year.Filter != FilterRange {
+		t.Fatalf("year Filter = %v, want FilterRange", year.Filter)
+	}
+	opts := year.FormOptions()
+	if len(opts) == 0 {
+		t.Fatal("expected generated year options")
+	}
+	if opts[0] != strconv.Itoa(time.Now().Year()+1) {
+		t.Errorf("first option = %q, want latest year", opts[0])
+	}
+	min, max := year.SelectBounds()
+	if min != 1900 {
+		t.Errorf("SelectBounds min = %d, want 1900", min)
+	}
+	wantMax := time.Now().Year() + 1
+	if max != wantMax {
+		t.Errorf("SelectBounds max = %d, want %d", max, wantMax)
+	}
+	if err := year.Validate(Value{Num: intPtr(2020)}); err != nil {
+		t.Errorf("valid year rejected: %v", err)
+	}
+	if err := year.Validate(Value{Num: intPtr(1800)}); err == nil {
+		t.Error("year below range should be invalid")
+	}
+	if got := year.FormatFull(Value{Num: intPtr(2020)}); got != "2020" {
+		t.Errorf("FormatFull = %q, want 2020", got)
+	}
+}
+
+func TestDefNormalizeUnit(t *testing.T) {
+	mileage, _ := Get("mileage")
+	if got := mileage.NormalizeUnit("km"); got != "km" {
+		t.Errorf("NormalizeUnit(km) = %q, want km", got)
+	}
+	if got := mileage.NormalizeUnit("ft"); got != "mi" {
+		t.Errorf("NormalizeUnit(ft) = %q, want mi (first unit)", got)
+	}
+}
+
+func TestMoneyFacet(t *testing.T) {
+	price, ok := Get("price")
+	if !ok {
+		t.Fatal("price facet not registered")
+	}
+	v := Value{Num: intPtr(22500), Text: strPtr("USD")}
+	if got, want := price.FormatFull(v), currency.Format(22500, "USD"); got != want {
+		t.Errorf("price FormatFull = %q, want %q", got, want)
+	}
+	free := Value{Num: intPtr(0), Text: strPtr("USD")}
+	if got, want := price.FormatFull(free), currency.Format(0, "USD"); got != want {
+		t.Errorf("free price FormatFull = %q, want %q", got, want)
+	}
+	if err := price.Validate(Value{Num: intPtr(100)}); err == nil {
+		t.Error("price without currency should be invalid")
+	}
+	if err := price.Validate(v); err != nil {
+		t.Errorf("valid price rejected: %v", err)
+	}
+}
+
+func TestRequiredFacet(t *testing.T) {
+	required := Def{Key: "hours", Label: "Hours", Kind: Int, Required: true}
+	if err := required.Validate(Value{}); err == nil {
+		t.Error("required Int without value should be invalid")
+	}
+	if err := required.Validate(Value{Num: intPtr(10)}); err != nil {
+		t.Errorf("required Int with value rejected: %v", err)
+	}
+
+	optional := Def{Key: "hours", Label: "Hours", Kind: Int}
+	if err := optional.Validate(Value{}); err != nil {
+		t.Errorf("optional Int without value should be valid: %v", err)
+	}
+}
+
+func TestEnumFacet(t *testing.T) {
+	condition, ok := Get("condition")
+	if !ok {
+		t.Fatal("condition facet not registered")
+	}
+	if condition.Form != FormRadio {
+		t.Fatalf("condition Form = %v, want FormRadio", condition.Form)
+	}
+	if condition.Filter != FilterCheckboxes {
+		t.Fatalf("condition Filter = %v, want FilterCheckboxes", condition.Filter)
+	}
+
+	d := Def{
+		Key: "condition", Label: "Condition", Kind: Enum,
+		Form: FormRadio, Filter: FilterCheckboxes,
+		Enum: condition.Enum,
+	}
+	if got := d.FormatFull(Value{Text: strPtr("Used - Good")}); got != "Used - Good" {
+		t.Errorf("enum FormatFull = %q, want %q", got, "Used - Good")
+	}
+	if err := d.Validate(Value{Text: strPtr("Used - Good")}); err != nil {
+		t.Errorf("valid enum rejected: %v", err)
+	}
+	if err := d.Validate(Value{Text: strPtr("broken")}); err == nil {
+		t.Error("invalid enum value should be rejected")
+	}
+	if err := d.Validate(Value{}); err != nil {
+		t.Errorf("empty enum should be valid (optional): %v", err)
+	}
+}

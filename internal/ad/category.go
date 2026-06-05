@@ -7,26 +7,25 @@ import (
 
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/facet"
 )
 
 type Category struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name"`
-	ImageFile string `json:"image_file"`
-	Flags     int    `json:"flags"`
+	ID        int      `json:"id"`
+	Name      string   `json:"name"`
+	ImageFile string   `json:"image_file"`
+	FacetKeys []string `json:"facets"`
 }
 
-const (
-	CategoryFlagMileage = 1 << 0
-	CategoryFlagHours   = 1 << 1
-)
-
-func (c Category) HasMileage() bool {
-	return c.Flags&CategoryFlagMileage != 0
-}
-
-func (c Category) HasHours() bool {
-	return c.Flags&CategoryFlagHours != 0
+// Facets returns the facet definitions this category uses, in declared order.
+func (c Category) Facets() []facet.Def {
+	defs := make([]facet.Def, 0, len(c.FacetKeys))
+	for _, key := range c.FacetKeys {
+		if d, ok := facet.Get(key); ok {
+			defs = append(defs, d)
+		}
+	}
+	return defs
 }
 
 var (
@@ -42,7 +41,7 @@ func LoadCategories() error {
 					'id', id,
 					'name', name,
 					'image_file', image_file,
-					'flags', flags
+					'facets', json(facets)
 				)
 			),
 			'[]'

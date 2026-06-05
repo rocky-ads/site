@@ -31,6 +31,7 @@ type AdDetail struct {
 	ImageCount    int
 	Price         int
 	PriceCurrency string
+	HasPrice      bool
 	Title         string
 	Location      string
 	Description   string
@@ -39,8 +40,7 @@ type AdDetail struct {
 	Active        bool
 	Reachable     bool
 	RockCount     int
-	MileageLabel  string
-	HoursLabel    string
+	FacetLabels   []string
 }
 
 // AdCard holds presentation fields for an ad in search or list views.
@@ -48,6 +48,7 @@ type AdCard struct {
 	ID            int
 	Price         int
 	PriceCurrency string
+	HasPrice      bool
 	Title         string
 	Location      string
 	CreatedAt     time.Time

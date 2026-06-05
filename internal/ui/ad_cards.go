@@ -10,6 +10,7 @@ import (
 func AdCardFromFields(
 	id, price, imageCount, rockCount int,
 	priceCurrency, title, location, facetLabel string,
+	hasPrice bool,
 	createdAt time.Time,
 	active, bookmarked bool,
 ) AdCard {
@@ -17,6 +18,7 @@ func AdCardFromFields(
 		ID:            id,
 		Price:         price,
 		PriceCurrency: priceCurrency,
+		HasPrice:      hasPrice,
 		Title:         title,
 		Location:      location,
 		FacetLabel:    facetLabel,
@@ -44,12 +46,12 @@ func adCardNode(card AdCard, userID, view, nextPage int, csrfToken string, isLas
 		return AdGridNode(
 			userID, card.ID, card.Price, card.ImageCount, nextPage,
 			card.PriceCurrency, card.Title, card.Location, card.FacetLabel, csrfToken,
-			card.CreatedAt, card.Active, card.Bookmarked, isLast, card.RockCount,
+			card.HasPrice, card.CreatedAt, card.Active, card.Bookmarked, isLast, card.RockCount,
 		)
 	case ViewList:
 		return AdListNode(
 			userID, card.ID, card.Price, card.PriceCurrency, card.Title, card.Location, card.FacetLabel,
-			card.CreatedAt, card.Active, card.Bookmarked, csrfToken, isLast, nextPage,
+			card.HasPrice, card.CreatedAt, card.Active, card.Bookmarked, csrfToken, isLast, nextPage,
 			card.RockCount,
 		)
 	default:

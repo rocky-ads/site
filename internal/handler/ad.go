@@ -50,12 +50,14 @@ func AdHandler(c *fiber.Ctx) error {
 }
 
 func adDetailFrom(a ad.Ad, reachable bool) ui.AdDetail {
-	detail := ui.AdDetail{
+	price, priceCurrency, hasPrice := a.PriceValue()
+	return ui.AdDetail{
 		ID:            a.ID,
 		OwnerID:       a.UserID,
 		ImageCount:    a.ImageCount,
-		Price:         a.Price,
-		PriceCurrency: a.PriceCurrency,
+		Price:         price,
+		PriceCurrency: priceCurrency,
+		HasPrice:      hasPrice,
 		Title:         a.Title,
 		Location:      a.Location(),
 		Description:   a.Description,
@@ -64,10 +66,8 @@ func adDetailFrom(a ad.Ad, reachable bool) ui.AdDetail {
 		Active:        !a.IsDeleted(),
 		Reachable:     reachable,
 		RockCount:     a.RockCount,
+		FacetLabels:   a.FacetLabels(),
 	}
-	detail.MileageLabel = a.MileageLabel()
-	detail.HoursLabel = a.HoursLabel()
-	return detail
 }
 
 func AdEggConversationHandler(c *fiber.Ctx) error {

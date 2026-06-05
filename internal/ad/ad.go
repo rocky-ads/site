@@ -2,33 +2,24 @@ package ad
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/rocky-ads/site/internal/db"
-	"github.com/rocky-ads/site/internal/location"
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
-	"golang.org/x/text/number"
+	"github.com/rocky-ads/site/internal/facet"
 )
 
 type Ad struct {
 	// Core database fields
-	ID            int        `db:"id"`
-	CategoryID    int        `db:"category_id"`
-	Title         string     `db:"title"`
-	Description   string     `db:"description"`
-	Price         int        `db:"price"`
-	PriceCurrency string     `db:"price_currency"`
-	CreatedAt     time.Time  `db:"created_at"`
-	DeletedAt     *time.Time `db:"deleted_at"`
-	UserID        int        `db:"user_id"`
-	ImageCount    int        `db:"image_count"`
-	LocationID    int        `db:"location_id"`
-	Mileage       *int       `db:"mileage"`
-	MileageUnit   *string    `db:"mileage_unit"`
-	Hours         *int       `db:"hours"`
+	ID          int        `db:"id"`
+	CategoryID  int        `db:"category_id"`
+	Title       string     `db:"title"`
+	Description string     `db:"description"`
+	CreatedAt   time.Time  `db:"created_at"`
+	DeletedAt   *time.Time `db:"deleted_at"`
+	UserID      int        `db:"user_id"`
+	ImageCount  int        `db:"image_count"`
+	LocationID  int        `db:"location_id"`
 
 	// Location fields from join
 	City      string `db:"city"`
@@ -38,6 +29,9 @@ type Ad struct {
 	// Computed fields
 	Bookmarked bool `db:"bookmarked"`
 	RockCount  int  `db:"rock_count"`
+
+	// Category-specific facet values
+	Facets map[string]facet.Value
 }
 
 func (a Ad) IsDeleted() bool {
@@ -67,45 +61,58 @@ func (a Ad) Location() string {
 	return flag + " " + locationText
 }
 
-func formatCompactCount(n int) string {
-	if n >= 1000 {
-		return strconv.Itoa(n/1000) + "K"
+func (a Ad) facetDefs() []facet.Def {
+	cat, err := GetCategory(a.CategoryID)
+	if err != nil {
+		return nil
 	}
-	return strconv.Itoa(n)
+	return cat.Facets()
 }
 
-func formatFullCount(n int) string {
-	p := message.NewPrinter(language.English)
-	return p.Sprint(number.Decimal(int64(n), number.Scale(0)))
-}
-
-func (a Ad) mileageLabel(format func(int) string) string {
-	if a.Mileage == nil || a.MileageUnit == nil {
-		return ""
+// PriceValue returns the ad's price amount and currency, if a price facet is set.
+func (a Ad) PriceValue() (amount int, currency string, ok bool) {
+	v, exists := a.Facets["price"]
+	if !exists || v.Num == nil {
+		return 0, "", false
 	}
-	suffix := " mi"
-	if *a.MileageUnit == location.UnitKm {
-		suffix = " km"
+	if v.Text != nil {
+		currency = *v.Text
 	}
-	return format(*a.Mileage) + suffix
+	return *v.Num, currency, true
 }
 
-func (a Ad) MileageLabel() string {
-	return a.mileageLabel(formatFullCount)
-}
-
-func (a Ad) HoursLabel() string {
-	if a.Hours == nil {
-		return ""
-	}
-	return strconv.Itoa(*a.Hours) + " hrs"
-}
-
+// FacetLabel returns the compact, non-price facet labels for a listing card,
+// joined with separators (e.g. "45K mi · 2020").
 func (a Ad) FacetLabel() string {
-	if l := a.mileageLabel(formatCompactCount); l != "" {
-		return l
+	return strings.Join(a.facetLabels(true), " · ")
+}
+
+// FacetLabels returns the full, non-price facet labels for the ad detail page.
+func (a Ad) FacetLabels() []string {
+	return a.facetLabels(false)
+}
+
+func (a Ad) facetLabels(compact bool) []string {
+	var labels []string
+	for _, d := range a.facetDefs() {
+		if d.Key == "price" {
+			continue
+		}
+		v, ok := a.Facets[d.Key]
+		if !ok {
+			continue
+		}
+		var s string
+		if compact {
+			s = d.FormatCompact(v)
+		} else {
+			s = d.FormatFull(v)
+		}
+		if s != "" {
+			labels = append(labels, s)
+		}
 	}
-	return a.HoursLabel()
+	return labels
 }
 
 var placeholderString = strings.Repeat("?,", 1000)
@@ -138,16 +145,11 @@ func GetAds(userID int, ids []int, loc *time.Location) ([]Ad, error) {
 			a.category_id,
 			a.title,
 			a.description,
-			a.price,
-			a.price_currency,
 			a.created_at,
 			a.deleted_at,
 			a.user_id,
 			a.image_count,
 			a.location_id,
-			a.mileage,
-			a.mileage_unit,
-			a.hours,
 			l.city,
 			l.admin_area,
 			l.country,
@@ -182,7 +184,49 @@ func GetAds(userID int, ids []int, loc *time.Location) ([]Ad, error) {
 		}
 	}
 
+	if err := attachFacets(ads); err != nil {
+		return nil, err
+	}
+
 	return ads, nil
+}
+
+type facetRow struct {
+	AdID int     `db:"ad_id"`
+	Key  string  `db:"key"`
+	Num  *int    `db:"num"`
+	Text *string `db:"text"`
+}
+
+func attachFacets(ads []Ad) error {
+	if len(ads) == 0 {
+		return nil
+	}
+	ids := make([]int, len(ads))
+	index := make(map[int]int, len(ads))
+	for i := range ads {
+		ads[i].Facets = map[string]facet.Value{}
+		ids[i] = ads[i].ID
+		index[ads[i].ID] = i
+	}
+
+	query := `SELECT ad_id, "key", num, "text" FROM ad_facets WHERE ad_id IN (` +
+		placeholders(len(ids)) + `)`
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+
+	var rows []facetRow
+	if err := db.Select(&rows, query, args...); err != nil {
+		return err
+	}
+	for _, r := range rows {
+		if i, ok := index[r.AdID]; ok {
+			ads[i].Facets[r.Key] = facet.Value{Num: r.Num, Text: r.Text}
+		}
+	}
+	return nil
 }
 
 func GetAd(userID int, id int, loc *time.Location) (Ad, error) {

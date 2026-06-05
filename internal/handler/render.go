@@ -81,10 +81,11 @@ func searchAndRenderAds(p search.Params, userID, view int, loc *time.Location, c
 }
 
 func adCardFrom(a ad.Ad, loc *time.Location) ui.AdCard {
+	price, priceCurrency, hasPrice := a.PriceValue()
 	return ui.AdCardFromFields(
-		a.ID, a.Price, a.ImageCount, a.RockCount,
-		a.PriceCurrency, a.Title, a.Location(), a.FacetLabel(),
-		a.CreatedAt.In(loc),
+		a.ID, price, a.ImageCount, a.RockCount,
+		priceCurrency, a.Title, a.Location(), a.FacetLabel(),
+		hasPrice, a.CreatedAt.In(loc),
 		!a.IsDeleted(), a.Bookmarked,
 	)
 }

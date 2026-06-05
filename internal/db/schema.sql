@@ -68,7 +68,7 @@ CREATE TABLE categories (
     name TEXT NOT NULL UNIQUE,
     seed_ad_file TEXT,
     image_file TEXT,
-    flags INTEGER NOT NULL DEFAULT 0
+    facets TEXT NOT NULL DEFAULT '[]' -- JSON array of facet keys
 );
 
 -- Ads table
@@ -77,20 +77,24 @@ CREATE TABLE ads (
     category_id INTEGER NOT NULL REFERENCES categories(id),
     title TEXT NOT NULL,
     description TEXT NOT NULL,
-    price INTEGER NOT NULL DEFAULT 0, -- whole units of price_currency; 0 means free
-    price_currency TEXT NOT NULL DEFAULT 'USD',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP,
     user_id INTEGER NOT NULL REFERENCES users(id),
     image_count INTEGER DEFAULT 0,
-    location_id INTEGER REFERENCES locations(id),
-    mileage INTEGER,
-    mileage_unit TEXT CHECK (mileage_unit IS NULL OR mileage_unit IN ('mi', 'km')),
-    hours INTEGER
+    location_id INTEGER REFERENCES locations(id)
 );
 CREATE INDEX idx_ads_category ON ads(category_id);
-CREATE INDEX idx_ads_mileage ON ads(mileage) WHERE mileage IS NOT NULL;
-CREATE INDEX idx_ads_hours ON ads(hours) WHERE hours IS NOT NULL;
+
+-- Ad facet values table (one row per ad+facet; see internal/facet)
+CREATE TABLE ad_facets (
+    ad_id INTEGER NOT NULL REFERENCES ads(id),
+    key   TEXT NOT NULL,
+    num   INTEGER, -- Int/Money amounts (price, mileage, hours, year)
+    text  TEXT,    -- currency (Money), unit (mi/km), or Enum selection
+    PRIMARY KEY (ad_id, key)
+);
+CREATE INDEX idx_ad_facets_key_num ON ad_facets(key, num) WHERE num IS NOT NULL;
+CREATE INDEX idx_ad_facets_key_text ON ad_facets(key, text) WHERE text IS NOT NULL;
 
 -- Bookmarks table
 CREATE TABLE bookmarks (

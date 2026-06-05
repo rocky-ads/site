@@ -14,7 +14,8 @@
       "longitude": -87.9065
     },
     "image_count": 1,
-    "mileage": 3200,
-    "mileage_unit": "mi"
+    "facets": {
+      "mileage": { "num": 3200, "text": "mi" }
+    }
   }
 ]

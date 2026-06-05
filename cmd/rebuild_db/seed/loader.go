@@ -14,17 +14,16 @@ import (
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/encryption"
-	"github.com/rocky-ads/site/internal/location"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/password"
 )
 
 // categoryJSON represents a category from ad-category.json
 type categoryJSON struct {
-	Name       string `json:"name"`
-	ImageFile  string `json:"image_file"`
-	SeedAdFile string `json:"seed_ad_file"`
-	Flags      int    `json:"flags"`
+	Name       string   `json:"name"`
+	ImageFile  string   `json:"image_file"`
+	SeedAdFile string   `json:"seed_ad_file"`
+	Facets     []string `json:"facets"`
 }
 
 // CategoryFiles stores file information for a category
@@ -199,9 +198,18 @@ func LoadCategories() error {
 	})
 
 	for _, cat := range categories {
+		facetKeys := cat.Facets
+		if facetKeys == nil {
+			facetKeys = []string{}
+		}
+		facetsJSON, err := json.Marshal(facetKeys)
+		if err != nil {
+			return fmt.Errorf("marshaling facets for category %s: %w", cat.Name, err)
+		}
+
 		result, err := db.Exec(
-			"INSERT INTO categories (name, seed_ad_file, image_file, flags) VALUES (?, ?, ?, ?)",
-			cat.Name, cat.SeedAdFile, cat.ImageFile, cat.Flags,
+			"INSERT INTO categories (name, seed_ad_file, image_file, facets) VALUES (?, ?, ?, ?)",
+			cat.Name, cat.SeedAdFile, cat.ImageFile, string(facetsJSON),
 		)
 		if err != nil {
 			return fmt.Errorf("inserting category %s: %w", cat.Name, err)
@@ -243,17 +251,21 @@ func LoadAds(includeTestAds bool) error {
 
 // adJSON represents the flat JSON structure from ad-*.json files
 type adJSON struct {
-	ID          int          `json:"id"`
-	Title       string       `json:"title"`
-	Description string       `json:"description,omitempty"`
-	Price       float64      `json:"price"`
-	CreatedAt   string       `json:"created_at"`
-	UserID      int          `json:"user_id"`
-	ImageCount  int          `json:"image_count"`
-	Location    LocationData `json:"location"`
-	Mileage     *int         `json:"mileage,omitempty"`
-	MileageUnit string       `json:"mileage_unit,omitempty"`
-	Hours       *int         `json:"hours,omitempty"`
+	ID          int                  `json:"id"`
+	Title       string               `json:"title"`
+	Description string               `json:"description,omitempty"`
+	Price       float64              `json:"price"`
+	CreatedAt   string               `json:"created_at"`
+	UserID      int                  `json:"user_id"`
+	ImageCount  int                  `json:"image_count"`
+	Location    LocationData         `json:"location"`
+	Facets      map[string]facetJSON `json:"facets,omitempty"`
+}
+
+// facetJSON is a single facet value in a seed ad file (maps to ad_facets).
+type facetJSON struct {
+	Num  *int    `json:"num,omitempty"`
+	Text *string `json:"text,omitempty"`
 }
 
 func convertAdJSON(aj adJSON) Ad {
@@ -313,25 +325,42 @@ func loadAdsFromFile(categoryID int, filename string, usedIDs map[int]string) er
 		}
 
 		_, err = db.Exec(
-			"INSERT INTO ads (id, category_id, title, description, price, price_currency, created_at, user_id, image_count, location_id, mileage, mileage_unit, hours) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-			adID, categoryID, ad.Title, ad.Description, price, priceCurrency, createdAt, testUserID, ad.ImageCount, locationID, aj.Mileage, mileageUnitForSeed(aj.Mileage, aj.MileageUnit), aj.Hours,
+			"INSERT INTO ads (id, category_id, title, description, created_at, user_id, image_count, location_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+			adID, categoryID, ad.Title, ad.Description, createdAt, testUserID, ad.ImageCount, locationID,
 		)
 		if err != nil {
 			return fmt.Errorf("inserting ad with ID %d: %w", adID, err)
+		}
+
+		if err := insertAdFacets(adID, price, priceCurrency, aj.Facets); err != nil {
+			return fmt.Errorf("inserting facets for ad %d: %w", adID, err)
 		}
 	}
 
 	return nil
 }
 
-func mileageUnitForSeed(mileage *int, unit string) any {
-	if mileage == nil {
-		return nil
+// insertAdFacets writes the price facet (from the ad's top-level price) plus any
+// generic facets declared in the seed file into ad_facets.
+func insertAdFacets(adID, price int, priceCurrency string, facets map[string]facetJSON) error {
+	if _, err := db.Exec(
+		`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES (?, 'price', ?, ?)`,
+		adID, price, priceCurrency,
+	); err != nil {
+		return err
 	}
-	if location.ValidMileageUnit(unit) {
-		return location.NormalizeMileageUnit(unit)
+	for key, v := range facets {
+		if key == "price" {
+			continue
+		}
+		if _, err := db.Exec(
+			`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES (?, ?, ?, ?)`,
+			adID, key, v.Num, v.Text,
+		); err != nil {
+			return err
+		}
 	}
-	return location.UnitMiles
+	return nil
 }
 
 func getOrCreateLocation(loc LocationData) (int, error) {

@@ -7,8 +7,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/rocky-ads/site/internal/config"
-	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/location"
 )
 
@@ -18,16 +18,12 @@ var (
 )
 
 type CreateInput struct {
-	CategoryID    int
-	UserID        int
-	Title         string
-	Description   string
-	Price         int
-	PriceCurrency string
-	LocationText  string
-	Mileage       *int
-	MileageUnit   *string
-	Hours         *int
+	CategoryID   int
+	UserID       int
+	Title        string
+	Description  string
+	LocationText string
+	Facets       map[string]facet.Value
 }
 
 func CreateAd(input CreateInput) (int, error) {
@@ -56,37 +52,17 @@ func CreateAd(input CreateInput) (int, error) {
 	if !printableASCIIMulti.MatchString(description) {
 		return 0, fmt.Errorf("description must contain printable ASCII characters only")
 	}
-	if input.Price < 0 {
-		return 0, fmt.Errorf("price must be zero or greater")
-	}
 
-	priceCurrency := currency.Normalize(input.PriceCurrency)
-	if !currency.IsSupported(priceCurrency) {
-		priceCurrency = currency.Default
-	}
-
-	var mileage *int
-	var mileageUnit *string
-	if category.HasMileage() {
-		if input.Mileage != nil && *input.Mileage < 0 {
-			return 0, fmt.Errorf("mileage must be zero or greater")
+	defs := category.Facets()
+	values := make(map[string]facet.Value, len(defs))
+	for _, d := range defs {
+		v := input.Facets[d.Key]
+		if err := d.Validate(v); err != nil {
+			return 0, err
 		}
-		mileage = input.Mileage
-		if mileage != nil {
-			if input.MileageUnit == nil || !location.ValidMileageUnit(*input.MileageUnit) {
-				return 0, fmt.Errorf("mileage unit must be mi or km")
-			}
-			unit := location.NormalizeMileageUnit(*input.MileageUnit)
-			mileageUnit = &unit
+		if v.Present() {
+			values[d.Key] = v
 		}
-	}
-
-	var hours *int
-	if category.HasHours() {
-		if input.Hours != nil && *input.Hours < 0 {
-			return 0, fmt.Errorf("hours must be zero or greater")
-		}
-		hours = input.Hours
 	}
 
 	var locationID any
@@ -100,10 +76,16 @@ func CreateAd(input CreateInput) (int, error) {
 		}
 	}
 
-	result, err := db.Exec(
-		`INSERT INTO ads (category_id, title, description, price, price_currency, user_id, location_id, mileage, mileage_unit, hours)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		input.CategoryID, title, description, input.Price, priceCurrency, input.UserID, locationID, mileage, mileageUnit, hours,
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, fmt.Errorf("create ad: %w", err)
+	}
+	defer tx.Rollback()
+
+	result, err := tx.Exec(
+		`INSERT INTO ads (category_id, title, description, user_id, location_id)
+		 VALUES (?, ?, ?, ?, ?)`,
+		input.CategoryID, title, description, input.UserID, locationID,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("create ad: %w", err)
@@ -112,6 +94,19 @@ func CreateAd(input CreateInput) (int, error) {
 	id, err := result.LastInsertId()
 	if err != nil {
 		return 0, fmt.Errorf("create ad id: %w", err)
+	}
+
+	for key, v := range values {
+		if _, err := tx.Exec(
+			`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES (?, ?, ?, ?)`,
+			id, key, v.Num, v.Text,
+		); err != nil {
+			return 0, fmt.Errorf("create ad facet %s: %w", key, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("create ad commit: %w", err)
 	}
 	return int(id), nil
 }

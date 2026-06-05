@@ -1,9 +1,11 @@
 package ads
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/rocky-ads/site/internal/ad"
+	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/location"
 	"github.com/rocky-ads/site/internal/search"
 	g "maragu.dev/gomponents"
@@ -11,27 +13,20 @@ import (
 )
 
 type SearchFilters struct {
-	PriceMin   *int
-	PriceMax   *int
-	MileageMin *int
-	MileageMax *int
-	HoursMin   *int
-	HoursMax   *int
+	Facets     map[string]facet.Filter
 	Location   string
 	Radius     int
 	RadiusUnit string // "mi" or "km"
 }
 
-// SearchFiltersPanel renders price, location, and radius controls for the search widget.
+// SearchFiltersPanel renders facet, location, and radius controls for the search widget.
 func SearchFiltersPanel(category ad.Category, f SearchFilters) g.Node {
-	nodes := []g.Node{
-		searchPriceRow(f),
-	}
-	if category.HasMileage() {
-		nodes = append(nodes, searchMileageRow(f))
-	}
-	if category.HasHours() {
-		nodes = append(nodes, searchHoursRow(f))
+	var nodes []g.Node
+	for _, d := range category.Facets() {
+		if !d.Filterable {
+			continue
+		}
+		nodes = append(nodes, facetFilterRow(d, f.Facets[d.Key]))
 	}
 	nodes = append(nodes, searchLocationRadiusRow(f))
 	return Div(
@@ -40,12 +35,75 @@ func SearchFiltersPanel(category ad.Category, f SearchFilters) g.Node {
 	)
 }
 
-func searchMileageRow(f SearchFilters) g.Node {
-	return rangeFilterRow("mileage", "Mileage", f.MileageMin, f.MileageMax)
+func facetFilterRow(d facet.Def, filter facet.Filter) g.Node {
+	switch d.Filter {
+	case facet.FilterExact:
+		return enumFilterRow(d, filter)
+	case facet.FilterCheckboxes:
+		return enumCheckboxesFilterRow(d, filter)
+	default:
+		return rangeFilterRow(d.Key, d.Label, filter.Min, filter.Max)
+	}
 }
 
-func searchHoursRow(f SearchFilters) g.Node {
-	return rangeFilterRow("hours", "Hours", f.HoursMin, f.HoursMax)
+func enumFilterRow(d facet.Def, filter facet.Filter) g.Node {
+	selected := ""
+	if filter.Value != nil {
+		selected = *filter.Value
+	}
+	id := "filter-" + d.Key
+	opts := make([]g.Node, 0, len(d.Enum)+1)
+	opts = append(opts, enumOption("", "Any", selected))
+	for _, e := range d.Enum {
+		opts = append(opts, enumOption(e, e, selected))
+	}
+	return Div(
+		Class("col-span-2"),
+		Label(For(id), Class("field-label"), g.Text(d.Label)),
+		Select(
+			Name(d.Key),
+			ID(id),
+			Class("w-full p-2 border rounded-md"),
+			g.Group(opts),
+		),
+	)
+}
+
+func enumCheckboxesFilterRow(d facet.Def, filter facet.Filter) g.Node {
+	selected := make(map[string]bool, len(filter.Values))
+	for _, v := range filter.Values {
+		selected[v] = true
+	}
+	nodes := make([]g.Node, len(d.Enum))
+	for i, e := range d.Enum {
+		id := fmt.Sprintf("filter-%s-%d", d.Key, i)
+		attrs := []g.Node{
+			Type("checkbox"),
+			Name(d.Key),
+			Value(e),
+			ID(id),
+		}
+		if selected[e] {
+			attrs = append(attrs, g.Attr("checked", "checked"))
+		}
+		nodes[i] = Label(
+			Class("flex items-center gap-2"),
+			Input(attrs...),
+			g.Text(e),
+		)
+	}
+	return Div(
+		Class("col-span-2"),
+		Label(Class("field-label"), g.Text(d.Label)),
+		Div(Class("flex flex-wrap items-center gap-4"), g.Group(nodes)),
+	)
+}
+
+func enumOption(value, label, selected string) g.Node {
+	if value == selected {
+		return Option(Value(value), g.Attr("selected", "selected"), g.Text(label))
+	}
+	return Option(Value(value), g.Text(label))
 }
 
 func rangeFilterRow(name, label string, min, max *int) g.Node {
@@ -78,10 +136,6 @@ func rangeFilterRow(name, label string, min, max *int) g.Node {
 			),
 		),
 	)
-}
-
-func searchPriceRow(f SearchFilters) g.Node {
-	return rangeFilterRow("price", "Price", f.PriceMin, f.PriceMax)
 }
 
 func searchLocationRadiusRow(f SearchFilters) g.Node {

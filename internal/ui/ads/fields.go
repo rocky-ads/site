@@ -1,12 +1,13 @@
 package ads
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/currency"
-	"github.com/rocky-ads/site/internal/location"
+	"github.com/rocky-ads/site/internal/facet"
 	g "maragu.dev/gomponents"
 	. "maragu.dev/gomponents/html"
 )
@@ -19,21 +20,15 @@ const (
 )
 
 // NewAdFieldsPartial renders new-ad fields for the given category.
-func NewAdFieldsPartial(category ad.Category, defaultCurrency, distanceUnit string) g.Node {
-	currencyCode := priceCurrencyCode("", defaultCurrency)
-
+func NewAdFieldsPartial(category ad.Category, defaultCurrency, defaultUnit string) g.Node {
 	nodes := []g.Node{
 		fieldBlock("Title", titleInput()),
 		fieldBlock("Description", descriptionInput()),
 		fieldBlock("Location (optional)", LocationInput("new-ad-location", "location", "", "City or state")),
 	}
-	if category.HasMileage() {
-		nodes = append(nodes, fieldBlock("Mileage", mileageRow(distanceUnit)))
+	for _, d := range category.Facets() {
+		nodes = append(nodes, facetFieldBlock(d, facetInput(d, defaultCurrency, defaultUnit)))
 	}
-	if category.HasHours() {
-		nodes = append(nodes, fieldBlock("Hours", hoursInput()))
-	}
-	nodes = append(nodes, fieldBlock("Price", newAdPriceRow(currencyCode)))
 
 	return Div(
 		ID("category-fields"),
@@ -42,55 +37,133 @@ func NewAdFieldsPartial(category ad.Category, defaultCurrency, distanceUnit stri
 	)
 }
 
-func mileageRow(defaultUnit string) g.Node {
-	unit := location.NormalizeMileageUnit(defaultUnit)
-	return Div(
-		Class("flex flex-wrap items-center gap-2"),
-		Input(
-			Type("number"),
-			Name("mileage"),
-			ID("new-ad-mileage"),
-			Class("w-36 p-2 border rounded-md"),
-			g.Attr("min", "0"),
-			g.Attr("step", "1"),
-			g.Attr("inputmode", "numeric"),
-		),
-		mileageUnitSelect(unit),
-	)
+func facetInput(d facet.Def, defaultCurrency, defaultUnit string) g.Node {
+	switch d.Form {
+	case facet.FormMoney:
+		return newAdPriceRow(d, priceCurrencyCode("", defaultCurrency))
+	case facet.FormSelect:
+		return formSelect(d)
+	case facet.FormRadio:
+		return formRadio(d)
+	default:
+		if len(d.Units) > 0 {
+			return intWithUnitRow(d, defaultUnit)
+		}
+		return facetNumberInput(d)
+	}
 }
 
-func mileageUnitSelect(selected string) g.Node {
-	miOpt := Option(Value(location.UnitMiles), g.Text("miles"))
-	if selected == location.UnitMiles {
-		miOpt = Option(Value(location.UnitMiles), g.Attr("selected", "selected"), g.Text("miles"))
+func formSelect(d facet.Def) g.Node {
+	opts := make([]g.Node, 0, len(d.FormOptions())+1)
+	opts = append(opts, Option(Value(""), g.Text(selectPlaceholder(d))))
+	for _, o := range d.FormOptions() {
+		opts = append(opts, Option(Value(o), g.Text(o)))
 	}
-	kmOpt := Option(Value(location.UnitKm), g.Text("km"))
-	if selected == location.UnitKm {
-		kmOpt = Option(Value(location.UnitKm), g.Attr("selected", "selected"), g.Text("km"))
+	attrs := []g.Node{
+		Name(d.Key),
+		ID("new-ad-" + d.Key),
+		Class("w-full p-2 border rounded-md"),
 	}
-	return Select(
-		Name("mileage_unit"),
-		ID("new-ad-mileage-unit"),
-		Class("p-2 border rounded-md shrink-0"),
-		miOpt,
-		kmOpt,
-	)
+	attrs = append(attrs, requiredAttr(d.Required)...)
+	attrs = append(attrs, g.Group(opts))
+	return Select(attrs...)
 }
 
-func hoursInput() g.Node {
-	return Input(
+func selectPlaceholder(d facet.Def) string {
+	return "Select a " + d.Key + "..."
+}
+
+func formRadio(d facet.Def) g.Node {
+	opts := d.FormOptions()
+	nodes := make([]g.Node, len(opts))
+	for i, o := range opts {
+		id := fmt.Sprintf("new-ad-%s-%d", d.Key, i)
+		attrs := []g.Node{
+			Type("radio"),
+			Name(d.Key),
+			Value(o),
+			ID(id),
+		}
+		if d.Required && i == 0 {
+			attrs = append(attrs, g.Attr("required", "required"))
+		}
+		nodes[i] = Label(
+			Class("flex items-center gap-2"),
+			Input(attrs...),
+			Span(g.Text(o)),
+		)
+	}
+	return Div(Class("flex flex-wrap items-center gap-4"), g.Group(nodes))
+}
+
+func facetNumberInput(d facet.Def) g.Node {
+	attrs := []g.Node{
 		Type("number"),
-		Name("hours"),
-		ID("new-ad-hours"),
+		Name(d.Key),
+		ID("new-ad-" + d.Key),
 		Class("w-full p-2 border rounded-md"),
 		g.Attr("min", "0"),
 		g.Attr("step", "1"),
 		g.Attr("inputmode", "numeric"),
+	}
+	attrs = append(attrs, requiredAttr(d.Required)...)
+	return Input(attrs...)
+}
+
+func intWithUnitRow(d facet.Def, defaultUnit string) g.Node {
+	selected := d.NormalizeUnit(defaultUnit)
+	unitName := d.Key + "_unit"
+	numAttrs := []g.Node{
+		Type("number"),
+		Name(d.Key),
+		ID("new-ad-" + d.Key),
+		Class("w-36 p-2 border rounded-md"),
+		g.Attr("min", "0"),
+		g.Attr("step", "1"),
+		g.Attr("inputmode", "numeric"),
+	}
+	numAttrs = append(numAttrs, requiredAttr(d.Required)...)
+	return Div(
+		Class("flex flex-wrap items-center gap-2"),
+		Input(numAttrs...),
+		facetUnitSelect(unitName, selected, d.Units),
 	)
+}
+
+func facetUnitSelect(name, selected string, units []string) g.Node {
+	opts := make([]g.Node, len(units))
+	for i, u := range units {
+		opt := Option(Value(u), g.Text(u))
+		if u == selected {
+			opt = Option(Value(u), g.Attr("selected", "selected"), g.Text(u))
+		}
+		opts[i] = opt
+	}
+	return Select(
+		Name(name),
+		ID("new-ad-"+name),
+		Class("p-2 border rounded-md shrink-0"),
+		g.Group(opts),
+	)
+}
+
+func facetFieldBlock(d facet.Def, input g.Node) g.Node {
+	label := d.Label
+	if !d.Required {
+		label += " (optional)"
+	}
+	return fieldBlock(label, input)
 }
 
 func fieldBlock(label string, input g.Node) g.Node {
 	return Div(Class("mt-3"), Label(Class("field-label"), g.Text(label)), input)
+}
+
+func requiredAttr(required bool) []g.Node {
+	if !required {
+		return nil
+	}
+	return []g.Node{g.Attr("required", "required")}
 }
 
 func titleInput() g.Node {
@@ -128,13 +201,14 @@ func descriptionInput() g.Node {
 	)
 }
 
-func newAdPriceRow(currencyCode string) g.Node {
+func newAdPriceRow(d facet.Def, currencyCode string) g.Node {
+	// No HTML required on the amount: FREE checkbox is an alternate valid submission.
 	return Div(
 		Class("flex flex-wrap items-center gap-2"),
 		Input(
 			Type("number"),
-			Name("price"),
-			ID("new-ad-price"),
+			Name(d.Key),
+			ID("new-ad-"+d.Key),
 			Class("w-36 p-2 border rounded-md"),
 			g.Attr("min", "0"),
 			g.Attr("step", "1"),
