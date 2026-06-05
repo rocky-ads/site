@@ -18,7 +18,7 @@ func menuIcon(iconSrc, alt string) g.Node {
 	)
 }
 
-func menuHeader(userID int, userName string, eggCount int, userEggIcons g.Node) g.Node {
+func menuHeader(userID int, userName, memberSince string, eggCount int, userEggIcons g.Node) g.Node {
 	return Div(
 		Class("px-4 py-3 border-b border-zinc-100 text-center"),
 		Div(
@@ -34,8 +34,8 @@ func menuHeader(userID int, userName string, eggCount int, userEggIcons g.Node) 
 			EggCountBadge(eggCount),
 		),
 		Div(
-			Class("text-xs text-zinc-500"),
-			g.Text("Logged in"),
+			Class("text-[10px] text-zinc-500"),
+			g.Text("Member since "+memberSince),
 		),
 	)
 }
@@ -113,7 +113,7 @@ func UserProfilePage(d UserProfileData) []g.Node {
 	}
 }
 
-func UserMenu(userName string, userID int, isAdmin bool, hasUnread bool, eggCount int, userEggCount int) g.Node {
+func UserMenu(userName, memberSince string, userID int, isAdmin bool, hasUnread bool, eggCount int, userEggCount int) g.Node {
 	var menuItems []g.Node
 
 	if isAdmin {
@@ -174,7 +174,7 @@ func UserMenu(userName string, userID int, isAdmin bool, hasUnread bool, eggCoun
 			Class("fixed z-50 top-20 right-6"),
 			Div(
 				Class("bg-white rounded-lg shadow-lg border border-zinc-200 w-40"),
-				menuHeader(userID, userName, eggCount, UserEggIcons(userID, userEggCount)),
+				menuHeader(userID, userName, memberSince, eggCount, UserEggIcons(userID, userEggCount)),
 				Div(
 					Class("py-1"),
 					g.Group(menuItems),
