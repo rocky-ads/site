@@ -38,37 +38,6 @@ func (a Ad) IsDeleted() bool {
 	return a.DeletedAt != nil
 }
 
-func (a Ad) Location() string {
-	if a.City == "" && a.AdminArea == "" && a.Country == "" {
-		return ""
-	}
-
-	var locationText string
-	if a.City != "" && a.AdminArea != "" {
-		locationText = a.City + ", " + a.AdminArea
-	} else if a.City != "" {
-		locationText = a.City
-	} else if a.AdminArea != "" {
-		locationText = a.AdminArea
-	}
-
-	var flag string
-	if len(a.Country) == 2 {
-		code := strings.ToUpper(a.Country)
-		flag = string(rune(int32(code[0])-'A'+0x1F1E6)) + string(rune(int32(code[1])-'A'+0x1F1E6))
-	}
-
-	return flag + " " + locationText
-}
-
-func (a Ad) facetDefs() []facet.Def {
-	cat, err := GetCategory(a.CategoryID)
-	if err != nil {
-		return nil
-	}
-	return cat.Facets()
-}
-
 // PriceValue returns the ad's price amount and currency, if a price facet is set.
 func (a Ad) PriceValue() (amount int, currency string, ok bool) {
 	v, exists := a.Facets["price"]
@@ -79,40 +48,6 @@ func (a Ad) PriceValue() (amount int, currency string, ok bool) {
 		currency = *v.Text
 	}
 	return *v.Num, currency, true
-}
-
-// FacetLabel returns the compact, non-price facet labels for a listing card,
-// joined with separators (e.g. "45K mi · 2020").
-func (a Ad) FacetLabel() string {
-	return strings.Join(a.facetLabels(true), " · ")
-}
-
-// FacetLabels returns the full, non-price facet labels for the ad detail page.
-func (a Ad) FacetLabels() []string {
-	return a.facetLabels(false)
-}
-
-func (a Ad) facetLabels(compact bool) []string {
-	var labels []string
-	for _, d := range a.facetDefs() {
-		if d.Key == "price" {
-			continue
-		}
-		v, ok := a.Facets[d.Key]
-		if !ok {
-			continue
-		}
-		var s string
-		if compact {
-			s = d.FormatCompact(v)
-		} else {
-			s = d.FormatFull(v)
-		}
-		if s != "" {
-			labels = append(labels, s)
-		}
-	}
-	return labels
 }
 
 var placeholderString = strings.Repeat("?,", 1000)

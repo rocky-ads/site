@@ -63,14 +63,14 @@ func adDetailFrom(a ad.Ad, reachable bool) ui.AdDetail {
 		PriceDisplay: priceDisplay,
 		HasPrice:     hasPrice,
 		Title:        a.Title,
-		Location:     a.Location(),
+		Location:     adLocation(a),
 		Description:  a.Description,
 		CreatedAt:    a.CreatedAt,
 		Bookmarked:   a.Bookmarked,
 		Active:       !a.IsDeleted(),
 		Reachable:    reachable,
 		RockCount:    a.RockCount,
-		FacetLabels:  a.FacetLabels(),
+		FacetLabels:  adFacetLabels(a, false),
 	}
 }
 
