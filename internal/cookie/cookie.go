@@ -8,12 +8,10 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/config"
-	"github.com/rocky-ads/site/internal/ui"
 )
 
-func GetView(c *fiber.Ctx) int {
-	view := c.Cookies("view")
-	return ui.ValidateView(view)
+func GetView(c *fiber.Ctx) string {
+	return c.Cookies("view")
 }
 
 func SetView(c *fiber.Ctx, view int) {

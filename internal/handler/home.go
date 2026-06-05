@@ -19,7 +19,7 @@ func HomeHandler(c *fiber.Ctx) error {
 	}
 
 	userID := local.GetUserID(c)
-	view := cookie.GetView(c)
+	view := ui.ValidateView(cookie.GetView(c))
 	loc := cookie.GetLocation(c)
 	csrfToken := local.GetCSRFToken(c)
 

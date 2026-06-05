@@ -44,7 +44,7 @@ func renderPage(c *fiber.Ctx, title string, body []gomponents.Node) error {
 func searchFromRequest(c *fiber.Ctx, state cookie.SearchState) (view, page int, results []g.Node, err error) {
 	categoryID := cookie.GetCategoryID(c)
 	userID := local.GetUserID(c)
-	view = cookie.GetView(c)
+	view = ui.ValidateView(cookie.GetView(c))
 	loc := cookie.GetLocation(c)
 	csrfToken := local.GetCSRFToken(c)
 	page = c.QueryInt("page", 1)
