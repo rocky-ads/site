@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"strings"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cookie"
@@ -28,6 +30,28 @@ func NewAdHandler(c *fiber.Ctx) error {
 	fieldsNode := uiads.NewAdFieldsPartial(category.Facets(), newAdFormDefaults(c))
 
 	return renderPage(c, "New Ad", ui.NewAd(categoryName, fieldsNode))
+}
+
+func NewAdPriceFieldHandler(c *fiber.Ctx) error {
+	d, ok := facet.Get("price")
+	if !ok {
+		return fiber.NewError(fiber.StatusNotFound, "Price facet not found")
+	}
+
+	defaults := newAdFormDefaults(c)
+	isFree := c.Query("price_free") == "1"
+	amount := strings.TrimSpace(c.Query("price"))
+	if isFree {
+		amount = ""
+	} else if amount == "0" {
+		amount = ""
+	}
+
+	return render(c, uiads.NewAdPriceRow(d, defaults, uiads.PriceRowView{
+		IsFree:   isFree,
+		Amount:   amount,
+		Currency: c.Query("price_currency"),
+	}))
 }
 
 func newAdFormDefaults(c *fiber.Ctx) facet.FormDefaults {

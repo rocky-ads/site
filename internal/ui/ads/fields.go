@@ -3,12 +3,16 @@ package ads
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/facet"
 	g "maragu.dev/gomponents"
+	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
 )
+
+const newAdPriceRowID = "new-ad-price-row"
 
 const (
 	asciiPattern          = `[\x20-\x7E]+`
@@ -205,25 +209,81 @@ func descriptionInput() g.Node {
 }
 
 func (f adFields) newAdPriceRow(d facet.Def) g.Node {
-	// No HTML required on the amount: FREE checkbox is an alternate valid submission.
-	return Div(
-		Class("flex flex-wrap items-center gap-2"),
-		Input(
+	return NewAdPriceRow(d, f.defaults, PriceRowView{
+		Currency: d.FormDefaultCurrency(f.defaults),
+	})
+}
+
+// NewAdPriceRow renders the price facet with a "List as FREE" HTMX toggle.
+func NewAdPriceRow(d facet.Def, defaults facet.FormDefaults, view PriceRowView) g.Node {
+	currencyCode := priceCurrencyCode(d, defaults, view.Currency)
+
+	freeCheckbox := Label(
+		Class("flex items-center gap-2 mb-2"),
+		Input(priceFreeCheckboxAttrs(view.IsFree)...),
+		Span(g.Text("List as FREE")),
+	)
+
+	var body g.Node
+	if view.IsFree {
+		body = Div(
+			Class("price-free-state"),
+			Input(Type("hidden"), Name(d.Key), Value("0")),
+			Input(Type("hidden"), Name("price_currency"), Value(currencyCode)),
+		)
+	} else {
+		amountAttrs := []g.Node{
 			Type("number"),
 			Name(d.Key),
-			ID("new-ad-"+d.Key),
+			ID("new-ad-" + d.Key),
 			Class("w-36 p-2 border rounded-md"),
 			g.Attr("min", "0"),
 			g.Attr("step", "1"),
 			g.Attr("inputmode", "numeric"),
-		),
-		priceCurrencySelect(d.FormDefaultCurrency(f.defaults), d.SupportedCurrencies()),
-		Label(
-			Class("flex items-center gap-2"),
-			Input(Type("checkbox"), Name("price_free"), Value("1"), ID("new-ad-price-free")),
-			Span(g.Text("List as FREE")),
-		),
+		}
+		if amount := strings.TrimSpace(view.Amount); amount != "" && amount != "0" {
+			amountAttrs = append(amountAttrs, Value(amount))
+		}
+		body = Div(
+			Class("price-priced-state"),
+			Div(
+				Class("flex flex-wrap items-center gap-2"),
+				Input(amountAttrs...),
+				priceCurrencySelect(currencyCode, d.SupportedCurrencies()),
+			),
+		)
+	}
+
+	return Div(
+		ID(newAdPriceRowID),
+		freeCheckbox,
+		body,
 	)
+}
+
+func priceFreeCheckboxAttrs(checked bool) []g.Node {
+	attrs := []g.Node{
+		Type("checkbox"),
+		Name("price_free"),
+		Value("1"),
+		ID("new-ad-price-free"),
+		hx.Get("/auth/ad/new/price-field"),
+		hx.Target("#" + newAdPriceRowID),
+		hx.Swap("outerHTML"),
+		hx.Trigger("change"),
+		hx.Include("#" + newAdPriceRowID),
+	}
+	if checked {
+		attrs = append(attrs, g.Attr("checked", "checked"))
+	}
+	return attrs
+}
+
+func priceCurrencyCode(d facet.Def, defaults facet.FormDefaults, selected string) string {
+	if selected != "" {
+		return d.FormDefaultCurrency(facet.FormDefaults{Currency: selected})
+	}
+	return d.FormDefaultCurrency(defaults)
 }
 
 func priceCurrencySelect(selected string, currencies []string) g.Node {
