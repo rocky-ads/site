@@ -3,7 +3,7 @@
     "name": "Cars & Trucks",
     "image_file": "car.svg",
     "seed_ad_file": "ad-car.json",
-    "facets": ["condition", "year", "mileage", "price"]
+    "facets": ["condition", "title_status", "year", "mileage", "price"]
   },
   {
     "name": "Car & Truck Parts",

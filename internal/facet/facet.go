@@ -214,7 +214,8 @@ var defs = []Def{
 		SelectMin:  1900,
 		Filterable: true,
 		Required:   true,
-	}, {
+	},
+	{
 		Key:    "condition",
 		Label:  "Condition",
 		Kind:   Enum,
@@ -226,6 +227,21 @@ var defs = []Def{
 			"Used - Good",
 			"Used - Fair",
 			"Used - Poor",
+		},
+		Filterable: true,
+		Required:   false,
+	},
+	{
+		Key:    "title_status",
+		Label:  "Title Status",
+		Kind:   Enum,
+		Form:   FormRadio,
+		Filter: FilterCheckboxes,
+		Enum: []string{
+			"Clean",
+			"Salvage",
+			"Rebuilt",
+			"Parts Only",
 		},
 		Filterable: true,
 		Required:   false,
