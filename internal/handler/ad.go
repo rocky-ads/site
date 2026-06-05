@@ -8,6 +8,7 @@ import (
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/cookie"
+	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/egg"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/message"
@@ -51,22 +52,25 @@ func AdHandler(c *fiber.Ctx) error {
 
 func adDetailFrom(a ad.Ad, reachable bool) ui.AdDetail {
 	price, priceCurrency, hasPrice := a.PriceValue()
+	priceDisplay := ""
+	if hasPrice {
+		priceDisplay = currency.Format(price, priceCurrency)
+	}
 	return ui.AdDetail{
-		ID:            a.ID,
-		OwnerID:       a.UserID,
-		ImageCount:    a.ImageCount,
-		Price:         price,
-		PriceCurrency: priceCurrency,
-		HasPrice:      hasPrice,
-		Title:         a.Title,
-		Location:      a.Location(),
-		Description:   a.Description,
-		CreatedAt:     a.CreatedAt,
-		Bookmarked:    a.Bookmarked,
-		Active:        !a.IsDeleted(),
-		Reachable:     reachable,
-		RockCount:     a.RockCount,
-		FacetLabels:   a.FacetLabels(),
+		ID:           a.ID,
+		OwnerID:      a.UserID,
+		ImageCount:   a.ImageCount,
+		PriceDisplay: priceDisplay,
+		HasPrice:     hasPrice,
+		Title:        a.Title,
+		Location:     a.Location(),
+		Description:  a.Description,
+		CreatedAt:    a.CreatedAt,
+		Bookmarked:   a.Bookmarked,
+		Active:       !a.IsDeleted(),
+		Reachable:    reachable,
+		RockCount:    a.RockCount,
+		FacetLabels:  a.FacetLabels(),
 	}
 }
 

@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/config"
-	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/facet"
 	g "maragu.dev/gomponents"
 	. "maragu.dev/gomponents/html"
@@ -19,15 +17,15 @@ const (
 	asciiMultilineMsg     = "Please enter printable ASCII characters only (line breaks allowed)"
 )
 
-// NewAdFieldsPartial renders new-ad fields for the given category.
-func NewAdFieldsPartial(category ad.Category, defaultCurrency, defaultUnit string) g.Node {
+// NewAdFieldsPartial renders new-ad fields for the given category facets.
+func NewAdFieldsPartial(facets []facet.Def, supportedCurrencies []string, defaultCurrency, defaultUnit string) g.Node {
 	nodes := []g.Node{
 		fieldBlock("Title", titleInput()),
 		fieldBlock("Description", descriptionInput()),
 		fieldBlock("Location (optional)", LocationInput("new-ad-location", "location", "", "City or state")),
 	}
-	for _, d := range category.Facets() {
-		nodes = append(nodes, facetFieldBlock(d, facetInput(d, defaultCurrency, defaultUnit)))
+	for _, d := range facets {
+		nodes = append(nodes, facetFieldBlock(d, facetInput(d, defaultCurrency, defaultUnit, supportedCurrencies)))
 	}
 
 	return Div(
@@ -37,10 +35,10 @@ func NewAdFieldsPartial(category ad.Category, defaultCurrency, defaultUnit strin
 	)
 }
 
-func facetInput(d facet.Def, defaultCurrency, defaultUnit string) g.Node {
+func facetInput(d facet.Def, defaultCurrency, defaultUnit string, supportedCurrencies []string) g.Node {
 	switch d.Form {
 	case facet.FormMoney:
-		return newAdPriceRow(d, priceCurrencyCode("", defaultCurrency))
+		return newAdPriceRow(d, defaultCurrency, supportedCurrencies)
 	case facet.FormSelect:
 		return formSelect(d)
 	case facet.FormRadio:
@@ -201,7 +199,7 @@ func descriptionInput() g.Node {
 	)
 }
 
-func newAdPriceRow(d facet.Def, currencyCode string) g.Node {
+func newAdPriceRow(d facet.Def, currencyCode string, supportedCurrencies []string) g.Node {
 	// No HTML required on the amount: FREE checkbox is an alternate valid submission.
 	return Div(
 		Class("flex flex-wrap items-center gap-2"),
@@ -214,7 +212,7 @@ func newAdPriceRow(d facet.Def, currencyCode string) g.Node {
 			g.Attr("step", "1"),
 			g.Attr("inputmode", "numeric"),
 		),
-		priceCurrencySelectStatic(currencyCode),
+		priceCurrencySelect(currencyCode, supportedCurrencies),
 		Label(
 			Class("flex items-center gap-2"),
 			Input(Type("checkbox"), Name("price_free"), Value("1"), ID("new-ad-price-free")),
@@ -223,13 +221,9 @@ func newAdPriceRow(d facet.Def, currencyCode string) g.Node {
 	)
 }
 
-func priceCurrencySelectStatic(selected string) g.Node {
-	selected = currency.Normalize(selected)
-	if !currency.IsSupported(selected) {
-		selected = currency.Default
-	}
-	opts := make([]g.Node, len(currency.Supported))
-	for i, code := range currency.Supported {
+func priceCurrencySelect(selected string, currencies []string) g.Node {
+	opts := make([]g.Node, len(currencies))
+	for i, code := range currencies {
 		opt := Option(Value(code), g.Text(code))
 		if code == selected {
 			opt = Option(Value(code), g.Attr("selected", "selected"), g.Text(code))
@@ -242,15 +236,4 @@ func priceCurrencySelectStatic(selected string) g.Node {
 		Class("w-24 p-2 border rounded-md shrink-0"),
 		g.Group(opts),
 	)
-}
-
-func priceCurrencyCode(selected, defaultCurrency string) string {
-	code := currency.Normalize(selected)
-	if code == "" || !currency.IsSupported(code) {
-		code = currency.Normalize(defaultCurrency)
-	}
-	if !currency.IsSupported(code) {
-		return currency.Default
-	}
-	return code
 }

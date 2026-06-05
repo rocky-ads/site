@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rocky-ads/site/internal/currency"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -130,14 +129,14 @@ func adCardTitle(title, facetLabel string) g.Node {
 	)
 }
 
-func priceSpan(price int, priceCurrency string, hasPrice bool) g.Node {
+func priceSpan(priceDisplay string, hasPrice bool) g.Node {
 	if !hasPrice {
 		return g.Text("")
 	}
-	return Span(Class("text-green-600 font-semibold"), g.Text(currency.Format(price, priceCurrency)))
+	return Span(Class("text-green-600 font-semibold"), g.Text(priceDisplay))
 }
 
-func AdGridNode(userID, adID, price, imageCount, nextPage int, priceCurrency, title, location, facetLabel, csrfToken string, hasPrice bool, createdAt time.Time, active, bookmarked, isLast bool, eggCount int) g.Node {
+func AdGridNode(userID, adID, imageCount, nextPage int, priceDisplay, title, location, facetLabel, csrfToken string, hasPrice bool, createdAt time.Time, active, bookmarked, isLast bool, eggCount int) g.Node {
 	class := "flex flex-col cursor-pointer gap-1 py-3"
 	if !active {
 		class += " bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg"
@@ -149,7 +148,7 @@ func AdGridNode(userID, adID, price, imageCount, nextPage int, priceCurrency, ti
 		gridImageNode(adID, imageCount, 1),
 		Div(
 			Class("flex items-center justify-between pt-1"),
-			priceSpan(price, priceCurrency, hasPrice),
+			priceSpan(priceDisplay, hasPrice),
 			adCardMeta(location, createdAt),
 		),
 		Div(
@@ -170,7 +169,7 @@ func AdGridNode(userID, adID, price, imageCount, nextPage int, priceCurrency, ti
 	return node
 }
 
-func AdListNode(userID, adID, price int, priceCurrency, title, location, facetLabel string, hasPrice bool, createdAt time.Time, active, bookmarked bool, csrfToken string, isLast bool, nextPage int, eggCount int) g.Node {
+func AdListNode(userID, adID int, priceDisplay, title, location, facetLabel string, hasPrice bool, createdAt time.Time, active, bookmarked bool, csrfToken string, isLast bool, nextPage int, eggCount int) g.Node {
 	class := "flex flex-wrap items-center justify-between py-2 px-3 cursor-pointer"
 	if active {
 		class += " hover:bg-zinc-50 dark:hover:bg-zinc-800"
@@ -190,7 +189,7 @@ func AdListNode(userID, adID, price int, priceCurrency, title, location, facetLa
 		Div(
 			Class("flex items-center gap-2 ml-auto"),
 			adCardMeta(location, createdAt),
-			priceSpan(price, priceCurrency, hasPrice),
+			priceSpan(priceDisplay, hasPrice),
 		),
 	)
 
@@ -392,7 +391,7 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 				),
 				Div(
 					Class("flex items-center gap-2"),
-					priceSpan(d.Price, d.PriceCurrency, d.HasPrice),
+					priceSpan(d.PriceDisplay, d.HasPrice),
 					Div(
 						Class("flex items-center gap-2 text-xs text-zinc-500"),
 						ageNode(d.CreatedAt),

@@ -4,28 +4,23 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/facet"
-	"github.com/rocky-ads/site/internal/location"
-	"github.com/rocky-ads/site/internal/search"
 	g "maragu.dev/gomponents"
 	. "maragu.dev/gomponents/html"
 )
 
 type SearchFilters struct {
-	Facets     map[string]facet.Filter
-	Location   string
-	Radius     int
-	RadiusUnit string // "mi" or "km"
+	Facets        map[string]facet.Filter
+	Location      string
+	Radius        int
+	RadiusUnit    string // "mi" or "km"
+	RadiusOptions []int
 }
 
 // SearchFiltersPanel renders facet, location, and radius controls for the search widget.
-func SearchFiltersPanel(category ad.Category, f SearchFilters) g.Node {
+func SearchFiltersPanel(facets []facet.Def, f SearchFilters) g.Node {
 	var nodes []g.Node
-	for _, d := range category.Facets() {
-		if !d.Filterable {
-			continue
-		}
+	for _, d := range facets {
 		nodes = append(nodes, facetFilterRow(d, f.Facets[d.Key]))
 	}
 	nodes = append(nodes, searchLocationRadiusRow(f))
@@ -141,11 +136,13 @@ func rangeFilterRow(name, label string, min, max *int) g.Node {
 func searchLocationRadiusRow(f SearchFilters) g.Node {
 	unit := f.RadiusUnit
 	if unit == "" {
-		unit = location.UnitMiles
+		unit = "mi"
 	}
 	radiusLabel := "Radius (miles)"
-	if unit == location.UnitKm {
+	suffix := " mi"
+	if unit == "km" {
 		radiusLabel = "Radius (km)"
+		suffix = " km"
 	}
 	return Div(
 		Class("col-span-2 grid grid-cols-2 gap-4"),
@@ -155,23 +152,17 @@ func searchLocationRadiusRow(f SearchFilters) g.Node {
 		),
 		Div(
 			Label(For("filter-radius"), Class("field-label"), g.Text(radiusLabel)),
-			radiusSelect(f.Radius, unit),
+			radiusSelect(f.Radius, f.RadiusOptions, suffix),
 		),
 	)
 }
 
-func radiusSelect(selected int, unit string) g.Node {
+func radiusSelect(selected int, options []int, suffix string) g.Node {
 	if selected == 0 {
 		selected = defaultRadius
 	}
-	radiusOpts := search.RadiusMileOptions
-	suffix := " mi"
-	if unit == location.UnitKm {
-		radiusOpts = search.RadiusKmOptions
-		suffix = " km"
-	}
-	opts := make([]g.Node, 0, len(radiusOpts))
-	for _, n := range radiusOpts {
+	opts := make([]g.Node, 0, len(options))
+	for _, n := range options {
 		label := strconv.Itoa(n) + suffix
 		opt := Option(Value(strconv.Itoa(n)), g.Text(label))
 		if n == selected {

@@ -8,25 +8,24 @@ import (
 
 // AdCardFromFields builds an AdCard from presentation field values.
 func AdCardFromFields(
-	id, price, imageCount, rockCount int,
-	priceCurrency, title, location, facetLabel string,
+	id, imageCount, rockCount int,
+	priceDisplay, title, location, facetLabel string,
 	hasPrice bool,
 	createdAt time.Time,
 	active, bookmarked bool,
 ) AdCard {
 	return AdCard{
-		ID:            id,
-		Price:         price,
-		PriceCurrency: priceCurrency,
-		HasPrice:      hasPrice,
-		Title:         title,
-		Location:      location,
-		FacetLabel:    facetLabel,
-		CreatedAt:     createdAt,
-		ImageCount:    imageCount,
-		Active:        active,
-		Bookmarked:    bookmarked,
-		RockCount:     rockCount,
+		ID:           id,
+		PriceDisplay: priceDisplay,
+		HasPrice:     hasPrice,
+		Title:        title,
+		Location:     location,
+		FacetLabel:   facetLabel,
+		CreatedAt:    createdAt,
+		ImageCount:   imageCount,
+		Active:       active,
+		Bookmarked:   bookmarked,
+		RockCount:    rockCount,
 	}
 }
 
@@ -44,13 +43,13 @@ func adCardNode(card AdCard, userID, view, nextPage int, csrfToken string, isLas
 	switch view {
 	case ViewGrid:
 		return AdGridNode(
-			userID, card.ID, card.Price, card.ImageCount, nextPage,
-			card.PriceCurrency, card.Title, card.Location, card.FacetLabel, csrfToken,
+			userID, card.ID, card.ImageCount, nextPage,
+			card.PriceDisplay, card.Title, card.Location, card.FacetLabel, csrfToken,
 			card.HasPrice, card.CreatedAt, card.Active, card.Bookmarked, isLast, card.RockCount,
 		)
 	case ViewList:
 		return AdListNode(
-			userID, card.ID, card.Price, card.PriceCurrency, card.Title, card.Location, card.FacetLabel,
+			userID, card.ID, card.PriceDisplay, card.Title, card.Location, card.FacetLabel,
 			card.HasPrice, card.CreatedAt, card.Active, card.Bookmarked, csrfToken, isLast, nextPage,
 			card.RockCount,
 		)

@@ -162,6 +162,7 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
 Request flow: **handler → domain → handler maps to UI inputs → `ui/` renders**.
 
 - **`ui/` must not import domain packages** (`ad`, `user`, `message`, etc.)
+- **Exceptions:** `ui/` may import `facet/` (shared field/filter definitions for forms and search UI) and `config/` (app constants such as max field lengths and server name)
 - **Domain packages must not import `ui/`**
 - **Exported UI functions** accept only:
   - Go primitives and stdlib types (`int`, `string`, `bool`, `time.Time`, …)

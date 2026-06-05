@@ -24,7 +24,7 @@ func NewAdHandler(c *fiber.Ctx) error {
 	}
 	categoryName := category.Name
 
-	fieldsNode := uiads.NewAdFieldsPartial(category, defaultCurrencyForUser(c), distanceUnit(c))
+	fieldsNode := uiads.NewAdFieldsPartial(category.Facets(), currency.Supported, defaultCurrencyForUser(c), distanceUnit(c))
 
 	return renderPage(c, "New Ad", ui.NewAd(categoryName, fieldsNode))
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/location"
 	"github.com/rocky-ads/site/internal/search"
+	"github.com/rocky-ads/site/internal/ui"
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
 	"github.com/rocky-ads/site/internal/user"
 )
@@ -35,12 +36,32 @@ func distanceUnit(c *fiber.Ctx) string {
 }
 
 func searchStateToFilters(state cookie.SearchState, unit string) uiads.SearchFilters {
-	return uiads.SearchFilters{
-		Facets:     state.Facets,
-		Location:   state.Location,
-		Radius:     state.Radius,
-		RadiusUnit: unit,
+	opts := search.RadiusMileOptions
+	if unit == location.UnitKm {
+		opts = search.RadiusKmOptions
 	}
+	return uiads.SearchFilters{
+		Facets:        state.Facets,
+		Location:      state.Location,
+		Radius:        state.Radius,
+		RadiusUnit:    unit,
+		RadiusOptions: opts,
+	}
+}
+
+func categoryOption(cat ad.Category) ui.CategoryOption {
+	return ui.CategoryOption{ID: cat.ID, Name: cat.Name, ImageFile: cat.ImageFile}
+}
+
+func filterableFacets(cat ad.Category) []facet.Def {
+	defs := cat.Facets()
+	out := make([]facet.Def, 0, len(defs))
+	for _, d := range defs {
+		if d.Filterable {
+			out = append(out, d)
+		}
+	}
+	return out
 }
 
 func parseSearchFilters(c *fiber.Ctx) uiads.SearchFilters {

@@ -53,7 +53,7 @@ func ShowFiltersHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	return renderFilterPanelResponse(c, state, ui.FilterPanel(category, searchStateToFilters(state, unit)))
+	return renderFilterPanelResponse(c, state, ui.FilterPanel(filterableFacets(category), searchStateToFilters(state, unit)))
 }
 
 func HideFiltersHandler(c *fiber.Ctx) error {

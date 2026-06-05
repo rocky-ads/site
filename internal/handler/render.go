@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cookie"
+	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/message"
 	"github.com/rocky-ads/site/internal/search"
@@ -82,9 +83,13 @@ func searchAndRenderAds(p search.Params, userID, view int, loc *time.Location, c
 
 func adCardFrom(a ad.Ad, loc *time.Location) ui.AdCard {
 	price, priceCurrency, hasPrice := a.PriceValue()
+	priceDisplay := ""
+	if hasPrice {
+		priceDisplay = currency.Format(price, priceCurrency)
+	}
 	return ui.AdCardFromFields(
-		a.ID, price, a.ImageCount, a.RockCount,
-		priceCurrency, a.Title, a.Location(), a.FacetLabel(),
+		a.ID, a.ImageCount, a.RockCount,
+		priceDisplay, a.Title, a.Location(), a.FacetLabel(),
 		hasPrice, a.CreatedAt.In(loc),
 		!a.IsDeleted(), a.Bookmarked,
 	)

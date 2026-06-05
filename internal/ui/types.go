@@ -26,37 +26,35 @@ type UserRowData struct {
 
 // AdDetail holds presentation fields for a single ad page.
 type AdDetail struct {
-	ID            int
-	OwnerID       int
-	ImageCount    int
-	Price         int
-	PriceCurrency string
-	HasPrice      bool
-	Title         string
-	Location      string
-	Description   string
-	CreatedAt     time.Time
-	Bookmarked    bool
-	Active        bool
-	Reachable     bool
-	RockCount     int
-	FacetLabels   []string
+	ID           int
+	OwnerID      int
+	ImageCount   int
+	PriceDisplay string
+	HasPrice     bool
+	Title        string
+	Location     string
+	Description  string
+	CreatedAt    time.Time
+	Bookmarked   bool
+	Active       bool
+	Reachable    bool
+	RockCount    int
+	FacetLabels  []string
 }
 
 // AdCard holds presentation fields for an ad in search or list views.
 type AdCard struct {
-	ID            int
-	Price         int
-	PriceCurrency string
-	HasPrice      bool
-	Title         string
-	Location      string
-	CreatedAt     time.Time
-	ImageCount    int
-	Active        bool
-	Bookmarked    bool
-	RockCount     int
-	FacetLabel    string
+	ID           int
+	PriceDisplay string
+	HasPrice     bool
+	Title        string
+	Location     string
+	CreatedAt    time.Time
+	ImageCount   int
+	Active       bool
+	Bookmarked   bool
+	RockCount    int
+	FacetLabel   string
 }
 
 // ConversationModalData holds presentation fields for a conversation modal.
