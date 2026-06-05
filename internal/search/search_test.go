@@ -62,4 +62,26 @@ func TestSearchGeoFilterSQL(t *testing.T) {
 	if len(ids) != 1 {
 		t.Fatalf("expected 1 ad, got %v", ids)
 	}
+
+	t.Run("mileage range", func(t *testing.T) {
+		_, err := db.Exec(`INSERT INTO ads (category_id, title, description, price, user_id, mileage)
+			VALUES (1, 'Low miles car', 'desc', 100, 1, 28000)`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = db.Exec(`INSERT INTO ads (category_id, title, description, price, user_id, mileage)
+			VALUES (1, 'Higher miles car', 'desc', 100, 1, 45000)`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		min := 40000
+		max := 50000
+		ids, err := Search(Params{CategoryID: 1, MileageMin: &min, MileageMax: &max, Limit: 10, Offset: 0})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(ids) != 1 {
+			t.Fatalf("expected 1 ad, got %v", ids)
+		}
+	})
 }

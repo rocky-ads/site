@@ -13,7 +13,9 @@
       "latitude": 34.0522,
       "longitude": -118.2437
     },
-    "image_count": 3
+    "image_count": 3,
+    "mileage": 45300,
+    "mileage_unit": "mi"
   },
   {
     "id": 985,
@@ -29,6 +31,8 @@
       "latitude": 32.7767,
       "longitude": -96.797
     },
-    "image_count": 0
+    "image_count": 0,
+    "mileage": 28000,
+    "mileage_unit": "mi"
   }
 ]

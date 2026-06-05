@@ -113,7 +113,30 @@ func paginationDiv(nextPage int) g.Node {
 	)
 }
 
-func AdGridNode(userID, adID, price, imageCount, nextPage int, priceCurrency, title, location, csrfToken string, createdAt time.Time, active, bookmarked, isLast bool, eggCount int) g.Node {
+func adCardMeta(location string, createdAt time.Time) g.Node {
+	return Div(
+		Class("flex items-center gap-2 text-xs text-zinc-500"),
+		ageNode(createdAt),
+		g.Text(location),
+	)
+}
+
+func adCardTitle(title, facetLabel string) g.Node {
+	return Span(
+		Class("min-w-0"),
+		g.Text(title),
+		g.If(facetLabel != "", Span(Class("text-xs text-zinc-500"), g.Text(" · "+facetLabel))),
+	)
+}
+
+func adDetailFacetLabel(d AdDetail) string {
+	if d.MileageLabel != "" {
+		return d.MileageLabel
+	}
+	return d.HoursLabel
+}
+
+func AdGridNode(userID, adID, price, imageCount, nextPage int, priceCurrency, title, location, facetLabel, csrfToken string, createdAt time.Time, active, bookmarked, isLast bool, eggCount int) g.Node {
 	priceStr := currency.Format(price, priceCurrency)
 
 	class := "flex flex-col cursor-pointer gap-1 py-3"
@@ -128,17 +151,13 @@ func AdGridNode(userID, adID, price, imageCount, nextPage int, priceCurrency, ti
 		Div(
 			Class("flex items-center justify-between pt-1"),
 			Span(Class("text-green-600 font-semibold"), g.Text(priceStr)),
-			Div(
-				Class("flex gap-2 text-xs text-zinc-500"),
-				ageNode(createdAt),
-				g.Text(location),
-			),
+			adCardMeta(location, createdAt),
 		),
 		Div(
 			Class("flex items-center gap-2 min-w-0"),
 			g.If(userID != 0 && bookmarked, BookmarkButton(adID, bookmarked, csrfToken)),
 			g.If(eggCount > 0, EggIcons(adID, eggCount)),
-			Span(Class("min-w-0"), g.Text(title)),
+			adCardTitle(title, facetLabel),
 		),
 	)
 
@@ -152,7 +171,7 @@ func AdGridNode(userID, adID, price, imageCount, nextPage int, priceCurrency, ti
 	return node
 }
 
-func AdListNode(userID, adID, price int, priceCurrency, title, location string, createdAt time.Time, active, bookmarked bool, csrfToken string, isLast bool, nextPage int, eggCount int) g.Node {
+func AdListNode(userID, adID, price int, priceCurrency, title, location, facetLabel string, createdAt time.Time, active, bookmarked bool, csrfToken string, isLast bool, nextPage int, eggCount int) g.Node {
 	priceStr := currency.Format(price, priceCurrency)
 
 	class := "flex flex-wrap items-center justify-between py-2 px-3 cursor-pointer"
@@ -169,15 +188,11 @@ func AdListNode(userID, adID, price int, priceCurrency, title, location string, 
 			Class("flex items-center gap-2 min-w-0"),
 			g.If(userID != 0 && bookmarked, BookmarkButton(adID, bookmarked, csrfToken)),
 			g.If(eggCount > 0, EggIcons(adID, eggCount)),
-			Span(Class("min-w-0"), g.Text(title)),
+			adCardTitle(title, facetLabel),
 		),
 		Div(
 			Class("flex items-center gap-2 ml-auto"),
-			Div(
-				Class("flex items-center gap-2 text-xs text-zinc-500"),
-				ageNode(createdAt),
-				g.Text(location),
-			),
+			adCardMeta(location, createdAt),
 			Span(Class("text-green-600 font-semibold"), g.Text(priceStr)),
 		),
 	)
@@ -376,7 +391,7 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 					Div(
 						Class("flex items-center gap-2 min-w-0"),
 						g.If(d.RockCount > 0, EggIcons(d.ID, d.RockCount)),
-						Span(Class("min-w-0"), g.Text(d.Title)),
+						adCardTitle(d.Title, adDetailFacetLabel(d)),
 					),
 					adButtons(d.ID, userID, d.OwnerID, d.Bookmarked, d.Active, d.Reachable, csrfToken),
 				),
@@ -451,6 +466,8 @@ func newAdForm(fields g.Node) g.Node {
 	return Form(
 		Class("space-y-8 mt-8"),
 		ID("new-ad-form"),
+		Method("POST"),
+		Action("/auth/ad/new"),
 		g.Attr("onsubmit", "document.querySelectorAll('#new-ad-form textarea[data-pattern-check]').forEach(function(el){el.oninput.call(el);});"),
 		fields,
 		imagesInput(),

@@ -12,6 +12,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -325,10 +326,7 @@ func postFormRequest(t *testing.T, requestURL string, body map[string]interface{
 
 	jarCookies := client.Jar.Cookies(reqURL)
 	for _, cookie := range jarCookies {
-		if cookie.Name == "_csrf" {
-			req.AddCookie(cookie)
-			break
-		}
+		req.AddCookie(cookie)
 	}
 
 	resp, err := client.Do(req)
@@ -1020,4 +1018,163 @@ func TestCategorySelectHandler(t *testing.T) {
 			t.Error("Expected category cookie to be set when accessing category select without cookie")
 		}
 	})
+}
+
+func TestSearchPageHandlerMileageDirect(t *testing.T) {
+	data, err := json.Marshal(cookie.SearchState{Expanded: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded := base64.RawURLEncoding.EncodeToString(data)
+	req := httptest.NewRequest("GET", "/api/search/?mileage_min=40000&mileage_max=50000", nil)
+	req.AddCookie(&http.Cookie{Name: "category", Value: "6"})
+	req.AddCookie(&http.Cookie{Name: "search", Value: encoded})
+	resp, err := testServer.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	body := string(bodyBytes)
+	if !strings.Contains(body, "2020 Honda Civic") {
+		t.Fatalf("expected Honda in body, got %q", body)
+	}
+	if strings.Contains(body, "Ford F-150") {
+		t.Fatal("expected Ford excluded")
+	}
+}
+
+func TestMileageSearchFilter(t *testing.T) {
+	var withMileage int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM ads WHERE category_id = 6 AND mileage IS NOT NULL`).Scan(&withMileage); err != nil {
+		t.Fatalf("query seed mileage: %v", err)
+	}
+	if withMileage == 0 {
+		t.Fatal("expected seeded car ads with mileage")
+	}
+
+	client, err := getClientWithCategoryCookie(6)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	if err := setSearchCookieOnClient(client, cookie.SearchState{Expanded: true}); err != nil {
+		t.Fatalf("set search cookie: %v", err)
+	}
+
+	resp, body := getRequestWithCookies(t, client, baseURL+"/api/search/?mileage_min=40000&mileage_max=50000")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", resp.StatusCode)
+	}
+	if !strings.Contains(body, "2020 Honda Civic") {
+		t.Error("expected mileage filter to match Honda Civic ad")
+	}
+	if strings.Contains(body, "Ford F-150") {
+		t.Error("expected Ford F-150 to be excluded by mileage filter")
+	}
+}
+
+func TestShowFiltersCategoryFacets(t *testing.T) {
+	t.Run("cars show mileage filter", func(t *testing.T) {
+		client, err := getClientWithCategoryCookie(6)
+		if err != nil {
+			t.Fatalf("Failed to create client: %v", err)
+		}
+		if err := setSearchCookieOnClient(client, cookie.SearchState{Expanded: true}); err != nil {
+			t.Fatalf("set search cookie: %v", err)
+		}
+		resp, body := getRequestWithCookies(t, client, baseURL+"/api/show-filters")
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d", resp.StatusCode)
+		}
+		if !strings.Contains(body, "filter-mileage-min") {
+			t.Error("expected mileage filter for Cars & Trucks category")
+		}
+	})
+	t.Run("parts hide mileage filter", func(t *testing.T) {
+		client, err := getClientWithCategoryCookie(5)
+		if err != nil {
+			t.Fatalf("Failed to create client: %v", err)
+		}
+		if err := setSearchCookieOnClient(client, cookie.SearchState{Expanded: true}); err != nil {
+			t.Fatalf("set search cookie: %v", err)
+		}
+		resp, body := getRequestWithCookies(t, client, baseURL+"/api/show-filters")
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d", resp.StatusCode)
+		}
+		if strings.Contains(body, "filter-mileage-min") {
+			t.Error("expected no mileage filter for parts category")
+		}
+	})
+}
+
+func TestSwitchCategoryClearsMileageFilter(t *testing.T) {
+	client, err := getClientWithCategoryCookie(6)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	min := 10000
+	if err := setSearchCookieOnClient(client, cookie.SearchState{
+		Q: "Honda", MileageMin: &min, Expanded: true,
+	}); err != nil {
+		t.Fatalf("set search cookie: %v", err)
+	}
+
+	switchURL := baseURL + "/api/category/5/switch?q=Honda&mileage_min=10000"
+	resp, _ := getRequestWithCookies(t, client, switchURL)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("switch: expected 200, got %d", resp.StatusCode)
+	}
+
+	resp, body := getRequestWithCookies(t, client, baseURL+"/api/show-filters")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("show-filters: expected 200, got %d", resp.StatusCode)
+	}
+	if strings.Contains(body, `name="mileage_min"`) && strings.Contains(body, `value="10000"`) {
+		t.Error("expected mileage filter cleared after switching to parts category")
+	}
+}
+
+func TestCreateAdWithMileage(t *testing.T) {
+	client := getTestClient()
+	baseURLParsed, _ := url.Parse(baseURL)
+
+	clearCookie := &http.Cookie{Name: "auth_token", Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: false}
+	client.Jar.SetCookies(baseURLParsed, []*http.Cookie{clearCookie})
+
+	resp, _ := postFormRequest(t, baseURL+"/api/login", map[string]interface{}{
+		"username": "test",
+		"password": "test",
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("login failed with status %d", resp.StatusCode)
+	}
+
+	categoryCookie := &http.Cookie{Name: "category", Value: "6", Path: "/", HttpOnly: true, Secure: false}
+	client.Jar.SetCookies(baseURLParsed, []*http.Cookie{categoryCookie})
+
+	formData := map[string]interface{}{
+		"title":          "Test Car Ad",
+		"description":    "A test vehicle listing.",
+		"price":          "15000",
+		"price_currency": "USD",
+		"mileage":        "12000",
+		"mileage_unit":   "mi",
+		"location":       "Los Angeles",
+	}
+
+	resp, result := postFormRequest(t, baseURL+"/auth/ad/new", formData)
+	if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected redirect or success, got %d", resp.StatusCode)
+	}
+	if resp.StatusCode == http.StatusOK {
+		raw, _ := result["raw"].(string)
+		if !strings.Contains(raw, "Test Car Ad") {
+			t.Fatalf("expected created ad page, body=%q", raw)
+		}
+		return
+	}
+	loc := resp.Header.Get("Location")
+	if !strings.HasPrefix(loc, "/ad/") {
+		t.Fatalf("expected redirect to ad page, got %q", loc)
+	}
 }

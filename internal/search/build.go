@@ -13,6 +13,10 @@ type BuildInput struct {
 	Location   string
 	Radius     int
 	RadiusUnit string
+	MileageMin *int
+	MileageMax *int
+	HoursMin   *int
+	HoursMax   *int
 }
 
 // BuildParams converts filter input into search Params, resolving geo when applicable.
@@ -24,6 +28,10 @@ func BuildParams(in BuildInput) Params {
 		Q:          in.Q,
 		PriceMin:   in.PriceMin,
 		PriceMax:   in.PriceMax,
+		MileageMin: in.MileageMin,
+		MileageMax: in.MileageMax,
+		HoursMin:   in.HoursMin,
+		HoursMax:   in.HoursMax,
 	}
 
 	if in.Location == "" || in.Radius <= 0 {

@@ -3,8 +3,10 @@ package ads
 import (
 	"strconv"
 
+	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/currency"
+	"github.com/rocky-ads/site/internal/location"
 	g "maragu.dev/gomponents"
 	. "maragu.dev/gomponents/html"
 )
@@ -16,17 +18,74 @@ const (
 	asciiMultilineMsg     = "Please enter printable ASCII characters only (line breaks allowed)"
 )
 
-// NewAdFieldsPartial renders static new-ad fields: title, description, location, price.
-func NewAdFieldsPartial(defaultCurrency string) g.Node {
+// NewAdFieldsPartial renders new-ad fields for the given category.
+func NewAdFieldsPartial(category ad.Category, defaultCurrency, distanceUnit string) g.Node {
 	currencyCode := priceCurrencyCode("", defaultCurrency)
+
+	nodes := []g.Node{
+		fieldBlock("Title", titleInput()),
+		fieldBlock("Description", descriptionInput()),
+		fieldBlock("Location (optional)", LocationInput("new-ad-location", "location", "", "City or state")),
+	}
+	if category.HasMileage() {
+		nodes = append(nodes, fieldBlock("Mileage", mileageRow(distanceUnit)))
+	}
+	if category.HasHours() {
+		nodes = append(nodes, fieldBlock("Hours", hoursInput()))
+	}
+	nodes = append(nodes, fieldBlock("Price", newAdPriceRow(currencyCode)))
 
 	return Div(
 		ID("category-fields"),
 		Class("category-fields space-y-6"),
-		fieldBlock("Title", titleInput()),
-		fieldBlock("Description", descriptionInput()),
-		fieldBlock("Location (optional)", LocationInput("new-ad-location", "location", "", "City or state")),
-		fieldBlock("Price", newAdPriceRow(currencyCode)),
+		g.Group(nodes),
+	)
+}
+
+func mileageRow(defaultUnit string) g.Node {
+	unit := location.NormalizeMileageUnit(defaultUnit)
+	return Div(
+		Class("flex flex-wrap items-center gap-2"),
+		Input(
+			Type("number"),
+			Name("mileage"),
+			ID("new-ad-mileage"),
+			Class("w-36 p-2 border rounded-md"),
+			g.Attr("min", "0"),
+			g.Attr("step", "1"),
+			g.Attr("inputmode", "numeric"),
+		),
+		mileageUnitSelect(unit),
+	)
+}
+
+func mileageUnitSelect(selected string) g.Node {
+	miOpt := Option(Value(location.UnitMiles), g.Text("miles"))
+	if selected == location.UnitMiles {
+		miOpt = Option(Value(location.UnitMiles), g.Attr("selected", "selected"), g.Text("miles"))
+	}
+	kmOpt := Option(Value(location.UnitKm), g.Text("km"))
+	if selected == location.UnitKm {
+		kmOpt = Option(Value(location.UnitKm), g.Attr("selected", "selected"), g.Text("km"))
+	}
+	return Select(
+		Name("mileage_unit"),
+		ID("new-ad-mileage-unit"),
+		Class("p-2 border rounded-md shrink-0"),
+		miOpt,
+		kmOpt,
+	)
+}
+
+func hoursInput() g.Node {
+	return Input(
+		Type("number"),
+		Name("hours"),
+		ID("new-ad-hours"),
+		Class("w-full p-2 border rounded-md"),
+		g.Attr("min", "0"),
+		g.Attr("step", "1"),
+		g.Attr("inputmode", "numeric"),
 	)
 }
 

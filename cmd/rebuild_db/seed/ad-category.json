@@ -2,41 +2,49 @@
   {
     "name": "Cars & Trucks",
     "image_file": "car.svg",
-    "seed_ad_file": "ad-car.json"
+    "seed_ad_file": "ad-car.json",
+    "flags": 1
   },
   {
     "name": "Car & Truck Parts",
     "image_file": "car.svg",
-    "seed_ad_file": "ad-car-part.json"
+    "seed_ad_file": "ad-car-part.json",
+    "flags": 0
   },
   {
     "name": "Motorcycles",
     "image_file": "motorcycle.svg",
-    "seed_ad_file": "ad-motorcycle.json"
+    "seed_ad_file": "ad-motorcycle.json",
+    "flags": 1
   },
   {
     "name": "Motorcycle Parts",
     "image_file": "motorcycle.svg",
-    "seed_ad_file": "ad-motorcycle-part.json"
+    "seed_ad_file": "ad-motorcycle-part.json",
+    "flags": 0
   },
   {
     "name": "Bicycles",
     "image_file": "bicycle.svg",
-    "seed_ad_file": "ad-bicycle.json"
+    "seed_ad_file": "ad-bicycle.json",
+    "flags": 0
   },
   {
     "name": "Bicycle Parts",
     "image_file": "bicycle.svg",
-    "seed_ad_file": "ad-bicycle-part.json"
+    "seed_ad_file": "ad-bicycle-part.json",
+    "flags": 0
   },
   {
     "name": "Agricultural Equipment",
     "image_file": "ag.svg",
-    "seed_ad_file": "ad-agricultural.json"
+    "seed_ad_file": "ad-agricultural.json",
+    "flags": 2
   },
   {
     "name": "Agricultural Equipment Parts",
     "image_file": "ag.svg",
-    "seed_ad_file": "ad-agricultural-part.json"
+    "seed_ad_file": "ad-agricultural-part.json",
+    "flags": 0
   }
 ]

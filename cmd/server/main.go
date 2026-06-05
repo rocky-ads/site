@@ -62,6 +62,7 @@ func setupApp() *fiber.App {
 	auth.Get("/sse", handler.SSEHandler)
 
 	auth.Get("/ad/new", handler.NewAdHandler)
+	auth.Post("/ad/new", handler.CreateAdHandler)
 	auth.Delete("/ad/:id/delete", handler.DeleteAdHandler)
 	auth.Post("/ad/:id/restore", handler.RestoreAdHandler)
 	auth.Get("/ad/:id/new-conversation", handler.MessageModalHandler)

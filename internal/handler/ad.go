@@ -50,7 +50,7 @@ func AdHandler(c *fiber.Ctx) error {
 }
 
 func adDetailFrom(a ad.Ad, reachable bool) ui.AdDetail {
-	return ui.AdDetail{
+	detail := ui.AdDetail{
 		ID:            a.ID,
 		OwnerID:       a.UserID,
 		ImageCount:    a.ImageCount,
@@ -65,6 +65,9 @@ func adDetailFrom(a ad.Ad, reachable bool) ui.AdDetail {
 		Reachable:     reachable,
 		RockCount:     a.RockCount,
 	}
+	detail.MileageLabel = a.MileageLabel()
+	detail.HoursLabel = a.HoursLabel()
+	return detail
 }
 
 func AdEggConversationHandler(c *fiber.Ctx) error {

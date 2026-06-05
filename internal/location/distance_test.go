@@ -37,3 +37,24 @@ func TestDistanceUnitFromTimezone(t *testing.T) {
 		}
 	}
 }
+
+func TestNormalizeMileageUnit(t *testing.T) {
+	if got := NormalizeMileageUnit(UnitKm); got != UnitKm {
+		t.Errorf("NormalizeMileageUnit(km) = %q", got)
+	}
+	if got := NormalizeMileageUnit(UnitMiles); got != UnitMiles {
+		t.Errorf("NormalizeMileageUnit(mi) = %q", got)
+	}
+	if got := NormalizeMileageUnit(""); got != UnitMiles {
+		t.Errorf("NormalizeMileageUnit(empty) = %q", got)
+	}
+}
+
+func TestValidMileageUnit(t *testing.T) {
+	if !ValidMileageUnit(UnitMiles) || !ValidMileageUnit(UnitKm) {
+		t.Fatal("expected mi and km to be valid")
+	}
+	if ValidMileageUnit("meters") {
+		t.Fatal("expected invalid unit")
+	}
+}

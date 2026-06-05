@@ -9,7 +9,7 @@ import (
 // AdCardFromFields builds an AdCard from presentation field values.
 func AdCardFromFields(
 	id, price, imageCount, rockCount int,
-	priceCurrency, title, location string,
+	priceCurrency, title, location, facetLabel string,
 	createdAt time.Time,
 	active, bookmarked bool,
 ) AdCard {
@@ -19,6 +19,7 @@ func AdCardFromFields(
 		PriceCurrency: priceCurrency,
 		Title:         title,
 		Location:      location,
+		FacetLabel:    facetLabel,
 		CreatedAt:     createdAt,
 		ImageCount:    imageCount,
 		Active:        active,
@@ -42,12 +43,12 @@ func adCardNode(card AdCard, userID, view, nextPage int, csrfToken string, isLas
 	case ViewGrid:
 		return AdGridNode(
 			userID, card.ID, card.Price, card.ImageCount, nextPage,
-			card.PriceCurrency, card.Title, card.Location, csrfToken,
+			card.PriceCurrency, card.Title, card.Location, card.FacetLabel, csrfToken,
 			card.CreatedAt, card.Active, card.Bookmarked, isLast, card.RockCount,
 		)
 	case ViewList:
 		return AdListNode(
-			userID, card.ID, card.Price, card.PriceCurrency, card.Title, card.Location,
+			userID, card.ID, card.Price, card.PriceCurrency, card.Title, card.Location, card.FacetLabel,
 			card.CreatedAt, card.Active, card.Bookmarked, csrfToken, isLast, nextPage,
 			card.RockCount,
 		)

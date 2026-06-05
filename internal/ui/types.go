@@ -39,6 +39,8 @@ type AdDetail struct {
 	Active        bool
 	Reachable     bool
 	RockCount     int
+	MileageLabel  string
+	HoursLabel    string
 }
 
 // AdCard holds presentation fields for an ad in search or list views.
@@ -53,6 +55,7 @@ type AdCard struct {
 	Active        bool
 	Bookmarked    bool
 	RockCount     int
+	FacetLabel    string
 }
 
 // ConversationModalData holds presentation fields for a conversation modal.

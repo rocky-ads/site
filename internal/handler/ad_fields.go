@@ -18,12 +18,13 @@ func NewAdHandler(c *fiber.Ctx) error {
 	}
 
 	categoryID := cookie.GetCategoryID(c)
-	categoryName, err := ad.GetCategoryName(categoryID)
+	category, err := ad.GetCategory(categoryID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
+	categoryName := category.Name
 
-	fieldsNode := uiads.NewAdFieldsPartial(defaultCurrencyForUser(c))
+	fieldsNode := uiads.NewAdFieldsPartial(category, defaultCurrencyForUser(c), distanceUnit(c))
 
 	return renderPage(c, "New Ad", ui.NewAd(categoryName, fieldsNode))
 }

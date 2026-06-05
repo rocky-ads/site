@@ -13,12 +13,7 @@ import (
 func HomeHandler(c *fiber.Ctx) error {
 	categoryID := cookie.GetCategoryID(c)
 
-	categoryName, err := ad.GetCategoryName(categoryID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, err.Error())
-	}
-
-	categoryImage, err := ad.GetCategoryImageFile(categoryID)
+	category, err := ad.GetCategory(categoryID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
@@ -36,6 +31,6 @@ func HomeHandler(c *fiber.Ctx) error {
 
 	state := cookie.GetSearchState(c)
 	return renderPage(c, config.ServerName,
-		ui.HomePage(userID, view, categoryName, categoryImage,
-			state.Q, state.Expanded, parseSearchFilters(c), results))
+		ui.HomePage(userID, view, state.Q, state.Expanded,
+			category, parseSearchFilters(c), results))
 }

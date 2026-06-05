@@ -10,15 +10,18 @@ import (
 )
 
 func SwitchCategoryHandler(c *fiber.Ctx) error {
-	saveSearchStateFromRequest(c, nil, true)
+	state := saveSearchStateFromRequest(c, nil, true)
 
 	categoryID := param.GetCategoryID(c)
 
-	if _, err := ad.GetCategoryName(categoryID); err != nil {
+	if _, err := ad.GetCategory(categoryID); err != nil {
 		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
 	cookie.SetCategoryID(c, categoryID)
+
+	state = clearFacetFilters(state, categoryID)
+	cookie.SetSearchState(c, state)
 
 	redirect := c.Query("return")
 	if redirect == "" || redirect[0] != '/' || (len(redirect) > 1 && redirect[1] == '/') {
@@ -45,7 +48,12 @@ func ShowFiltersHandler(c *fiber.Ctx) error {
 	expanded := true
 	state := saveSearchStateFromRequest(c, &expanded, false)
 	unit := distanceUnit(c)
-	return renderFilterPanelResponse(c, state, ui.FilterPanel(searchStateToFilters(state, unit)))
+	categoryID := cookie.GetCategoryID(c)
+	category, err := ad.GetCategory(categoryID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+	return renderFilterPanelResponse(c, state, ui.FilterPanel(category, searchStateToFilters(state, unit)))
 }
 
 func HideFiltersHandler(c *fiber.Ctx) error {

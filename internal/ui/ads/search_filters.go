@@ -3,6 +3,7 @@ package ads
 import (
 	"strconv"
 
+	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/location"
 	"github.com/rocky-ads/site/internal/search"
 	g "maragu.dev/gomponents"
@@ -12,48 +13,75 @@ import (
 type SearchFilters struct {
 	PriceMin   *int
 	PriceMax   *int
+	MileageMin *int
+	MileageMax *int
+	HoursMin   *int
+	HoursMax   *int
 	Location   string
 	Radius     int
 	RadiusUnit string // "mi" or "km"
 }
 
 // SearchFiltersPanel renders price, location, and radius controls for the search widget.
-func SearchFiltersPanel(f SearchFilters) g.Node {
+func SearchFiltersPanel(category ad.Category, f SearchFilters) g.Node {
+	nodes := []g.Node{
+		searchPriceRow(f),
+	}
+	if category.HasMileage() {
+		nodes = append(nodes, searchMileageRow(f))
+	}
+	if category.HasHours() {
+		nodes = append(nodes, searchHoursRow(f))
+	}
+	nodes = append(nodes, searchLocationRadiusRow(f))
 	return Div(
 		Class("grid grid-cols-2 gap-4"),
-		searchPriceRow(f),
-		searchLocationRadiusRow(f),
+		g.Group(nodes),
 	)
 }
 
-func searchPriceRow(f SearchFilters) g.Node {
+func searchMileageRow(f SearchFilters) g.Node {
+	return rangeFilterRow("mileage", "Mileage", f.MileageMin, f.MileageMax)
+}
+
+func searchHoursRow(f SearchFilters) g.Node {
+	return rangeFilterRow("hours", "Hours", f.HoursMin, f.HoursMax)
+}
+
+func rangeFilterRow(name, label string, min, max *int) g.Node {
+	minID := "filter-" + name + "-min"
+	maxID := "filter-" + name + "-max"
 	return Div(
 		Class("col-span-2"),
-		Label(For("filter-price-min"), Class("field-label"), g.Text("Price")),
+		Label(For(minID), Class("field-label"), g.Text(label)),
 		Div(Class("ad-filter-price-range flex flex-wrap items-center gap-2"),
 			Input(
 				Type("number"),
-				Name("price_min"),
-				ID("filter-price-min"),
+				Name(name+"_min"),
+				ID(minID),
 				Class("w-36 p-2 border rounded-md"),
 				g.Attr("placeholder", "Min"),
 				g.Attr("min", "0"),
 				g.Attr("inputmode", "numeric"),
-				g.If(priceAmount(f.PriceMin) != "", Value(priceAmount(f.PriceMin))),
+				g.If(priceAmount(min) != "", Value(priceAmount(min))),
 			),
 			Span(Class("ad-filter-range-sep"), g.Text("–")),
 			Input(
 				Type("number"),
-				Name("price_max"),
-				ID("filter-price-max"),
+				Name(name+"_max"),
+				ID(maxID),
 				Class("w-36 p-2 border rounded-md"),
 				g.Attr("placeholder", "Max"),
 				g.Attr("min", "0"),
 				g.Attr("inputmode", "numeric"),
-				g.If(priceAmount(f.PriceMax) != "", Value(priceAmount(f.PriceMax))),
+				g.If(priceAmount(max) != "", Value(priceAmount(max))),
 			),
 		),
 	)
+}
+
+func searchPriceRow(f SearchFilters) g.Node {
+	return rangeFilterRow("price", "Price", f.PriceMin, f.PriceMax)
 }
 
 func searchLocationRadiusRow(f SearchFilters) g.Node {

@@ -2,10 +2,15 @@ package ad
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/location"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
+	"golang.org/x/text/number"
 )
 
 type Ad struct {
@@ -21,6 +26,9 @@ type Ad struct {
 	UserID        int        `db:"user_id"`
 	ImageCount    int        `db:"image_count"`
 	LocationID    int        `db:"location_id"`
+	Mileage       *int       `db:"mileage"`
+	MileageUnit   *string    `db:"mileage_unit"`
+	Hours         *int       `db:"hours"`
 
 	// Location fields from join
 	City      string `db:"city"`
@@ -57,6 +65,47 @@ func (a Ad) Location() string {
 	}
 
 	return flag + " " + locationText
+}
+
+func formatCompactCount(n int) string {
+	if n >= 1000 {
+		return strconv.Itoa(n/1000) + "K"
+	}
+	return strconv.Itoa(n)
+}
+
+func formatFullCount(n int) string {
+	p := message.NewPrinter(language.English)
+	return p.Sprint(number.Decimal(int64(n), number.Scale(0)))
+}
+
+func (a Ad) mileageLabel(format func(int) string) string {
+	if a.Mileage == nil || a.MileageUnit == nil {
+		return ""
+	}
+	suffix := " mi"
+	if *a.MileageUnit == location.UnitKm {
+		suffix = " km"
+	}
+	return format(*a.Mileage) + suffix
+}
+
+func (a Ad) MileageLabel() string {
+	return a.mileageLabel(formatFullCount)
+}
+
+func (a Ad) HoursLabel() string {
+	if a.Hours == nil {
+		return ""
+	}
+	return strconv.Itoa(*a.Hours) + " hrs"
+}
+
+func (a Ad) FacetLabel() string {
+	if l := a.mileageLabel(formatCompactCount); l != "" {
+		return l
+	}
+	return a.HoursLabel()
 }
 
 var placeholderString = strings.Repeat("?,", 1000)
@@ -96,6 +145,9 @@ func GetAds(userID int, ids []int, loc *time.Location) ([]Ad, error) {
 			a.user_id,
 			a.image_count,
 			a.location_id,
+			a.mileage,
+			a.mileage_unit,
+			a.hours,
 			l.city,
 			l.admin_area,
 			l.country,

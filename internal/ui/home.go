@@ -1,23 +1,24 @@
 package ui
 
 import (
+	"github.com/rocky-ads/site/internal/ad"
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
 )
 
-func HomePage(userID, view int, categoryName, categoryImage, q string, filtersExpanded bool, filters uiads.SearchFilters, results []g.Node) []g.Node {
-	return []g.Node{SearchContainer(userID, view, categoryName, categoryImage, q, filtersExpanded, filters, results)}
+func HomePage(userID, view int, q string, filtersExpanded bool, category ad.Category, filters uiads.SearchFilters, results []g.Node) []g.Node {
+	return []g.Node{SearchContainer(userID, view, q, filtersExpanded, category, filters, results)}
 }
 
-func SearchContainer(userID, view int, categoryName, categoryImage, q string, filtersExpanded bool, filters uiads.SearchFilters, results []g.Node) g.Node {
+func SearchContainer(userID, view int, q string, filtersExpanded bool, category ad.Category, filters uiads.SearchFilters, results []g.Node) g.Node {
 	return g.Group(append([]g.Node{
 		Div(
 			ID("search-container"),
 			Div(
-				categoryButton(categoryName, categoryImage),
-				SearchWidget(userID, view, q, filtersExpanded, filters, results),
+				categoryButton(category),
+				SearchWidget(userID, view, q, filtersExpanded, category, filters, results),
 			),
 		),
 	}, RemoveModal("category")...))
@@ -43,15 +44,15 @@ func SearchResultsOOB(view int, results []g.Node) g.Node {
 }
 
 // FilterPanel is the HTMX fragment inserted into #filter-panel when expanded.
-func FilterPanel(filters uiads.SearchFilters) g.Node {
+func FilterPanel(category ad.Category, filters uiads.SearchFilters) g.Node {
 	return Div(
 		Class("border rounded-lg p-4 mt-4"),
-		uiads.SearchFiltersPanel(filters),
+		uiads.SearchFiltersPanel(category, filters),
 	)
 }
 
-func categoryButton(categoryName, categoryImage string) g.Node {
-	imagePath := "/images/category/" + categoryImage
+func categoryButton(category ad.Category) g.Node {
+	imagePath := "/images/category/" + category.ImageFile
 
 	return Div(
 		Div(
@@ -71,7 +72,7 @@ func categoryButton(categoryName, categoryImage string) g.Node {
 					Alt("Category icon"),
 					Class("w-6 h-6 dark:invert dark:opacity-80"),
 				),
-				Span(g.Text(categoryName)),
+				Span(g.Text(category.Name)),
 			),
 		),
 	)
@@ -165,10 +166,10 @@ func newAdButton(userID int) g.Node {
 	})
 }
 
-func SearchWidget(userID, view int, q string, filtersExpanded bool, filters uiads.SearchFilters, results []g.Node) g.Node {
+func SearchWidget(userID, view int, q string, filtersExpanded bool, category ad.Category, filters uiads.SearchFilters, results []g.Node) g.Node {
 	var panel g.Node
 	if filtersExpanded {
-		panel = FilterPanel(filters)
+		panel = FilterPanel(category, filters)
 	}
 	return Form(
 		Class("flex flex-col gap-4"),

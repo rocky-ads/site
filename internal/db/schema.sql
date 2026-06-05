@@ -67,7 +67,8 @@ CREATE TABLE categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     seed_ad_file TEXT,
-    image_file TEXT
+    image_file TEXT,
+    flags INTEGER NOT NULL DEFAULT 0
 );
 
 -- Ads table
@@ -82,9 +83,14 @@ CREATE TABLE ads (
     deleted_at TIMESTAMP,
     user_id INTEGER NOT NULL REFERENCES users(id),
     image_count INTEGER DEFAULT 0,
-    location_id INTEGER REFERENCES locations(id)
+    location_id INTEGER REFERENCES locations(id),
+    mileage INTEGER,
+    mileage_unit TEXT CHECK (mileage_unit IS NULL OR mileage_unit IN ('mi', 'km')),
+    hours INTEGER
 );
 CREATE INDEX idx_ads_category ON ads(category_id);
+CREATE INDEX idx_ads_mileage ON ads(mileage) WHERE mileage IS NOT NULL;
+CREATE INDEX idx_ads_hours ON ads(hours) WHERE hours IS NOT NULL;
 
 -- Bookmarks table
 CREATE TABLE bookmarks (

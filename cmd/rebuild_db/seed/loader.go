@@ -14,6 +14,7 @@ import (
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/encryption"
+	"github.com/rocky-ads/site/internal/location"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/password"
 )
@@ -23,6 +24,7 @@ type categoryJSON struct {
 	Name       string `json:"name"`
 	ImageFile  string `json:"image_file"`
 	SeedAdFile string `json:"seed_ad_file"`
+	Flags      int    `json:"flags"`
 }
 
 // CategoryFiles stores file information for a category
@@ -198,8 +200,8 @@ func LoadCategories() error {
 
 	for _, cat := range categories {
 		result, err := db.Exec(
-			"INSERT INTO categories (name, seed_ad_file, image_file) VALUES (?, ?, ?)",
-			cat.Name, cat.SeedAdFile, cat.ImageFile,
+			"INSERT INTO categories (name, seed_ad_file, image_file, flags) VALUES (?, ?, ?, ?)",
+			cat.Name, cat.SeedAdFile, cat.ImageFile, cat.Flags,
 		)
 		if err != nil {
 			return fmt.Errorf("inserting category %s: %w", cat.Name, err)
@@ -249,6 +251,9 @@ type adJSON struct {
 	UserID      int          `json:"user_id"`
 	ImageCount  int          `json:"image_count"`
 	Location    LocationData `json:"location"`
+	Mileage     *int         `json:"mileage,omitempty"`
+	MileageUnit string       `json:"mileage_unit,omitempty"`
+	Hours       *int         `json:"hours,omitempty"`
 }
 
 func convertAdJSON(aj adJSON) Ad {
@@ -308,8 +313,8 @@ func loadAdsFromFile(categoryID int, filename string, usedIDs map[int]string) er
 		}
 
 		_, err = db.Exec(
-			"INSERT INTO ads (id, category_id, title, description, price, price_currency, created_at, user_id, image_count, location_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-			adID, categoryID, ad.Title, ad.Description, price, priceCurrency, createdAt, testUserID, ad.ImageCount, locationID,
+			"INSERT INTO ads (id, category_id, title, description, price, price_currency, created_at, user_id, image_count, location_id, mileage, mileage_unit, hours) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			adID, categoryID, ad.Title, ad.Description, price, priceCurrency, createdAt, testUserID, ad.ImageCount, locationID, aj.Mileage, mileageUnitForSeed(aj.Mileage, aj.MileageUnit), aj.Hours,
 		)
 		if err != nil {
 			return fmt.Errorf("inserting ad with ID %d: %w", adID, err)
@@ -317,6 +322,16 @@ func loadAdsFromFile(categoryID int, filename string, usedIDs map[int]string) er
 	}
 
 	return nil
+}
+
+func mileageUnitForSeed(mileage *int, unit string) any {
+	if mileage == nil {
+		return nil
+	}
+	if location.ValidMileageUnit(unit) {
+		return location.NormalizeMileageUnit(unit)
+	}
+	return location.UnitMiles
 }
 
 func getOrCreateLocation(loc LocationData) (int, error) {

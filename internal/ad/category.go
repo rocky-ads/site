@@ -13,6 +13,20 @@ type Category struct {
 	ID        int    `json:"id"`
 	Name      string `json:"name"`
 	ImageFile string `json:"image_file"`
+	Flags     int    `json:"flags"`
+}
+
+const (
+	CategoryFlagMileage = 1 << 0
+	CategoryFlagHours   = 1 << 1
+)
+
+func (c Category) HasMileage() bool {
+	return c.Flags&CategoryFlagMileage != 0
+}
+
+func (c Category) HasHours() bool {
+	return c.Flags&CategoryFlagHours != 0
 }
 
 var (
@@ -27,7 +41,8 @@ func LoadCategories() error {
 				json_object(
 					'id', id,
 					'name', name,
-					'image_file', image_file
+					'image_file', image_file,
+					'flags', flags
 				)
 			),
 			'[]'
@@ -69,6 +84,14 @@ func GetCategoryName(categoryID int) (string, error) {
 		return "", fmt.Errorf("category not found: %d", categoryID)
 	}
 	return category.Name, nil
+}
+
+func GetCategory(categoryID int) (Category, error) {
+	category, ok := categories[categoryID]
+	if !ok {
+		return Category{}, fmt.Errorf("category not found: %d", categoryID)
+	}
+	return category, nil
 }
 
 func GetCategoryImageFile(categoryID int) (string, error) {

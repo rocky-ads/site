@@ -14,6 +14,10 @@ type Params struct {
 	Q          string
 	PriceMin   *int
 	PriceMax   *int
+	MileageMin *int
+	MileageMax *int
+	HoursMin   *int
+	HoursMax   *int
 	// CenterLat/CenterLon and RadiusKm apply when location text resolved and radius > 0.
 	CenterLat float64
 	CenterLon float64

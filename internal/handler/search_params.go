@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/local"
@@ -36,6 +37,10 @@ func searchStateToFilters(state cookie.SearchState, unit string) uiads.SearchFil
 	return uiads.SearchFilters{
 		PriceMin:   state.PriceMin,
 		PriceMax:   state.PriceMax,
+		MileageMin: state.MileageMin,
+		MileageMax: state.MileageMax,
+		HoursMin:   state.HoursMin,
+		HoursMax:   state.HoursMax,
 		Location:   state.Location,
 		Radius:     state.Radius,
 		RadiusUnit: unit,
@@ -77,6 +82,10 @@ func parseSearchParamsFromState(c *fiber.Ctx, state cookie.SearchState, category
 		Q:          state.Q,
 		PriceMin:   f.PriceMin,
 		PriceMax:   f.PriceMax,
+		MileageMin: f.MileageMin,
+		MileageMax: f.MileageMax,
+		HoursMin:   f.HoursMin,
+		HoursMax:   f.HoursMax,
 		Location:   f.Location,
 		Radius:     f.Radius,
 		RadiusUnit: f.RadiusUnit,
@@ -93,6 +102,10 @@ func saveSearchStateFromRequest(c *fiber.Ctx, expanded *bool, fromForm bool) coo
 		if state.Expanded {
 			state.PriceMin = parseOptionalAmount(c.Query("price_min"))
 			state.PriceMax = parseOptionalAmount(c.Query("price_max"))
+			state.MileageMin = parseOptionalAmount(c.Query("mileage_min"))
+			state.MileageMax = parseOptionalAmount(c.Query("mileage_max"))
+			state.HoursMin = parseOptionalAmount(c.Query("hours_min"))
+			state.HoursMax = parseOptionalAmount(c.Query("hours_max"))
 			state.Location = strings.TrimSpace(c.Query("location"))
 			state.Radius = parseRadius(c.Query("radius"), unit)
 			if state.Location == "" {
@@ -138,4 +151,30 @@ func parseRadius(raw, unit string) int {
 		}
 	}
 	return 0
+}
+
+func clearFacetFilters(state cookie.SearchState, categoryID int) cookie.SearchState {
+	category, err := ad.GetCategory(categoryID)
+	if err != nil {
+		return state
+	}
+	if !category.HasMileage() {
+		state.MileageMin = nil
+		state.MileageMax = nil
+	}
+	if !category.HasHours() {
+		state.HoursMin = nil
+		state.HoursMax = nil
+	}
+	return state
+}
+
+// SaveSearchStateForTest exposes saveSearchStateFromRequest for integration tests.
+func SaveSearchStateForTest(c *fiber.Ctx, fromForm bool) cookie.SearchState {
+	return saveSearchStateFromRequest(c, nil, fromForm)
+}
+
+// BuildSearchParamsForTest exposes parseSearchParamsFromState for integration tests.
+func BuildSearchParamsForTest(c *fiber.Ctx, state cookie.SearchState, categoryID int) search.Params {
+	return parseSearchParamsFromState(c, state, categoryID)
 }

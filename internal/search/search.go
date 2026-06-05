@@ -29,6 +29,22 @@ func Search(p Params) ([]int, error) {
 		query += ` AND a.price <= ?`
 		args = append(args, *p.PriceMax)
 	}
+	if p.MileageMin != nil {
+		query += ` AND a.mileage >= ?`
+		args = append(args, *p.MileageMin)
+	}
+	if p.MileageMax != nil {
+		query += ` AND a.mileage <= ?`
+		args = append(args, *p.MileageMax)
+	}
+	if p.HoursMin != nil {
+		query += ` AND a.hours >= ?`
+		args = append(args, *p.HoursMin)
+	}
+	if p.HoursMax != nil {
+		query += ` AND a.hours <= ?`
+		args = append(args, *p.HoursMax)
+	}
 	if p.HasTextQuery() {
 		pattern := "%" + escapeLike(p.Q) + "%"
 		query += ` AND (LOWER(a.title) LIKE LOWER(?) OR LOWER(a.description) LIKE LOWER(?))`
