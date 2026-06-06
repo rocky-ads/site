@@ -59,15 +59,15 @@ func CallGrokConv(systemPrompt, userPrompt, convID string) (string, error) {
 		},
 	}
 
-	data, err := json.MarshalIndent(payload, "", "\t")
+	data, err := json.Marshal(payload)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
+	printGrokRequest(payload, convID)
+
 	logger.Debug("Grok API request",
 		"systemPrompt", systemPrompt, "userPrompt", userPrompt)
-	fmt.Println("REQUEST")
-	fmt.Println(string(data))
 
 	req, err := http.NewRequest("POST", config.GrokAPIURL, bytes.NewBuffer(data))
 	if err != nil {
@@ -106,4 +106,15 @@ func CallGrokConv(systemPrompt, userPrompt, convID string) (string, error) {
 	fmt.Println(grokResp.Choices[0].Message.Content)
 
 	return grokResp.Choices[0].Message.Content, nil
+}
+
+func printGrokRequest(payload GrokRequest, convID string) {
+	fmt.Printf("Grok request: model=%s reasoning=%s", payload.Model, payload.ReasoningEffort)
+	if convID != "" {
+		fmt.Printf(" conv=%s", convID)
+	}
+	fmt.Println()
+	for _, msg := range payload.Messages {
+		fmt.Printf("--- %s ---\n%s\n", msg.Role, msg.Content)
+	}
 }
