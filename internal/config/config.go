@@ -35,8 +35,9 @@ const (
 	VectorSiteEmbeddingCacheTTL  = 1 * time.Hour // TTL for site embedding cache
 
 	// Grok API configuration
-	GrokAPIURL = "https://api.x.ai/v1/chat/completions"
-	GrokModel  = "grok-3-mini"
+	GrokAPIURL          = "https://api.x.ai/v1/chat/completions"
+	GrokModel           = "grok-4.3"
+	GrokReasoningEffort = "none"
 
 	// Gemini API configuration
 	GeminiEmbeddingModel      = "gemini-embedding-001"

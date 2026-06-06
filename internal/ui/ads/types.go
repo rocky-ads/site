@@ -17,3 +17,10 @@ type SearchFilters struct {
 	RadiusUnit    string // "mi" or "km"
 	RadiusOptions []int
 }
+
+// SuggestionOption holds one LLM suggestion pill on the new-ad form.
+type SuggestionOption struct {
+	Label    string
+	Value    string
+	Selected bool
+}

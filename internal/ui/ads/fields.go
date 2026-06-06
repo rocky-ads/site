@@ -30,7 +30,7 @@ func NewAdFieldsPartial(facets []facet.Def, defaults facet.FormDefaults) g.Node 
 	f := adFields{defaults: defaults}
 	nodes := []g.Node{
 		fieldBlock("Title", titleInput()),
-		fieldBlock("Description", descriptionInput()),
+		fieldBlock("Description", descriptionWithSuggestionsBox()),
 		fieldBlock("Location (optional)", LocationInput("new-ad-location", "location", "", "City or state")),
 	}
 	for _, d := range facets {
@@ -197,7 +197,7 @@ func descriptionInput() g.Node {
 	return Textarea(
 		Name("description"),
 		ID("new-ad-description"),
-		Class("w-full p-2 border rounded-md"),
+		Class("w-full p-2 border-0 rounded-none bg-transparent focus:outline-none focus:ring-0"),
 		g.Attr("rows", "6"),
 		g.Attr("required", "required"),
 		g.Attr("maxlength", max),

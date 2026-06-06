@@ -63,6 +63,7 @@ func setupApp() *fiber.App {
 
 	auth.Get("/ad/new", handler.NewAdHandler)
 	auth.Get("/ad/new/price-field", handler.NewAdPriceFieldHandler)
+	auth.Get("/ad/new/suggestions", handler.SuggestionsHandler)
 	auth.Post("/ad/new", handler.CreateAdHandler)
 	auth.Delete("/ad/:id/delete", handler.DeleteAdHandler)
 	auth.Post("/ad/:id/restore", handler.RestoreAdHandler)

@@ -39,6 +39,7 @@ func CreateAdHandler(c *fiber.Ctx) error {
 		Description:  c.FormValue("description"),
 		LocationText: c.FormValue("location"),
 		Facets:       facets,
+		Suggestions:  parseCreateSuggestions(c),
 	})
 	if err != nil {
 		return showCreateAdError(c, category, err.Error())

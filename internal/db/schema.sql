@@ -81,7 +81,8 @@ CREATE TABLE ads (
     deleted_at TIMESTAMP,
     user_id INTEGER NOT NULL REFERENCES users(id),
     image_count INTEGER DEFAULT 0,
-    location_id INTEGER REFERENCES locations(id)
+    location_id INTEGER REFERENCES locations(id),
+    suggestions TEXT NOT NULL DEFAULT '[]' -- JSON array of {label, value}
 );
 CREATE INDEX idx_ads_category ON ads(category_id);
 

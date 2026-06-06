@@ -31,6 +31,10 @@ func AdHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
 
+	if err := ad.LoadSuggestions(&a); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
 	// If ad is deleted and user is not the owner, show deleted message
 	if a.IsDeleted() && a.UserID != userID {
 		return renderPage(c, "Ad Deleted", ui.AdDeleted())
@@ -71,7 +75,19 @@ func adDetailFrom(a ad.Ad, reachable bool) ui.AdDetail {
 		Reachable:    reachable,
 		RockCount:    a.RockCount,
 		FacetLabels:  adFacetLabels(a, false),
+		Suggestions:  adSuggestionDisplays(a),
 	}
+}
+
+func adSuggestionDisplays(a ad.Ad) []string {
+	if len(a.Suggestions) == 0 {
+		return nil
+	}
+	out := make([]string, len(a.Suggestions))
+	for i, s := range a.Suggestions {
+		out[i] = s.Display()
+	}
+	return out
 }
 
 func AdEggConversationHandler(c *fiber.Ctx) error {

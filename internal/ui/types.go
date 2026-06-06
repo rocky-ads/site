@@ -40,6 +40,7 @@ type AdDetail struct {
 	Reachable    bool
 	RockCount    int
 	FacetLabels  []string
+	Suggestions  []string
 }
 
 // AdCard holds presentation fields for an ad in search or list views.

@@ -32,6 +32,13 @@ type GrokResponse struct {
 
 // CallGrok sends prompts to the Grok API and returns the response string
 func CallGrok(systemPrompt, userPrompt string) (string, error) {
+	return CallGrokConv(systemPrompt, userPrompt, "")
+}
+
+// CallGrokConv is like CallGrok but sets the x-grok-conv-id header so
+// requests sharing a conv ID route to the same server, maximizing prompt
+// cache hits on a constant system prompt.
+func CallGrokConv(systemPrompt, userPrompt, convID string) (string, error) {
 	apiKey := config.GrokAPIKey
 	if apiKey == "" {
 		return "", fmt.Errorf("GROK_API_KEY environment variable not set")
@@ -39,7 +46,7 @@ func CallGrok(systemPrompt, userPrompt string) (string, error) {
 
 	payload := GrokRequest{
 		Model:           config.GrokModel,
-		ReasoningEffort: "low",
+		ReasoningEffort: config.GrokReasoningEffort,
 		Messages: []GrokMessage{
 			{
 				Role:    "system",
@@ -69,6 +76,9 @@ func CallGrok(systemPrompt, userPrompt string) (string, error) {
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+apiKey)
+	if convID != "" {
+		req.Header.Set("x-grok-conv-id", convID)
+	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)

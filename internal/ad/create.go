@@ -24,6 +24,7 @@ type CreateInput struct {
 	Description  string
 	LocationText string
 	Facets       map[string]facet.Value
+	Suggestions  []Suggestion
 }
 
 func CreateAd(input CreateInput) (int, error) {
@@ -83,9 +84,10 @@ func CreateAd(input CreateInput) (int, error) {
 	defer tx.Rollback()
 
 	result, err := tx.Exec(
-		`INSERT INTO ads (category_id, title, description, user_id, location_id)
-		 VALUES (?, ?, ?, ?, ?)`,
+		`INSERT INTO ads (category_id, title, description, user_id, location_id, suggestions)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
 		input.CategoryID, title, description, input.UserID, locationID,
+		suggestionsJSON(input.Suggestions),
 	)
 	if err != nil {
 		return 0, fmt.Errorf("create ad: %w", err)

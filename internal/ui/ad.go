@@ -399,6 +399,7 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 					),
 				),
 				Div(Class("text-base mt-2 whitespace-pre-wrap"), g.Text(d.Description)),
+				g.If(len(d.Suggestions) > 0, adSuggestionsTags(d.Suggestions)),
 			),
 		),
 	}
@@ -436,6 +437,20 @@ func imagesInput() g.Node {
 	return Div(
 		label("Images"),
 		inputText("images", "", true),
+	)
+}
+
+func adSuggestionsTags(suggestions []string) g.Node {
+	nodes := make([]g.Node, len(suggestions))
+	for i, s := range suggestions {
+		nodes[i] = Span(
+			Class("inline-block px-3 py-1 rounded-full border border-zinc-300 dark:border-zinc-600 text-sm text-zinc-700 dark:text-zinc-300"),
+			g.Text(s),
+		)
+	}
+	return Div(
+		Class("flex flex-wrap gap-2 mt-3"),
+		g.Group(nodes),
 	)
 }
 
