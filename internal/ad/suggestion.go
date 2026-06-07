@@ -162,14 +162,15 @@ func LoadSuggestions(a *Ad) error {
 }
 
 func GenerateSuggestions(in SuggestInput) ([]Suggestion, error) {
-	title := strings.TrimSpace(in.Title)
-	desc := strings.TrimSpace(in.Description)
-	if title == "" && desc == "" {
+	in.Title = strings.TrimSpace(in.Title)
+	in.Description = strings.TrimSpace(in.Description)
+	in.Location = strings.TrimSpace(in.Location)
+	if in.Title == "" && in.Description == "" {
 		return nil, nil
 	}
 
 	systemPrompt := suggestionsSystemPrompt(in.CategoryName, in.Facets)
-	userPrompt := suggestionsUserPrompt(in, title, desc)
+	userPrompt := suggestionsUserPrompt(in)
 
 	resp, err := grok.CallGrokConv(systemPrompt, userPrompt, suggestionsConvID(in.CategoryID))
 	if err != nil {
@@ -214,31 +215,6 @@ func GenerateSuggestions(in SuggestInput) ([]Suggestion, error) {
 		}
 	}
 	return out, nil
-}
-
-func suggestionsUserPrompt(in SuggestInput, title, desc string) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "Title: %s\n", title)
-	fmt.Fprintf(&b, "Description: %s\n", desc)
-	fmt.Fprintf(&b, "Location: %s\n", strings.TrimSpace(in.Location))
-
-	if len(in.AlreadySelected) > 0 {
-		b.WriteString("\nAlready selected (do not suggest again):\n")
-		for _, s := range in.AlreadySelected {
-			fmt.Fprintf(&b, "  %s\n", s.PromptDisplay())
-		}
-	}
-
-	remaining := maxSuggestions - len(in.AlreadySelected)
-	if remaining > 0 {
-		fmt.Fprintf(&b, "\nReturn at most %d new suggestions.\n", remaining)
-	}
-
-	b.WriteString(`
-Suggest missing specs as clickable choices. Skip attributes already covered
-in "Already selected". For multi-value specs not yet chosen, include each
-plausible option. For binary features, one entry with value "yes".`)
-	return b.String()
 }
 
 func formalFacetKeySet(facets map[string]string) map[string]struct{} {
