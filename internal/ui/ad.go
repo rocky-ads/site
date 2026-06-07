@@ -399,7 +399,7 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 						g.Text(d.Location),
 					),
 				),
-				Div(Class("text-base mt-2 whitespace-pre-wrap"), g.Text(d.Description)),
+				Div(Class("text-base mt-4 whitespace-pre-wrap"), g.Text(d.Description)),
 				g.If(len(d.Suggestions) > 0, adSuggestionsTags(d.Suggestions)),
 			),
 		),
