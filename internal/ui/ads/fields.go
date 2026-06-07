@@ -62,10 +62,9 @@ func formSelect(d facet.Def) g.Node {
 	attrs := []g.Node{
 		Name(d.Key),
 		ID("new-ad-" + d.Key),
-		Class("w-full p-2 border rounded-md"),
+		Class("w-36 p-2 border rounded-md"),
+		g.Group(opts),
 	}
-	attrs = append(attrs, requiredAttr(d.Required)...)
-	attrs = append(attrs, g.Group(opts))
 	return Select(attrs...)
 }
 
@@ -84,9 +83,6 @@ func formRadio(d facet.Def) g.Node {
 			Value(o),
 			ID(id),
 		}
-		if d.Required && i == 0 {
-			attrs = append(attrs, g.Attr("required", "required"))
-		}
 		nodes[i] = Label(
 			Class("flex items-center gap-2"),
 			Input(attrs...),
@@ -97,35 +93,31 @@ func formRadio(d facet.Def) g.Node {
 }
 
 func facetNumberInput(d facet.Def) g.Node {
-	attrs := []g.Node{
+	return Input(
 		Type("number"),
 		Name(d.Key),
-		ID("new-ad-" + d.Key),
+		ID("new-ad-"+d.Key),
 		Class("w-full p-2 border rounded-md"),
 		g.Attr("min", "0"),
 		g.Attr("step", "1"),
 		g.Attr("inputmode", "numeric"),
-	}
-	attrs = append(attrs, requiredAttr(d.Required)...)
-	return Input(attrs...)
+	)
 }
 
 func (f adFields) intWithUnitRow(d facet.Def) g.Node {
 	selected := d.FormDefaultUnit(f.defaults)
 	unitName := d.Key + "_unit"
-	numAttrs := []g.Node{
-		Type("number"),
-		Name(d.Key),
-		ID("new-ad-" + d.Key),
-		Class("w-36 p-2 border rounded-md"),
-		g.Attr("min", "0"),
-		g.Attr("step", "1"),
-		g.Attr("inputmode", "numeric"),
-	}
-	numAttrs = append(numAttrs, requiredAttr(d.Required)...)
 	return Div(
 		Class("flex flex-wrap items-center gap-2"),
-		Input(numAttrs...),
+		Input(
+			Type("number"),
+			Name(d.Key),
+			ID("new-ad-"+d.Key),
+			Class("w-36 p-2 border rounded-md"),
+			g.Attr("min", "0"),
+			g.Attr("step", "1"),
+			g.Attr("inputmode", "numeric"),
+		),
 		facetUnitSelect(unitName, selected, d.Units),
 	)
 }
@@ -156,37 +148,30 @@ func facetFieldBlock(d facet.Def, input g.Node) g.Node {
 }
 
 func fieldBlock(label string, input g.Node) g.Node {
-	return Div(Class("mt-3"), Label(Class("field-label"), g.Text(label)), input)
-}
-
-func requiredAttr(required bool) []g.Node {
-	if !required {
-		return nil
-	}
-	return []g.Node{g.Attr("required", "required")}
+	return Div(
+		Class("mt-3"),
+		Label(Class("field-label block mb-1"), g.Text(label)),
+		input,
+	)
 }
 
 func titleInput() g.Node {
-	max := strconv.Itoa(config.MaxAdTitleLength)
 	return Input(
 		Type("text"),
 		Name("title"),
 		ID("new-ad-title"),
 		Class("w-full p-2 border rounded-md"),
-		g.Attr("required", "required"),
-		g.Attr("maxlength", max),
+		g.Attr("maxlength", strconv.Itoa(config.MaxAdTitleLength)),
 	)
 }
 
 func descriptionInput() g.Node {
-	max := strconv.Itoa(config.MaxAdDescriptionLength)
 	return Textarea(
 		Name("description"),
 		ID("new-ad-description"),
 		Class("w-full p-2 border-0 rounded-none bg-transparent focus:outline-none focus:ring-0"),
 		g.Attr("rows", "6"),
-		g.Attr("required", "required"),
-		g.Attr("maxlength", max),
+		g.Attr("maxlength", strconv.Itoa(config.MaxAdDescriptionLength)),
 	)
 }
 

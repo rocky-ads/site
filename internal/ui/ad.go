@@ -437,7 +437,7 @@ func AdDeleted() []g.Node {
 func imagesInput() g.Node {
 	return Div(
 		label("Images"),
-		inputText("images", "", true),
+		inputText("images", "", false),
 	)
 }
 
@@ -459,6 +459,7 @@ func newAdForm(fields g.Node) g.Node {
 	return Form(
 		Class("space-y-8 mt-8"),
 		ID("new-ad-form"),
+		g.Attr("novalidate", ""),
 		hx.Post("/auth/ad/new"),
 		hx.Swap("none"),
 		fields,
