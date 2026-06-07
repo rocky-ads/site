@@ -15,10 +15,8 @@ import (
 const newAdPriceRowID = "new-ad-price-row"
 
 const (
-	asciiPattern          = `[\x20-\x7E]+`
-	asciiMultilinePattern = `[\x20-\x7E\n\r]+`
-	asciiMsg              = "Please enter printable ASCII characters only"
-	asciiMultilineMsg     = "Please enter printable ASCII characters only (line breaks allowed)"
+	asciiPattern = `[\x20-\x7E]+`
+	asciiMsg     = "Please enter printable ASCII characters only"
 )
 
 type adFields struct {
@@ -192,8 +190,6 @@ func titleInput() g.Node {
 
 func descriptionInput() g.Node {
 	max := strconv.Itoa(config.MaxAdDescriptionLength)
-	anchored := "^(?:" + asciiMultilinePattern + ")$"
-	check := `(function(el){var ok=new RegExp(` + strconv.Quote(anchored) + `).test(el.value);el.setCustomValidity(ok?'':` + strconv.Quote(asciiMultilineMsg) + `);}).call(null,this)`
 	return Textarea(
 		Name("description"),
 		ID("new-ad-description"),
@@ -201,10 +197,6 @@ func descriptionInput() g.Node {
 		g.Attr("rows", "6"),
 		g.Attr("required", "required"),
 		g.Attr("maxlength", max),
-		g.Attr("data-pattern-check", ""),
-		g.Attr("title", asciiMultilineMsg),
-		g.Attr("oninput", check),
-		g.Attr("onchange", check),
 	)
 }
 

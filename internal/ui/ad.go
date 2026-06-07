@@ -460,7 +460,6 @@ func newAdForm(fields g.Node) g.Node {
 		ID("new-ad-form"),
 		Method("POST"),
 		Action("/auth/ad/new"),
-		g.Attr("onsubmit", "document.querySelectorAll('#new-ad-form textarea[data-pattern-check]').forEach(function(el){el.oninput.call(el);});"),
 		fields,
 		imagesInput(),
 		standardButton(buttonProps{

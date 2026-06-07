@@ -12,10 +12,7 @@ import (
 	"github.com/rocky-ads/site/internal/location"
 )
 
-var (
-	printableASCII      = regexp.MustCompile(`^[\x20-\x7E]+$`)
-	printableASCIIMulti = regexp.MustCompile(`^[\x20-\x7E\n\r]+$`)
-)
+var printableASCII = regexp.MustCompile(`^[\x20-\x7E]+$`)
 
 type CreateInput struct {
 	CategoryID   int
@@ -34,7 +31,7 @@ func CreateAd(input CreateInput) (int, error) {
 	}
 
 	title := strings.TrimSpace(input.Title)
-	description := strings.TrimSpace(input.Description)
+	description := strings.TrimSpace(SanitizeDescription(input.Description))
 	if title == "" {
 		return 0, fmt.Errorf("title is required")
 	}
@@ -49,9 +46,6 @@ func CreateAd(input CreateInput) (int, error) {
 	}
 	if !printableASCII.MatchString(title) {
 		return 0, fmt.Errorf("title must contain printable ASCII characters only")
-	}
-	if !printableASCIIMulti.MatchString(description) {
-		return 0, fmt.Errorf("description must contain printable ASCII characters only")
 	}
 
 	defs := category.Facets()
