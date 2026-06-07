@@ -68,6 +68,11 @@ type Def struct {
 	Required   bool     // required on the new-ad form
 }
 
+// CardLabel reports whether this facet appears after the title on listing cards.
+func (d Def) CardLabel() bool {
+	return d.Key == "mileage" || d.Key == "hours"
+}
+
 // ValidUnit reports whether unit is allowed for this facet.
 func (d Def) ValidUnit(unit string) bool {
 	unit = strings.TrimSpace(unit)

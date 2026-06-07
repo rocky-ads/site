@@ -127,7 +127,7 @@ func adFacetLabel(a ad.Ad) string {
 }
 
 // adFacetLabels returns the non-price facet labels for an ad. When compact is
-// true it uses each facet's compact format; otherwise the full format.
+// true it keeps only card facets (e.g. mileage) and uses compact formatting.
 func adFacetLabels(a ad.Ad, compact bool) []string {
 	cat, err := ad.GetCategory(a.CategoryID)
 	if err != nil {
@@ -136,7 +136,7 @@ func adFacetLabels(a ad.Ad, compact bool) []string {
 
 	var labels []string
 	for _, d := range cat.Facets() {
-		if d.Key == "price" {
+		if d.Key == "price" || (compact && !d.CardLabel()) {
 			continue
 		}
 		v, ok := a.Facets[d.Key]

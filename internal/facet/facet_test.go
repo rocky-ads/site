@@ -215,3 +215,24 @@ func TestFormDefaultUnit(t *testing.T) {
 		t.Errorf("facet without units should return empty, got %q", got)
 	}
 }
+
+func TestCardLabel(t *testing.T) {
+	for _, key := range []string{"mileage", "hours"} {
+		d, ok := Get(key)
+		if !ok {
+			t.Fatalf("%s facet not registered", key)
+		}
+		if !d.CardLabel() {
+			t.Errorf("%s should appear on listing cards", key)
+		}
+	}
+	for _, key := range []string{"year", "condition", "price"} {
+		d, ok := Get(key)
+		if !ok {
+			t.Fatalf("%s facet not registered", key)
+		}
+		if d.CardLabel() {
+			t.Errorf("%s should not appear on listing cards", key)
+		}
+	}
+}
