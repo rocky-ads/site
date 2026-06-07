@@ -11,8 +11,6 @@ import (
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/local"
-	"github.com/rocky-ads/site/internal/ui"
-	uiads "github.com/rocky-ads/site/internal/ui/ads"
 )
 
 func CreateAdHandler(c *fiber.Ctx) error {
@@ -29,7 +27,7 @@ func CreateAdHandler(c *fiber.Ctx) error {
 
 	facets, err := parseCreateFacets(c, category)
 	if err != nil {
-		return showCreateAdError(c, category, err.Error())
+		return showCreateAdError(c, err.Error())
 	}
 
 	adID, err := ad.CreateAd(ad.CreateInput{
@@ -42,10 +40,15 @@ func CreateAdHandler(c *fiber.Ctx) error {
 		Suggestions:  parseCreateSuggestions(c),
 	})
 	if err != nil {
-		return showCreateAdError(c, category, err.Error())
+		return showCreateAdError(c, err.Error())
 	}
 
-	return c.Redirect("/ad/"+strconv.Itoa(adID), fiber.StatusFound)
+	redirect := "/ad/" + strconv.Itoa(adID)
+	if c.Get("HX-Request") != "" {
+		c.Set("HX-Redirect", redirect)
+		return c.SendStatus(fiber.StatusOK)
+	}
+	return c.Redirect(redirect, fiber.StatusFound)
 }
 
 func parseCreateFacets(c *fiber.Ctx, category ad.Category) (map[string]facet.Value, error) {
@@ -118,7 +121,6 @@ func parseOptionalFacet(raw string) (*int, error) {
 	return &value, nil
 }
 
-func showCreateAdError(c *fiber.Ctx, category ad.Category, errMsg string) error {
-	fieldsNode := uiads.NewAdFieldsPartial(category.Facets(), newAdFormDefaults(c))
-	return renderPage(c, "New Ad", append(ui.NewAd(categoryOption(category), fieldsNode), ui.ErrorDiv(errMsg)))
+func showCreateAdError(c *fiber.Ctx, errMsg string) error {
+	return showError(c, errMsg)
 }

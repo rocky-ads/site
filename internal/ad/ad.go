@@ -19,7 +19,7 @@ type Ad struct {
 	DeletedAt   *time.Time `db:"deleted_at"`
 	UserID      int        `db:"user_id"`
 	ImageCount  int        `db:"image_count"`
-	LocationID  int        `db:"location_id"`
+	LocationID  *int       `db:"location_id"`
 
 	// Location fields from join
 	City      string `db:"city"`
@@ -88,9 +88,9 @@ func GetAds(userID int, ids []int, loc *time.Location) ([]Ad, error) {
 			a.user_id,
 			a.image_count,
 			a.location_id,
-			l.city,
-			l.admin_area,
-			l.country,
+			COALESCE(l.city, '') AS city,
+			COALESCE(l.admin_area, '') AS admin_area,
+			COALESCE(l.country, '') AS country,
 			CASE WHEN b.user_id IS NOT NULL THEN 1 ELSE 0 END AS bookmarked,
 			COALESCE((
 				SELECT COUNT(*)

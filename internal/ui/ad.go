@@ -458,14 +458,18 @@ func newAdForm(fields g.Node) g.Node {
 	return Form(
 		Class("space-y-8 mt-8"),
 		ID("new-ad-form"),
-		Method("POST"),
-		Action("/auth/ad/new"),
+		hx.Post("/auth/ad/new"),
+		hx.Swap("none"),
 		fields,
 		imagesInput(),
-		standardButton(buttonProps{
-			Type: "submit",
-			Text: "Submit",
-		}),
+		Div(
+			Class("flex items-center gap-4"),
+			standardButton(buttonProps{
+				Type: "submit",
+				Text: "Submit",
+			}),
+			ErrorDiv(""),
+		),
 	)
 }
 
