@@ -91,15 +91,16 @@ func formatAdAge(t time.Time) string {
 func newBadge() g.Node {
 	return Span(
 		Class("px-2 py-0.5 rounded-full border border-orange-500 text-orange-500 text-xs font-medium"),
-		g.Text("New!"),
+		g.Text("Just Listed"),
 	)
 }
 
 func ageNode(createdAt time.Time) g.Node {
+	isNew := time.Since(createdAt) < 4*time.Hour
 	return Div(
 		Class("flex items-center gap-2"),
-		g.If(time.Since(createdAt) < 4*time.Hour, newBadge()),
-		g.Text(formatAdAge(createdAt)),
+		g.If(isNew, newBadge()),
+		g.If(!isNew, g.Text(formatAdAge(createdAt))),
 	)
 }
 
