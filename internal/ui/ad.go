@@ -377,7 +377,7 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 		Div(
 			Class("flex flex-col relative rounded-lg shadow-lg dark:shadow-xl dark:shadow-zinc-900/50 my-4 mx-2 col-span-full overflow-hidden bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700"),
 			g.If(d.ImageCount > 0, ImageNodeWithThumbnails(d.ID, d.ImageCount, 1, "1200w", "aspect-[4/3] w-full", true)),
-			g.If(d.ImageCount == 0, noImage("aspect-[4/3] w-full")),
+			g.If(d.ImageCount == 0, noImage("h-32 w-full")),
 			g.If(!d.Active, deletedWatermark()),
 			Div(
 				Class("p-6 flex flex-col bg-white dark:bg-zinc-800"),
