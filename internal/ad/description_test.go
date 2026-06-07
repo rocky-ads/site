@@ -2,7 +2,7 @@ package ad
 
 import "testing"
 
-func TestSanitizeDescription(t *testing.T) {
+func TestSanitizeAdText(t *testing.T) {
 	tests := []struct {
 		in, want string
 	}{
@@ -17,8 +17,8 @@ func TestSanitizeDescription(t *testing.T) {
 		{"tab\there", "tab here"},
 	}
 	for _, tt := range tests {
-		if got := SanitizeDescription(tt.in); got != tt.want {
-			t.Errorf("SanitizeDescription(%q) = %q, want %q", tt.in, got, tt.want)
+		if got := SanitizeAdText(tt.in); got != tt.want {
+			t.Errorf("SanitizeAdText(%q) = %q, want %q", tt.in, got, tt.want)
 		}
 	}
 }

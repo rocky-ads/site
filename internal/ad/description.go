@@ -5,9 +5,9 @@ import (
 	"unicode"
 )
 
-// SanitizeDescription normalizes common paste artifacts and removes
-// invisible or control characters unsuitable for stored ad text.
-func SanitizeDescription(s string) string {
+// SanitizeAdText normalizes common paste artifacts and removes
+// invisible or control characters unsuitable for stored ad title/description.
+func SanitizeAdText(s string) string {
 	var b strings.Builder
 	b.Grow(len(s))
 	for _, r := range s {

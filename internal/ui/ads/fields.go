@@ -14,11 +14,6 @@ import (
 
 const newAdPriceRowID = "new-ad-price-row"
 
-const (
-	asciiPattern = `[\x20-\x7E]+`
-	asciiMsg     = "Please enter printable ASCII characters only"
-)
-
 type adFields struct {
 	defaults facet.FormDefaults
 }
@@ -173,7 +168,6 @@ func requiredAttr(required bool) []g.Node {
 
 func titleInput() g.Node {
 	max := strconv.Itoa(config.MaxAdTitleLength)
-	quotedMsg := strconv.Quote(asciiMsg)
 	return Input(
 		Type("text"),
 		Name("title"),
@@ -181,10 +175,6 @@ func titleInput() g.Node {
 		Class("w-full p-2 border rounded-md"),
 		g.Attr("required", "required"),
 		g.Attr("maxlength", max),
-		g.Attr("pattern", asciiPattern),
-		g.Attr("title", asciiMsg),
-		g.Attr("oninvalid", "this.setCustomValidity("+quotedMsg+")"),
-		g.Attr("oninput", "this.setCustomValidity('')"),
 	)
 }
 

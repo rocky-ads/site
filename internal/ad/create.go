@@ -2,7 +2,6 @@ package ad
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 	"unicode/utf8"
 
@@ -11,8 +10,6 @@ import (
 	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/location"
 )
-
-var printableASCII = regexp.MustCompile(`^[\x20-\x7E]+$`)
 
 type CreateInput struct {
 	CategoryID   int
@@ -30,8 +27,8 @@ func CreateAd(input CreateInput) (int, error) {
 		return 0, err
 	}
 
-	title := strings.TrimSpace(input.Title)
-	description := strings.TrimSpace(SanitizeDescription(input.Description))
+	title := strings.TrimSpace(SanitizeAdText(input.Title))
+	description := strings.TrimSpace(SanitizeAdText(input.Description))
 	if title == "" {
 		return 0, fmt.Errorf("title is required")
 	}
@@ -44,10 +41,6 @@ func CreateAd(input CreateInput) (int, error) {
 	if utf8.RuneCountInString(description) > config.MaxAdDescriptionLength {
 		return 0, fmt.Errorf("description must be at most %d characters", config.MaxAdDescriptionLength)
 	}
-	if !printableASCII.MatchString(title) {
-		return 0, fmt.Errorf("title must contain printable ASCII characters only")
-	}
-
 	defs := category.Facets()
 	values := make(map[string]facet.Value, len(defs))
 	for _, d := range defs {
