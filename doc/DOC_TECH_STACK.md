@@ -97,9 +97,6 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
 ### Communication Services
 - **Twilio** - SMS messaging service
   - Account SID and Auth Token authentication
-- **Twilio SendGrid** - Email delivery service
-  - API key authentication
-  - Used for transactional emails
 
 ### AI/ML Services
 - **Google Gemini API** - Embedding generation

@@ -20,8 +20,8 @@ func TestGetAdNullLocationID(t *testing.T) {
 	if _, err := db.Exec(string(schema)); err != nil {
 		t.Fatal(err)
 	}
-	_, err = db.Exec(`INSERT INTO users (encrypted_name, name_nonce, name_hash, password_hash, password_salt, encrypted_phone, phone_nonce, phone_hash, encrypted_email, email_nonce)
-		VALUES (x'', x'', 'h', 'p', 's', x'', x'', 'ph', x'', x'')`)
+	_, err = db.Exec(`INSERT INTO users (encrypted_name, name_nonce, name_hash, password_hash, password_salt, encrypted_phone, phone_nonce, phone_hash)
+		VALUES (x'', x'', 'h', 'p', 's', x'', x'', 'ph')`)
 	if err != nil {
 		t.Fatal(err)
 	}

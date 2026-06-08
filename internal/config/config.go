@@ -87,10 +87,6 @@ var (
 	TwilioAuthToken  = getEnvWithDefault("TWILIO_AUTH_TOKEN", "")
 	TwilioFromNumber = getEnvWithDefault("TWILIO_FROM_NUMBER", "")
 
-	// Twilio SendGrid email configuration
-	TwilioSendGridAPIKey = getEnvWithDefault("TWILIO_SENDGRID_API_KEY", "")
-	TwilioFromEmail      = getEnvWithDefault("TWILIO_FROM_EMAIL", "")
-
 	// Twilio webhook URL - used for webhook callbacks and notification links
 	TwilioWebhookURL = getTwilioWebhookURL("TWILIO_WEBHOOK_URL")
 

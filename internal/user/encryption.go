@@ -20,11 +20,3 @@ func EncryptPhone(userID int, phone string) (encryptedPhone, nonce string, err e
 func decryptPhone(userID int, encryptedPhone, nonce string) (phone string, err error) {
 	return encryption.Decrypt(userID, encryptedPhone, nonce, config.UserEncryptionKey)
 }
-
-func EncryptEmailAddress(userID int, emailAddress string) (encryptedEmail, nonce string, err error) {
-	return encryption.Encrypt(userID, emailAddress, config.UserEncryptionKey)
-}
-
-func decryptEmailAddress(userID int, encryptedEmail, nonce string) (emailAddress string, err error) {
-	return encryption.Decrypt(userID, encryptedEmail, nonce, config.UserEncryptionKey)
-}

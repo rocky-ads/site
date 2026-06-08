@@ -22,15 +22,7 @@ CREATE TABLE users (
     phone_verified INTEGER NOT NULL DEFAULT 0,
     sms_opted_out INTEGER NOT NULL DEFAULT 0,
 
-    -- Encrypted email
-    encrypted_email BYTEA NOT NULL,
-    email_nonce BYTEA NOT NULL,
-    email_hash TEXT UNIQUE,
-
     -- Notification settings
-    notification_method TEXT NOT NULL DEFAULT 'sms',
-    summary_notifications_enabled INTEGER DEFAULT 0,
-    summary_notifications_frequency TEXT DEFAULT 'daily',
     last_sms_sent_at TIMESTAMP
 );
 CREATE INDEX idx_user_deleted_at ON users(deleted_at);

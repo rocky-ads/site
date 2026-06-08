@@ -127,10 +127,10 @@ func LoadUsers() error {
 		phoneE64 = phonenumbers.Format(num, phonenumbers.E164)
 
 		result, err := db.Exec(
-			"INSERT INTO users (encrypted_name, name_nonce, name_hash, password_hash, password_salt, password_algo, encrypted_phone, phone_nonce, phone_hash, encrypted_email, email_nonce, email_hash, is_admin) VALUES (?, ?, ?, ?, ?, 'argon2id', ?, ?, ?, ?, ?, ?, ?)",
+			"INSERT INTO users (encrypted_name, name_nonce, name_hash, password_hash, password_salt, password_algo, encrypted_phone, phone_nonce, phone_hash, is_admin) VALUES (?, ?, ?, ?, ?, 'argon2id', ?, ?, ?, ?)",
 			[]byte{}, []byte{}, db.HashString(u.Name), passwordHash, passwordSalt,
 			[]byte{}, []byte{}, db.HashString(phoneE64),
-			[]byte{}, []byte{}, nil, u.IsAdmin,
+			u.IsAdmin,
 		)
 		if err != nil {
 			return fmt.Errorf("inserting user %s: %w", u.Name, err)
@@ -149,29 +149,19 @@ func LoadUsers() error {
 		}
 		phoneHash := db.HashString(phoneE64)
 
-		encryptedEmail, emailNonce, err := encryption.Encrypt(int(userID), "", config.UserEncryptionKey)
-		if err != nil {
-			return fmt.Errorf("encrypting email for user %s: %w", u.Name, err)
-		}
-		var emailHash any = nil
-
 		encryptedNameBytes, _ := base64.StdEncoding.DecodeString(encryptedName)
 		nameNonceBytes, _ := base64.StdEncoding.DecodeString(nameNonce)
 		encryptedPhoneBytes, _ := base64.StdEncoding.DecodeString(encryptedPhone)
 		phoneNonceBytes, _ := base64.StdEncoding.DecodeString(phoneNonce)
-		encryptedEmailBytes, _ := base64.StdEncoding.DecodeString(encryptedEmail)
-		emailNonceBytes, _ := base64.StdEncoding.DecodeString(emailNonce)
 
 		_, err = db.Exec(
 			`UPDATE users SET 
 				encrypted_name = ?, name_nonce = ?, name_hash = ?,
 				encrypted_phone = ?, phone_nonce = ?, phone_hash = ?,
-				encrypted_email = ?, email_nonce = ?, email_hash = ?,
 				phone_verified = 1
 			WHERE id = ?`,
 			encryptedNameBytes, nameNonceBytes, nameHash,
 			encryptedPhoneBytes, phoneNonceBytes, phoneHash,
-			encryptedEmailBytes, emailNonceBytes, emailHash,
 			userID,
 		)
 		if err != nil {

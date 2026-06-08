@@ -13,13 +13,6 @@ import (
 	"github.com/rocky-ads/site/internal/phoneverification"
 )
 
-// Notification method constants
-const (
-	NotificationMethodSMS    = "sms"
-	NotificationMethodEmail  = "email"
-	NotificationMethodSignal = "signal"
-)
-
 // UserStatus represents the status of a user
 type UserStatus string
 
@@ -29,25 +22,21 @@ const (
 )
 
 type User struct {
-	ID                 int
-	Name               string // Decrypted (calculated field)
-	EncryptedName      string
-	NameNonce          string
-	PasswordHash       string
-	PasswordSalt       string
-	PasswordAlgo       string
-	PhoneE64           string // Decrypted (calculated field)
-	EncryptedPhone     string
-	PhoneNonce         string
-	EmailAddress       *string // Decrypted (calculated field)
-	EncryptedEmail     *string
-	EmailNonce         *string
-	CreatedAt          time.Time
-	IsAdmin            bool
-	PhoneVerified      bool
-	NotificationMethod string
-	SMSOptedOut        bool
-	DeletedAt          *time.Time
+	ID             int
+	Name           string // Decrypted (calculated field)
+	EncryptedName  string
+	NameNonce      string
+	PasswordHash   string
+	PasswordSalt   string
+	PasswordAlgo   string
+	PhoneE64       string // Decrypted (calculated field)
+	EncryptedPhone string
+	PhoneNonce     string
+	CreatedAt      time.Time
+	IsAdmin        bool
+	PhoneVerified  bool
+	SMSOptedOut    bool
+	DeletedAt      *time.Time
 }
 
 const userSelectFields = `SELECT 
@@ -60,9 +49,6 @@ const userSelectFields = `SELECT
 	password_salt,
 	password_algo,
 	phone_verified,
-	notification_method,
-	encrypted_email,
-	email_nonce,
 	created_at,
 	is_admin,
 	sms_opted_out,
@@ -71,7 +57,7 @@ FROM users`
 
 func processUserRow(id int, encryptedNameBytes, nameNonceBytes []byte,
 	encryptedPhoneBytes, phoneNonceBytes []byte, passwordHash, passwordSalt, passwordAlgo string,
-	phoneVerifiedInt int, notificationMethod string, encryptedEmailBytes, emailNonceBytes []byte,
+	phoneVerifiedInt int,
 	createdAt time.Time, isAdminInt int, smsOptedOutInt int, deletedAt *time.Time,
 ) (User, error) {
 	var u User
@@ -80,7 +66,6 @@ func processUserRow(id int, encryptedNameBytes, nameNonceBytes []byte,
 	u.PasswordHash = passwordHash
 	u.PasswordSalt = passwordSalt
 	u.PasswordAlgo = passwordAlgo
-	u.NotificationMethod = notificationMethod
 	u.CreatedAt = createdAt
 	u.DeletedAt = deletedAt
 
@@ -88,15 +73,6 @@ func processUserRow(id int, encryptedNameBytes, nameNonceBytes []byte,
 	u.NameNonce = base64.StdEncoding.EncodeToString(nameNonceBytes)
 	u.EncryptedPhone = base64.StdEncoding.EncodeToString(encryptedPhoneBytes)
 	u.PhoneNonce = base64.StdEncoding.EncodeToString(phoneNonceBytes)
-
-	if len(encryptedEmailBytes) > 0 {
-		encryptedEmailStr := base64.StdEncoding.EncodeToString(encryptedEmailBytes)
-		u.EncryptedEmail = &encryptedEmailStr
-	}
-	if len(emailNonceBytes) > 0 {
-		emailNonceStr := base64.StdEncoding.EncodeToString(emailNonceBytes)
-		u.EmailNonce = &emailNonceStr
-	}
 
 	u.PhoneVerified = phoneVerifiedInt == 1
 	u.IsAdmin = isAdminInt == 1
@@ -112,13 +88,6 @@ func processUserRow(id int, encryptedNameBytes, nameNonceBytes []byte,
 		return User{}, fmt.Errorf("failed to decrypt phone: %w", err)
 	}
 
-	if u.EncryptedEmail != nil && u.EmailNonce != nil {
-		email, err := decryptEmailAddress(u.ID, *u.EncryptedEmail, *u.EmailNonce)
-		if err == nil {
-			u.EmailAddress = &email
-		}
-	}
-
 	return u, nil
 }
 
@@ -131,9 +100,8 @@ func scanUserFields(s scanner) (User, error) {
 	var id int
 	var encryptedNameBytes, nameNonceBytes []byte
 	var encryptedPhoneBytes, phoneNonceBytes []byte
-	var encryptedEmailBytes, emailNonceBytes []byte
 	var phoneVerifiedInt, isAdminInt, smsOptedOutInt int
-	var passwordHash, passwordSalt, passwordAlgo, notificationMethod string
+	var passwordHash, passwordSalt, passwordAlgo string
 	var createdAt time.Time
 	var deletedAt *time.Time
 
@@ -147,9 +115,6 @@ func scanUserFields(s scanner) (User, error) {
 		&passwordSalt,
 		&passwordAlgo,
 		&phoneVerifiedInt,
-		&notificationMethod,
-		&encryptedEmailBytes,
-		&emailNonceBytes,
 		&createdAt,
 		&isAdminInt,
 		&smsOptedOutInt,
@@ -165,8 +130,6 @@ func scanUserFields(s scanner) (User, error) {
 		encryptedPhoneBytes, phoneNonceBytes,
 		passwordHash, passwordSalt, passwordAlgo,
 		phoneVerifiedInt,
-		notificationMethod,
-		encryptedEmailBytes, emailNonceBytes,
 		createdAt,
 		isAdminInt,
 		smsOptedOutInt,
@@ -250,13 +213,11 @@ func CreateUser(username, phoneE64, plainPassword string) (User, error) {
 			encrypted_name, name_nonce, name_hash,
 			password_hash, password_salt, password_algo,
 			encrypted_phone, phone_nonce, phone_hash,
-			encrypted_email, email_nonce, email_hash,
 			phone_verified, is_admin
-		) VALUES ($1, $2, $3, $4, $5, 'argon2id', $6, $7, $8, $9, $10, $11, 0, 0)
+		) VALUES ($1, $2, $3, $4, $5, 'argon2id', $6, $7, $8, 0, 0)
 	`, []byte{}, []byte{}, nameHash,
 		passwordHash, passwordSalt,
-		[]byte{}, []byte{}, phoneHash,
-		[]byte{}, []byte{}, nil)
+		[]byte{}, []byte{}, phoneHash)
 	if err != nil {
 		return User{}, fmt.Errorf("failed to create user: %w", err)
 	}
@@ -282,25 +243,15 @@ func CreateUser(username, phoneE64, plainPassword string) (User, error) {
 	encryptedPhoneBytes, _ := base64.StdEncoding.DecodeString(encryptedPhone)
 	phoneNonceBytes, _ := base64.StdEncoding.DecodeString(phoneNonce)
 
-	// Encrypt email (empty for new users)
-	encryptedEmail, emailNonce, err := EncryptEmailAddress(int(userID), "")
-	if err != nil {
-		return User{}, fmt.Errorf("failed to encrypt email: %w", err)
-	}
-	encryptedEmailBytes, _ := base64.StdEncoding.DecodeString(encryptedEmail)
-	emailNonceBytes, _ := base64.StdEncoding.DecodeString(emailNonce)
-
 	// Update user with encrypted fields and mark phone as verified
 	_, err = tx.Exec(`
 		UPDATE users SET
 			encrypted_name = $1, name_nonce = $2,
 			encrypted_phone = $3, phone_nonce = $4,
-			encrypted_email = $5, email_nonce = $6,
 			phone_verified = 1
-		WHERE id = $7
+		WHERE id = $5
 	`, encryptedNameBytes, nameNonceBytes,
 		encryptedPhoneBytes, phoneNonceBytes,
-		encryptedEmailBytes, emailNonceBytes,
 		userID)
 	if err != nil {
 		return User{}, fmt.Errorf("failed to update user with encrypted fields: %w", err)

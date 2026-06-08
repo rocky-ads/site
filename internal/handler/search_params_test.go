@@ -35,8 +35,8 @@ func TestParseSearchParamsFromStateMileage(t *testing.T) {
 	if err := ad.LoadCategories(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(`INSERT INTO users (encrypted_name, name_nonce, name_hash, password_hash, password_salt, encrypted_phone, phone_nonce, phone_hash, encrypted_email, email_nonce)
-		VALUES (x'', x'', 'h', 'p', 's', x'', x'', 'ph', x'', x'')`); err != nil {
+	if _, err := db.Exec(`INSERT INTO users (encrypted_name, name_nonce, name_hash, password_hash, password_salt, encrypted_phone, phone_nonce, phone_hash)
+		VALUES (x'', x'', 'h', 'p', 's', x'', x'', 'ph')`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.Exec(`INSERT INTO ads (id, category_id, title, description, user_id) VALUES (1, 2, 'Higher miles car', 'desc', 1)`); err != nil {
