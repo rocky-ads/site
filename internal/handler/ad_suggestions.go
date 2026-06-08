@@ -131,14 +131,25 @@ func mergeSuggestionOptions(
 }
 
 func parseAdSuggestions(c *fiber.Ctx) []ad.Suggestion {
+	name := uiads.SuggestionsFormName()
 	var suggestions []ad.Suggestion
-	c.Context().PostArgs().VisitAll(func(k, v []byte) {
-		if string(k) != uiads.SuggestionsFormName() {
-			return
-		}
-		if s, ok := ad.ParseFormSuggestion(string(v)); ok {
+	add := func(raw string) {
+		if s, ok := ad.ParseFormSuggestion(raw); ok {
 			suggestions = append(suggestions, s)
 		}
+	}
+	// Urlencoded request bodies expose fields via PostArgs.
+	c.Context().PostArgs().VisitAll(func(k, v []byte) {
+		if string(k) == name {
+			add(string(v))
+		}
 	})
+	// Multipart request bodies (the ad form uses them for image uploads)
+	// are not present in PostArgs, so read them from the multipart form.
+	if form, err := c.MultipartForm(); err == nil && form != nil {
+		for _, v := range form.Value[name] {
+			add(v)
+		}
+	}
 	return suggestions
 }

@@ -119,8 +119,8 @@ func dedupeSuggestions(suggestions []Suggestion) []Suggestion {
 	return out
 }
 
-// FormatSuggestionUpdates describes added and removed suggestion pills.
-func FormatSuggestionUpdates(old, new []Suggestion) string {
+// FormatTagUpdates describes added and removed tag pills.
+func FormatTagUpdates(old, new []Suggestion) string {
 	old = dedupeSuggestions(old)
 	new = dedupeSuggestions(new)
 	oldKeys := make(map[string]Suggestion, len(old))
@@ -155,12 +155,12 @@ func FormatSuggestionUpdates(old, new []Suggestion) string {
 	return strings.Join(parts, "\n")
 }
 
-// SuggestionsJSON serializes suggestions for storage in ads.suggestions.
-func SuggestionsJSON(suggestions []Suggestion) string {
-	return suggestionsJSON(suggestions)
+// TagsJSON serializes tags for storage in ads.tags.
+func TagsJSON(suggestions []Suggestion) string {
+	return tagsJSON(suggestions)
 }
 
-func suggestionsJSON(suggestions []Suggestion) string {
+func tagsJSON(suggestions []Suggestion) string {
 	suggestions = dedupeSuggestions(suggestions)
 	if len(suggestions) == 0 {
 		return "[]"
@@ -172,7 +172,7 @@ func suggestionsJSON(suggestions []Suggestion) string {
 	return string(data)
 }
 
-func parseSuggestionsJSON(raw string) ([]Suggestion, error) {
+func parseTagsJSON(raw string) ([]Suggestion, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" || raw == "null" {
 		return nil, nil
@@ -184,21 +184,21 @@ func parseSuggestionsJSON(raw string) ([]Suggestion, error) {
 	return dedupeSuggestions(suggestions), nil
 }
 
-// LoadSuggestions reads suggestions JSON for one ad (detail page only).
-func LoadSuggestions(a *Ad) error {
+// LoadTags reads tags JSON for one ad (detail page only).
+func LoadTags(a *Ad) error {
 	var raw string
 	err := db.QueryRow(
-		`SELECT COALESCE(suggestions, '[]') FROM ads WHERE id = ?`,
+		`SELECT COALESCE(tags, '[]') FROM ads WHERE id = ?`,
 		a.ID,
 	).Scan(&raw)
 	if err != nil {
-		return fmt.Errorf("load suggestions: %w", err)
+		return fmt.Errorf("load tags: %w", err)
 	}
-	suggestions, err := parseSuggestionsJSON(raw)
+	tags, err := parseTagsJSON(raw)
 	if err != nil {
 		return err
 	}
-	a.Suggestions = suggestions
+	a.Tags = tags
 	return nil
 }
 

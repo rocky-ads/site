@@ -31,16 +31,16 @@ func TestAssembleDescription(t *testing.T) {
 	}
 }
 
-func TestSeedSuggestionsJSON(t *testing.T) {
+func TestSeedTagsJSON(t *testing.T) {
 	aj := adJSON{
 		Suggestions: []SuggestionJSON{
 			{Label: "OEM", Value: "yes"},
 			{Label: "side", Value: "left"},
 		},
 	}
-	raw := ad.SuggestionsJSON(seedSuggestions(aj))
+	raw := ad.TagsJSON(seedSuggestions(aj))
 	if raw == "[]" {
-		t.Fatal("expected suggestions json")
+		t.Fatal("expected tags json")
 	}
 	if !strings.Contains(raw, "OEM") {
 		t.Fatalf("unexpected json: %s", raw)

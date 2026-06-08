@@ -32,7 +32,7 @@ func AdHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
 
-	if err := ad.LoadSuggestions(&a); err != nil {
+	if err := ad.LoadTags(&a); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
@@ -84,16 +84,16 @@ func adDetailFrom(a ad.Ad, reachable bool) ui.AdDetail {
 		Reachable:           reachable,
 		RockCount:           a.RockCount,
 		FacetLabel:          adFacetLabel(a),
-		Suggestions:         adSuggestionDisplays(a),
+		Tags:                adTagDisplays(a),
 	}
 }
 
-func adSuggestionDisplays(a ad.Ad) []string {
-	if len(a.Suggestions) == 0 {
+func adTagDisplays(a ad.Ad) []string {
+	if len(a.Tags) == 0 {
 		return nil
 	}
-	out := make([]string, len(a.Suggestions))
-	for i, s := range a.Suggestions {
+	out := make([]string, len(a.Tags))
+	for i, s := range a.Tags {
 		out[i] = s.Display()
 	}
 	return out

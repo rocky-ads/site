@@ -73,10 +73,10 @@ func CreateAd(input CreateInput) (int, error) {
 
 	result, err := tx.Exec(
 		`INSERT INTO ads (category_id, title, description, user_id, location_id,
-		 suggestions, image_count)
+		 tags, image_count)
 		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		input.CategoryID, title, description, input.UserID, locationID,
-		suggestionsJSON(input.Suggestions), input.ImageCount,
+		tagsJSON(input.Suggestions), input.ImageCount,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("create ad: %w", err)

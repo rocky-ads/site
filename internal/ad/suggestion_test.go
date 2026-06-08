@@ -57,13 +57,13 @@ func TestDedupeSuggestions(t *testing.T) {
 	}
 }
 
-func TestSuggestionsJSONRoundTrip(t *testing.T) {
+func TestTagsJSONRoundTrip(t *testing.T) {
 	in := []Suggestion{
 		{Label: "fuel", Value: "diesel"},
 		{Label: "transmission", Value: "automatic"},
 	}
-	raw := suggestionsJSON(in)
-	got, err := parseSuggestionsJSON(raw)
+	raw := tagsJSON(in)
+	got, err := parseTagsJSON(raw)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestUsefulSuggestion(t *testing.T) {
 	}
 }
 
-func TestFormatSuggestionUpdates(t *testing.T) {
+func TestFormatTagUpdates(t *testing.T) {
 	old := []Suggestion{
 		{Label: "Clean title", Value: "yes"},
 		{Label: "A/C", Value: "yes"},
@@ -122,14 +122,14 @@ func TestFormatSuggestionUpdates(t *testing.T) {
 		{Label: "Clean title", Value: "yes"},
 		{Label: "Manual", Value: "yes"},
 	}
-	body := FormatSuggestionUpdates(old, new)
+	body := FormatTagUpdates(old, new)
 	if !strings.Contains(body, "Added: Manual") {
 		t.Errorf("body = %q", body)
 	}
 	if !strings.Contains(body, "Removed: A/C") {
 		t.Errorf("body = %q", body)
 	}
-	if FormatSuggestionUpdates(old, old) != "" {
+	if FormatTagUpdates(old, old) != "" {
 		t.Fatal("expected no change body")
 	}
 }

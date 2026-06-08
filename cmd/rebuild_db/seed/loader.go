@@ -376,14 +376,14 @@ func loadAdsFromFile(categoryID int, filename string, usedIDs map[int]string) er
 		if err != nil {
 			return fmt.Errorf("assembling description for ad %d: %w", adID, err)
 		}
-		suggestionsJSON := adp.SuggestionsJSON(seedSuggestions(aj))
+		tagsJSON := adp.TagsJSON(seedSuggestions(aj))
 
 		_, err = db.Exec(
 			`INSERT INTO ads (id, category_id, title, description, created_at,
-			 user_id, image_count, location_id, suggestions)
+			 user_id, image_count, location_id, tags)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			adID, categoryID, ad.Title, description, createdAt,
-			testUserID, ad.ImageCount, locationID, suggestionsJSON,
+			testUserID, ad.ImageCount, locationID, tagsJSON,
 		)
 		if err != nil {
 			return fmt.Errorf("inserting ad with ID %d: %w", adID, err)

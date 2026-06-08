@@ -34,8 +34,8 @@ type Ad struct {
 	// Category-specific facet values
 	Facets map[string]facet.Value
 
-	// LLM suggestions; loaded lazily on ad detail (ads.suggestions JSON)
-	Suggestions []Suggestion
+	// Tags selected for the ad; loaded lazily on ad detail (ads.tags JSON)
+	Tags []Suggestion
 }
 
 func (a Ad) IsDeleted() bool {

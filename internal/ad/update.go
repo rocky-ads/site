@@ -58,7 +58,7 @@ func UpdateAd(input UpdateInput) error {
 		return fmt.Errorf("invalid description addition")
 	}
 
-	if err := LoadSuggestions(&a); err != nil {
+	if err := LoadTags(&a); err != nil {
 		return err
 	}
 
@@ -91,7 +91,7 @@ func UpdateAd(input UpdateInput) error {
 	) {
 		desc = AppendHistoryEntry(desc, e.label, e.body, now, input.Loc)
 	}
-	if body := FormatSuggestionUpdates(a.Suggestions, newSuggestions); body != "" {
+	if body := FormatTagUpdates(a.Tags, newSuggestions); body != "" {
 		desc = AppendHistoryEntry(
 			desc, "Description Tags", body, now, input.Loc,
 		)
@@ -120,9 +120,9 @@ func UpdateAd(input UpdateInput) error {
 	defer tx.Rollback()
 
 	_, err = tx.Exec(
-		`UPDATE ads SET title = ?, description = ?, location_id = ?, suggestions = ?
+		`UPDATE ads SET title = ?, description = ?, location_id = ?, tags = ?
 		 WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-		title, desc, locationID, suggestionsJSON(newSuggestions),
+		title, desc, locationID, tagsJSON(newSuggestions),
 		input.AdID, input.UserID,
 	)
 	if err != nil {

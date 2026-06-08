@@ -37,7 +37,7 @@ func EditAdHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	if err := ad.LoadSuggestions(&a); err != nil {
+	if err := ad.LoadTags(&a); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
@@ -125,7 +125,7 @@ func adFormValuesFrom(a ad.Ad) uiads.AdFormValues {
 			}
 		}
 	}
-	for _, s := range a.Suggestions {
+	for _, s := range a.Tags {
 		values.Suggestions = append(values.Suggestions, uiads.SuggestionOption{
 			Label:    s.Label,
 			Value:    s.Value,
