@@ -44,37 +44,17 @@ func SMSWebhookHandler(c *fiber.Ctx) error {
 		sms.SetMessageStatus(webhookData.MessageSid, status)
 	}
 
-	// Handle STOP/UNSTOP responses (incoming messages have Body populated)
+	// Incoming STOP invalidates pending verification codes only. SMS notification
+	// preference is controlled in app settings (sms_opted_out), not via carrier STOP.
 	body := strings.ToUpper(strings.TrimSpace(webhookData.Body))
 	phone := webhookData.From
 	if body == "STOP" {
-		logger.Info("Processing STOP request",
+		logger.Info("STOP received; invalidating verification codes only",
 			"component", "SMS", "from", phone)
-		if err := sms.HandleStopResponse(phone); err != nil {
-			logger.Error("Failed to handle STOP response",
-				"error", err, "component", "SMS")
-			return c.Status(500).JSON(fiber.Map{
-				"error": "Failed to process webhook",
-			})
-		}
-		// Invalidate any pending verification codes for this phone
-		err = phoneverification.InvalidateCodes(phone)
-		if err != nil {
+		if err := phoneverification.InvalidateCodes(phone); err != nil {
 			logger.Error("Failed to invalidate verification codes",
 				"error", err, "component", "SMS", "phoneNumber", phone)
 			return err
-		}
-
-	}
-	if body == "UNSTOP" {
-		logger.Info("Processing UNSTOP request",
-			"component", "SMS", "from", phone)
-		if err := sms.HandleUnstopResponse(phone); err != nil {
-			logger.Error("Failed to handle UNSTOP response",
-				"error", err, "component", "SMS")
-			return c.Status(500).JSON(fiber.Map{
-				"error": "Failed to process webhook",
-			})
 		}
 	}
 

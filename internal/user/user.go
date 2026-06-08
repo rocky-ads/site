@@ -285,6 +285,11 @@ func SetSMSOptOut(userID int, optedOut bool) error {
 	return err
 }
 
+func UpdatePassword(userID int, hash, salt, algo string) error {
+	_, err := db.Exec("UPDATE users SET password_hash = ?, password_salt = ?, password_algo = ? WHERE id = ?", hash, salt, algo, userID)
+	return err
+}
+
 // GetAllUsers returns all users (including deleted) with optional sorting
 func GetAllUsers(sortBy string, sortOrder string) ([]User, error) {
 	validSortColumns := map[string]bool{

@@ -9,7 +9,9 @@ import (
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/egg"
 	"github.com/rocky-ads/site/internal/local"
+	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/message"
+	"github.com/rocky-ads/site/internal/password"
 	"github.com/rocky-ads/site/internal/ui"
 	"github.com/rocky-ads/site/internal/user"
 )
@@ -89,7 +91,82 @@ func userMyAdsTabHandler(c *fiber.Ctx, activeTab string) error {
 }
 
 func UserSettingsHandler(c *fiber.Ctx) error {
-	return renderPage(c, "Settings", ui.SettingsPage())
+	userID := local.GetUserID(c)
+	u, err := user.GetByID(userID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "User not found")
+	}
+	return renderPage(c, "Settings", ui.SettingsPage(u.Name, u.PhoneE64, u.SMSOptedOut))
+}
+
+func NotificationsToggleHandler(c *fiber.Ctx) error {
+	userID := local.GetUserID(c)
+	enabled := c.FormValue("enabled") == "true"
+	if err := user.SetSMSOptOut(userID, !enabled); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to update notification preferences")
+	}
+	return render(c, ui.NotificationsSection(!enabled))
+}
+
+func ChangePasswordHandler(c *fiber.Ctx) error {
+	userID := local.GetUserID(c)
+	currentPassword := c.FormValue("current_password")
+	newPassword := c.FormValue("new_password")
+	confirmPassword := c.FormValue("confirm_password")
+
+	if err := password.ValidatePasswordChange(currentPassword, newPassword, confirmPassword); err != nil {
+		return showErrorTo(c, ui.SettingsChangePasswordErrorID, err.Error())
+	}
+
+	u, err := user.GetByID(userID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "User not found")
+	}
+
+	if !password.VerifyPassword(currentPassword, u.PasswordHash, u.PasswordSalt) {
+		return showErrorTo(c, ui.SettingsChangePasswordErrorID, "Invalid current password")
+	}
+
+	newHash, newSalt, err := password.HashPassword(newPassword)
+	if err != nil {
+		logger.Error("Failed to hash password", "error", err)
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to change password")
+	}
+
+	if err := user.UpdatePassword(userID, newHash, newSalt, "argon2id"); err != nil {
+		logger.Error("Failed to update password", "error", err)
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to change password")
+	}
+
+	logout(c)
+	c.Set("HX-Redirect", "/login")
+	return c.SendStatus(fiber.StatusOK)
+}
+
+func DeleteAccountHandler(c *fiber.Ctx) error {
+	userID := local.GetUserID(c)
+	passwd := c.FormValue("password")
+	if passwd == "" {
+		return showErrorTo(c, ui.SettingsDeleteAccountErrorID, "Password is required")
+	}
+
+	u, err := user.GetByID(userID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "User not found")
+	}
+
+	if !password.VerifyPassword(passwd, u.PasswordHash, u.PasswordSalt) {
+		return showErrorTo(c, ui.SettingsDeleteAccountErrorID, "Invalid password")
+	}
+
+	if err := user.DeleteUser(userID); err != nil {
+		logger.Error("Failed to delete account", "error", err, "userID", userID)
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to delete account")
+	}
+
+	logout(c)
+	c.Set("HX-Redirect", "/")
+	return c.SendStatus(fiber.StatusOK)
 }
 
 func UserAboutHandler(c *fiber.Ctx) error {

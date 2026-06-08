@@ -177,7 +177,7 @@ func RegisterStep1Handler(c *fiber.Ctx) error {
 		// Check if this is a blocked number error
 		if errors.Is(err, sms.ErrBlockedNumber) {
 			unstopMessage := fmt.Sprintf(
-				"This phone number was previously opted out of SMS messages. "+
+				"This phone number was previously opted out of text messages. "+
 					"To receive verification codes, please reply UNSTOP to %s from this phone number, then try registering again.",
 				config.TwilioFromNumber)
 			return showError(c, unstopMessage)

@@ -9,7 +9,11 @@ import (
 )
 
 func showError(c *fiber.Ctx, errMsg string) error {
-	return render(c, ui.ErrorDiv(errMsg))
+	return showErrorTo(c, "error", errMsg)
+}
+
+func showErrorTo(c *fiber.Ctx, elementID, errMsg string) error {
+	return render(c, ui.ErrorDivWithID(elementID, errMsg))
 }
 
 // ErrorPageHandler displays an error page based on query parameters

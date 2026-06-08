@@ -79,6 +79,9 @@ func setupApp() *fiber.App {
 	auth.Get("/user/myads/tab/:tab", handler.UserMyAdsTabHandler)
 	auth.Get("/user/messages", handler.UserMessagesHandler)
 	auth.Get("/user/settings", handler.UserSettingsHandler)
+	auth.Post("/user/settings/notifications", handler.NotificationsToggleHandler)
+	auth.Post("/user/settings/password", handler.ChangePasswordHandler)
+	auth.Post("/user/settings/delete", handler.DeleteAccountHandler)
 	auth.Get("/user/about", handler.UserAboutHandler)
 	auth.Get("/user/:id", handler.UserProfileHandler)
 	auth.Get("/user/:id/summary", handler.UserSummaryHandler)
@@ -151,6 +154,9 @@ func main() {
 		logger.Fatal("Failed to initialize ads", "error", err)
 	}
 
+	if err := sms.Init(); err != nil {
+		logger.Fatal("Failed to initialize SMS service", "error", err)
+	}
 	sms.StartSMSWorker()
 
 	app := setupApp()

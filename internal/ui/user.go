@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/rocky-ads/site/internal/config"
+	"github.com/rocky-ads/site/internal/password"
+	"github.com/rocky-ads/site/internal/phoneformat"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -252,22 +254,233 @@ func MyAdsContent(activeTab string, adNodes []g.Node) g.Node {
 	)
 }
 
-func SettingsPage() []g.Node {
+const (
+	SettingsChangePasswordErrorID = "change-password-error"
+	SettingsDeleteAccountErrorID  = "delete-account-error"
+)
+
+func settingsFormActions(button buttonProps, errorID string) g.Node {
+	return Div(
+		Class("flex items-center gap-4"),
+		standardButton(button),
+		ErrorDivWithID(errorID, ""),
+	)
+}
+
+func settingsSection(title string, children ...g.Node) g.Node {
+	nodes := []g.Node{
+		H2(Class("text-xl font-semibold mb-4"), g.Text(title)),
+	}
+	nodes = append(nodes, children...)
+	return Div(
+		Class("mt-8 p-6 border border-zinc-200 dark:border-zinc-700 rounded-lg"),
+		g.Group(nodes),
+	)
+}
+
+func settingsAccountRow(labelText string, value g.Node) g.Node {
+	return Div(
+		Class("flex items-center gap-6"),
+		Span(
+			Class("w-24 shrink-0 text-sm font-medium text-zinc-500 dark:text-zinc-400"),
+			g.Text(labelText),
+		),
+		value,
+	)
+}
+
+func settingsUserAvatar(userName string) g.Node {
+	return Span(
+		Class("bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-semibold text-sm shrink-0"),
+		g.Text(getUserInitial(userName)),
+	)
+}
+
+func settingsAccountSection(userName, phoneE64 string) g.Node {
+	return settingsSection("Account",
+		Div(
+			Class("space-y-4"),
+			settingsAccountRow("Username",
+				Div(
+					Class("flex items-center gap-2 min-w-0"),
+					settingsUserAvatar(userName),
+					Span(
+						Class("text-zinc-900 dark:text-zinc-100 font-medium"),
+						g.Text(userName),
+					),
+				),
+			),
+			settingsAccountRow("Phone",
+				Span(
+					Class("text-zinc-900 dark:text-zinc-100"),
+					g.Text(phoneformat.Display(phoneE64)),
+				),
+			),
+		),
+	)
+}
+
+func namedPasswordInput(name, autocomplete string) g.Node {
+	return Input(
+		Class("w-full p-2 border rounded-md dark:bg-zinc-800 dark:border-zinc-600"),
+		Type("password"),
+		Name(name),
+		MaxLength("32"),
+		g.Attr("autocomplete", autocomplete),
+		Required(),
+	)
+}
+
+func NotificationsSection(smsOptedOut bool) g.Node {
+	enabled := !smsOptedOut
+	statusClass := "text-green-600 dark:text-green-400"
+	statusText := "ON"
+	if smsOptedOut {
+		statusClass = "text-red-600 dark:text-red-400"
+		statusText = "OFF"
+	}
+
+	return Div(
+		ID("sms-notifications"),
+		Class("mt-8 p-6 border border-zinc-200 dark:border-zinc-700 rounded-lg"),
+		H2(Class("text-xl font-semibold mb-4"), g.Text("Notifications")),
+		Div(
+			Class("flex items-center justify-between gap-4"),
+			Div(
+				Class("flex items-center gap-3"),
+				Label(
+					Class("relative inline-flex items-center cursor-pointer"),
+					Input(
+						Type("checkbox"),
+						Name("enabled"),
+						Value("true"),
+						Class("sr-only peer"),
+						g.If(enabled, Checked()),
+						hx.Post("/auth/user/settings/notifications"),
+						hx.Target("#sms-notifications"),
+						hx.Swap("outerHTML"),
+						hx.Trigger("change"),
+					),
+					Span(
+						Class("w-11 h-6 bg-zinc-300 dark:bg-zinc-600 rounded-full peer peer-checked:bg-green-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"),
+					),
+				),
+				Span(Class("text-sm font-medium"), g.Text("Text messages")),
+			),
+			Span(
+				Class("text-sm font-semibold "+statusClass),
+				g.Text("Text messages: "+statusText),
+			),
+		),
+		g.If(enabled,
+			P(
+				Class("mt-4 text-sm"),
+				A(
+					Href("/auth/user/about#sms-notifications"),
+					Class("text-blue-600 dark:text-blue-400 hover:underline"),
+					g.Text("Why am I not getting text messages?"),
+				),
+			),
+		),
+	)
+}
+
+func SettingsPage(name, phoneE64 string, smsOptedOut bool) []g.Node {
 	return []g.Node{
 		pageTitle("Settings"),
-		Div(
-			Class("mt-8 text-center text-zinc-600 dark:text-zinc-400"),
-			P(g.Text("This page will show your settings.")),
+		settingsAccountSection(name, phoneE64),
+		NotificationsSection(smsOptedOut),
+		settingsSection("Change Password",
+			Form(
+				Class("space-y-4"),
+				hx.Post("/auth/user/settings/password"),
+				hx.Swap("none"),
+				Div(
+					label("Current Password"),
+					namedPasswordInput("current_password", "current-password"),
+				),
+				Div(
+					label("New Password"),
+					namedPasswordInput("new_password", "new-password"),
+					Span(
+						Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1 block"),
+						g.Text(password.StrengthRequirements),
+					),
+				),
+				Div(
+					label("Confirm New Password"),
+					namedPasswordInput("confirm_password", "new-password"),
+				),
+				settingsFormActions(buttonProps{
+					Type: "submit",
+					Text: "Change Password",
+				}, SettingsChangePasswordErrorID),
+			),
+		),
+		settingsSection("Delete Account",
+			P(
+				Class("text-sm text-zinc-600 dark:text-zinc-400 mb-4"),
+				g.Text("Permanently delete your account. This action cannot be undone."),
+			),
+			Form(
+				Class("space-y-4"),
+				hx.Post("/auth/user/settings/delete"),
+				hx.Swap("none"),
+				Div(
+					label("Password"),
+					namedPasswordInput("password", "current-password"),
+				),
+				settingsFormActions(buttonProps{
+					Type:  "submit",
+					Text:  "Delete My Account",
+					Class: "bg-red-600 hover:bg-red-700",
+					Attrs: []g.Node{
+						hx.Confirm("Are you sure you want to permanently delete your account? This cannot be undone."),
+					},
+				}, SettingsDeleteAccountErrorID),
+			),
 		),
 	}
 }
 
 func AboutPage() []g.Node {
+	fromNumber := config.TwilioFromNumber
+	smsResumeHelp := "If you previously replied STOP to a text message from us, your carrier may have blocked further texts. Text START to our number to resume delivery."
+	if fromNumber != "" {
+		smsResumeHelp = fmt.Sprintf(
+			"If you previously replied STOP to a text message from us, your carrier may have blocked further texts. Text START to %s to resume delivery.",
+			fromNumber,
+		)
+	}
+
 	return []g.Node{
 		pageTitle("About"),
 		Div(
-			Class("mt-8 text-center text-zinc-600 dark:text-zinc-400"),
-			P(g.Textf("This page will show information about %s.", config.ServerName)),
+			Class("mt-8 space-y-8 text-zinc-700 dark:text-zinc-300"),
+			P(g.Textf("Welcome to %s.", config.ServerName)),
+			Div(
+				ID("sms-notifications"),
+				H2(Class("text-xl font-semibold mb-3"), g.Text("FAQ")),
+				Div(
+					Class("space-y-2"),
+					H3(
+						Class("text-lg font-medium"),
+						g.Text("Why am I not getting text messages?"),
+					),
+					P(
+						Class("text-sm text-zinc-600 dark:text-zinc-400"),
+						g.Text("First, open Settings and confirm text messages are turned on."),
+					),
+					P(
+						Class("text-sm text-zinc-600 dark:text-zinc-400"),
+						g.Text(smsResumeHelp),
+					),
+					P(
+						Class("text-sm text-zinc-600 dark:text-zinc-400"),
+						g.Text("You can also turn notifications off or on anytime from Settings without texting STOP or START."),
+					),
+				),
+			),
 		),
 	}
 }
