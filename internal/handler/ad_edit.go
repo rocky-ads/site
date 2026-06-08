@@ -105,7 +105,7 @@ func adFormValuesFrom(a ad.Ad) uiads.AdFormValues {
 	values := uiads.AdFormValues{
 		Title:               a.Title,
 		OriginalDescription: ad.DisplayDescription(original),
-		Location:            adLocationText(a),
+		Location:            a.RawLocation,
 		PriceRow:            priceRowFromAd(a),
 		Facets:              make(map[string]string),
 		FacetUnits:          make(map[string]string),
@@ -133,19 +133,6 @@ func adFormValuesFrom(a ad.Ad) uiads.AdFormValues {
 		})
 	}
 	return values
-}
-
-func adLocationText(a ad.Ad) string {
-	if a.City == "" && a.AdminArea == "" {
-		return ""
-	}
-	if a.City != "" && a.AdminArea != "" {
-		return a.City + ", " + a.AdminArea
-	}
-	if a.City != "" {
-		return a.City
-	}
-	return a.AdminArea
 }
 
 func priceRowFromAd(a ad.Ad) uiads.PriceRowView {

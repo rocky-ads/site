@@ -11,6 +11,7 @@ import (
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/egg"
 	"github.com/rocky-ads/site/internal/local"
+	"github.com/rocky-ads/site/internal/location"
 	"github.com/rocky-ads/site/internal/message"
 	"github.com/rocky-ads/site/internal/param"
 	"github.com/rocky-ads/site/internal/ui"
@@ -66,13 +67,15 @@ func adDetailFrom(a ad.Ad, reachable bool) ui.AdDetail {
 		history[i] = ui.AdHistoryEntry{Header: e.Header, Body: e.Body}
 	}
 	return ui.AdDetail{
-		ID:                  a.ID,
-		OwnerID:             a.UserID,
-		ImageCount:          a.ImageCount,
-		PriceDisplay:        priceDisplay,
-		HasPrice:            hasPrice,
-		Title:               a.Title,
-		Location:            adLocation(a),
+		ID:           a.ID,
+		OwnerID:      a.UserID,
+		ImageCount:   a.ImageCount,
+		PriceDisplay: priceDisplay,
+		HasPrice:     hasPrice,
+		Title:        a.Title,
+		Location: location.DisplayText(
+			a.City, a.AdminArea, a.Country,
+		),
 		DescriptionOriginal: desc.Original,
 		DescriptionHistory:  history,
 		CreatedAt:           a.CreatedAt,

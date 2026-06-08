@@ -22,7 +22,7 @@ func TestSearchGeoFilterSQL(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = db.Exec(`INSERT INTO locations (raw_text, city, admin_area, country, latitude, longitude)
-		VALUES ('Denver, CO, US', 'Denver', 'CO', 'US', 39.7392, -104.9903)`)
+		VALUES ('Denver', 'Denver', 'CO', 'US', 39.7392, -104.9903)`)
 	if err != nil {
 		t.Fatal(err)
 	}

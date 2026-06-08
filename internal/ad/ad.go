@@ -22,9 +22,10 @@ type Ad struct {
 	LocationID  *int       `db:"location_id"`
 
 	// Location fields from join
-	City      string `db:"city"`
-	AdminArea string `db:"admin_area"`
-	Country   string `db:"country"`
+	City        string `db:"city"`
+	AdminArea   string `db:"admin_area"`
+	Country     string `db:"country"`
+	RawLocation string `db:"raw_location"`
 
 	// Computed fields
 	Bookmarked bool `db:"bookmarked"`
@@ -91,6 +92,7 @@ func GetAds(userID int, ids []int, loc *time.Location) ([]Ad, error) {
 			COALESCE(l.city, '') AS city,
 			COALESCE(l.admin_area, '') AS admin_area,
 			COALESCE(l.country, '') AS country,
+			COALESCE(l.raw_text, '') AS raw_location,
 			CASE WHEN b.user_id IS NOT NULL THEN 1 ELSE 0 END AS bookmarked,
 			COALESCE((
 				SELECT COUNT(*)

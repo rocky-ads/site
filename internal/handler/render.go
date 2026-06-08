@@ -13,6 +13,7 @@ import (
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/local"
+	"github.com/rocky-ads/site/internal/location"
 	"github.com/rocky-ads/site/internal/message"
 	"github.com/rocky-ads/site/internal/search"
 	"github.com/rocky-ads/site/internal/ui"
@@ -90,34 +91,11 @@ func adCardFrom(a ad.Ad, loc *time.Location) ui.AdCard {
 	}
 	return ui.AdCardFromFields(
 		a.ID, a.ImageCount, a.RockCount,
-		priceDisplay, a.Title, adLocation(a), adFacetLabel(a),
+		priceDisplay, a.Title,
+		location.DisplayText(a.City, a.AdminArea, a.Country), adFacetLabel(a),
 		hasPrice, a.CreatedAt.In(loc),
 		!a.IsDeleted(), a.Bookmarked,
 	)
-}
-
-// adLocation builds the display location string (flag + city/admin area) for an ad.
-func adLocation(a ad.Ad) string {
-	if a.City == "" && a.AdminArea == "" && a.Country == "" {
-		return ""
-	}
-
-	var locationText string
-	if a.City != "" && a.AdminArea != "" {
-		locationText = a.City + ", " + a.AdminArea
-	} else if a.City != "" {
-		locationText = a.City
-	} else if a.AdminArea != "" {
-		locationText = a.AdminArea
-	}
-
-	var flag string
-	if len(a.Country) == 2 {
-		code := strings.ToUpper(a.Country)
-		flag = string(rune(int32(code[0])-'A'+0x1F1E6)) + string(rune(int32(code[1])-'A'+0x1F1E6))
-	}
-
-	return flag + " " + locationText
 }
 
 // adFacetLabel returns the compact, non-price facet labels for a listing card,

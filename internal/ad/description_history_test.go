@@ -126,6 +126,18 @@ func TestBuildFieldChangeEntries(t *testing.T) {
 	}
 }
 
+func TestFormatLocationHistoryChangeNoOp(t *testing.T) {
+	old := Ad{
+		RawLocation: "97333",
+		City:        "Corvallis",
+		AdminArea:   "OR",
+		Country:     "US",
+	}
+	if body := formatLocationHistoryChange(old, "97333"); body != "" {
+		t.Fatalf("want no change, got %q", body)
+	}
+}
+
 func TestSanitizeStripsHistoryMarker(t *testing.T) {
 	if got := SanitizeAdText("before\u001eafter"); got != "beforeafter" {
 		t.Errorf("SanitizeAdText = %q", got)

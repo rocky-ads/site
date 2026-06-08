@@ -7,6 +7,7 @@ import (
 
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/facet"
+	"github.com/rocky-ads/site/internal/location"
 )
 
 // historyMarker prefixes each edit-history entry header (stripped from user input).
@@ -260,17 +261,22 @@ func formatLocationChange(oldText, newText string) string {
 	return fmt.Sprintf("Location changed from %s to %s", oldText, newText)
 }
 
-func locationDisplayText(a Ad) string {
-	if a.City == "" && a.AdminArea == "" {
+func formatLocationHistoryChange(oldAd Ad, newLocationText string) string {
+	oldRaw := strings.TrimSpace(oldAd.RawLocation)
+	newRaw := strings.TrimSpace(newLocationText)
+	if strings.EqualFold(oldRaw, newRaw) {
 		return ""
 	}
-	if a.City != "" && a.AdminArea != "" {
-		return a.City + ", " + a.AdminArea
+
+	oldDisplay := location.DisplayText(
+		oldAd.City, oldAd.AdminArea, oldAd.Country,
+	)
+	newDisplay := ""
+	if newRaw != "" {
+		display, _, _ := location.DisplayTextForInput(newRaw)
+		newDisplay = display
 	}
-	if a.City != "" {
-		return a.City
-	}
-	return a.AdminArea
+	return formatLocationChange(oldDisplay, newDisplay)
 }
 
 // BuildFieldChangeEntries returns history entry bodies for changed ad fields.
@@ -296,8 +302,7 @@ func BuildFieldChangeEntries(
 			body  string
 		}{"Title change", body})
 	}
-	oldLoc := locationDisplayText(oldAd)
-	if body := formatLocationChange(oldLoc, newLocationText); body != "" {
+	if body := formatLocationHistoryChange(oldAd, newLocationText); body != "" {
 		entries = append(entries, struct {
 			label string
 			body  string

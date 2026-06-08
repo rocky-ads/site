@@ -228,7 +228,7 @@ func (f adFields) locationInput() g.Node {
 		f.cfg.fieldID("location"),
 		"location",
 		f.cfg.Values.Location,
-		"City or state",
+		"City, State or ZIP",
 	)
 }
 

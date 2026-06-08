@@ -140,7 +140,7 @@ func searchLocationRadiusRow(f SearchFilters) g.Node {
 		Class("col-span-2 grid grid-cols-2 gap-4"),
 		Div(
 			Label(For("filter-location"), Class("field-label"), g.Text("Location")),
-			LocationInput("filter-location", "location", f.Location, "City or state"),
+			LocationInput("filter-location", "location", f.Location, "City, State or ZIP"),
 		),
 		Div(
 			Label(For("filter-radius"), Class("field-label"), g.Text(radiusLabel)),
