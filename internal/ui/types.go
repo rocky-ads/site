@@ -47,6 +47,7 @@ type AdDetail struct {
 	Reachable           bool
 	RockCount           int
 	FacetLabel          string
+	FacetDetails        []string // formal facets not shown in title or price row
 	Tags                []string
 }
 

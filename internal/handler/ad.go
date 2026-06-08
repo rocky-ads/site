@@ -84,6 +84,7 @@ func adDetailFrom(a ad.Ad, reachable bool) ui.AdDetail {
 		Reachable:           reachable,
 		RockCount:           a.RockCount,
 		FacetLabel:          adFacetLabel(a),
+		FacetDetails:        adDetailFacetDisplays(a),
 		Tags:                adTagDisplays(a),
 	}
 }

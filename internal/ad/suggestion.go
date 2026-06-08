@@ -30,6 +30,7 @@ type SuggestInput struct {
 	Description     string
 	Location        string
 	Facets          map[string]string // formal facet key -> display label
+	FormalFacets    []string          // filled formal fields, e.g. "Condition: Used - Good"
 	AlreadySelected []Suggestion
 }
 

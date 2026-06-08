@@ -1,9 +1,14 @@
 package handler
 
 import (
+	"strconv"
+	"strings"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cookie"
+	"github.com/rocky-ads/site/internal/currency"
+	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/param"
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
@@ -58,6 +63,7 @@ func suggestInputFrom(c *fiber.Ctx, categoryID int, category ad.Category, select
 	for _, d := range facets {
 		formalFacets[d.Key] = d.Label
 	}
+	facetValues := parseFormFacetValues(c, category)
 	return ad.SuggestInput{
 		CategoryID:      categoryID,
 		CategoryName:    category.Name,
@@ -65,8 +71,64 @@ func suggestInputFrom(c *fiber.Ctx, categoryID int, category ad.Category, select
 		Description:     c.FormValue("description"),
 		Location:        c.FormValue("location"),
 		Facets:          formalFacets,
+		FormalFacets:    ad.FormalFacetLines(category, facetValues),
 		AlreadySelected: selected,
 	}
+}
+
+// parseFormFacetValues reads facet values from the ad form without validation.
+func parseFormFacetValues(c *fiber.Ctx, category ad.Category) map[string]facet.Value {
+	values := make(map[string]facet.Value)
+	for _, d := range category.Facets() {
+		switch d.Kind {
+		case facet.Money:
+			if c.FormValue("price_free") == "1" {
+				amount := 0
+				code := currency.Normalize(c.FormValue("price_currency"))
+				if !currency.IsSupported(code) {
+					code = defaultCurrencyForUser(c)
+				}
+				values[d.Key] = facet.Value{Num: &amount, Text: &code}
+				continue
+			}
+			raw := strings.TrimSpace(c.FormValue(d.Key))
+			if raw == "" {
+				continue
+			}
+			n, err := strconv.Atoi(raw)
+			if err != nil || n < 0 {
+				continue
+			}
+			code := currency.Normalize(c.FormValue("price_currency"))
+			if !currency.IsSupported(code) {
+				code = defaultCurrencyForUser(c)
+			}
+			values[d.Key] = facet.Value{Num: &n, Text: &code}
+		case facet.Enum:
+			val := strings.TrimSpace(c.FormValue(d.Key))
+			if val != "" {
+				values[d.Key] = facet.Value{Text: &val}
+			}
+		default:
+			num, err := parseOptionalFacet(c.FormValue(d.Key))
+			if err != nil || num == nil {
+				continue
+			}
+			v := facet.Value{Num: num}
+			if len(d.Units) > 0 {
+				unit := strings.TrimSpace(c.FormValue(d.Key + "_unit"))
+				if unit == "" {
+					unit = distanceUnit(c)
+				}
+				if d.ValidUnit(unit) {
+					u := d.NormalizeUnit(unit)
+					v.Text = &u
+				}
+			}
+			values[d.Key] = v
+		}
+	}
+	return values
 }
 
 func parseSuggestionFormValues(c *fiber.Ctx) []ad.Suggestion {

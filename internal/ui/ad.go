@@ -415,7 +415,7 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 						g.Text(d.Location),
 					),
 				),
-				descriptionDisplay(d.DescriptionOriginal, d.Tags, d.DescriptionHistory),
+				descriptionDisplay(d.DescriptionOriginal, d.FacetDetails, d.Tags, d.DescriptionHistory),
 			),
 		),
 	}
@@ -423,14 +423,17 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 
 func descriptionDisplay(
 	original string,
+	facetDetails []string,
 	tags []string,
 	history []AdHistoryEntry,
 ) g.Node {
-	nodes := []g.Node{
-		Div(Class("whitespace-pre-wrap"), g.Text(original)),
+	var nodes []g.Node
+	if len(facetDetails) > 0 {
+		nodes = append(nodes, adFacetList(facetDetails))
 	}
+	nodes = append(nodes, Div(Class("whitespace-pre-wrap"), g.Text(original)))
 	if len(tags) > 0 {
-		nodes = append(nodes, adTags(tags))
+		nodes = append(nodes, adPills(tags, "mt-3"))
 	}
 	if len(history) > 0 {
 		entryNodes := make([]g.Node, len(history))
@@ -563,16 +566,27 @@ func imagesField(maxImagesPerAd int) g.Node {
 	)
 }
 
-func adTags(tags []string) g.Node {
-	nodes := make([]g.Node, len(tags))
-	for i, s := range tags {
+func adFacetList(items []string) g.Node {
+	listItems := make([]g.Node, len(items))
+	for i, s := range items {
+		listItems[i] = Li(g.Text(s))
+	}
+	return Ul(
+		Class("list-disc list-inside mb-3 text-sm text-zinc-700 dark:text-zinc-300"),
+		g.Group(listItems),
+	)
+}
+
+func adPills(labels []string, spacing string) g.Node {
+	nodes := make([]g.Node, len(labels))
+	for i, s := range labels {
 		nodes[i] = Span(
 			Class("inline-block px-3 py-1 rounded-full border border-zinc-300 dark:border-zinc-600 text-sm text-zinc-700 dark:text-zinc-300"),
 			g.Text(s),
 		)
 	}
 	return Div(
-		Class("flex flex-wrap gap-2 mt-3"),
+		Class("flex flex-wrap gap-2 "+spacing),
 		g.Group(nodes),
 	)
 }

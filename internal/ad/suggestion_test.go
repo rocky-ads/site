@@ -3,6 +3,8 @@ package ad
 import (
 	"strings"
 	"testing"
+
+	"github.com/rocky-ads/site/internal/facet"
 )
 
 func TestParseSuggestResponse(t *testing.T) {
@@ -110,6 +112,58 @@ func TestUsefulSuggestion(t *testing.T) {
 	}
 	if _, ok := usefulSuggestion(Suggestion{Label: "price", Value: "5000"}, facets); ok {
 		t.Fatal("formal facet should be rejected")
+	}
+}
+
+func TestFormalFacetLinesIncludesEmpty(t *testing.T) {
+	cat := Category{FacetKeys: []string{"year", "condition", "mileage", "price", "title_status"}}
+	year, mileage, price := 2026, 124, 14
+	km, usd := "km", "USD"
+	lines := FormalFacetLines(cat, map[string]facet.Value{
+		"year":    {Num: &year},
+		"mileage": {Num: &mileage, Text: &km},
+		"price":   {Num: &price, Text: &usd},
+	})
+	want := []string{
+		"Year: 2026",
+		"Condition:",
+		"Mileage: 124 km",
+		"Price: $ 14",
+		"Title Status:",
+	}
+	if len(lines) != len(want) {
+		t.Fatalf("lines=%v", lines)
+	}
+	for i, w := range want {
+		if lines[i] != w {
+			t.Errorf("line[%d] = %q, want %q", i, lines[i], w)
+		}
+	}
+}
+
+func TestSuggestionsUserPromptFormalFacets(t *testing.T) {
+	prompt := suggestionsUserPrompt(SuggestInput{
+		Title:       "1971 Chevrolet corvette",
+		Description: "Barn find",
+		Location:    "Denver",
+		FormalFacets: []string{
+			"Condition: Used - Good",
+			"Price: $13,950",
+			"Year: 1975",
+		},
+		AlreadySelected: []Suggestion{{Label: "transmission", Value: "manual"}},
+	})
+	for _, want := range []string{
+		"FORMAL FORM FIELDS (do not suggest)",
+		"Condition: Used - Good",
+		"Price: $13,950",
+		"Year: 1975",
+		"ALREADY SELECTED (do not suggest again)",
+		"transmission: manual",
+	} {
+		if !strings.Contains(prompt, want) {
+			t.Errorf("prompt missing %q:\n%s", want, prompt)
+		}
 	}
 }
 
