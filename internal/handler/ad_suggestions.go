@@ -20,9 +20,6 @@ func SuggestionsHandler(c *fiber.Ctx) error {
 
 func EditSuggestionsHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
-	if userID == 0 {
-		return redirectToLogin(c)
-	}
 
 	adID, err := param.GetAdID(c)
 	if err != nil {

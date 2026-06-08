@@ -14,9 +14,6 @@ import (
 
 func EditAdHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
-	if userID == 0 {
-		return redirectToLogin(c)
-	}
 
 	adID, err := param.GetAdID(c)
 	if err != nil {
@@ -53,9 +50,6 @@ func EditAdHandler(c *fiber.Ctx) error {
 
 func UpdateAdHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
-	if userID == 0 {
-		return redirectToLogin(c)
-	}
 
 	adID, err := param.GetAdID(c)
 	if err != nil {

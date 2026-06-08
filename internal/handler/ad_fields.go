@@ -15,11 +15,6 @@ import (
 )
 
 func NewAdHandler(c *fiber.Ctx) error {
-	userID := local.GetUserID(c)
-	if userID == 0 {
-		return redirectToLogin(c)
-	}
-
 	categoryID := cookie.GetCategoryID(c)
 	category, err := ad.GetCategory(categoryID)
 	if err != nil {
