@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/nyaruka/phonenumbers"
+	adp "github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/db"
@@ -249,23 +250,78 @@ func LoadAds(includeTestAds bool) error {
 	return nil
 }
 
+// HistoryEntryJSON is one description edit-history block in seed ad files.
+type HistoryEntryJSON struct {
+	Label string `json:"label"`
+	Body  string `json:"body"`
+	At    string `json:"at"`
+}
+
+// SuggestionJSON is one description tag in seed ad files.
+type SuggestionJSON struct {
+	Label string `json:"label"`
+	Value string `json:"value"`
+}
+
 // adJSON represents the flat JSON structure from ad-*.json files
 type adJSON struct {
-	ID          int                  `json:"id"`
-	Title       string               `json:"title"`
-	Description string               `json:"description,omitempty"`
-	Price       float64              `json:"price"`
-	CreatedAt   string               `json:"created_at"`
-	UserID      int                  `json:"user_id"`
-	ImageCount  int                  `json:"image_count"`
-	Location    LocationData         `json:"location"`
-	Facets      map[string]facetJSON `json:"facets,omitempty"`
+	ID                 int                  `json:"id"`
+	Title              string               `json:"title"`
+	Description        string               `json:"description,omitempty"`
+	DescriptionHistory []HistoryEntryJSON   `json:"description_history,omitempty"`
+	Suggestions        []SuggestionJSON     `json:"suggestions,omitempty"`
+	Price              float64              `json:"price"`
+	CreatedAt          string               `json:"created_at"`
+	UserID             int                  `json:"user_id"`
+	ImageCount         int                  `json:"image_count"`
+	Location           LocationData         `json:"location"`
+	Facets             map[string]facetJSON `json:"facets,omitempty"`
 }
 
 // facetJSON is a single facet value in a seed ad file (maps to ad_facets).
 type facetJSON struct {
 	Num  *int    `json:"num,omitempty"`
 	Text *string `json:"text,omitempty"`
+}
+
+var seedHistoryLocation *time.Location
+
+func init() {
+	loc, err := time.LoadLocation("America/Detroit")
+	if err != nil {
+		seedHistoryLocation = time.UTC
+		return
+	}
+	seedHistoryLocation = loc
+}
+
+// AssembleDescription applies seed history entries to the original body.
+func AssembleDescription(
+	original string,
+	history []HistoryEntryJSON,
+) (string, error) {
+	desc := original
+	for _, h := range history {
+		at, err := time.Parse(time.RFC3339, h.At)
+		if err != nil {
+			return "", fmt.Errorf("parsing history at %q: %w", h.At, err)
+		}
+		desc = adp.AppendHistoryEntry(
+			desc, h.Label, h.Body, at, seedHistoryLocation,
+		)
+	}
+	return desc, nil
+}
+
+func seedSuggestions(aj adJSON) []adp.Suggestion {
+	if len(aj.Suggestions) == 0 {
+		return nil
+	}
+	out := make([]adp.Suggestion, 0, len(aj.Suggestions))
+	for _, s := range aj.Suggestions {
+		out = append(out, adp.Suggestion{Label: s.Label, Value: s.Value})
+	}
+	return out
 }
 
 func convertAdJSON(aj adJSON) Ad {
@@ -324,9 +380,20 @@ func loadAdsFromFile(categoryID int, filename string, usedIDs map[int]string) er
 			return fmt.Errorf("parsing created_at: %w", err)
 		}
 
+		description, err := AssembleDescription(
+			ad.Description, aj.DescriptionHistory,
+		)
+		if err != nil {
+			return fmt.Errorf("assembling description for ad %d: %w", adID, err)
+		}
+		suggestionsJSON := adp.SuggestionsJSON(seedSuggestions(aj))
+
 		_, err = db.Exec(
-			"INSERT INTO ads (id, category_id, title, description, created_at, user_id, image_count, location_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-			adID, categoryID, ad.Title, ad.Description, createdAt, testUserID, ad.ImageCount, locationID,
+			`INSERT INTO ads (id, category_id, title, description, created_at,
+			 user_id, image_count, location_id, suggestions)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			adID, categoryID, ad.Title, description, createdAt,
+			testUserID, ad.ImageCount, locationID, suggestionsJSON,
 		)
 		if err != nil {
 			return fmt.Errorf("inserting ad with ID %d: %w", adID, err)

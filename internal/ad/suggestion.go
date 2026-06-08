@@ -155,6 +155,11 @@ func FormatSuggestionUpdates(old, new []Suggestion) string {
 	return strings.Join(parts, "\n")
 }
 
+// SuggestionsJSON serializes suggestions for storage in ads.suggestions.
+func SuggestionsJSON(suggestions []Suggestion) string {
+	return suggestionsJSON(suggestions)
+}
+
 func suggestionsJSON(suggestions []Suggestion) string {
 	suggestions = dedupeSuggestions(suggestions)
 	if len(suggestions) == 0 {
