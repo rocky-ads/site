@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/rocky-ads/site/internal/config"
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
@@ -496,10 +497,69 @@ func AdDeleted() []g.Node {
 	}
 }
 
-func imagesInput() g.Node {
+func imagesField(maxImagesPerAd int) g.Node {
 	return Div(
+		Class("space-y-2"),
 		label("Images"),
-		inputText("images", "", false),
+		Div(
+			Input(
+				Type("file"),
+				ID("images"),
+				Name("images"),
+				Class("hidden"),
+				g.Attr("accept", "image/*"),
+				g.Attr("multiple"),
+				g.Attr("onchange", "previewImages(this)"),
+			),
+			Div(
+				ID("upload-area"),
+				Class("border border-zinc-300 dark:border-zinc-600 rounded p-6 "+
+					"hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-zinc-800 "+
+					"transition-colors duration-200 cursor-pointer"),
+				g.Attr("onclick", "handleUploadClick()"),
+				g.Attr("ondragover", "event.preventDefault(); "+
+					"this.classList.add('border-blue-400', 'bg-blue-50')"),
+				g.Attr("ondragleave", "this.classList.remove('border-blue-400', "+
+					"'bg-blue-50')"),
+				g.Attr("ondrop", "event.preventDefault(); "+
+					"this.classList.remove('border-blue-400', 'bg-blue-50'); "+
+					"handleDrop(event)"),
+				Div(
+					ID("upload-content"),
+					Class("flex flex-col items-center space-y-4"),
+					Div(
+						Class("flex flex-col items-center space-y-2"),
+						Div(
+							Class("w-12 h-12 bg-blue-100 dark:bg-zinc-700 "+
+								"rounded-full flex items-center justify-center"),
+							g.Raw(`<svg class="w-6 h-6 text-blue-600 dark:text-blue-400" `+
+								`fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" `+
+								`stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+							</svg>`),
+						),
+						Div(
+							Class("text-lg font-medium text-zinc-700 dark:text-zinc-300"),
+							g.Text("Upload Images"),
+						),
+						Div(
+							Class("text-sm text-zinc-500 dark:text-zinc-400"),
+							g.Text("Click to browse or drag and drop"),
+						),
+					),
+				),
+				Div(
+					ID("image-preview"),
+					Class("hidden image-preview flex flex-row flex-wrap "+
+						"gap-2 justify-center mt-4"),
+				),
+			),
+			g.Raw(fmt.Sprintf(
+				`<script>const MAX_IMAGES_PER_AD = %d;</script>`,
+				maxImagesPerAd,
+			)),
+			g.Raw(`<script src="/js/image-preview.js" defer></script>`),
+		),
 	)
 }
 
@@ -523,14 +583,22 @@ func newAdForm(fields g.Node) g.Node {
 }
 
 func adForm(cfg uiads.AdFormConfig, fields g.Node) g.Node {
-	return Form(
+	formAttrs := []g.Node{
 		Class("space-y-8 mt-8"),
 		ID(cfg.FormID),
 		g.Attr("novalidate", ""),
 		hx.Post(cfg.PostURL),
 		hx.Swap("none"),
-		fields,
-		imagesInput(),
+	}
+	if cfg.Mode == uiads.AdFormCreate {
+		formAttrs = append(formAttrs, hx.Encoding("multipart/form-data"))
+	}
+
+	children := []g.Node{fields}
+	if cfg.Mode == uiads.AdFormCreate {
+		children = append(children, imagesField(config.MaxImagesPerAd))
+	}
+	children = append(children,
 		Div(
 			Class("flex items-center gap-4"),
 			standardButton(buttonProps{
@@ -540,6 +608,8 @@ func adForm(cfg uiads.AdFormConfig, fields g.Node) g.Node {
 			ErrorDiv(""),
 		),
 	)
+
+	return Form(append(formAttrs, g.Group(children))...)
 }
 
 func NewAd(category CategoryOption, fields g.Node) []g.Node {

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"mime/multipart"
 	"strconv"
 	"strings"
 
@@ -22,6 +23,11 @@ func CreateAdHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
+	imageFiles, err := parseAdImageFiles(c)
+	if err != nil {
+		return showCreateAdError(c, err.Error())
+	}
+
 	facets, err := parseAdFacets(c, category)
 	if err != nil {
 		return showCreateAdError(c, err.Error())
@@ -35,10 +41,13 @@ func CreateAdHandler(c *fiber.Ctx) error {
 		LocationText: c.FormValue("location"),
 		Facets:       facets,
 		Suggestions:  parseAdSuggestions(c),
+		ImageCount:   len(imageFiles),
 	})
 	if err != nil {
 		return showCreateAdError(c, err.Error())
 	}
+
+	uploadAdImages(adImageStore, adID, imageFiles)
 
 	redirect := "/ad/" + strconv.Itoa(adID)
 	if c.Get("HX-Request") != "" {
@@ -116,6 +125,27 @@ func parseOptionalFacet(raw string) (*int, error) {
 		return nil, err
 	}
 	return &value, nil
+}
+
+func parseAdImageFiles(c *fiber.Ctx) ([]*multipart.FileHeader, error) {
+	if !strings.HasPrefix(c.Get("Content-Type"), "multipart/form-data") {
+		return nil, nil
+	}
+	form, err := c.MultipartForm()
+	if err != nil {
+		return nil, fmt.Errorf("invalid form data")
+	}
+	if form == nil {
+		return nil, nil
+	}
+	files := form.File["images"]
+	if len(files) == 0 {
+		return nil, nil
+	}
+	if err := validateImageFiles(files); err != nil {
+		return nil, err
+	}
+	return files, nil
 }
 
 func showCreateAdError(c *fiber.Ctx, errMsg string) error {

@@ -36,7 +36,7 @@ func ErrorPageContent(code int, message string) []g.Node {
 func ErrorDiv(errMsg string) g.Node {
 	return Div(
 		ID("error"),
-		Class("text-red-500 text-sm"),
+		Class("text-red-500 text-lg"),
 		g.If(errMsg != "", hx.SwapOOB("true")),
 		g.If(errMsg != "", g.Text(errMsg)),
 	)

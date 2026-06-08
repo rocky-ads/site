@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	"image/png"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -30,6 +32,8 @@ import (
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/facet"
+	"github.com/rocky-ads/site/internal/handler"
+	"github.com/rocky-ads/site/internal/imagestore"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/user"
 )
@@ -37,6 +41,7 @@ import (
 var baseURL = "http://localhost:" + config.TestPort
 var testServer *fiber.App
 var testDBPath = "test.db"
+var testImageDir string
 
 // initDatabaseWithSchema initializes the database and loads the schema
 func initDatabaseWithSchema(dbPath string) error {
@@ -150,6 +155,15 @@ func TestMain(m *testing.M) {
 		panic(fmt.Sprintf("Failed to initialize ads: %v", err))
 	}
 
+	var err error
+	testImageDir, err = os.MkdirTemp("", "test-ad-images-*")
+	if err != nil {
+		db.Close()
+		os.Remove(testDBPath)
+		panic(fmt.Sprintf("Failed to create test image dir: %v", err))
+	}
+	handler.SetAdImageStore(imagestore.NewLocal(testImageDir))
+
 	// Setup test server
 	testServer = setupApp()
 
@@ -195,6 +209,10 @@ func TestMain(m *testing.M) {
 		if err := os.Remove(testDBPath); err != nil {
 			fmt.Printf("Warning: Failed to remove test database: %v\n", err)
 		}
+	}
+
+	if testImageDir != "" {
+		os.RemoveAll(testImageDir)
 	}
 
 	os.Exit(code)
@@ -342,6 +360,131 @@ func postFormRequest(t *testing.T, requestURL string, body map[string]interface{
 		return resp, map[string]interface{}{"raw": string(bodyRespBytes)}
 	}
 	return resp, result
+}
+
+type multipartUpload struct {
+	fieldName string
+	fileName  string
+	content   []byte
+}
+
+func postMultipartRequest(
+	t *testing.T,
+	requestURL string,
+	fields map[string]string,
+	uploads []multipartUpload,
+) (*http.Response, map[string]interface{}) {
+	t.Helper()
+	client := getTestClient()
+	baseURLParsed, _ := url.Parse(baseURL)
+
+	var csrfToken string
+	for _, cookie := range client.Jar.Cookies(baseURLParsed) {
+		if cookie.Name == "_csrf" {
+			csrfToken = cookie.Value
+			break
+		}
+	}
+	if csrfToken == "" {
+		getReq, err := http.NewRequest("GET", baseURL+"/health", nil)
+		if err != nil {
+			t.Fatalf("create GET request for CSRF token: %v", err)
+		}
+		getResp, err := client.Do(getReq)
+		if err != nil {
+			t.Fatalf("get CSRF token: %v", err)
+		}
+		getResp.Body.Close()
+		for _, cookie := range getResp.Cookies() {
+			if cookie.Name == "_csrf" {
+				csrfToken = cookie.Value
+				client.Jar.SetCookies(baseURLParsed, []*http.Cookie{
+					{
+						Name: cookie.Name, Value: cookie.Value,
+						Path: cookie.Path, Domain: cookie.Domain,
+						HttpOnly: cookie.HttpOnly, SameSite: cookie.SameSite,
+						Secure: false,
+					},
+				})
+				break
+			}
+		}
+	}
+	if csrfToken == "" {
+		t.Fatal("Failed to get CSRF token from cookie")
+	}
+
+	var bodyBuffer bytes.Buffer
+	writer := multipart.NewWriter(&bodyBuffer)
+	for k, v := range fields {
+		if err := writer.WriteField(k, v); err != nil {
+			t.Fatalf("write field %s: %v", k, err)
+		}
+	}
+	for _, u := range uploads {
+		part, err := writer.CreateFormFile(u.fieldName, u.fileName)
+		if err != nil {
+			t.Fatalf("create form file %s: %v", u.fileName, err)
+		}
+		if _, err := part.Write(u.content); err != nil {
+			t.Fatalf("write form file %s: %v", u.fileName, err)
+		}
+	}
+	writer.Close()
+
+	reqURL, err := url.Parse(requestURL)
+	if err != nil {
+		t.Fatalf("parse request URL: %v", err)
+	}
+
+	req, err := http.NewRequest("POST", requestURL, &bodyBuffer)
+	if err != nil {
+		t.Fatalf("create POST request: %v", err)
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("X-Csrf-Token", csrfToken)
+	for _, cookie := range client.Jar.Cookies(reqURL) {
+		req.AddCookie(cookie)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("POST request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	bodyRespBytes, _ := io.ReadAll(resp.Body)
+	var result map[string]interface{}
+	if err := json.Unmarshal(bodyRespBytes, &result); err != nil {
+		return resp, map[string]interface{}{"raw": string(bodyRespBytes)}
+	}
+	return resp, result
+}
+
+func minimalTestPNG(t *testing.T) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 100, 100))
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+func loginTestUser(t *testing.T, client *http.Client, baseURLParsed *url.URL) {
+	t.Helper()
+	clearCookie := &http.Cookie{
+		Name: "auth_token", Value: "", Path: "/", MaxAge: -1,
+		HttpOnly: true, Secure: false,
+	}
+	client.Jar.SetCookies(baseURLParsed, []*http.Cookie{clearCookie})
+	resp, _ := postFormRequest(t, baseURL+"/api/login", map[string]interface{}{
+		"username": "test",
+		"password": "test",
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("login failed with status %d", resp.StatusCode)
+	}
 }
 
 // Test Health Check
@@ -1197,6 +1340,125 @@ func adIDFromCreateResponse(t *testing.T, resp *http.Response, title string) str
 		t.Fatalf("create ad: status %d, lookup id: %v", resp.StatusCode, err)
 	}
 	return strconv.Itoa(id)
+}
+
+func TestCreateAdWithImages(t *testing.T) {
+	client := getTestClient()
+	baseURLParsed, _ := url.Parse(baseURL)
+	loginTestUser(t, client, baseURLParsed)
+
+	categoryCookie := &http.Cookie{
+		Name: "category", Value: "6", Path: "/",
+		HttpOnly: true, Secure: false,
+	}
+	client.Jar.SetCookies(baseURLParsed, []*http.Cookie{categoryCookie})
+
+	pngData := minimalTestPNG(t)
+	fields := map[string]string{
+		"title":          "Ad With Images",
+		"description":    "Listing with uploaded photos.",
+		"year":           "2020",
+		"price":          "15000",
+		"price_currency": "USD",
+		"mileage":        "12000",
+		"mileage_unit":   "mi",
+		"location":       "Los Angeles",
+	}
+	uploads := []multipartUpload{
+		{fieldName: "images", fileName: "one.png", content: pngData},
+		{fieldName: "images", fileName: "two.png", content: pngData},
+	}
+
+	resp, result := postMultipartRequest(t, baseURL+"/auth/ad/new", fields, uploads)
+	if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusOK {
+		raw, _ := result["raw"].(string)
+		t.Fatalf("expected redirect or success, got %d body=%q", resp.StatusCode, raw)
+	}
+	if resp.StatusCode == http.StatusOK {
+		raw, _ := result["raw"].(string)
+		if strings.Contains(raw, "error") || strings.Contains(raw, "required") {
+			t.Fatalf("create failed: %q", raw)
+		}
+	}
+
+	adID := adIDFromCreateResponse(t, resp, "Ad With Images")
+	var imageCount int
+	if err := db.QueryRow(
+		"SELECT image_count FROM ads WHERE id = ?", adID,
+	).Scan(&imageCount); err != nil {
+		t.Fatal(err)
+	}
+	if imageCount != 2 {
+		t.Fatalf("expected image_count 2, got %d", imageCount)
+	}
+
+	for _, size := range []string{"160w", "480w", "1200w"} {
+		for idx := 1; idx <= 2; idx++ {
+			path := filepath.Join(
+				testImageDir, adID,
+				fmt.Sprintf("%d-%s.webp", idx, size),
+			)
+			if _, err := os.Stat(path); err != nil {
+				t.Errorf("missing image file %s: %v", path, err)
+			}
+		}
+	}
+}
+
+func TestCreateAdImageValidation(t *testing.T) {
+	client := getTestClient()
+	baseURLParsed, _ := url.Parse(baseURL)
+	loginTestUser(t, client, baseURLParsed)
+
+	categoryCookie := &http.Cookie{
+		Name: "category", Value: "6", Path: "/",
+		HttpOnly: true, Secure: false,
+	}
+	client.Jar.SetCookies(baseURLParsed, []*http.Cookie{categoryCookie})
+
+	baseFields := map[string]string{
+		"title":          "Bad Image Ad",
+		"description":    "Should not be created.",
+		"year":           "2020",
+		"price":          "15000",
+		"price_currency": "USD",
+		"mileage":        "12000",
+		"mileage_unit":   "mi",
+	}
+
+	t.Run("invalid extension", func(t *testing.T) {
+		resp, result := postMultipartRequest(t, baseURL+"/auth/ad/new", baseFields,
+			[]multipartUpload{
+				{fieldName: "images", fileName: "notes.txt", content: []byte("not an image")},
+			})
+		if resp.StatusCode == http.StatusFound {
+			t.Fatal("expected validation failure, got redirect")
+		}
+		raw, _ := result["raw"].(string)
+		if !strings.Contains(raw, "invalid extension") {
+			t.Fatalf("expected extension error, body=%q", raw)
+		}
+	})
+
+	t.Run("too many images", func(t *testing.T) {
+		pngData := minimalTestPNG(t)
+		uploads := make([]multipartUpload, config.MaxImagesPerAd+1)
+		for i := range uploads {
+			uploads[i] = multipartUpload{
+				fieldName: "images",
+				fileName:  fmt.Sprintf("img%d.png", i),
+				content:   pngData,
+			}
+		}
+		resp, result := postMultipartRequest(t, baseURL+"/auth/ad/new", baseFields, uploads)
+		if resp.StatusCode == http.StatusFound {
+			t.Fatal("expected validation failure, got redirect")
+		}
+		raw, _ := result["raw"].(string)
+		if !strings.Contains(raw, "too many images") {
+			t.Fatalf("expected count error, body=%q", raw)
+		}
+	})
 }
 
 func TestUpdateAd(t *testing.T) {
