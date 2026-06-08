@@ -112,3 +112,24 @@ func TestUsefulSuggestion(t *testing.T) {
 		t.Fatal("formal facet should be rejected")
 	}
 }
+
+func TestFormatSuggestionUpdates(t *testing.T) {
+	old := []Suggestion{
+		{Label: "Clean title", Value: "yes"},
+		{Label: "A/C", Value: "yes"},
+	}
+	new := []Suggestion{
+		{Label: "Clean title", Value: "yes"},
+		{Label: "Manual", Value: "yes"},
+	}
+	body := FormatSuggestionUpdates(old, new)
+	if !strings.Contains(body, "Added: Manual") {
+		t.Errorf("body = %q", body)
+	}
+	if !strings.Contains(body, "Removed: A/C") {
+		t.Errorf("body = %q", body)
+	}
+	if FormatSuggestionUpdates(old, old) != "" {
+		t.Fatal("expected no change body")
+	}
+}

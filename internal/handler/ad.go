@@ -60,22 +60,28 @@ func adDetailFrom(a ad.Ad, reachable bool) ui.AdDetail {
 	if hasPrice {
 		priceDisplay = currency.Format(price, priceCurrency)
 	}
+	desc := ad.ParseDescriptionForDisplay(a.Description)
+	history := make([]ui.AdHistoryEntry, len(desc.History))
+	for i, e := range desc.History {
+		history[i] = ui.AdHistoryEntry{Header: e.Header, Body: e.Body}
+	}
 	return ui.AdDetail{
-		ID:           a.ID,
-		OwnerID:      a.UserID,
-		ImageCount:   a.ImageCount,
-		PriceDisplay: priceDisplay,
-		HasPrice:     hasPrice,
-		Title:        a.Title,
-		Location:     adLocation(a),
-		Description:  a.Description,
-		CreatedAt:    a.CreatedAt,
-		Bookmarked:   a.Bookmarked,
-		Active:       !a.IsDeleted(),
-		Reachable:    reachable,
-		RockCount:    a.RockCount,
-		FacetLabels:  adFacetLabels(a, false),
-		Suggestions:  adSuggestionDisplays(a),
+		ID:                  a.ID,
+		OwnerID:             a.UserID,
+		ImageCount:          a.ImageCount,
+		PriceDisplay:        priceDisplay,
+		HasPrice:            hasPrice,
+		Title:               a.Title,
+		Location:            adLocation(a),
+		DescriptionOriginal: desc.Original,
+		DescriptionHistory:  history,
+		CreatedAt:           a.CreatedAt,
+		Bookmarked:          a.Bookmarked,
+		Active:              !a.IsDeleted(),
+		Reachable:           reachable,
+		RockCount:           a.RockCount,
+		FacetLabel:          adFacetLabel(a),
+		Suggestions:         adSuggestionDisplays(a),
 	}
 }
 

@@ -12,33 +12,78 @@ const (
 	suggestionsFormName = "suggestion"
 )
 
-func descriptionWithSuggestionsBox() g.Node {
+func descriptionWithSuggestionsBox(cfg AdFormConfig) g.Node {
 	return Div(
 		Class("w-full border rounded-md overflow-hidden"),
-		descriptionInput(),
+		descriptionInput(cfg),
+		suggestionsRow(cfg, cfg.Values.Suggestions),
+	)
+}
+
+func editDescriptionWithSuggestionsBox(cfg AdFormConfig) g.Node {
+	nodes := []g.Node{
 		Div(
-			Class("flex items-start gap-2 p-2 border-t"),
-			Div(
-				Class("shrink-0 flex flex-col gap-2"),
-				suggestionsButton(),
-				suggestionsIndicator(),
-			),
-			Div(
-				ID(adSuggestionsID),
-				Class("flex flex-wrap gap-2 flex-1 min-w-0"),
-			),
+			Class("p-2 bg-zinc-50 dark:bg-zinc-900 whitespace-pre-wrap "+
+				"text-zinc-700 dark:text-zinc-300"),
+			g.Text(cfg.Values.OriginalDescription),
+		),
+		descriptionContextInput(cfg),
+		suggestionsRow(cfg, cfg.Values.Suggestions),
+	}
+	return Div(
+		Class("w-full border rounded-md overflow-hidden"),
+		g.Group(nodes),
+	)
+}
+
+func descriptionContextInput(cfg AdFormConfig) g.Node {
+	return Textarea(
+		Name("description"),
+		Class("hidden"),
+		g.Attr("aria-hidden", "true"),
+		g.Attr("tabindex", "-1"),
+		g.Text(cfg.Values.OriginalDescription),
+	)
+}
+
+func suggestionsRow(cfg AdFormConfig, selected []SuggestionOption) g.Node {
+	var initial g.Node
+	if len(selected) > 0 {
+		initial = SuggestionsPartial(selected)
+	}
+	return Div(
+		Class("flex items-start gap-2 p-2 border-t"),
+		Div(
+			Class("shrink-0 flex flex-col gap-2"),
+			suggestionsButton(cfg),
+			suggestionsIndicator(),
+		),
+		Div(
+			ID(adSuggestionsID),
+			Class("flex flex-wrap gap-2 flex-1 min-w-0"),
+			initial,
 		),
 	)
 }
 
-func suggestionsButton() g.Node {
+func descriptionInput(cfg AdFormConfig) g.Node {
+	return Textarea(
+		Name("description"),
+		ID(cfg.fieldID("description")),
+		Class("w-full p-2 border-0 rounded-none bg-transparent focus:outline-none focus:ring-0"),
+		g.Attr("rows", "6"),
+		g.Attr("maxlength", "1000"),
+	)
+}
+
+func suggestionsButton(cfg AdFormConfig) g.Node {
 	return Button(
 		Type("button"),
 		Class("inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm whitespace-nowrap"),
-		hx.Get("/auth/ad/new/suggestions"),
+		hx.Get(cfg.SuggestionsURL),
 		hx.Target("#"+adSuggestionsID),
 		hx.Swap("innerHTML"),
-		hx.Include("#new-ad-form"),
+		hx.Include("#"+cfg.FormID),
 		hx.Indicator("#"+adSuggestionsIndicatorID),
 		Img(
 			Src("/images/wand.svg"),

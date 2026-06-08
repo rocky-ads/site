@@ -1,8 +1,12 @@
 package ads
 
-import "github.com/rocky-ads/site/internal/facet"
+import (
+	"fmt"
 
-// PriceRowView holds state for the new-ad price row (initial render and HTMX swaps).
+	"github.com/rocky-ads/site/internal/facet"
+)
+
+// PriceRowView holds state for the price row (initial render and HTMX swaps).
 type PriceRowView struct {
 	IsFree   bool
 	Amount   string
@@ -14,7 +18,7 @@ type SearchFilters struct {
 	Facets        map[string]facet.Filter
 	Location      string
 	Radius        int
-	RadiusUnit    string // "mi" or "km"
+	RadiusUnit    string
 	RadiusOptions []int
 }
 
@@ -23,4 +27,91 @@ type SuggestionOption struct {
 	Label    string
 	Value    string
 	Selected bool
+}
+
+type AdFormMode int
+
+const (
+	AdFormCreate AdFormMode = iota
+	AdFormEdit
+)
+
+// AdFormValues holds pre-filled field values for edit mode.
+type AdFormValues struct {
+	Title               string
+	OriginalDescription string
+	Location            string
+	Facets              map[string]string
+	FacetUnits          map[string]string
+	PriceRow            PriceRowView
+	Suggestions         []SuggestionOption
+}
+
+// AdFormConfig configures shared create/edit ad form rendering.
+type AdFormConfig struct {
+	Mode           AdFormMode
+	AdID           int
+	FormID         string
+	FieldPrefix    string
+	PostURL        string
+	PriceFieldURL  string
+	SuggestionsURL string
+	SubmitLabel    string
+	Values         AdFormValues
+	Defaults       facet.FormDefaults
+}
+
+const (
+	createFormID      = "new-ad-form"
+	createFieldPrefix = "new-ad"
+	priceFieldURL     = "/auth/ad/new/price-field"
+	adPriceRowID      = "ad-price-row"
+)
+
+// NewFormConfig returns config for the create-ad form.
+func NewFormConfig(defaults facet.FormDefaults) AdFormConfig {
+	return AdFormConfig{
+		Mode:           AdFormCreate,
+		FormID:         createFormID,
+		FieldPrefix:    createFieldPrefix,
+		PostURL:        "/auth/ad/new",
+		PriceFieldURL:  priceFieldURL,
+		SuggestionsURL: "/auth/ad/new/suggestions",
+		SubmitLabel:    "Submit",
+		Defaults:       defaults,
+	}
+}
+
+// EditFormConfig returns config for the edit-ad form.
+func EditFormConfig(
+	adID int,
+	values AdFormValues,
+	defaults facet.FormDefaults,
+) AdFormConfig {
+	if values.Facets == nil {
+		values.Facets = make(map[string]string)
+	}
+	if values.FacetUnits == nil {
+		values.FacetUnits = make(map[string]string)
+	}
+	return AdFormConfig{
+		Mode:           AdFormEdit,
+		AdID:           adID,
+		FormID:         "edit-ad-form",
+		FieldPrefix:    "edit-ad",
+		PostURL:        fmt.Sprintf("/auth/ad/%d/edit", adID),
+		PriceFieldURL:  priceFieldURL,
+		SuggestionsURL: fmt.Sprintf("/auth/ad/%d/edit/suggestions", adID),
+		SubmitLabel:    "Update",
+		Values:         values,
+		Defaults:       defaults,
+	}
+}
+
+func (c AdFormConfig) fieldID(name string) string {
+	return c.FieldPrefix + "-" + name
+}
+
+func (c AdFormConfig) priceRowID() string {
+	return adPriceRowID
 }

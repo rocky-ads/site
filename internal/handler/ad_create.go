@@ -25,7 +25,7 @@ func CreateAdHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	facets, err := parseCreateFacets(c, category)
+	facets, err := parseAdFacets(c, category)
 	if err != nil {
 		return showCreateAdError(c, err.Error())
 	}
@@ -37,7 +37,7 @@ func CreateAdHandler(c *fiber.Ctx) error {
 		Description:  c.FormValue("description"),
 		LocationText: c.FormValue("location"),
 		Facets:       facets,
-		Suggestions:  parseCreateSuggestions(c),
+		Suggestions:  parseAdSuggestions(c),
 	})
 	if err != nil {
 		return showCreateAdError(c, err.Error())
@@ -51,7 +51,7 @@ func CreateAdHandler(c *fiber.Ctx) error {
 	return c.Redirect(redirect, fiber.StatusFound)
 }
 
-func parseCreateFacets(c *fiber.Ctx, category ad.Category) (map[string]facet.Value, error) {
+func parseAdFacets(c *fiber.Ctx, category ad.Category) (map[string]facet.Value, error) {
 	values := make(map[string]facet.Value)
 	for _, d := range category.Facets() {
 		switch d.Kind {

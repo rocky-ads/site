@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
+	uiads "github.com/rocky-ads/site/internal/ui/ads"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -91,7 +91,7 @@ func formatAdAge(t time.Time) string {
 func newBadge() g.Node {
 	return Span(
 		Class("px-2 py-0.5 rounded-full border border-orange-500 text-orange-500 text-xs font-medium"),
-		g.Text("Just Listed"),
+		g.Text("New!"),
 	)
 }
 
@@ -276,10 +276,25 @@ func adButtons(adID, userID, ownerID int, bookmarked, active, reachable bool, cs
 		Class("flex items-center gap-2"),
 		g.If(userID != 0, BookmarkButton(adID, bookmarked, csrfToken)),
 		g.If(active && userID != 0 && reachable && !isOwner, messageButton(adID)),
+		g.If(active && isOwner, editButton(adID)),
 		g.If(active && isOwner, deleteButton(adID, csrfToken)),
 		g.If(!active && isOwner, restoreButton(adID, csrfToken)),
 		shareButton(adID),
 	)
+}
+
+func editButton(adID int) g.Node {
+	return iconButton(buttonProps{
+		ImageSrc: "/images/edit.svg",
+		Alt:      "Edit",
+		Class:    "dark:invert dark:opacity-80",
+		Attrs: []g.Node{
+			g.Attr("onclick", fmt.Sprintf(
+				"event.stopPropagation(); window.location.href=%q;",
+				fmt.Sprintf("/auth/ad/%d/edit", adID),
+			)),
+		},
+	})
 }
 
 func copyButton(path string, copied bool) g.Node {
@@ -386,7 +401,7 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 					Div(
 						Class("flex items-center gap-2 min-w-0"),
 						g.If(d.RockCount > 0, EggIcons(d.ID, d.RockCount)),
-						adCardTitle(d.Title, strings.Join(d.FacetLabels, " · ")),
+						adCardTitle(d.Title, d.FacetLabel),
 					),
 					adButtons(d.ID, userID, d.OwnerID, d.Bookmarked, d.Active, d.Reachable, csrfToken),
 				),
@@ -399,11 +414,58 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 						g.Text(d.Location),
 					),
 				),
-				Div(Class("text-base mt-4 whitespace-pre-wrap"), g.Text(d.Description)),
-				g.If(len(d.Suggestions) > 0, adSuggestionsTags(d.Suggestions)),
+				descriptionDisplay(d.DescriptionOriginal, d.Suggestions, d.DescriptionHistory),
 			),
 		),
 	}
+}
+
+func descriptionDisplay(
+	original string,
+	suggestions []string,
+	history []AdHistoryEntry,
+) g.Node {
+	nodes := []g.Node{
+		Div(Class("whitespace-pre-wrap"), g.Text(original)),
+	}
+	if len(suggestions) > 0 {
+		nodes = append(nodes, adSuggestionsTags(suggestions))
+	}
+	if len(history) > 0 {
+		entryNodes := make([]g.Node, len(history))
+		for i, e := range history {
+			entryNodes[i] = descriptionHistoryEntry(e)
+		}
+		nodes = append(nodes, Div(
+			Class("mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-600 space-y-4"),
+			g.Group(entryNodes),
+		))
+	}
+	return Div(Class("text-base mt-4"), g.Group(nodes))
+}
+
+func descriptionHistoryEntry(e AdHistoryEntry) g.Node {
+	return Div(
+		Class("text-sm text-blue-700 dark:text-blue-300"),
+		Div(
+			Class("flex items-start gap-2"),
+			Img(
+				Src("/images/edit.svg"),
+				Alt("Edit"),
+				Class("w-4 h-4 mt-0.5 shrink-0 dark:invert dark:opacity-80"),
+			),
+			Div(
+				Class("min-w-0"),
+				Div(Class("font-medium"), g.Text(e.Header)),
+				g.If(e.Body != "",
+					Div(
+						Class("whitespace-pre-wrap mt-1 text-blue-600/90 dark:text-blue-200/90"),
+						g.Text(e.Body),
+					),
+				),
+			),
+		),
+	)
 }
 
 func AdDeleted() []g.Node {
@@ -456,11 +518,16 @@ func adSuggestionsTags(suggestions []string) g.Node {
 }
 
 func newAdForm(fields g.Node) g.Node {
+	cfg := uiads.NewFormConfig(uiads.AdFormConfig{}.Defaults)
+	return adForm(cfg, fields)
+}
+
+func adForm(cfg uiads.AdFormConfig, fields g.Node) g.Node {
 	return Form(
 		Class("space-y-8 mt-8"),
-		ID("new-ad-form"),
+		ID(cfg.FormID),
 		g.Attr("novalidate", ""),
-		hx.Post("/auth/ad/new"),
+		hx.Post(cfg.PostURL),
 		hx.Swap("none"),
 		fields,
 		imagesInput(),
@@ -468,7 +535,7 @@ func newAdForm(fields g.Node) g.Node {
 			Class("flex items-center gap-4"),
 			standardButton(buttonProps{
 				Type: "submit",
-				Text: "Submit",
+				Text: cfg.SubmitLabel,
 			}),
 			ErrorDiv(""),
 		),
@@ -481,4 +548,26 @@ func NewAd(category CategoryOption, fields g.Node) []g.Node {
 		pageTitle("Create New Ad"),
 		newAdForm(fields),
 	}, RemoveModal("category")...)
+}
+
+func EditAd(category CategoryOption, cfg uiads.AdFormConfig, fields g.Node) []g.Node {
+	imagePath := "/images/category/" + category.ImageFile
+	return []g.Node{
+		Div(
+			Class("flex items-center gap-5 mb-4"),
+			Label(Class("font-bold"), g.Text("Category")),
+			Div(
+				Class("py-2 px-5 flex items-center gap-2 rounded-full border-2 "+
+					"border-zinc-300 bg-zinc-100 dark:bg-zinc-800 dark:border-zinc-600"),
+				Img(
+					Src(imagePath),
+					Alt("Category icon"),
+					Class("w-6 h-6 dark:invert dark:opacity-80"),
+				),
+				Span(g.Text(category.Name)),
+			),
+		),
+		pageTitle("Edit Ad"),
+		adForm(cfg, fields),
+	}
 }

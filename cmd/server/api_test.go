@@ -1180,3 +1180,86 @@ func TestCreateAdWithMileage(t *testing.T) {
 		t.Fatalf("expected redirect to ad page, got %q", loc)
 	}
 }
+
+func adIDFromCreateResponse(t *testing.T, resp *http.Response, title string) string {
+	t.Helper()
+	if resp.StatusCode == http.StatusFound {
+		loc := resp.Header.Get("Location")
+		if strings.HasPrefix(loc, "/ad/") {
+			return strings.TrimPrefix(loc, "/ad/")
+		}
+	}
+	var id int
+	err := db.QueryRow(
+		"SELECT id FROM ads WHERE title = ? ORDER BY id DESC LIMIT 1", title,
+	).Scan(&id)
+	if err != nil {
+		t.Fatalf("create ad: status %d, lookup id: %v", resp.StatusCode, err)
+	}
+	return strconv.Itoa(id)
+}
+
+func TestUpdateAd(t *testing.T) {
+	client := getTestClient()
+	baseURLParsed, _ := url.Parse(baseURL)
+
+	clearCookie := &http.Cookie{Name: "auth_token", Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: false}
+	client.Jar.SetCookies(baseURLParsed, []*http.Cookie{clearCookie})
+
+	resp, _ := postFormRequest(t, baseURL+"/api/login", map[string]interface{}{
+		"username": "test",
+		"password": "test",
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("login failed with status %d", resp.StatusCode)
+	}
+
+	categoryCookie := &http.Cookie{Name: "category", Value: "6", Path: "/", HttpOnly: true, Secure: false}
+	client.Jar.SetCookies(baseURLParsed, []*http.Cookie{categoryCookie})
+
+	createData := map[string]interface{}{
+		"title":          "Before edit",
+		"description":    "Original listing text.",
+		"year":           "2020",
+		"price":          "3400",
+		"price_currency": "USD",
+		"mileage":        "12000",
+		"mileage_unit":   "mi",
+	}
+	resp, _ = postFormRequest(t, baseURL+"/auth/ad/new", createData)
+	adID := adIDFromCreateResponse(t, resp, "Before edit")
+
+	editData := map[string]interface{}{
+		"title":                "After edit",
+		"description_addition": "Has the 2.0L engine.",
+		"price":                "3000",
+		"price_currency":       "USD",
+		"year":                 "2020",
+		"mileage":              "12000",
+		"mileage_unit":         "mi",
+	}
+	resp, _ = postFormRequest(t, baseURL+"/auth/ad/"+adID+"/edit", editData)
+	if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusOK {
+		t.Fatalf("update ad: expected redirect or success, got %d", resp.StatusCode)
+	}
+
+	var desc string
+	if err := db.QueryRow(
+		"SELECT description FROM ads WHERE id = ?", adID,
+	).Scan(&desc); err != nil {
+		t.Fatal(err)
+	}
+	display := ad.DisplayDescription(desc)
+	for _, want := range []string{
+		"Original listing text.",
+		"Description Addition",
+		"Has the 2.0L engine.",
+		"Title change",
+		"Price change",
+		"Price dropped",
+	} {
+		if !strings.Contains(display, want) {
+			t.Errorf("description missing %q: %q", want, display)
+		}
+	}
+}

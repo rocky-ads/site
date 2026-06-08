@@ -119,6 +119,42 @@ func dedupeSuggestions(suggestions []Suggestion) []Suggestion {
 	return out
 }
 
+// FormatSuggestionUpdates describes added and removed suggestion pills.
+func FormatSuggestionUpdates(old, new []Suggestion) string {
+	old = dedupeSuggestions(old)
+	new = dedupeSuggestions(new)
+	oldKeys := make(map[string]Suggestion, len(old))
+	for _, s := range old {
+		oldKeys[s.Key()] = s
+	}
+	newKeys := make(map[string]Suggestion, len(new))
+	for _, s := range new {
+		newKeys[s.Key()] = s
+	}
+	var added, removed []string
+	for key, s := range newKeys {
+		if _, ok := oldKeys[key]; !ok {
+			added = append(added, s.Display())
+		}
+	}
+	for key, s := range oldKeys {
+		if _, ok := newKeys[key]; !ok {
+			removed = append(removed, s.Display())
+		}
+	}
+	if len(added) == 0 && len(removed) == 0 {
+		return ""
+	}
+	var parts []string
+	if len(added) > 0 {
+		parts = append(parts, "Added: "+strings.Join(added, ", "))
+	}
+	if len(removed) > 0 {
+		parts = append(parts, "Removed: "+strings.Join(removed, ", "))
+	}
+	return strings.Join(parts, "\n")
+}
+
 func suggestionsJSON(suggestions []Suggestion) string {
 	suggestions = dedupeSuggestions(suggestions)
 	if len(suggestions) == 0 {

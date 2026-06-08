@@ -4,6 +4,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cookie"
+	"github.com/rocky-ads/site/internal/local"
+	"github.com/rocky-ads/site/internal/param"
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
 )
 
@@ -13,11 +15,43 @@ func SuggestionsHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
+	return renderSuggestions(c, categoryID, category)
+}
 
+func EditSuggestionsHandler(c *fiber.Ctx) error {
+	userID := local.GetUserID(c)
+	if userID == 0 {
+		return redirectToLogin(c)
+	}
+
+	adID, err := param.GetAdID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
+	}
+
+	loc := cookie.GetLocation(c)
+	a, err := ad.GetAd(userID, adID, loc)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
+	}
+	if a.UserID != userID {
+		return fiber.NewError(fiber.StatusForbidden, "You are not the owner of this ad")
+	}
+	if a.IsDeleted() {
+		return fiber.NewError(fiber.StatusBadRequest, "Cannot edit a deleted ad")
+	}
+
+	category, err := ad.GetCategory(a.CategoryID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+	return renderSuggestions(c, a.CategoryID, category)
+}
+
+func renderSuggestions(c *fiber.Ctx, categoryID int, category ad.Category) error {
 	selected := parseSuggestionFormValues(c)
 	suggested, _ := ad.GenerateSuggestions(suggestInputFrom(c, categoryID, category, selected))
 	merged := mergeSuggestionOptions(selected, suggested)
-
 	return render(c, uiads.SuggestionsPartial(merged))
 }
 
@@ -99,7 +133,7 @@ func mergeSuggestionOptions(
 	return out
 }
 
-func parseCreateSuggestions(c *fiber.Ctx) []ad.Suggestion {
+func parseAdSuggestions(c *fiber.Ctx) []ad.Suggestion {
 	var suggestions []ad.Suggestion
 	c.Context().PostArgs().VisitAll(func(k, v []byte) {
 		if string(k) != uiads.SuggestionsFormName() {

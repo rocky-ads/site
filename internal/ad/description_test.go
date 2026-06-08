@@ -15,6 +15,8 @@ func TestSanitizeAdText(t *testing.T) {
 		{"trailing junk\uFFFC", "trailing junk"},
 		{"\u200Bhidden", "hidden"},
 		{"tab\there", "tab here"},
+		{"spoof\u001ehistory", "spoofhistory"},
+		{"spoof\u001fhistory", "spoofhistory"},
 	}
 	for _, tt := range tests {
 		if got := SanitizeAdText(tt.in); got != tt.want {

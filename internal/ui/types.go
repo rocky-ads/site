@@ -24,23 +24,30 @@ type UserRowData struct {
 	DeletedAt *time.Time
 }
 
+// AdHistoryEntry holds one edit-history block on the ad detail page.
+type AdHistoryEntry struct {
+	Header string
+	Body   string
+}
+
 // AdDetail holds presentation fields for a single ad page.
 type AdDetail struct {
-	ID           int
-	OwnerID      int
-	ImageCount   int
-	PriceDisplay string
-	HasPrice     bool
-	Title        string
-	Location     string
-	Description  string
-	CreatedAt    time.Time
-	Bookmarked   bool
-	Active       bool
-	Reachable    bool
-	RockCount    int
-	FacetLabels  []string
-	Suggestions  []string
+	ID                  int
+	OwnerID             int
+	ImageCount          int
+	PriceDisplay        string
+	HasPrice            bool
+	Title               string
+	Location            string
+	DescriptionOriginal string
+	DescriptionHistory  []AdHistoryEntry
+	CreatedAt           time.Time
+	Bookmarked          bool
+	Active              bool
+	Reachable           bool
+	RockCount           int
+	FacetLabel          string
+	Suggestions         []string
 }
 
 // AdCard holds presentation fields for an ad in search or list views.

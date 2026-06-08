@@ -12,19 +12,18 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-const newAdPriceRowID = "new-ad-price-row"
-
-type adFields struct {
-	defaults facet.FormDefaults
-}
-
 // NewAdFieldsPartial renders new-ad fields for the given category facets.
 func NewAdFieldsPartial(facets []facet.Def, defaults facet.FormDefaults) g.Node {
-	f := adFields{defaults: defaults}
+	return AdFieldsPartial(NewFormConfig(defaults), facets)
+}
+
+// AdFieldsPartial renders create or edit ad fields for the given category facets.
+func AdFieldsPartial(cfg AdFormConfig, facets []facet.Def) g.Node {
+	f := adFields{cfg: cfg}
 	nodes := []g.Node{
-		fieldBlock("Title", titleInput()),
-		fieldBlock("Description", descriptionWithSuggestionsBox()),
-		fieldBlock("Location (optional)", LocationInput("new-ad-location", "location", "", "City or state")),
+		fieldBlock("Title", f.titleInput()),
+		fieldBlock("Description", f.descriptionFields()),
+		fieldBlock("Location (optional)", f.locationInput()),
 	}
 	for _, d := range facets {
 		nodes = append(nodes, facetFieldBlock(d, f.facetInput(d)))
@@ -37,51 +36,67 @@ func NewAdFieldsPartial(facets []facet.Def, defaults facet.FormDefaults) g.Node 
 	)
 }
 
+type adFields struct {
+	cfg AdFormConfig
+}
+
 func (f adFields) facetInput(d facet.Def) g.Node {
 	switch d.Form {
 	case facet.FormMoney:
-		return f.newAdPriceRow(d)
+		return f.priceRow(d)
 	case facet.FormSelect:
-		return formSelect(d)
+		return f.formSelect(d)
 	case facet.FormRadio:
-		return formRadio(d)
+		return f.formRadio(d)
 	default:
 		if len(d.Units) > 0 {
 			return f.intWithUnitRow(d)
 		}
-		return facetNumberInput(d)
+		return f.facetNumberInput(d)
 	}
 }
 
-func formSelect(d facet.Def) g.Node {
+func (f adFields) formSelect(d facet.Def) g.Node {
+	selected := f.cfg.Values.Facets[d.Key]
 	opts := make([]g.Node, 0, len(d.FormOptions())+1)
 	opts = append(opts, Option(Value(""), g.Text(selectPlaceholder(d))))
 	for _, o := range d.FormOptions() {
-		opts = append(opts, Option(Value(o), g.Text(o)))
+		opt := Option(Value(o), g.Text(o))
+		if o == selected {
+			opt = Option(
+				Value(o),
+				g.Attr("selected", "selected"),
+				g.Text(o),
+			)
+		}
+		opts = append(opts, opt)
 	}
-	attrs := []g.Node{
+	return Select(
 		Name(d.Key),
-		ID("new-ad-" + d.Key),
+		ID(f.cfg.fieldID(d.Key)),
 		Class("w-36 p-2 border rounded-md"),
 		g.Group(opts),
-	}
-	return Select(attrs...)
+	)
 }
 
 func selectPlaceholder(d facet.Def) string {
 	return "Select a " + d.Key + "..."
 }
 
-func formRadio(d facet.Def) g.Node {
+func (f adFields) formRadio(d facet.Def) g.Node {
+	selected := f.cfg.Values.Facets[d.Key]
 	opts := d.FormOptions()
 	nodes := make([]g.Node, len(opts))
 	for i, o := range opts {
-		id := fmt.Sprintf("new-ad-%s-%d", d.Key, i)
+		id := fmt.Sprintf("%s-%s-%d", f.cfg.FieldPrefix, d.Key, i)
 		attrs := []g.Node{
 			Type("radio"),
 			Name(d.Key),
 			Value(o),
 			ID(id),
+		}
+		if o == selected {
+			attrs = append(attrs, g.Attr("checked", "checked"))
 		}
 		nodes[i] = Label(
 			Class("flex items-center gap-2"),
@@ -92,37 +107,48 @@ func formRadio(d facet.Def) g.Node {
 	return Div(Class("flex flex-wrap items-center gap-4"), g.Group(nodes))
 }
 
-func facetNumberInput(d facet.Def) g.Node {
-	return Input(
+func (f adFields) facetNumberInput(d facet.Def) g.Node {
+	attrs := []g.Node{
 		Type("number"),
 		Name(d.Key),
-		ID("new-ad-"+d.Key),
+		ID(f.cfg.fieldID(d.Key)),
 		Class("w-full p-2 border rounded-md"),
 		g.Attr("min", "0"),
 		g.Attr("step", "1"),
 		g.Attr("inputmode", "numeric"),
-	)
+	}
+	if v := strings.TrimSpace(f.cfg.Values.Facets[d.Key]); v != "" {
+		attrs = append(attrs, Value(v))
+	}
+	return Input(attrs...)
 }
 
 func (f adFields) intWithUnitRow(d facet.Def) g.Node {
-	selected := d.FormDefaultUnit(f.defaults)
+	selected := d.FormDefaultUnit(f.cfg.Defaults)
+	if u, ok := f.cfg.Values.FacetUnits[d.Key]; ok && u != "" {
+		selected = u
+	}
 	unitName := d.Key + "_unit"
+	numAttrs := []g.Node{
+		Type("number"),
+		Name(d.Key),
+		ID(f.cfg.fieldID(d.Key)),
+		Class("w-36 p-2 border rounded-md"),
+		g.Attr("min", "0"),
+		g.Attr("step", "1"),
+		g.Attr("inputmode", "numeric"),
+	}
+	if v := strings.TrimSpace(f.cfg.Values.Facets[d.Key]); v != "" {
+		numAttrs = append(numAttrs, Value(v))
+	}
 	return Div(
 		Class("flex flex-wrap items-center gap-2"),
-		Input(
-			Type("number"),
-			Name(d.Key),
-			ID("new-ad-"+d.Key),
-			Class("w-36 p-2 border rounded-md"),
-			g.Attr("min", "0"),
-			g.Attr("step", "1"),
-			g.Attr("inputmode", "numeric"),
-		),
-		facetUnitSelect(unitName, selected, d.Units),
+		Input(numAttrs...),
+		f.facetUnitSelect(unitName, selected, d.Units),
 	)
 }
 
-func facetUnitSelect(name, selected string, units []string) g.Node {
+func (f adFields) facetUnitSelect(name, selected string, units []string) g.Node {
 	opts := make([]g.Node, len(units))
 	for i, u := range units {
 		opt := Option(Value(u), g.Text(u))
@@ -133,7 +159,7 @@ func facetUnitSelect(name, selected string, units []string) g.Node {
 	}
 	return Select(
 		Name(name),
-		ID("new-ad-"+name),
+		ID(f.cfg.fieldID(name)),
 		Class("p-2 border rounded-md shrink-0"),
 		g.Group(opts),
 	)
@@ -155,39 +181,78 @@ func fieldBlock(label string, input g.Node) g.Node {
 	)
 }
 
-func titleInput() g.Node {
-	return Input(
+func (f adFields) titleInput() g.Node {
+	attrs := []g.Node{
 		Type("text"),
 		Name("title"),
-		ID("new-ad-title"),
+		ID(f.cfg.fieldID("title")),
 		Class("w-full p-2 border rounded-md"),
 		g.Attr("maxlength", strconv.Itoa(config.MaxAdTitleLength)),
+	}
+	if f.cfg.Values.Title != "" {
+		attrs = append(attrs, Value(f.cfg.Values.Title))
+	}
+	return Input(attrs...)
+}
+
+func (f adFields) descriptionFields() g.Node {
+	if f.cfg.Mode == AdFormEdit {
+		return f.editDescriptionFields()
+	}
+	return descriptionWithSuggestionsBox(f.cfg)
+}
+
+func (f adFields) editDescriptionFields() g.Node {
+	nodes := []g.Node{
+		editDescriptionWithSuggestionsBox(f.cfg),
+		Div(
+			Class("mt-3"),
+			Label(
+				Class("field-label block mb-1"),
+				g.Text("Add to Description (optional)"),
+			),
+			Textarea(
+				Name("description_addition"),
+				ID(f.cfg.fieldID("description-addition")),
+				Class("w-full p-2 border rounded-md"),
+				g.Attr("rows", "4"),
+				g.Attr("maxlength", strconv.Itoa(config.MaxAdDescriptionLength)),
+			),
+		),
+	}
+	return Div(Class("space-y-2"), g.Group(nodes))
+}
+
+func (f adFields) locationInput() g.Node {
+	return LocationInput(
+		f.cfg.fieldID("location"),
+		"location",
+		f.cfg.Values.Location,
+		"City or state",
 	)
 }
 
-func descriptionInput() g.Node {
-	return Textarea(
-		Name("description"),
-		ID("new-ad-description"),
-		Class("w-full p-2 border-0 rounded-none bg-transparent focus:outline-none focus:ring-0"),
-		g.Attr("rows", "6"),
-		g.Attr("maxlength", strconv.Itoa(config.MaxAdDescriptionLength)),
-	)
+func (f adFields) priceRow(d facet.Def) g.Node {
+	view := f.cfg.Values.PriceRow
+	if view.Currency == "" {
+		view.Currency = d.FormDefaultCurrency(f.cfg.Defaults)
+	}
+	return AdPriceRow(f.cfg, d, f.cfg.Defaults, view)
 }
 
-func (f adFields) newAdPriceRow(d facet.Def) g.Node {
-	return NewAdPriceRow(d, f.defaults, PriceRowView{
-		Currency: d.FormDefaultCurrency(f.defaults),
-	})
-}
-
-// NewAdPriceRow renders the price facet with a "List as FREE" HTMX toggle.
-func NewAdPriceRow(d facet.Def, defaults facet.FormDefaults, view PriceRowView) g.Node {
+// AdPriceRow renders the price facet with a "List as FREE" HTMX toggle.
+func AdPriceRow(
+	cfg AdFormConfig,
+	d facet.Def,
+	defaults facet.FormDefaults,
+	view PriceRowView,
+) g.Node {
 	currencyCode := priceCurrencyCode(d, defaults, view.Currency)
+	rowID := cfg.priceRowID()
 
 	freeCheckbox := Label(
 		Class("flex items-center gap-2 mb-2"),
-		Input(priceFreeCheckboxAttrs(view.IsFree)...),
+		Input(priceFreeCheckboxAttrs(cfg, rowID, view.IsFree)...),
 		Span(g.Text("List as FREE")),
 	)
 
@@ -202,7 +267,7 @@ func NewAdPriceRow(d facet.Def, defaults facet.FormDefaults, view PriceRowView) 
 		amountAttrs := []g.Node{
 			Type("number"),
 			Name(d.Key),
-			ID("new-ad-" + d.Key),
+			ID(cfg.fieldID(d.Key)),
 			Class("w-36 p-2 border rounded-md"),
 			g.Attr("min", "0"),
 			g.Attr("step", "1"),
@@ -216,29 +281,33 @@ func NewAdPriceRow(d facet.Def, defaults facet.FormDefaults, view PriceRowView) 
 			Div(
 				Class("flex flex-wrap items-center gap-2"),
 				Input(amountAttrs...),
-				priceCurrencySelect(currencyCode, d.SupportedCurrencies()),
+				priceCurrencySelect(cfg, currencyCode, d.SupportedCurrencies()),
 			),
 		)
 	}
 
 	return Div(
-		ID(newAdPriceRowID),
+		ID(rowID),
 		freeCheckbox,
 		body,
 	)
 }
 
-func priceFreeCheckboxAttrs(checked bool) []g.Node {
+func priceFreeCheckboxAttrs(
+	cfg AdFormConfig,
+	rowID string,
+	checked bool,
+) []g.Node {
 	attrs := []g.Node{
 		Type("checkbox"),
 		Name("price_free"),
 		Value("1"),
-		ID("new-ad-price-free"),
-		hx.Get("/auth/ad/new/price-field"),
-		hx.Target("#" + newAdPriceRowID),
+		ID(cfg.fieldID("price-free")),
+		hx.Get(cfg.PriceFieldURL),
+		hx.Target("#" + rowID),
 		hx.Swap("outerHTML"),
 		hx.Trigger("change"),
-		hx.Include("#" + newAdPriceRowID),
+		hx.Include("#" + rowID),
 	}
 	if checked {
 		attrs = append(attrs, g.Attr("checked", "checked"))
@@ -253,7 +322,7 @@ func priceCurrencyCode(d facet.Def, defaults facet.FormDefaults, selected string
 	return d.FormDefaultCurrency(defaults)
 }
 
-func priceCurrencySelect(selected string, currencies []string) g.Node {
+func priceCurrencySelect(cfg AdFormConfig, selected string, currencies []string) g.Node {
 	opts := make([]g.Node, len(currencies))
 	for i, code := range currencies {
 		opt := Option(Value(code), g.Text(code))
@@ -264,8 +333,13 @@ func priceCurrencySelect(selected string, currencies []string) g.Node {
 	}
 	return Select(
 		Name("price_currency"),
-		ID("new-ad-price-currency"),
+		ID(cfg.fieldID("price-currency")),
 		Class("w-24 p-2 border rounded-md shrink-0"),
 		g.Group(opts),
 	)
+}
+
+// NewAdPriceRow renders the price row for HTMX swaps on the create form.
+func NewAdPriceRow(d facet.Def, defaults facet.FormDefaults, view PriceRowView) g.Node {
+	return AdPriceRow(NewFormConfig(defaults), d, defaults, view)
 }
