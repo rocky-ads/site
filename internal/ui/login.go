@@ -16,7 +16,6 @@ func userNameInput(showHelp bool, autocomplete string) g.Node {
 			MinLength("3"),
 			MaxLength("20"),
 			g.Attr("pattern", "^[a-zA-Z][a-zA-Z0-9]{2,19}$"),
-			g.Attr("placeholder", "JohnDoe"),
 			g.Attr("autocomplete", autocomplete),
 			Required(),
 		),

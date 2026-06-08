@@ -93,7 +93,7 @@ func UpdateAd(input UpdateInput) error {
 	}
 	if body := FormatSuggestionUpdates(a.Suggestions, newSuggestions); body != "" {
 		desc = AppendHistoryEntry(
-			desc, "Description Suggestion Updates", body, now, input.Loc,
+			desc, "Description Tags", body, now, input.Loc,
 		)
 	}
 
