@@ -111,8 +111,8 @@ Tailor options to the specific part described.`,
 
 	"Garage/Estate Sale": `Buyers of garage and estate sale listings care
 about event details and what to expect, such as:
-- payment: cash only | Venmo | Zelle
-- timing: early birds welcome | multi-day | rain or shine
+- payment: cash only | Venmo | Zelle | other
+- timing: early birds welcome | no early birds | multi-day | rain or shine
 - location: indoor | outdoor | driveway | garage
 - inventory mix: antiques | furniture | tools | clothing | books | toys
 - deals: fill-a-bag | half price Sunday
