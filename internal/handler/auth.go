@@ -21,7 +21,7 @@ func redirectToLogin(c *fiber.Ctx) error {
 // AuthRequired is a middleware that requires a user to be logged in.
 func AuthRequired(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
-	if userID == 0 {
+	if !local.IsLoggedIn(userID) {
 		return redirectToLogin(c)
 	}
 	return c.Next()
@@ -30,7 +30,7 @@ func AuthRequired(c *fiber.Ctx) error {
 // AdminRequired is a middleware that requires a user to be an admin.
 func AdminRequired(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
-	if userID == 0 {
+	if !local.IsLoggedIn(userID) {
 		return c.Status(fiber.StatusUnauthorized).SendString("Unauthorized")
 	}
 	if !local.GetUserIsAdmin(c) {

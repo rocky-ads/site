@@ -10,6 +10,11 @@ func GetUserID(c *fiber.Ctx) int {
 	return userID
 }
 
+// IsLoggedIn reports whether userID identifies an authenticated user.
+func IsLoggedIn(userID int) bool {
+	return userID != 0
+}
+
 func SetUserID(c *fiber.Ctx, userID int) {
 	c.Locals("user-id", userID)
 }

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/rocky-ads/site/internal/config"
+	"github.com/rocky-ads/site/internal/local"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	"maragu.dev/gomponents/components"
@@ -144,8 +145,8 @@ func navigation(userID int, userName, currentPath string, hasUnread bool) g.Node
 			Span(Class("text-xl font-bold"), g.Text(config.ServerName)),
 		),
 		indicator(),
-		g.Iff(userID != 0, func() g.Node { return navLoggedIn(userName, hasUnread) }),
-		g.Iff(userID == 0, func() g.Node { return navLoggedOut(currentPath) }),
+		g.Iff(local.IsLoggedIn(userID), func() g.Node { return navLoggedIn(userName, hasUnread) }),
+		g.Iff(!local.IsLoggedIn(userID), func() g.Node { return navLoggedOut(currentPath) }),
 	)
 }
 
@@ -207,10 +208,10 @@ func Page(userID int, hasUnread bool, userName, title, currentPath, csrfToken st
 	bodyNodes := []g.Node{
 		Class("min-h-screen bg-white dark:bg-zinc-900"),
 		Div(
-			g.If(userID != 0, hx.Ext("sse")),
-			g.If(userID != 0, g.Attr("sse-connect", "/auth/sse")),
-			g.If(userID != 0, g.Attr("sse-close", "close")),
-			g.If(userID != 0, swapOOBmessages()),
+			g.If(local.IsLoggedIn(userID), hx.Ext("sse")),
+			g.If(local.IsLoggedIn(userID), g.Attr("sse-connect", "/auth/sse")),
+			g.If(local.IsLoggedIn(userID), g.Attr("sse-close", "close")),
+			g.If(local.IsLoggedIn(userID), swapOOBmessages()),
 			Div(
 				Class("w-full md:max-w-3xl md:mx-auto pb-8 px-6 text-zinc-900 dark:text-zinc-200 bg-white dark:bg-zinc-900"),
 				hx.Headers(headersJSON),

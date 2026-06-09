@@ -4,6 +4,7 @@ import (
 	"net/url"
 
 	"github.com/rocky-ads/site/internal/facet"
+	"github.com/rocky-ads/site/internal/local"
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
@@ -164,7 +165,7 @@ func newAdButton(userID int) g.Node {
 	return standardButton(buttonProps{
 		Href:     "/auth/ad/new",
 		Text:     "New Ad",
-		Disabled: userID == 0,
+		Disabled: !local.IsLoggedIn(userID),
 	})
 }
 

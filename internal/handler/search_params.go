@@ -25,7 +25,7 @@ func distanceUnit(c *fiber.Ctx) string {
 
 	userID := local.GetUserID(c)
 	unit := location.DistanceUnitFromTimezone(c.Cookies("timezone"))
-	if userID != 0 {
+	if local.IsLoggedIn(userID) {
 		u, err := user.GetByID(userID)
 		if err == nil && u.PhoneE64 != "" {
 			unit = location.DistanceUnitFromPhone(u.PhoneE64)

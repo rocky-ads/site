@@ -4,8 +4,11 @@ import (
 	"strings"
 
 	"github.com/rocky-ads/site/internal/facet"
+	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/location"
 )
+
+const addressLoginPrompt = "(log in to see address)"
 
 // LocationFacetKey returns the facet key used for geo lookup on this category.
 func LocationFacetKey(category Category) string {
@@ -70,10 +73,10 @@ func AdLocationDisplay(a Ad, viewerUserID int) string {
 
 func locationDisplayForCategory(a Ad, cat Category, viewerUserID int) string {
 	if UsesFullAddressDisplay(cat) {
-		if viewerUserID == 0 {
-			return ""
-		}
 		if s := fullAddressText(a); s != "" {
+			if !local.IsLoggedIn(viewerUserID) {
+				return addressLoginPrompt
+			}
 			return s
 		}
 	}

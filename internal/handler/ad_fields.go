@@ -56,7 +56,7 @@ func newAdFormDefaults(c *fiber.Ctx) facet.FormDefaults {
 
 func defaultCurrencyForUser(c *fiber.Ctx) string {
 	userID := local.GetUserID(c)
-	if userID == 0 {
+	if !local.IsLoggedIn(userID) {
 		return currency.Default
 	}
 	u, err := user.GetByID(userID)

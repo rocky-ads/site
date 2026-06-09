@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rocky-ads/site/internal/config"
+	"github.com/rocky-ads/site/internal/local"
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
@@ -148,7 +149,7 @@ func AdGridNode(userID, adID, imageCount, nextPage int, priceDisplay, title, loc
 		),
 		Div(
 			Class("flex items-center gap-2 min-w-0"),
-			g.If(userID != 0 && bookmarked, BookmarkButton(adID, bookmarked, csrfToken)),
+			g.If(local.IsLoggedIn(userID) && bookmarked, BookmarkButton(adID, bookmarked, csrfToken)),
 			g.If(eggCount > 0, EggIcons(adID, eggCount)),
 			adCardTitle(title, facetLabel),
 		),
@@ -177,7 +178,7 @@ func AdListNode(userID, adID int, priceDisplay, title, location, facetLabel stri
 		Class(class),
 		Div(
 			Class("flex items-center gap-2 min-w-0"),
-			g.If(userID != 0 && bookmarked, BookmarkButton(adID, bookmarked, csrfToken)),
+			g.If(local.IsLoggedIn(userID) && bookmarked, BookmarkButton(adID, bookmarked, csrfToken)),
 			g.If(eggCount > 0, EggIcons(adID, eggCount)),
 			adCardTitle(title, facetLabel),
 		),
@@ -265,11 +266,11 @@ func messageButton(adID int) g.Node {
 }
 
 func adButtons(adID, userID, ownerID int, bookmarked, active, reachable bool, csrfToken string) g.Node {
-	isOwner := userID != 0 && userID == ownerID
+	isOwner := local.IsLoggedIn(userID) && userID == ownerID
 	return Div(
 		Class("flex items-center gap-2"),
-		g.If(userID != 0, BookmarkButton(adID, bookmarked, csrfToken)),
-		g.If(active && userID != 0 && reachable && !isOwner, messageButton(adID)),
+		g.If(local.IsLoggedIn(userID), BookmarkButton(adID, bookmarked, csrfToken)),
+		g.If(active && local.IsLoggedIn(userID) && reachable && !isOwner, messageButton(adID)),
 		g.If(active && isOwner, editButton(adID)),
 		g.If(active && isOwner, deleteButton(adID, csrfToken)),
 		g.If(!active && isOwner, restoreButton(adID, csrfToken)),

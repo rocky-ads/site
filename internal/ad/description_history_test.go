@@ -147,23 +147,25 @@ func TestSanitizeStripsHistoryMarker(t *testing.T) {
 	}
 }
 
-func TestDescriptionDisplayForViewerHidesLocationHistory(t *testing.T) {
-	desc := AppendHistoryEntry(
-		"Sale items",
-		"Location change",
-		"Location set to 123 Main St",
-		time.Date(2026, 1, 2, 15, 4, 0, 0, time.UTC),
-		time.UTC,
-	)
+func TestFormatLocationHistoryChangeAddressCategory(t *testing.T) {
+	addr := "123 Main St"
+	old := Ad{
+		Facets: map[string]facet.Value{
+			"address": {Text: &addr},
+		},
+	}
 	garage := Category{FacetKeys: []string{"address"}}
 
-	loggedOut := filterLocationHistoryForViewer(ParseDescriptionForDisplay(desc), garage, 0)
-	if len(loggedOut.History) != 0 {
-		t.Fatalf("logged out history = %d entries, want 0", len(loggedOut.History))
+	if body := formatLocationHistoryChange(old, "456 Oak Ave", garage); body != "Address changed" {
+		t.Fatalf("change = %q, want Address changed", body)
 	}
-
-	loggedIn := filterLocationHistoryForViewer(ParseDescriptionForDisplay(desc), garage, 1)
-	if len(loggedIn.History) != 1 {
-		t.Fatalf("logged in history = %d entries, want 1", len(loggedIn.History))
+	if body := formatLocationHistoryChange(old, "", garage); body != "Address removed" {
+		t.Fatalf("remove = %q, want Address removed", body)
+	}
+	if body := formatLocationHistoryChange(Ad{}, "123 Main St", garage); body != "Address changed" {
+		t.Fatalf("set = %q, want Address changed", body)
+	}
+	if body := formatLocationHistoryChange(old, addr, garage); body != "" {
+		t.Fatalf("no-op = %q, want empty", body)
 	}
 }

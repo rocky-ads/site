@@ -46,8 +46,8 @@ func TestAdLocationDisplayAddressPrivacy(t *testing.T) {
 		},
 	}
 
-	if got := locationDisplayForCategory(a, garage, 0); got != "" {
-		t.Fatalf("logged out = %q, want empty", got)
+	if got := locationDisplayForCategory(a, garage, 0); got != addressLoginPrompt {
+		t.Fatalf("logged out = %q, want %q", got, addressLoginPrompt)
 	}
 	if got := locationDisplayForCategory(a, garage, 1); got != addr {
 		t.Fatalf("logged in = %q, want address", got)

@@ -47,36 +47,6 @@ func ParseDescriptionForDisplay(desc string) DescriptionDisplay {
 	return out
 }
 
-// DescriptionDisplayForViewer returns description history safe for the viewer.
-// Full street addresses in location history require a logged-in viewer.
-func DescriptionDisplayForViewer(a Ad, viewerUserID int) DescriptionDisplay {
-	d := ParseDescriptionForDisplay(a.Description)
-	cat, err := GetCategory(a.CategoryID)
-	if err != nil {
-		return d
-	}
-	return filterLocationHistoryForViewer(d, cat, viewerUserID)
-}
-
-func filterLocationHistoryForViewer(
-	d DescriptionDisplay,
-	category Category,
-	viewerUserID int,
-) DescriptionDisplay {
-	if viewerUserID != 0 || !UsesFullAddressDisplay(category) {
-		return d
-	}
-	filtered := make([]HistoryEntryDisplay, 0, len(d.History))
-	for _, e := range d.History {
-		if strings.HasSuffix(e.Header, "Location change") {
-			continue
-		}
-		filtered = append(filtered, e)
-	}
-	d.History = filtered
-	return d
-}
-
 // SplitDescription separates the immutable original body from server history.
 func SplitDescription(desc string) (original, history string) {
 	if i := strings.Index(desc, historyEndMarker); i >= 0 {
@@ -315,7 +285,10 @@ func formatLocationHistoryChange(
 		if strings.EqualFold(oldRaw, newRaw) {
 			return ""
 		}
-		return formatLocationChange(oldRaw, newRaw)
+		if newRaw == "" {
+			return "Address removed"
+		}
+		return "Address changed"
 	}
 
 	oldRaw := strings.TrimSpace(oldAd.RawLocation)
@@ -358,10 +331,14 @@ func BuildFieldChangeEntries(
 		}{"Title change", body})
 	}
 	if body := formatLocationHistoryChange(oldAd, newLocationText, category); body != "" {
+		label := "Location change"
+		if UsesFullAddressDisplay(category) {
+			label = "Address change"
+		}
 		entries = append(entries, struct {
 			label string
 			body  string
-		}{"Location change", body})
+		}{label, body})
 	}
 	for _, d := range category.Facets() {
 		oldV, oldOK := oldAd.Facets[d.Key]

@@ -58,10 +58,13 @@ func adDetailFrom(a ad.Ad, viewerUserID int, reachable bool) ui.AdDetail {
 	if hasPrice {
 		priceDisplay = currency.Format(price, priceCurrency)
 	}
-	desc := ad.DescriptionDisplayForViewer(a, viewerUserID)
-	history := make([]ui.AdHistoryEntry, len(desc.History))
-	for i, e := range desc.History {
-		history[i] = ui.AdHistoryEntry{Header: e.Header, Body: e.Body}
+	desc := ad.ParseDescriptionForDisplay(a.Description)
+	var history []ui.AdHistoryEntry
+	if local.IsLoggedIn(viewerUserID) {
+		history = make([]ui.AdHistoryEntry, len(desc.History))
+		for i, e := range desc.History {
+			history[i] = ui.AdHistoryEntry{Header: e.Header, Body: e.Body}
+		}
 	}
 	return ui.AdDetail{
 		ID:                  a.ID,

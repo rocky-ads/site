@@ -27,7 +27,7 @@ var (
 
 // closeSSE closes all SSE connections for a specific user by sending a close event
 func closeSSE(userID int) {
-	if userID == 0 {
+	if !local.IsLoggedIn(userID) {
 		return
 	}
 	SendSSEEvent(userID, SSEEvent{
@@ -39,7 +39,7 @@ func closeSSE(userID int) {
 // SendSSEEvent sends an SSE event to all connections for a specific user
 // If the user is not connected, the event is dropped
 func SendSSEEvent(userID int, event SSEEvent) {
-	if userID == 0 {
+	if !local.IsLoggedIn(userID) {
 		return
 	}
 
@@ -69,7 +69,7 @@ func SendSSEEvent(userID int, event SSEEvent) {
 // SSEHandler handles SSE stream for a specific user
 func SSEHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
-	if userID == 0 {
+	if !local.IsLoggedIn(userID) {
 		return fiber.NewError(fiber.StatusUnauthorized, "Authentication required")
 	}
 
