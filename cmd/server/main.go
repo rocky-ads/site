@@ -52,6 +52,8 @@ func setupApp() *fiber.App {
 	app.Get("/register", handler.RegisterHandler)
 	app.Get("/health", handler.HandleHealth)
 	app.Get("/error", handler.ErrorPageHandler)
+	app.Get("/about", handler.AboutHandler)
+	app.Get("/faq", handler.FAQHandler)
 	app.Get("/ad/:id", handler.AdHandler)
 	app.Get("/ad/:id/image/:index/:size", handler.ImageHandler)
 
@@ -82,7 +84,6 @@ func setupApp() *fiber.App {
 	auth.Post("/user/settings/notifications", handler.NotificationsToggleHandler)
 	auth.Post("/user/settings/password", handler.ChangePasswordHandler)
 	auth.Post("/user/settings/delete", handler.DeleteAccountHandler)
-	auth.Get("/user/about", handler.UserAboutHandler)
 	auth.Get("/user/:id", handler.UserProfileHandler)
 	auth.Get("/user/:id/summary", handler.UserSummaryHandler)
 	auth.Get("/user/:id/egg/:ordinal", handler.UserEggConversationHandler)

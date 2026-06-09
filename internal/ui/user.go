@@ -156,7 +156,7 @@ func UserMenu(userName, memberSince string, userID int, isAdmin bool, hasUnread 
 			g.Text("Settings"),
 		),
 		A(
-			Href("/auth/user/about"),
+			Href("/about"),
 			Class("block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 flex items-center"),
 			menuIcon("/images/info.svg", "About"),
 			g.Text("About"),
@@ -376,7 +376,7 @@ func NotificationsSection(smsOptedOut bool) g.Node {
 			P(
 				Class("mt-4 text-sm"),
 				A(
-					Href("/auth/user/about#sms-notifications"),
+					Href("/faq#sms-notifications"),
 					Class("text-blue-600 dark:text-blue-400 hover:underline"),
 					g.Text("Why am I not getting text messages?"),
 				),
@@ -444,6 +444,23 @@ func SettingsPage(name, phoneE64 string, smsOptedOut bool) []g.Node {
 }
 
 func AboutPage() []g.Node {
+	return []g.Node{
+		pageTitle("About"),
+		Div(
+			Class("mt-8 space-y-8 text-zinc-700 dark:text-zinc-300"),
+			P(g.Textf("Welcome to %s.", config.ServerName)),
+			P(
+				A(
+					Href("/faq"),
+					Class("text-blue-600 dark:text-blue-400 hover:underline"),
+					g.Text("Frequently asked questions"),
+				),
+			),
+		),
+	}
+}
+
+func FAQPage() []g.Node {
 	fromNumber := config.TwilioFromNumber
 	smsResumeHelp := "If you previously replied STOP to a text message from us, your carrier may have blocked further texts. Text START to our number to resume delivery."
 	if fromNumber != "" {
@@ -454,19 +471,17 @@ func AboutPage() []g.Node {
 	}
 
 	return []g.Node{
-		pageTitle("About"),
+		pageTitle("FAQ"),
 		Div(
 			Class("mt-8 space-y-8 text-zinc-700 dark:text-zinc-300"),
-			P(g.Textf("Welcome to %s.", config.ServerName)),
 			Div(
 				ID("sms-notifications"),
-				H2(Class("text-xl font-semibold mb-3"), g.Text("FAQ")),
+				H2(
+					Class("text-xl font-semibold mb-3"),
+					g.Text("Why am I not getting text messages?"),
+				),
 				Div(
 					Class("space-y-2"),
-					H3(
-						Class("text-lg font-medium"),
-						g.Text("Why am I not getting text messages?"),
-					),
 					P(
 						Class("text-sm text-zinc-600 dark:text-zinc-400"),
 						g.Text("First, open Settings and confirm text messages are turned on."),

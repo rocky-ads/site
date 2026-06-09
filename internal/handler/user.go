@@ -169,8 +169,12 @@ func DeleteAccountHandler(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-func UserAboutHandler(c *fiber.Ctx) error {
+func AboutHandler(c *fiber.Ctx) error {
 	return renderPage(c, "About", ui.AboutPage())
+}
+
+func FAQHandler(c *fiber.Ctx) error {
+	return renderPage(c, "FAQ", ui.FAQPage())
 }
 
 func UserProfileHandler(c *fiber.Ctx) error {
