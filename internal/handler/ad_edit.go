@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cookie"
+	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/param"
 	"github.com/rocky-ads/site/internal/ui"
@@ -109,9 +110,15 @@ func adFormValuesFrom(a ad.Ad) uiads.AdFormValues {
 		PriceRow:            priceRowFromAd(a),
 		Facets:              make(map[string]string),
 		FacetUnits:          make(map[string]string),
+		FacetMulti:          make(map[string][]string),
 	}
 	for key, v := range a.Facets {
 		if key == "price" {
+			continue
+		}
+		d, ok := facet.Get(key)
+		if ok && d.Kind == facet.MultiEnum {
+			values.FacetMulti[key] = v.MultiEnumValues()
 			continue
 		}
 		if v.Num != nil {

@@ -54,9 +54,13 @@ func CreateAd(input CreateInput) (int, error) {
 		}
 	}
 
+	locText := input.LocationText
+	if HasLocationFacet(category) {
+		locText = LocationTextFromFacets(category, values)
+	}
 	var locationID any
-	if strings.TrimSpace(input.LocationText) != "" {
-		id, ok, err := location.FindLocationID(input.LocationText)
+	if strings.TrimSpace(locText) != "" {
+		id, ok, err := location.FindLocationID(locText)
 		if err != nil {
 			return 0, err
 		}

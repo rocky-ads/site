@@ -3,6 +3,7 @@ package handler
 import (
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
@@ -146,6 +147,14 @@ func parseFacetFilters(c *fiber.Ctx, category ad.Category) map[string]facet.Filt
 				filters[d.Key] = facet.Filter{Values: vals}
 			}
 		default:
+			if d.Kind == facet.Date {
+				min := parseOptionalDate(c.Query(d.Key + "_min"))
+				max := parseOptionalDate(c.Query(d.Key + "_max"))
+				if min != nil || max != nil {
+					filters[d.Key] = facet.Filter{TextMin: min, TextMax: max}
+				}
+				continue
+			}
 			min := parseOptionalAmount(c.Query(d.Key + "_min"))
 			max := parseOptionalAmount(c.Query(d.Key + "_max"))
 			if min != nil || max != nil {
@@ -181,6 +190,17 @@ func parseEnumCheckboxQuery(c *fiber.Ctx, key string, allowed []string) []string
 		vals = append(vals, s)
 	})
 	return vals
+}
+
+func parseOptionalDate(raw string) *string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	if _, err := time.Parse("2006-01-02", raw); err != nil {
+		return nil
+	}
+	return &raw
 }
 
 func parseOptionalAmount(raw string) *int {

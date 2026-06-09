@@ -235,4 +235,100 @@ func TestCardLabel(t *testing.T) {
 			t.Errorf("%s should not appear on listing cards", key)
 		}
 	}
+	if d, ok := Get("sale_start_date"); !ok || !d.CardLabel() {
+		t.Error("sale_start_date should appear on listing cards")
+	}
+}
+
+func TestDateFacet(t *testing.T) {
+	start, ok := Get("sale_start_date")
+	if !ok {
+		t.Fatal("sale_start_date facet not registered")
+	}
+	if start.Kind != Date {
+		t.Fatalf("Kind = %v, want Date", start.Kind)
+	}
+	if start.Form != FormDate {
+		t.Fatalf("Form = %v, want FormDate", start.Form)
+	}
+	v := Value{Text: strPtr("2026-06-14")}
+	if err := start.Validate(v); err != nil {
+		t.Errorf("valid date rejected: %v", err)
+	}
+	if got := start.FormatFull(v); got != "Jun 14, 2026" {
+		t.Errorf("FormatFull = %q, want Jun 14, 2026", got)
+	}
+	if err := start.Validate(Value{Text: strPtr("not-a-date")}); err == nil {
+		t.Error("invalid date should be rejected")
+	}
+	if got := FormatDateRange("2026-06-14", "2026-06-14"); got != "Jun 14, 2026" {
+		t.Errorf("same-day range = %q", got)
+	}
+	if got := FormatDateRange("2026-06-14", "2026-06-16"); got != "Jun 14–16, 2026" {
+		t.Errorf("multi-day range = %q", got)
+	}
+}
+
+func TestMultiEnumFacet(t *testing.T) {
+	pricing, ok := Get("pricing_style")
+	if !ok {
+		t.Fatal("pricing_style facet not registered")
+	}
+	if pricing.Kind != MultiEnum {
+		t.Fatalf("Kind = %v, want MultiEnum", pricing.Kind)
+	}
+	if pricing.Form != FormCheckboxes {
+		t.Fatalf("Form = %v, want FormCheckboxes", pricing.Form)
+	}
+	v := EncodeMultiEnum([]string{
+		"Everything Priced",
+		"Free Items Included",
+	})
+	if err := pricing.Validate(v); err != nil {
+		t.Errorf("valid multi enum rejected: %v", err)
+	}
+	if got := pricing.FormatFull(v); got != "Everything Priced, Free Items Included" {
+		t.Errorf("FormatFull = %q", got)
+	}
+	vals := v.MultiEnumValues()
+	if len(vals) != 2 || vals[0] != "Everything Priced" {
+		t.Errorf("MultiEnumValues = %v", vals)
+	}
+	if err := pricing.Validate(EncodeMultiEnum([]string{"bogus"})); err == nil {
+		t.Error("invalid multi enum value should be rejected")
+	}
+}
+
+func TestLocationFacet(t *testing.T) {
+	address, ok := Get("address")
+	if !ok {
+		t.Fatal("address facet not registered")
+	}
+	if address.Kind != Location {
+		t.Fatalf("Kind = %v, want Location", address.Kind)
+	}
+	if address.Form != FormLocation {
+		t.Fatalf("Form = %v, want FormLocation", address.Form)
+	}
+	if !address.Required {
+		t.Error("address should be required when present on a category")
+	}
+	v := Value{Text: strPtr("123 Main St, Portland, OR 97201")}
+	if err := address.Validate(v); err != nil {
+		t.Errorf("valid address rejected: %v", err)
+	}
+	if got := address.FormatFull(v); got != *v.Text {
+		t.Errorf("FormatFull = %q", got)
+	}
+	if got := address.LocationPlaceholder(); got == "" {
+		t.Error("expected address placeholder")
+	}
+
+	location, ok := Get("location")
+	if !ok {
+		t.Fatal("location facet not registered")
+	}
+	if location.Required {
+		t.Error("location facet should be optional")
+	}
 }

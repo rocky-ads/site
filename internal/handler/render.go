@@ -12,8 +12,8 @@ import (
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/currency"
+	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/local"
-	"github.com/rocky-ads/site/internal/location"
 	"github.com/rocky-ads/site/internal/message"
 	"github.com/rocky-ads/site/internal/search"
 	"github.com/rocky-ads/site/internal/ui"
@@ -69,7 +69,7 @@ func searchAdsForUI(p search.Params, userID int, loc *time.Location) ([]ui.AdCar
 		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	return adCardsFrom(ads, loc), nil
+	return adCardsFrom(ads, userID, loc), nil
 }
 
 // searchAndRenderAds searches for ads and renders them into gomponents nodes.
@@ -83,7 +83,7 @@ func searchAndRenderAds(p search.Params, userID, view int, loc *time.Location, c
 	return ui.AdNodes(cards, userID, view, page, csrfToken, true), nil
 }
 
-func adCardFrom(a ad.Ad, loc *time.Location) ui.AdCard {
+func adCardFrom(a ad.Ad, viewerUserID int, loc *time.Location) ui.AdCard {
 	price, priceCurrency, hasPrice := a.PriceValue()
 	priceDisplay := ""
 	if hasPrice {
@@ -92,7 +92,7 @@ func adCardFrom(a ad.Ad, loc *time.Location) ui.AdCard {
 	return ui.AdCardFromFields(
 		a.ID, a.ImageCount, a.RockCount,
 		priceDisplay, a.Title,
-		location.DisplayText(a.City, a.AdminArea, a.Country), adFacetLabel(a),
+		ad.AdLocationDisplay(a, viewerUserID), adFacetLabel(a),
 		hasPrice, a.CreatedAt.In(loc),
 		!a.IsDeleted(), a.Bookmarked,
 	)
@@ -113,7 +113,7 @@ func adDetailFacetDisplays(a ad.Ad) []string {
 	}
 	var labels []string
 	for _, d := range cat.Facets() {
-		if d.Key == "price" || d.CardLabel() {
+		if d.Key == "price" || d.Kind == facet.Location || d.CardLabel() {
 			continue
 		}
 		v, ok := a.Facets[d.Key]
@@ -139,8 +139,30 @@ func adFacetLabels(a ad.Ad, compact bool) []string {
 
 	var labels []string
 	for _, d := range cat.Facets() {
-		if d.Key == "price" || (compact && !d.CardLabel()) {
+		if d.Key == "price" {
 			continue
+		}
+		if compact {
+			if d.Key == "sale_end_date" {
+				continue
+			}
+			if !d.CardLabel() {
+				continue
+			}
+			if d.Key == "sale_start_date" {
+				start := ""
+				if v, ok := a.Facets["sale_start_date"]; ok {
+					start = v.DateString()
+				}
+				end := ""
+				if v, ok := a.Facets["sale_end_date"]; ok {
+					end = v.DateString()
+				}
+				if s := facet.FormatDateRange(start, end); s != "" {
+					labels = append(labels, s)
+				}
+				continue
+			}
 		}
 		v, ok := a.Facets[d.Key]
 		if !ok {
@@ -159,10 +181,10 @@ func adFacetLabels(a ad.Ad, compact bool) []string {
 	return labels
 }
 
-func adCardsFrom(ads []ad.Ad, loc *time.Location) []ui.AdCard {
+func adCardsFrom(ads []ad.Ad, viewerUserID int, loc *time.Location) []ui.AdCard {
 	cards := make([]ui.AdCard, len(ads))
 	for i, a := range ads {
-		cards[i] = adCardFrom(a, loc)
+		cards[i] = adCardFrom(a, viewerUserID, loc)
 	}
 	return cards
 }

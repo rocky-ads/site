@@ -29,6 +29,9 @@ func facetFilterRow(d facet.Def, filter facet.Filter) g.Node {
 	case facet.FilterCheckboxes:
 		return enumCheckboxesFilterRow(d, filter)
 	default:
+		if d.Kind == facet.Date {
+			return dateRangeFilterRow(d.Key, d.Label, filter.TextMin, filter.TextMax)
+		}
 		return rangeFilterRow(d.Key, d.Label, filter.Min, filter.Max)
 	}
 }
@@ -120,6 +123,40 @@ func rangeFilterRow(name, label string, min, max *int) g.Node {
 				g.Attr("min", "0"),
 				g.Attr("inputmode", "numeric"),
 				g.If(priceAmount(max) != "", Value(priceAmount(max))),
+			),
+		),
+	)
+}
+
+func dateRangeFilterRow(name, label string, min, max *string) g.Node {
+	minID := "filter-" + name + "-min"
+	maxID := "filter-" + name + "-max"
+	minVal := ""
+	if min != nil {
+		minVal = *min
+	}
+	maxVal := ""
+	if max != nil {
+		maxVal = *max
+	}
+	return Div(
+		Class("col-span-2"),
+		Label(For(minID), Class("field-label"), g.Text(label)),
+		Div(Class("ad-filter-price-range flex flex-wrap items-center gap-2"),
+			Input(
+				Type("date"),
+				Name(name+"_min"),
+				ID(minID),
+				Class("p-2 border rounded-md"),
+				g.If(minVal != "", Value(minVal)),
+			),
+			Span(Class("ad-filter-range-sep"), g.Text("–")),
+			Input(
+				Type("date"),
+				Name(name+"_max"),
+				ID(maxID),
+				Class("p-2 border rounded-md"),
+				g.If(maxVal != "", Value(maxVal)),
 			),
 		),
 	)

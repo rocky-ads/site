@@ -80,7 +80,7 @@ func userMyAdsTabHandler(c *fiber.Ctx, activeTab string) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to load ads")
 	}
 
-	adNodes := ui.AdNodes(adCardsFrom(ads, loc), userID, ui.ViewList, 1, csrfToken, false)
+	adNodes := ui.AdNodes(adCardsFrom(ads, userID, loc), userID, ui.ViewList, 1, csrfToken, false)
 
 	// Check if this is a tab switch (HTMX request) or full page load
 	if c.Get("HX-Request") != "" {

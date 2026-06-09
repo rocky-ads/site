@@ -23,7 +23,9 @@ func AdFieldsPartial(cfg AdFormConfig, facets []facet.Def) g.Node {
 	nodes := []g.Node{
 		fieldBlock("Title", f.titleInput()),
 		fieldBlock("Description", f.descriptionFields()),
-		fieldBlock("Location (optional)", f.locationInput()),
+	}
+	if !hasLocationFacet(facets) {
+		nodes = append(nodes, fieldBlock("Location (optional)", f.locationInput()))
 	}
 	for _, d := range facets {
 		nodes = append(nodes, facetFieldBlock(d, f.facetInput(d)))
@@ -48,6 +50,12 @@ func (f adFields) facetInput(d facet.Def) g.Node {
 		return f.formSelect(d)
 	case facet.FormRadio:
 		return f.formRadio(d)
+	case facet.FormDate:
+		return f.formDate(d)
+	case facet.FormCheckboxes:
+		return f.formCheckboxes(d)
+	case facet.FormLocation:
+		return f.formLocation(d)
 	default:
 		if len(d.Units) > 0 {
 			return f.intWithUnitRow(d)
@@ -96,6 +104,46 @@ func (f adFields) formRadio(d facet.Def) g.Node {
 			ID(id),
 		}
 		if o == selected {
+			attrs = append(attrs, g.Attr("checked", "checked"))
+		}
+		nodes[i] = Label(
+			Class("flex items-center gap-2"),
+			Input(attrs...),
+			Span(g.Text(o)),
+		)
+	}
+	return Div(Class("flex flex-wrap items-center gap-4"), g.Group(nodes))
+}
+
+func (f adFields) formDate(d facet.Def) g.Node {
+	attrs := []g.Node{
+		Type("date"),
+		Name(d.Key),
+		ID(f.cfg.fieldID(d.Key)),
+		Class("p-2 border rounded-md"),
+	}
+	if v := strings.TrimSpace(f.cfg.Values.Facets[d.Key]); v != "" {
+		attrs = append(attrs, Value(v))
+	}
+	return Input(attrs...)
+}
+
+func (f adFields) formCheckboxes(d facet.Def) g.Node {
+	selected := make(map[string]bool)
+	for _, v := range f.cfg.Values.FacetMulti[d.Key] {
+		selected[v] = true
+	}
+	opts := d.FormOptions()
+	nodes := make([]g.Node, len(opts))
+	for i, o := range opts {
+		id := fmt.Sprintf("%s-%s-%d", f.cfg.FieldPrefix, d.Key, i)
+		attrs := []g.Node{
+			Type("checkbox"),
+			Name(d.Key),
+			Value(o),
+			ID(id),
+		}
+		if selected[o] {
 			attrs = append(attrs, g.Attr("checked", "checked"))
 		}
 		nodes[i] = Label(
@@ -221,6 +269,24 @@ func (f adFields) editDescriptionFields() g.Node {
 		),
 	}
 	return Div(Class("space-y-2"), g.Group(nodes))
+}
+
+func hasLocationFacet(facets []facet.Def) bool {
+	for _, d := range facets {
+		if d.Kind == facet.Location {
+			return true
+		}
+	}
+	return false
+}
+
+func (f adFields) formLocation(d facet.Def) g.Node {
+	return LocationInput(
+		f.cfg.fieldID(d.Key),
+		d.Key,
+		f.cfg.Values.Facets[d.Key],
+		d.LocationPlaceholder(),
+	)
 }
 
 func (f adFields) locationInput() g.Node {

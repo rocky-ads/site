@@ -29,32 +29,72 @@ func Search(p Params) ([]int, error) {
 		if !f.Active() {
 			continue
 		}
-		clause := ` AND EXISTS (SELECT 1 FROM ad_facets f
-			WHERE f.ad_id = a.id AND f.key = ?`
-		facetArgs := []any{key}
-		switch {
-		case len(f.Values) > 0:
+		d, ok := facet.Get(key)
+		if !ok {
+			continue
+		}
+		switch d.Kind {
+		case facet.MultiEnum:
+			if len(f.Values) == 0 {
+				continue
+			}
 			placeholders := make([]string, len(f.Values))
+			facetArgs := []any{key}
 			for i, v := range f.Values {
 				placeholders[i] = "?"
 				facetArgs = append(facetArgs, v)
 			}
-			clause += ` AND f."text" IN (` + strings.Join(placeholders, ",") + `)`
-		case f.Value != nil:
-			clause += ` AND f."text" = ?`
-			facetArgs = append(facetArgs, *f.Value)
+			clause := ` AND EXISTS (SELECT 1 FROM ad_facets f, json_each(f.text) je
+				WHERE f.ad_id = a.id AND f.key = ? AND je.value IN (` +
+				strings.Join(placeholders, ",") + `))`
+			query += clause
+			args = append(args, facetArgs...)
+		case facet.Date:
+			if f.TextMin == nil && f.TextMax == nil {
+				continue
+			}
+			clause := ` AND EXISTS (SELECT 1 FROM ad_facets f
+				WHERE f.ad_id = a.id AND f.key = ?`
+			facetArgs := []any{key}
+			if f.TextMin != nil {
+				clause += ` AND f."text" >= ?`
+				facetArgs = append(facetArgs, *f.TextMin)
+			}
+			if f.TextMax != nil {
+				clause += ` AND f."text" <= ?`
+				facetArgs = append(facetArgs, *f.TextMax)
+			}
+			clause += `)`
+			query += clause
+			args = append(args, facetArgs...)
+		default:
+			clause := ` AND EXISTS (SELECT 1 FROM ad_facets f
+				WHERE f.ad_id = a.id AND f.key = ?`
+			facetArgs := []any{key}
+			switch {
+			case len(f.Values) > 0:
+				placeholders := make([]string, len(f.Values))
+				for i, v := range f.Values {
+					placeholders[i] = "?"
+					facetArgs = append(facetArgs, v)
+				}
+				clause += ` AND f."text" IN (` + strings.Join(placeholders, ",") + `)`
+			case f.Value != nil:
+				clause += ` AND f."text" = ?`
+				facetArgs = append(facetArgs, *f.Value)
+			}
+			if f.Min != nil {
+				clause += ` AND f.num >= ?`
+				facetArgs = append(facetArgs, *f.Min)
+			}
+			if f.Max != nil {
+				clause += ` AND f.num <= ?`
+				facetArgs = append(facetArgs, *f.Max)
+			}
+			clause += `)`
+			query += clause
+			args = append(args, facetArgs...)
 		}
-		if f.Min != nil {
-			clause += ` AND f.num >= ?`
-			facetArgs = append(facetArgs, *f.Min)
-		}
-		if f.Max != nil {
-			clause += ` AND f.num <= ?`
-			facetArgs = append(facetArgs, *f.Max)
-		}
-		clause += `)`
-		query += clause
-		args = append(args, facetArgs...)
 	}
 
 	if p.HasTextQuery() {

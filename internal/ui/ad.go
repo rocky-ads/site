@@ -49,44 +49,37 @@ func gridImageNode(adID, count, current int) g.Node {
 	return ImageNode(adID, count, current, "480w", "aspect-[4/3]", false)
 }
 
-// format ad age as Xm, XhYm, Xd, Xmo, or Xy Xmo
-func formatAdAge(t time.Time) string {
+func formatListedAge(t time.Time) string {
 	d := time.Since(t)
-	if d < time.Hour {
-		return fmt.Sprintf("%dm", int(d.Minutes()))
-	} else if d < 24*time.Hour {
-		return fmt.Sprintf("%dh", int(d.Hours()))
-	}
-
 	days := int(d.Hours() / 24)
-	if days <= 31 {
-		return fmt.Sprintf("%dd", days)
+	if days == 0 {
+		return "Listed today"
 	}
-
-	// Calculate months and years
-	now := time.Now()
-	years := now.Year() - t.Year()
-	months := int(now.Month()) - int(t.Month())
-
-	// Adjust for day of month
-	if now.Day() < t.Day() {
-		months--
+	if days == 1 {
+		return "Listed 1 day ago"
 	}
-
-	// Adjust years if months went negative
-	if months < 0 {
-		years--
-		months += 12
+	if days < 7 {
+		return fmt.Sprintf("Listed %d days ago", days)
 	}
-
-	if years > 0 {
-		if months > 0 {
-			return fmt.Sprintf("%dy %dmo", years, months)
-		}
-		return fmt.Sprintf("%dy", years)
+	weeks := days / 7
+	if weeks == 1 {
+		return "Listed a week ago"
 	}
-
-	return fmt.Sprintf("%dmo", months)
+	if days < 30 {
+		return fmt.Sprintf("Listed %d weeks ago", weeks)
+	}
+	months := days / 30
+	if months == 1 {
+		return "Listed a month ago"
+	}
+	if days < 365 {
+		return fmt.Sprintf("Listed %d months ago", months)
+	}
+	years := days / 365
+	if years == 1 {
+		return "Listed a year ago"
+	}
+	return fmt.Sprintf("Listed %d years ago", years)
 }
 
 func newBadge() g.Node {
@@ -96,12 +89,12 @@ func newBadge() g.Node {
 	)
 }
 
-func ageNode(createdAt time.Time) g.Node {
+func listedAgeDetailNode(createdAt time.Time) g.Node {
 	isNew := time.Since(createdAt) < 4*time.Hour
 	return Div(
-		Class("flex items-center gap-2"),
+		Class("shrink-0 text-right"),
 		g.If(isNew, newBadge()),
-		g.If(!isNew, g.Text(formatAdAge(createdAt))),
+		g.If(!isNew, g.Text(formatListedAge(createdAt))),
 	)
 }
 
@@ -118,7 +111,7 @@ func paginationDiv(nextPage int) g.Node {
 func adCardMeta(location string, createdAt time.Time) g.Node {
 	return Div(
 		Class("flex items-center gap-2 text-xs text-zinc-500"),
-		ageNode(createdAt),
+		g.If(time.Since(createdAt) < 4*time.Hour, newBadge()),
 		g.Text(location),
 	)
 }
@@ -407,12 +400,12 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 					adButtons(d.ID, userID, d.OwnerID, d.Bookmarked, d.Active, d.Reachable, csrfToken),
 				),
 				Div(
-					Class("flex items-center gap-2"),
+					Class("flex items-center gap-2 min-w-0"),
 					priceSpan(d.PriceDisplay, d.HasPrice),
 					Div(
-						Class("flex items-center gap-2 text-xs text-zinc-500"),
-						ageNode(d.CreatedAt),
-						g.Text(d.Location),
+						Class("flex flex-1 items-center justify-between gap-2 text-xs text-zinc-500 min-w-0"),
+						Span(Class("min-w-0"), g.Text(d.Location)),
+						listedAgeDetailNode(d.CreatedAt),
 					),
 				),
 				descriptionDisplay(d.DescriptionOriginal, d.FacetDetails, d.Tags, d.DescriptionHistory),

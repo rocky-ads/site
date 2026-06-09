@@ -133,7 +133,7 @@ func TestFormatLocationHistoryChangeNoOp(t *testing.T) {
 		AdminArea:   "OR",
 		Country:     "US",
 	}
-	if body := formatLocationHistoryChange(old, "97333"); body != "" {
+	if body := formatLocationHistoryChange(old, "97333", Category{}); body != "" {
 		t.Fatalf("want no change, got %q", body)
 	}
 }
@@ -144,5 +144,26 @@ func TestSanitizeStripsHistoryMarker(t *testing.T) {
 	}
 	if got := SanitizeAdText("before\u001fafter"); got != "beforeafter" {
 		t.Errorf("SanitizeAdText end marker = %q", got)
+	}
+}
+
+func TestDescriptionDisplayForViewerHidesLocationHistory(t *testing.T) {
+	desc := AppendHistoryEntry(
+		"Sale items",
+		"Location change",
+		"Location set to 123 Main St",
+		time.Date(2026, 1, 2, 15, 4, 0, 0, time.UTC),
+		time.UTC,
+	)
+	garage := Category{FacetKeys: []string{"address"}}
+
+	loggedOut := filterLocationHistoryForViewer(ParseDescriptionForDisplay(desc), garage, 0)
+	if len(loggedOut.History) != 0 {
+		t.Fatalf("logged out history = %d entries, want 0", len(loggedOut.History))
+	}
+
+	loggedIn := filterLocationHistoryForViewer(ParseDescriptionForDisplay(desc), garage, 1)
+	if len(loggedIn.History) != 1 {
+		t.Fatalf("logged in history = %d entries, want 1", len(loggedIn.History))
 	}
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/encryption"
+	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/password"
 )
@@ -31,6 +32,7 @@ type categoryJSON struct {
 type CategoryFiles struct {
 	ID         int
 	SeedAdFile string
+	Facets     []string
 }
 
 var categoryFiles = make(map[string]CategoryFiles)
@@ -210,6 +212,7 @@ func LoadCategories() error {
 		categoryFiles[cat.Name] = CategoryFiles{
 			ID:         int(categoryID),
 			SeedAdFile: cat.SeedAdFile,
+			Facets:     facetKeys,
 		}
 	}
 
@@ -232,7 +235,7 @@ func LoadAds(includeTestAds bool) error {
 
 	for _, categoryName := range categoryNames {
 		files := categoryFiles[categoryName]
-		if err := loadAdsFromFile(files.ID, files.SeedAdFile, usedIDs); err != nil {
+		if err := loadAdsFromFile(files.ID, files.SeedAdFile, files.Facets, usedIDs); err != nil {
 			return fmt.Errorf("loading ads from %s for category %s: %w", files.SeedAdFile, categoryName, err)
 		}
 	}
@@ -270,8 +273,9 @@ type adJSON struct {
 
 // facetJSON is a single facet value in a seed ad file (maps to ad_facets).
 type facetJSON struct {
-	Num  *int    `json:"num,omitempty"`
-	Text *string `json:"text,omitempty"`
+	Num    *int     `json:"num,omitempty"`
+	Text   *string  `json:"text,omitempty"`
+	Values []string `json:"values,omitempty"`
 }
 
 var seedHistoryLocation *time.Location
@@ -327,7 +331,7 @@ func convertAdJSON(aj adJSON) Ad {
 	}
 }
 
-func loadAdsFromFile(categoryID int, filename string, usedIDs map[int]string) error {
+func loadAdsFromFile(categoryID int, filename string, categoryFacets []string, usedIDs map[int]string) error {
 	data, err := os.ReadFile("cmd/rebuild_db/seed/" + filename)
 	if err != nil {
 		return err
@@ -357,7 +361,7 @@ func loadAdsFromFile(categoryID int, filename string, usedIDs map[int]string) er
 
 		ad := convertAdJSON(aj)
 
-		locationID, err := getOrCreateLocation(aj.Location)
+		locationID, err := getOrCreateLocationForAd(aj)
 		if err != nil {
 			return fmt.Errorf("getting/creating location: %w", err)
 		}
@@ -389,7 +393,7 @@ func loadAdsFromFile(categoryID int, filename string, usedIDs map[int]string) er
 			return fmt.Errorf("inserting ad with ID %d: %w", adID, err)
 		}
 
-		if err := insertAdFacets(adID, price, priceCurrency, aj.Facets); err != nil {
+		if err := insertAdFacets(adID, price, priceCurrency, categoryFacets, aj.Facets); err != nil {
 			return fmt.Errorf("inserting facets for ad %d: %w", adID, err)
 		}
 	}
@@ -399,25 +403,67 @@ func loadAdsFromFile(categoryID int, filename string, usedIDs map[int]string) er
 
 // insertAdFacets writes the price facet (from the ad's top-level price) plus any
 // generic facets declared in the seed file into ad_facets.
-func insertAdFacets(adID, price int, priceCurrency string, facets map[string]facetJSON) error {
-	if _, err := db.Exec(
-		`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES (?, 'price', ?, ?)`,
-		adID, price, priceCurrency,
-	); err != nil {
-		return err
+func insertAdFacets(adID, price int, priceCurrency string, categoryFacets []string, facets map[string]facetJSON) error {
+	hasPrice := false
+	for _, key := range categoryFacets {
+		if key == "price" {
+			hasPrice = true
+			break
+		}
+	}
+	if hasPrice {
+		if _, err := db.Exec(
+			`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES (?, 'price', ?, ?)`,
+			adID, price, priceCurrency,
+		); err != nil {
+			return err
+		}
 	}
 	for key, v := range facets {
 		if key == "price" {
 			continue
 		}
+		text := v.Text
+		if len(v.Values) > 0 {
+			encoded := facet.EncodeMultiEnum(v.Values)
+			text = encoded.Text
+		}
 		if _, err := db.Exec(
 			`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES (?, ?, ?, ?)`,
-			adID, key, v.Num, v.Text,
+			adID, key, v.Num, text,
 		); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func getOrCreateLocationForAd(aj adJSON) (int, error) {
+	if v, ok := aj.Facets["address"]; ok && v.Text != nil {
+		if raw := strings.TrimSpace(*v.Text); raw != "" {
+			return getOrCreateLocationRaw(raw, aj.Location)
+		}
+	}
+	return getOrCreateLocation(aj.Location)
+}
+
+func getOrCreateLocationRaw(rawText string, loc LocationData) (int, error) {
+	var locationID int
+	err := db.QueryRow("SELECT id FROM locations WHERE raw_text = ?", rawText).Scan(&locationID)
+	if err == nil {
+		return locationID, nil
+	}
+
+	result, err := db.Exec(
+		"INSERT INTO locations (raw_text, city, admin_area, country, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?)",
+		rawText, loc.City, loc.AdminArea, loc.Country, loc.Latitude, loc.Longitude,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("inserting location: %w", err)
+	}
+
+	locationIDInt64, _ := result.LastInsertId()
+	return int(locationIDInt64), nil
 }
 
 func getOrCreateLocation(loc LocationData) (int, error) {

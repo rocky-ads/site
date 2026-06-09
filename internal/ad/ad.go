@@ -163,7 +163,11 @@ func attachFacets(ads []Ad) error {
 	}
 	for _, r := range rows {
 		if i, ok := index[r.AdID]; ok {
-			ads[i].Facets[r.Key] = facet.Value{Num: r.Num, Text: r.Text}
+			v := facet.Value{Num: r.Num, Text: r.Text}
+			if d, ok := facet.Get(r.Key); ok && d.Kind == facet.MultiEnum {
+				v = facet.EncodeMultiEnum(v.MultiEnumValues())
+			}
+			ads[i].Facets[r.Key] = v
 		}
 	}
 	return nil

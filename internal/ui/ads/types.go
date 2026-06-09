@@ -42,6 +42,7 @@ type AdFormValues struct {
 	OriginalDescription string
 	Location            string
 	Facets              map[string]string
+	FacetMulti          map[string][]string
 	FacetUnits          map[string]string
 	PriceRow            PriceRowView
 	Suggestions         []SuggestionOption
@@ -93,6 +94,9 @@ func EditFormConfig(
 	}
 	if values.FacetUnits == nil {
 		values.FacetUnits = make(map[string]string)
+	}
+	if values.FacetMulti == nil {
+		values.FacetMulti = make(map[string][]string)
 	}
 	return AdFormConfig{
 		Mode:           AdFormEdit,

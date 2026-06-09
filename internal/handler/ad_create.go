@@ -88,13 +88,49 @@ func parseAdFacets(c *fiber.Ctx, category ad.Category) (map[string]facet.Value, 
 			val := strings.TrimSpace(c.FormValue(d.Key))
 			if val != "" {
 				values[d.Key] = facet.Value{Text: &val}
+			} else if d.Required {
+				return nil, fmt.Errorf("%s is required", d.Label)
 			}
+		case facet.Date:
+			raw := strings.TrimSpace(c.FormValue(d.Key))
+			if raw == "" {
+				if d.Required {
+					return nil, fmt.Errorf("%s is required", d.Label)
+				}
+				continue
+			}
+			v, err := facet.ParseDateValue(raw)
+			if err != nil {
+				return nil, fmt.Errorf("%s must be a valid date", d.Label)
+			}
+			values[d.Key] = v
+		case facet.MultiEnum:
+			vals := parseFormEnumCheckboxes(c, d.Key, d.Enum)
+			if len(vals) == 0 {
+				if d.Required {
+					return nil, fmt.Errorf("%s is required", d.Label)
+				}
+				continue
+			}
+			values[d.Key] = facet.EncodeMultiEnum(vals)
+		case facet.Location:
+			raw := strings.TrimSpace(c.FormValue(d.Key))
+			if raw == "" {
+				if d.Required {
+					return nil, fmt.Errorf("%s is required", d.Label)
+				}
+				continue
+			}
+			values[d.Key] = facet.Value{Text: &raw}
 		default:
 			num, err := parseOptionalFacet(c.FormValue(d.Key))
 			if err != nil {
 				return nil, fmt.Errorf("%s must be a non-negative whole number", d.Label)
 			}
 			if num == nil {
+				if d.Required {
+					return nil, fmt.Errorf("%s is required", d.Label)
+				}
 				continue
 			}
 			v := facet.Value{Num: num}
@@ -112,7 +148,53 @@ func parseAdFacets(c *fiber.Ctx, category ad.Category) (map[string]facet.Value, 
 			values[d.Key] = v
 		}
 	}
+	if err := validateSaleDates(values); err != nil {
+		return nil, err
+	}
 	return values, nil
+}
+
+func validateSaleDates(values map[string]facet.Value) error {
+	start, startOK := values["sale_start_date"]
+	end, endOK := values["sale_end_date"]
+	if !startOK || !endOK {
+		return nil
+	}
+	if start.DateString() > end.DateString() {
+		return fmt.Errorf("Sale End Date must be on or after Sale Start Date")
+	}
+	return nil
+}
+
+func parseFormEnumCheckboxes(c *fiber.Ctx, key string, allowed []string) []string {
+	allowedSet := make(map[string]bool, len(allowed))
+	for _, a := range allowed {
+		allowedSet[a] = true
+	}
+	var vals []string
+	add := func(raw string) {
+		s := strings.TrimSpace(raw)
+		if s == "" || !allowedSet[s] {
+			return
+		}
+		for _, existing := range vals {
+			if existing == s {
+				return
+			}
+		}
+		vals = append(vals, s)
+	}
+	c.Context().PostArgs().VisitAll(func(k, v []byte) {
+		if string(k) == key {
+			add(string(v))
+		}
+	})
+	if form, err := c.MultipartForm(); err == nil && form != nil {
+		for _, v := range form.Value[key] {
+			add(v)
+		}
+	}
+	return vals
 }
 
 func parseOptionalFacet(raw string) (*int, error) {

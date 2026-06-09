@@ -100,6 +100,41 @@ func TestSearchGeoFilterSQL(t *testing.T) {
 			t.Fatalf("expected 1 ad, got %v", ids)
 		}
 	})
+	t.Run("sale start date range", func(t *testing.T) {
+		insertAdWithDate(t, "Early sale", "2026-06-01")
+		insertAdWithDate(t, "Late sale", "2026-06-20")
+		min := "2026-06-10"
+		ids, err := Search(Params{
+			CategoryID: 1,
+			Limit:      10,
+			FacetFilters: map[string]facet.Filter{"sale_start_date": {
+				TextMin: &min,
+			}},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(ids) != 1 {
+			t.Fatalf("expected 1 ad, got %v", ids)
+		}
+	})
+	t.Run("pricing style multi enum", func(t *testing.T) {
+		insertAdWithPricingStyle(t, "Priced sale", `["Everything Priced"]`)
+		insertAdWithPricingStyle(t, "Negotiable sale", `["Negotiable / Make Offer"]`)
+		ids, err := Search(Params{
+			CategoryID: 1,
+			Limit:      10,
+			FacetFilters: map[string]facet.Filter{"pricing_style": {
+				Values: []string{"Everything Priced"},
+			}},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(ids) != 1 {
+			t.Fatalf("expected 1 ad, got %v", ids)
+		}
+	})
 }
 
 func insertAdWithCondition(t *testing.T, title, condition string) {
@@ -130,6 +165,38 @@ func insertAdWithMileage(t *testing.T, title string, mileage int) {
 		t.Fatal(err)
 	}
 	if _, err := db.Exec(`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES (?, 'mileage', ?, 'mi')`, id, mileage); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func insertAdWithDate(t *testing.T, title, date string) {
+	t.Helper()
+	res, err := db.Exec(`INSERT INTO ads (category_id, title, description, user_id)
+		VALUES (1, ?, 'desc', 1)`, title)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES (?, 'sale_start_date', NULL, ?)`, id, date); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func insertAdWithPricingStyle(t *testing.T, title, jsonVal string) {
+	t.Helper()
+	res, err := db.Exec(`INSERT INTO ads (category_id, title, description, user_id)
+		VALUES (1, ?, 'desc', 1)`, title)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES (?, 'pricing_style', NULL, ?)`, id, jsonVal); err != nil {
 		t.Fatal(err)
 	}
 }

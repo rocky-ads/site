@@ -10,7 +10,6 @@ import (
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/egg"
 	"github.com/rocky-ads/site/internal/local"
-	"github.com/rocky-ads/site/internal/location"
 	"github.com/rocky-ads/site/internal/message"
 	"github.com/rocky-ads/site/internal/param"
 	"github.com/rocky-ads/site/internal/ui"
@@ -50,30 +49,28 @@ func AdHandler(c *fiber.Ctx) error {
 		reachable = false
 	}
 
-	return renderPage(c, a.Title, ui.Ad(adDetailFrom(a, reachable), userID, csrfToken))
+	return renderPage(c, a.Title, ui.Ad(adDetailFrom(a, userID, reachable), userID, csrfToken))
 }
 
-func adDetailFrom(a ad.Ad, reachable bool) ui.AdDetail {
+func adDetailFrom(a ad.Ad, viewerUserID int, reachable bool) ui.AdDetail {
 	price, priceCurrency, hasPrice := a.PriceValue()
 	priceDisplay := ""
 	if hasPrice {
 		priceDisplay = currency.Format(price, priceCurrency)
 	}
-	desc := ad.ParseDescriptionForDisplay(a.Description)
+	desc := ad.DescriptionDisplayForViewer(a, viewerUserID)
 	history := make([]ui.AdHistoryEntry, len(desc.History))
 	for i, e := range desc.History {
 		history[i] = ui.AdHistoryEntry{Header: e.Header, Body: e.Body}
 	}
 	return ui.AdDetail{
-		ID:           a.ID,
-		OwnerID:      a.UserID,
-		ImageCount:   a.ImageCount,
-		PriceDisplay: priceDisplay,
-		HasPrice:     hasPrice,
-		Title:        a.Title,
-		Location: location.DisplayText(
-			a.City, a.AdminArea, a.Country,
-		),
+		ID:                  a.ID,
+		OwnerID:             a.UserID,
+		ImageCount:          a.ImageCount,
+		PriceDisplay:        priceDisplay,
+		HasPrice:            hasPrice,
+		Title:               a.Title,
+		Location:            ad.AdLocationDisplay(a, viewerUserID),
 		DescriptionOriginal: desc.Original,
 		DescriptionHistory:  history,
 		CreatedAt:           a.CreatedAt,

@@ -64,12 +64,16 @@ func suggestInputFrom(c *fiber.Ctx, categoryID int, category ad.Category, select
 		formalFacets[d.Key] = d.Label
 	}
 	facetValues := parseFormFacetValues(c, category)
+	locText := c.FormValue("location")
+	if ad.HasLocationFacet(category) {
+		locText = ad.LocationTextFromFacets(category, facetValues)
+	}
 	return ad.SuggestInput{
 		CategoryID:      categoryID,
 		CategoryName:    category.Name,
 		Title:           c.FormValue("title"),
 		Description:     c.FormValue("description"),
-		Location:        c.FormValue("location"),
+		Location:        locText,
 		Facets:          formalFacets,
 		FormalFacets:    ad.FormalFacetLines(category, facetValues),
 		AlreadySelected: selected,
@@ -108,6 +112,24 @@ func parseFormFacetValues(c *fiber.Ctx, category ad.Category) map[string]facet.V
 			val := strings.TrimSpace(c.FormValue(d.Key))
 			if val != "" {
 				values[d.Key] = facet.Value{Text: &val}
+			}
+		case facet.Date:
+			raw := strings.TrimSpace(c.FormValue(d.Key))
+			if raw == "" {
+				continue
+			}
+			if v, err := facet.ParseDateValue(raw); err == nil {
+				values[d.Key] = v
+			}
+		case facet.MultiEnum:
+			vals := parseFormEnumCheckboxes(c, d.Key, d.Enum)
+			if len(vals) > 0 {
+				values[d.Key] = facet.EncodeMultiEnum(vals)
+			}
+		case facet.Location:
+			raw := strings.TrimSpace(c.FormValue(d.Key))
+			if raw != "" {
+				values[d.Key] = facet.Value{Text: &raw}
 			}
 		default:
 			num, err := parseOptionalFacet(c.FormValue(d.Key))

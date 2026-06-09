@@ -86,8 +86,12 @@ func UpdateAd(input UpdateInput) error {
 			desc, "Description Addition", addition, now, input.Loc,
 		)
 	}
+	locText := input.LocationText
+	if HasLocationFacet(category) {
+		locText = LocationTextFromFacets(category, values)
+	}
 	for _, e := range BuildFieldChangeEntries(
-		a, title, input.LocationText, values, category,
+		a, title, locText, values, category,
 	) {
 		desc = AppendHistoryEntry(desc, e.label, e.body, now, input.Loc)
 	}
@@ -103,8 +107,8 @@ func UpdateAd(input UpdateInput) error {
 	}
 
 	var locationID any
-	if strings.TrimSpace(input.LocationText) != "" {
-		id, ok, err := location.FindLocationID(input.LocationText)
+	if strings.TrimSpace(locText) != "" {
+		id, ok, err := location.FindLocationID(locText)
 		if err != nil {
 			return err
 		}

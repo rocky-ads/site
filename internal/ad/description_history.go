@@ -47,6 +47,36 @@ func ParseDescriptionForDisplay(desc string) DescriptionDisplay {
 	return out
 }
 
+// DescriptionDisplayForViewer returns description history safe for the viewer.
+// Full street addresses in location history require a logged-in viewer.
+func DescriptionDisplayForViewer(a Ad, viewerUserID int) DescriptionDisplay {
+	d := ParseDescriptionForDisplay(a.Description)
+	cat, err := GetCategory(a.CategoryID)
+	if err != nil {
+		return d
+	}
+	return filterLocationHistoryForViewer(d, cat, viewerUserID)
+}
+
+func filterLocationHistoryForViewer(
+	d DescriptionDisplay,
+	category Category,
+	viewerUserID int,
+) DescriptionDisplay {
+	if viewerUserID != 0 || !UsesFullAddressDisplay(category) {
+		return d
+	}
+	filtered := make([]HistoryEntryDisplay, 0, len(d.History))
+	for _, e := range d.History {
+		if strings.HasSuffix(e.Header, "Location change") {
+			continue
+		}
+		filtered = append(filtered, e)
+	}
+	d.History = filtered
+	return d
+}
+
 // SplitDescription separates the immutable original body from server history.
 func SplitDescription(desc string) (original, history string) {
 	if i := strings.Index(desc, historyEndMarker); i >= 0 {
@@ -166,6 +196,19 @@ func facetValuesEqual(a, b facet.Value) bool {
 	if a.Num != nil && b.Num != nil && *a.Num != *b.Num {
 		return false
 	}
+	aVals := a.MultiEnumValues()
+	bVals := b.MultiEnumValues()
+	if len(aVals) > 0 || len(bVals) > 0 {
+		if len(aVals) != len(bVals) {
+			return false
+		}
+		for i := range aVals {
+			if aVals[i] != bVals[i] {
+				return false
+			}
+		}
+		return true
+	}
 	if a.Text == nil && b.Text != nil || a.Text != nil && b.Text == nil {
 		return false
 	}
@@ -261,9 +304,21 @@ func formatLocationChange(oldText, newText string) string {
 	return fmt.Sprintf("Location changed from %s to %s", oldText, newText)
 }
 
-func formatLocationHistoryChange(oldAd Ad, newLocationText string) string {
-	oldRaw := strings.TrimSpace(oldAd.RawLocation)
+func formatLocationHistoryChange(
+	oldAd Ad,
+	newLocationText string,
+	category Category,
+) string {
 	newRaw := strings.TrimSpace(newLocationText)
+	if UsesFullAddressDisplay(category) {
+		oldRaw := fullAddressText(oldAd)
+		if strings.EqualFold(oldRaw, newRaw) {
+			return ""
+		}
+		return formatLocationChange(oldRaw, newRaw)
+	}
+
+	oldRaw := strings.TrimSpace(oldAd.RawLocation)
 	if strings.EqualFold(oldRaw, newRaw) {
 		return ""
 	}
@@ -302,7 +357,7 @@ func BuildFieldChangeEntries(
 			body  string
 		}{"Title change", body})
 	}
-	if body := formatLocationHistoryChange(oldAd, newLocationText); body != "" {
+	if body := formatLocationHistoryChange(oldAd, newLocationText, category); body != "" {
 		entries = append(entries, struct {
 			label string
 			body  string
@@ -325,6 +380,8 @@ func BuildFieldChangeEntries(
 		if d.Key == "price" {
 			body = formatPriceChange(oldV, newV)
 			label = "Price change"
+		} else if d.Kind == facet.Location {
+			continue
 		} else {
 			body = formatFacetChange(d, oldV, newV)
 			label = d.Label + " change"

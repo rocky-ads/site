@@ -108,6 +108,16 @@ care about fitment and condition, such as:
 - part type (OEM | aftermarket)
 
 Tailor options to the specific part described.`,
+
+	"Garage/Estate Sale": `Buyers of garage and estate sale listings care
+about event details and what to expect, such as:
+- payment: cash only | Venmo | Zelle
+- timing: early birds welcome | multi-day | rain or shine
+- location: indoor | outdoor | driveway | garage
+- inventory mix: antiques | furniture | tools | clothing | books | toys
+- deals: fill-a-bag | half price Sunday
+
+Tailor options to the specific sale described.`,
 }
 
 // suggestionsSystemPrompt builds the constant-per-category system prompt:

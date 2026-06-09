@@ -99,6 +99,29 @@ func TestParseFacetFiltersConditionCheckboxes(t *testing.T) {
 	}
 }
 
+func TestParseFacetFiltersDateRange(t *testing.T) {
+	category := ad.Category{FacetKeys: []string{"sale_start_date"}}
+
+	app := fiber.New()
+	var filters map[string]facet.Filter
+	app.Get("/search", func(c *fiber.Ctx) error {
+		filters = parseFacetFilters(c, category)
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	req := httptest.NewRequest("GET", "/search?sale_start_date_min=2026-06-01&sale_start_date_max=2026-06-30", nil)
+	if _, err := app.Test(req); err != nil {
+		t.Fatal(err)
+	}
+	got := filters["sale_start_date"]
+	if got.TextMin == nil || *got.TextMin != "2026-06-01" {
+		t.Fatalf("TextMin = %v", got.TextMin)
+	}
+	if got.TextMax == nil || *got.TextMax != "2026-06-30" {
+		t.Fatalf("TextMax = %v", got.TextMax)
+	}
+}
+
 func encodeSearchState(json string) string {
 	return base64.RawURLEncoding.EncodeToString([]byte(json))
 }
