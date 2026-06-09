@@ -221,8 +221,13 @@ func Page(userID int, hasUnread bool, userName, title, currentPath, csrfToken st
 		),
 	}
 
+	docTitle := config.ServerName
+	if title != "" && title != config.ServerName {
+		docTitle = config.ServerName + " - " + title
+	}
+
 	return components.HTML5(components.HTML5Props{
-		Title:    config.ServerName,
+		Title:    docTitle,
 		Language: "en",
 		Head:     headNodes,
 		Body:     bodyNodes,

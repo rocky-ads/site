@@ -6,7 +6,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
-	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/egg"
@@ -44,7 +43,6 @@ func AdHandler(c *fiber.Ctx) error {
 	// Update the ad category cookie based on the ad
 	cookie.SetCategoryID(c, a.CategoryID)
 
-	title := config.ServerName + " - " + a.Title
 	csrfToken := local.GetCSRFToken(c)
 
 	reachable, err := user.IsReachable(a.UserID)
@@ -52,7 +50,7 @@ func AdHandler(c *fiber.Ctx) error {
 		reachable = false
 	}
 
-	return renderPage(c, title, ui.Ad(adDetailFrom(a, reachable), userID, csrfToken))
+	return renderPage(c, a.Title, ui.Ad(adDetailFrom(a, reachable), userID, csrfToken))
 }
 
 func adDetailFrom(a ad.Ad, reachable bool) ui.AdDetail {
