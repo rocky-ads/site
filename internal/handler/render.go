@@ -113,7 +113,25 @@ func adDetailFacetDisplays(a ad.Ad) []string {
 	}
 	var labels []string
 	for _, d := range cat.Facets() {
-		if d.Key == "price" || d.Kind == facet.Location || d.CardLabel() {
+		if d.Key == "price" || d.Kind == facet.Location {
+			continue
+		}
+		if d.Key == "sale_end_date" {
+			continue
+		}
+		if d.Key == "sale_start_date" {
+			start := ""
+			if v, ok := a.Facets["sale_start_date"]; ok {
+				start = v.DateString()
+			}
+			end := ""
+			if v, ok := a.Facets["sale_end_date"]; ok {
+				end = v.DateString()
+			}
+			labels = append(labels, facet.SaleDateDetailDisplays(start, end)...)
+			continue
+		}
+		if d.CardLabel() {
 			continue
 		}
 		v, ok := a.Facets[d.Key]

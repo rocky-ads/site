@@ -273,6 +273,14 @@ func FormatDateRange(start, end string) string {
 	return formatDateDisplay(start) + "–" + formatDateDisplay(end)
 }
 
+// SaleDateDetailDisplays returns bullet labels for sale dates on the ad detail page.
+func SaleDateDetailDisplays(start, end string) []string {
+	if s := FormatDateRange(start, end); s != "" {
+		return []string{"Sale Date: " + s}
+	}
+	return nil
+}
+
 func formatDateDisplay(iso string) string {
 	t, err := time.Parse(dateLayout, iso)
 	if err != nil {

@@ -267,6 +267,12 @@ func TestDateFacet(t *testing.T) {
 	if got := FormatDateRange("2026-06-14", "2026-06-16"); got != "Jun 14–16, 2026" {
 		t.Errorf("multi-day range = %q", got)
 	}
+	if got := SaleDateDetailDisplays("2026-06-14", "2026-06-14"); len(got) != 1 || got[0] != "Sale Date: Jun 14, 2026" {
+		t.Errorf("same-day detail = %v", got)
+	}
+	if got := SaleDateDetailDisplays("2026-06-07", "2026-06-08"); len(got) != 1 || got[0] != "Sale Date: Jun 7–8, 2026" {
+		t.Errorf("multi-day detail = %v", got)
+	}
 }
 
 func TestMultiEnumFacet(t *testing.T) {
