@@ -169,3 +169,34 @@ func TestFormatLocationHistoryChangeAddressCategory(t *testing.T) {
 		t.Fatalf("no-op = %q, want empty", body)
 	}
 }
+
+func TestImageIndicesFromHistoryEntry(t *testing.T) {
+	indices := imageIndicesFromHistoryEntry(
+		"1/7/2026 12:34 am  Images Added", "3,4,5",
+	)
+	if len(indices) != 3 || indices[0] != 3 || indices[2] != 5 {
+		t.Fatalf("indices = %v", indices)
+	}
+	if imageIndicesFromHistoryEntry("Price change", "3,4") != nil {
+		t.Fatal("expected nil for non-image entry")
+	}
+}
+
+func TestAppendHistoryEntryImagesAdded(t *testing.T) {
+	loc, _ := time.LoadLocation("America/Los_Angeles")
+	at := time.Date(2026, 1, 7, 0, 34, 0, 0, loc)
+
+	desc := AppendHistoryEntry(
+		"Original.", imagesAddedLabel, "2,3", at, loc,
+	)
+	parts := ParseDescriptionForDisplay(desc)
+	if len(parts.History) != 1 {
+		t.Fatalf("got %d entries", len(parts.History))
+	}
+	if len(parts.History[0].ImageIndices) != 2 {
+		t.Fatalf("indices = %v", parts.History[0].ImageIndices)
+	}
+	if parts.History[0].Body != "" {
+		t.Fatalf("body should be hidden: %q", parts.History[0].Body)
+	}
+}

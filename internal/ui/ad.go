@@ -409,13 +409,20 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 						listedAgeDetailNode(d.CreatedAt),
 					),
 				),
-				descriptionDisplay(d.DescriptionOriginal, d.FacetDetails, d.Tags, d.DescriptionHistory),
+				descriptionDisplay(
+					d.ID,
+					d.DescriptionOriginal,
+					d.FacetDetails,
+					d.Tags,
+					d.DescriptionHistory,
+				),
 			),
 		),
 	}
 }
 
 func descriptionDisplay(
+	adID int,
 	original string,
 	facetDetails []string,
 	tags []string,
@@ -432,7 +439,7 @@ func descriptionDisplay(
 	if len(history) > 0 {
 		entryNodes := make([]g.Node, len(history))
 		for i, e := range history {
-			entryNodes[i] = descriptionHistoryEntry(e)
+			entryNodes[i] = descriptionHistoryEntry(adID, e)
 		}
 		nodes = append(nodes, Div(
 			Class("mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-600 space-y-4"),
@@ -442,7 +449,16 @@ func descriptionDisplay(
 	return Div(Class("text-base mt-4"), g.Group(nodes))
 }
 
-func descriptionHistoryEntry(e AdHistoryEntry) g.Node {
+func descriptionHistoryEntry(adID int, e AdHistoryEntry) g.Node {
+	imageNodes := make([]g.Node, len(e.ImageIndices))
+	for i, idx := range e.ImageIndices {
+		imageNodes[i] = Img(
+			Src(fmt.Sprintf("/ad/%d/image/%d/%s", adID, idx, "160w")),
+			Alt(fmt.Sprintf("Added image %d", idx)),
+			Class("w-16 h-16 object-cover rounded border "+
+				"border-zinc-200 dark:border-zinc-600"),
+		)
+	}
 	return Div(
 		Class("text-sm text-blue-700 dark:text-blue-300"),
 		Div(
@@ -457,8 +473,15 @@ func descriptionHistoryEntry(e AdHistoryEntry) g.Node {
 				Div(Class("font-medium"), g.Text(e.Header)),
 				g.If(e.Body != "",
 					Div(
-						Class("whitespace-pre-wrap mt-1 text-blue-600/90 dark:text-blue-200/90"),
+						Class("whitespace-pre-wrap mt-1 "+
+							"text-blue-600/90 dark:text-blue-200/90"),
 						g.Text(e.Body),
+					),
+				),
+				g.If(len(e.ImageIndices) > 0,
+					Div(
+						Class("flex flex-wrap gap-2 mt-2"),
+						g.Group(imageNodes),
 					),
 				),
 			),
@@ -495,68 +518,129 @@ func AdDeleted() []g.Node {
 }
 
 func imagesField(maxImagesPerAd int) g.Node {
+	return imageUploadField(maxImagesPerAd, 0, false)
+}
+
+func editImagesField(adID, existingCount, maxImagesPerAd int) g.Node {
+	if existingCount == 0 {
+		return imageUploadField(maxImagesPerAd, 0, false)
+	}
+
+	existingNodes := make([]g.Node, existingCount)
+	for i := 1; i <= existingCount; i++ {
+		existingNodes[i-1] = Img(
+			Src(fmt.Sprintf("/ad/%d/image/%d/%s", adID, i, "160w")),
+			Alt(fmt.Sprintf("Image %d", i)),
+			Class("object-cover rounded w-[90px] h-[90px]"),
+		)
+	}
+
+	nodes := []g.Node{
+		label("Images"),
+		Div(
+			Class("text-sm text-zinc-500 dark:text-zinc-400"),
+			g.Text("Original images cannot be changed."),
+		),
+		Div(
+			ID("existing-image-preview"),
+			Class("flex flex-row flex-wrap gap-2"),
+			g.Group(existingNodes),
+		),
+	}
+
+	if existingCount >= maxImagesPerAd {
+		nodes = append(nodes, Div(
+			Class("text-sm text-zinc-500 dark:text-zinc-400"),
+			g.Text(fmt.Sprintf(
+				"Maximum of %d images reached.", maxImagesPerAd,
+			)),
+		))
+	} else {
+		nodes = append(nodes,
+			Div(
+				Class("text-sm text-zinc-500 dark:text-zinc-400"),
+				g.Text("Add more images (optional)"),
+			),
+			imageUploadControls(maxImagesPerAd, existingCount, true),
+		)
+	}
+
+	return Div(Class("space-y-2"), g.Group(nodes))
+}
+
+func imageUploadField(maxImagesPerAd, existingCount int, appendMode bool) g.Node {
 	return Div(
 		Class("space-y-2"),
 		label("Images"),
+		imageUploadControls(maxImagesPerAd, existingCount, appendMode),
+	)
+}
+
+func imageUploadControls(maxImagesPerAd, existingCount int, appendMode bool) g.Node {
+	appendFlag := "false"
+	if appendMode {
+		appendFlag = "true"
+	}
+	return Div(
+		Input(
+			Type("file"),
+			ID("images"),
+			Name("images"),
+			Class("hidden"),
+			g.Attr("accept", "image/*"),
+			g.Attr("multiple"),
+			g.Attr("onchange", "previewImages(this)"),
+		),
 		Div(
-			Input(
-				Type("file"),
-				ID("images"),
-				Name("images"),
-				Class("hidden"),
-				g.Attr("accept", "image/*"),
-				g.Attr("multiple"),
-				g.Attr("onchange", "previewImages(this)"),
-			),
+			ID("upload-area"),
+			Class("border border-zinc-300 dark:border-zinc-600 rounded p-6 "+
+				"hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-zinc-800 "+
+				"transition-colors duration-200 cursor-pointer"),
+			g.Attr("onclick", "handleUploadClick()"),
+			g.Attr("ondragover", "event.preventDefault(); "+
+				"this.classList.add('border-blue-400', 'bg-blue-50')"),
+			g.Attr("ondragleave", "this.classList.remove('border-blue-400', "+
+				"'bg-blue-50')"),
+			g.Attr("ondrop", "event.preventDefault(); "+
+				"this.classList.remove('border-blue-400', 'bg-blue-50'); "+
+				"handleDrop(event)"),
 			Div(
-				ID("upload-area"),
-				Class("border border-zinc-300 dark:border-zinc-600 rounded p-6 "+
-					"hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-zinc-800 "+
-					"transition-colors duration-200 cursor-pointer"),
-				g.Attr("onclick", "handleUploadClick()"),
-				g.Attr("ondragover", "event.preventDefault(); "+
-					"this.classList.add('border-blue-400', 'bg-blue-50')"),
-				g.Attr("ondragleave", "this.classList.remove('border-blue-400', "+
-					"'bg-blue-50')"),
-				g.Attr("ondrop", "event.preventDefault(); "+
-					"this.classList.remove('border-blue-400', 'bg-blue-50'); "+
-					"handleDrop(event)"),
+				ID("upload-content"),
+				Class("flex flex-col items-center space-y-4"),
 				Div(
-					ID("upload-content"),
-					Class("flex flex-col items-center space-y-4"),
+					Class("flex flex-col items-center space-y-2"),
 					Div(
-						Class("flex flex-col items-center space-y-2"),
-						Div(
-							Class("w-12 h-12 bg-blue-100 dark:bg-zinc-700 "+
-								"rounded-full flex items-center justify-center"),
-							g.Raw(`<svg class="w-6 h-6 text-blue-600 dark:text-blue-400" `+
-								`fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" `+
-								`stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-							</svg>`),
-						),
-						Div(
-							Class("text-lg font-medium text-zinc-700 dark:text-zinc-300"),
-							g.Text("Upload Images"),
-						),
-						Div(
-							Class("text-sm text-zinc-500 dark:text-zinc-400"),
-							g.Text("Click to browse or drag and drop"),
-						),
+						Class("w-12 h-12 bg-blue-100 dark:bg-zinc-700 "+
+							"rounded-full flex items-center justify-center"),
+						g.Raw(`<svg class="w-6 h-6 text-blue-600 dark:text-blue-400" `+
+							`fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" `+
+							`stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+						</svg>`),
+					),
+					Div(
+						Class("text-lg font-medium text-zinc-700 dark:text-zinc-300"),
+						g.Text("Upload Images"),
+					),
+					Div(
+						Class("text-sm text-zinc-500 dark:text-zinc-400"),
+						g.Text("Click to browse or drag and drop"),
 					),
 				),
-				Div(
-					ID("image-preview"),
-					Class("hidden image-preview flex flex-row flex-wrap "+
-						"gap-2 justify-center mt-4"),
-				),
 			),
-			g.Raw(fmt.Sprintf(
-				`<script>const MAX_IMAGES_PER_AD = %d;</script>`,
-				maxImagesPerAd,
-			)),
-			g.Raw(`<script src="/js/image-preview.js" defer></script>`),
+			Div(
+				ID("image-preview"),
+				Class("hidden image-preview flex flex-row flex-wrap "+
+					"gap-2 justify-center mt-4"),
+			),
 		),
+		g.Raw(fmt.Sprintf(
+			`<script>const MAX_IMAGES_PER_AD = %d;`+
+				`const EXISTING_IMAGE_COUNT = %d;`+
+				`const IMAGE_APPEND_MODE = %s;</script>`,
+			maxImagesPerAd, existingCount, appendFlag,
+		)),
+		g.Raw(`<script src="/js/image-preview.js" defer></script>`),
 	)
 }
 
@@ -598,13 +682,19 @@ func adForm(cfg uiads.AdFormConfig, fields g.Node) g.Node {
 		hx.Post(cfg.PostURL),
 		hx.Swap("none"),
 	}
-	if cfg.Mode == uiads.AdFormCreate {
+	if cfg.Mode == uiads.AdFormCreate ||
+		(cfg.Mode == uiads.AdFormEdit &&
+			cfg.Values.ImageCount < config.MaxImagesPerAd) {
 		formAttrs = append(formAttrs, hx.Encoding("multipart/form-data"))
 	}
 
 	children := []g.Node{fields}
 	if cfg.Mode == uiads.AdFormCreate {
 		children = append(children, imagesField(config.MaxImagesPerAd))
+	} else if cfg.Mode == uiads.AdFormEdit {
+		children = append(children, editImagesField(
+			cfg.AdID, cfg.Values.ImageCount, config.MaxImagesPerAd,
+		))
 	}
 	children = append(children,
 		Div(

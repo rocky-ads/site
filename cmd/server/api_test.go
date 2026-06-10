@@ -1525,3 +1525,82 @@ func TestUpdateAd(t *testing.T) {
 		}
 	}
 }
+
+func TestUpdateAdAppendImages(t *testing.T) {
+	client := getTestClient()
+	baseURLParsed, _ := url.Parse(baseURL)
+	loginTestUser(t, client, baseURLParsed)
+
+	categoryCookie := &http.Cookie{
+		Name: "category", Value: "6", Path: "/",
+		HttpOnly: true, Secure: false,
+	}
+	client.Jar.SetCookies(baseURLParsed, []*http.Cookie{categoryCookie})
+
+	pngData := minimalTestPNG(t)
+	createFields := map[string]string{
+		"title":          "Edit Append Images",
+		"description":    "Original listing text.",
+		"year":           "2020",
+		"price":          "3400",
+		"price_currency": "USD",
+		"mileage":        "12000",
+		"mileage_unit":   "mi",
+	}
+	createUploads := []multipartUpload{
+		{fieldName: "images", fileName: "one.png", content: pngData},
+	}
+	resp, _ := postMultipartRequest(
+		t, baseURL+"/auth/ad/new", createFields, createUploads,
+	)
+	adID := adIDFromCreateResponse(t, resp, "Edit Append Images")
+
+	editFields := map[string]string{
+		"title":          "Edit Append Images",
+		"description":    "Original listing text.",
+		"year":           "2020",
+		"price":          "3400",
+		"price_currency": "USD",
+		"mileage":        "12000",
+		"mileage_unit":   "mi",
+	}
+	editUploads := []multipartUpload{
+		{fieldName: "images", fileName: "two.png", content: pngData},
+	}
+	resp, result := postMultipartRequest(
+		t, baseURL+"/auth/ad/"+adID+"/edit", editFields, editUploads,
+	)
+	if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusOK {
+		raw, _ := result["raw"].(string)
+		t.Fatalf("update ad: expected redirect or success, got %d body=%q",
+			resp.StatusCode, raw)
+	}
+
+	var imageCount int
+	var desc string
+	if err := db.QueryRow(
+		"SELECT image_count, description FROM ads WHERE id = ?", adID,
+	).Scan(&imageCount, &desc); err != nil {
+		t.Fatal(err)
+	}
+	if imageCount != 2 {
+		t.Fatalf("expected image_count 2, got %d", imageCount)
+	}
+	display := ad.DisplayDescription(desc)
+	if !strings.Contains(display, "Images Added") {
+		t.Errorf("description missing Images Added: %q", display)
+	}
+	parts := ad.ParseDescriptionForDisplay(desc)
+	if len(parts.History) == 0 ||
+		len(parts.History[0].ImageIndices) != 1 ||
+		parts.History[0].ImageIndices[0] != 2 {
+		t.Fatalf("history indices = %v", parts.History[0].ImageIndices)
+	}
+
+	path := filepath.Join(
+		testImageDir, adID, "2-160w.webp",
+	)
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("missing appended image file %s: %v", path, err)
+	}
+}

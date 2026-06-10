@@ -81,6 +81,14 @@ func UpdateAdHandler(c *fiber.Ctx) error {
 		return showError(c, err.Error())
 	}
 
+	imageFiles, err := parseAdImageFiles(c)
+	if err != nil {
+		return showError(c, err.Error())
+	}
+	if err := validateAppendImageFiles(a.ImageCount, imageFiles); err != nil {
+		return showError(c, err.Error())
+	}
+
 	err = ad.UpdateAd(ad.UpdateInput{
 		AdID:                adID,
 		UserID:              userID,
@@ -89,10 +97,16 @@ func UpdateAdHandler(c *fiber.Ctx) error {
 		LocationText:        c.FormValue("location"),
 		Facets:              facets,
 		Suggestions:         parseAdSuggestions(c),
+		ImagesAdded:         len(imageFiles),
 		Loc:                 loc,
 	})
 	if err != nil {
 		return showError(c, err.Error())
+	}
+	if len(imageFiles) > 0 {
+		uploadAdImagesFromIndex(
+			adImageStore, adID, a.ImageCount+1, imageFiles,
+		)
 	}
 	if err := eggopinion.InvalidateForAd(adID); err != nil {
 		logger.Error("Failed to invalidate egg opinions",
@@ -113,6 +127,7 @@ func adFormValuesFrom(a ad.Ad) uiads.AdFormValues {
 		Title:               a.Title,
 		OriginalDescription: ad.DisplayDescription(original),
 		Location:            a.RawLocation,
+		ImageCount:          a.ImageCount,
 		PriceRow:            priceRowFromAd(a),
 		Facets:              make(map[string]string),
 		FacetUnits:          make(map[string]string),

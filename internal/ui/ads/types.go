@@ -40,6 +40,7 @@ const (
 type AdFormValues struct {
 	Title               string
 	OriginalDescription string
+	ImageCount          int
 	Location            string
 	Facets              map[string]string
 	FacetMulti          map[string][]string

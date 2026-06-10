@@ -20,6 +20,7 @@ type UpdateInput struct {
 	LocationText        string
 	Facets              map[string]facet.Value
 	Suggestions         []Suggestion
+	ImagesAdded         int
 	Loc                 *time.Location
 	Now                 time.Time
 }
@@ -89,6 +90,18 @@ func UpdateAd(input UpdateInput) error {
 			desc, "Description Addition", addition, now, input.Loc,
 		)
 	}
+	if input.ImagesAdded > 0 {
+		if a.ImageCount+input.ImagesAdded > config.MaxImagesPerAd {
+			return fmt.Errorf(
+				"too many images. Maximum %d images allowed per ad",
+				config.MaxImagesPerAd,
+			)
+		}
+		body := formatImageAdditionBody(a.ImageCount+1, input.ImagesAdded)
+		desc = AppendHistoryEntry(
+			desc, imagesAddedLabel, body, now, input.Loc,
+		)
+	}
 	locText := input.LocationText
 	if HasLocationFacet(category) {
 		locText = LocationTextFromFacets(category, values)
@@ -126,10 +139,13 @@ func UpdateAd(input UpdateInput) error {
 	}
 	defer tx.Rollback()
 
+	newImageCount := a.ImageCount + input.ImagesAdded
+
 	_, err = tx.Exec(
-		`UPDATE ads SET title = ?, description = ?, location_id = ?, tags = ?
+		`UPDATE ads SET title = ?, description = ?, location_id = ?, tags = ?,
+		 image_count = ?
 		 WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-		title, desc, locationID, tagsJSON(newSuggestions),
+		title, desc, locationID, tagsJSON(newSuggestions), newImageCount,
 		input.AdID, input.UserID,
 	)
 	if err != nil {

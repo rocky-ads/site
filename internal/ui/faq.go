@@ -22,32 +22,28 @@ var faqSections = map[string]faqSectionData{
 		body: func() []g.Node {
 			return []g.Node{
 				faqParagraph(g.Textf(
-					"%s connects buyers and sellers who "+
-						"message each other. The basic reason we "+
-						"need your phone number is notification: "+
-						"when another user sends you a message, "+
-						"you need to know.",
+					"%s connects buyers and sellers through "+
+						"messaging. We need your phone number mainly "+
+						"so we can notify you when someone sends you "+
+						"a message.",
 					config.ServerName,
 				)),
 				faqParagraph(g.Textf(
-					"In an ideal world we would not collect any "+
-						"personal information at all. But we do need "+
-						"some way to reach you. %s is deliberately "+
-						"built as an anti-website in that sense — we "+
-						"store as little about you as we can and "+
-						"still function.",
+					"Ideally we would not collect personal "+
+						"information at all, but we do need a "+
+						"reliable way to reach you. %s is built to "+
+						"collect as little as possible while still "+
+						"working.",
 					config.ServerName,
 				)),
 				faqParagraph(g.Text(
-					"A phone number that can receive text messages " +
-						"is a practical way to do that. Texting is " +
-						"ubiquitous, and tying an account to an " +
-						"SMS-capable number adds some stake in the " +
-						"game. We do not ask for your email " +
-						"address, home address, Social Security " +
-						"number, credit card, or other profile " +
-						"details. Your phone number is the one " +
-						"piece of contact information we collect.",
+					"A text-capable phone number is a practical " +
+						"choice: texting is everywhere, and it helps " +
+						"tie each account to a real person. We do not " +
+						"ask for your email, mailing address, payment " +
+						"details, or other profile information — your " +
+						"phone number is the only contact info we " +
+						"collect.",
 				)),
 				faqParagraph(
 					g.Text(

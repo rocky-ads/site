@@ -63,7 +63,11 @@ func adDetailFrom(a ad.Ad, viewerUserID int, reachable bool) ui.AdDetail {
 	if local.IsLoggedIn(viewerUserID) {
 		history = make([]ui.AdHistoryEntry, len(desc.History))
 		for i, e := range desc.History {
-			history[i] = ui.AdHistoryEntry{Header: e.Header, Body: e.Body}
+			history[i] = ui.AdHistoryEntry{
+				Header:       e.Header,
+				Body:         e.Body,
+				ImageIndices: e.ImageIndices,
+			}
 		}
 	}
 	return ui.AdDetail{

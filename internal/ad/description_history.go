@@ -2,6 +2,7 @@ package ad
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,8 +19,9 @@ const historyEndMarker = "\u001f"
 
 // HistoryEntryDisplay is one parsed edit-history block for UI rendering.
 type HistoryEntryDisplay struct {
-	Header string
-	Body   string
+	Header       string
+	Body         string
+	ImageIndices []int
 }
 
 // DescriptionDisplay holds original ad text and edit history for display.
@@ -39,9 +41,16 @@ func ParseDescriptionForDisplay(desc string) DescriptionDisplay {
 	original, history := SplitDescription(desc)
 	out := DescriptionDisplay{Original: original}
 	for _, e := range parseHistoryEntries(history) {
+		header := strings.TrimSpace(DisplayDescription(e.header))
+		indices := imageIndicesFromHistoryEntry(header, e.body)
+		body := e.body
+		if len(indices) > 0 {
+			body = ""
+		}
 		out.History = append(out.History, HistoryEntryDisplay{
-			Header: strings.TrimSpace(DisplayDescription(e.header)),
-			Body:   e.body,
+			Header:       header,
+			Body:         body,
+			ImageIndices: indices,
 		})
 	}
 	return out
@@ -59,6 +68,42 @@ func SplitDescription(desc string) (original, history string) {
 			strings.TrimLeft(desc[i:], "\n")
 	}
 	return desc, ""
+}
+
+const imagesAddedLabel = "Images Added"
+
+func formatImageAdditionBody(startIndex, count int) string {
+	if count <= 0 {
+		return ""
+	}
+	parts := make([]string, count)
+	for i := range parts {
+		parts[i] = strconv.Itoa(startIndex + i)
+	}
+	return strings.Join(parts, ",")
+}
+
+func imageIndicesFromHistoryEntry(header, body string) []int {
+	if !strings.Contains(header, imagesAddedLabel) {
+		return nil
+	}
+	body = strings.TrimSpace(body)
+	if body == "" {
+		return nil
+	}
+	var indices []int
+	for _, part := range strings.Split(body, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		n, err := strconv.Atoi(part)
+		if err != nil || n < 1 {
+			continue
+		}
+		indices = append(indices, n)
+	}
+	return indices
 }
 
 func formatHistoryTimestamp(at time.Time, loc *time.Location) string {

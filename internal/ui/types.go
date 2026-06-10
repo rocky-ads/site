@@ -26,8 +26,9 @@ type UserRowData struct {
 
 // AdHistoryEntry holds one edit-history block on the ad detail page.
 type AdHistoryEntry struct {
-	Header string
-	Body   string
+	Header       string
+	Body         string
+	ImageIndices []int
 }
 
 // AdDetail holds presentation fields for a single ad page.

@@ -94,3 +94,24 @@ func validateImageFiles(files []*multipart.FileHeader) error {
 	}
 	return nil
 }
+
+func validateAppendImageFiles(
+	currentCount int,
+	files []*multipart.FileHeader,
+) error {
+	if len(files) == 0 {
+		return nil
+	}
+	if currentCount+len(files) > config.MaxImagesPerAd {
+		return fmt.Errorf(
+			"too many images. Maximum %d images allowed per ad",
+			config.MaxImagesPerAd,
+		)
+	}
+	for _, fileHeader := range files {
+		if err := validateImageFile(fileHeader); err != nil {
+			return err
+		}
+	}
+	return nil
+}

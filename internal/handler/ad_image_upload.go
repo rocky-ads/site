@@ -17,6 +17,14 @@ import (
 )
 
 func uploadAdImages(store imagestore.Store, adID int, files []*multipart.FileHeader) {
+	uploadAdImagesFromIndex(store, adID, 1, files)
+}
+
+func uploadAdImagesFromIndex(
+	store imagestore.Store,
+	adID, startIndex int,
+	files []*multipart.FileHeader,
+) {
 	if len(files) == 0 {
 		return
 	}
@@ -32,9 +40,10 @@ func uploadAdImages(store imagestore.Store, adID int, files []*multipart.FileHea
 	}
 
 	logger.Info("Starting ad image upload",
-		"adID", adID, "imageCount", len(files))
+		"adID", adID, "imageCount", len(files), "startIndex", startIndex)
 
 	for i, fileHeader := range files {
+		imageIndex := startIndex + i
 		file, err := fileHeader.Open()
 		if err != nil {
 			logger.Error("Failed to open uploaded image",
@@ -74,10 +83,10 @@ func uploadAdImages(store imagestore.Store, adID int, files []*multipart.FileHea
 				continue
 			}
 
-			if err := store.Put(adID, i+1, sz.Suffix, webpBuf.Bytes()); err != nil {
+			if err := store.Put(adID, imageIndex, sz.Suffix, webpBuf.Bytes()); err != nil {
 				logger.Error("Image store put failed",
 					"error", err, "adID", adID,
-					"imageIndex", i+1, "size", sz.Suffix)
+					"imageIndex", imageIndex, "size", sz.Suffix)
 			}
 		}
 	}
