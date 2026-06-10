@@ -22,26 +22,39 @@ var faqSections = map[string]faqSectionData{
 		body: func() []g.Node {
 			return []g.Node{
 				faqParagraph(g.Textf(
-					"%s is a local marketplace where buyers and "+
-						"sellers message each other directly. We ask "+
-						"for your phone number during registration "+
-						"for two reasons: to verify your account and "+
-						"to reach you when something important "+
-						"happens.",
+					"%s connects buyers and sellers who "+
+						"message each other. The basic reason we "+
+						"need your phone number is notification: "+
+						"when another user sends you a message, "+
+						"you need to know.",
+					config.ServerName,
+				)),
+				faqParagraph(g.Textf(
+					"In an ideal world we would not collect any "+
+						"personal information at all. But we do need "+
+						"some way to reach you. %s is deliberately "+
+						"built as an anti-website in that sense — we "+
+						"store as little about you as we can and "+
+						"still function.",
 					config.ServerName,
 				)),
 				faqParagraph(g.Text(
-					"During signup we send a one-time verification " +
-						"code to confirm the number is yours. This " +
-						"helps keep fake accounts and spam off the " +
-						"site.",
+					"A phone number that can receive text messages " +
+						"is a practical way to do that. Texting is " +
+						"ubiquitous, and tying an account to an " +
+						"SMS-capable number adds some stake in the " +
+						"game. We do not ask for your email " +
+						"address, home address, Social Security " +
+						"number, credit card, or other profile " +
+						"details. Your phone number is the one " +
+						"piece of contact information we collect.",
 				)),
 				faqParagraph(
 					g.Text(
-						"After you register, we may text you about "+
-							"messages on your ads, replies to inquiries "+
-							"you sent, and other account activity you "+
-							"would reasonably want to know about. You "+
+						"During signup we send a one-time "+
+							"verification code to confirm the number "+
+							"can receive texts. After that, we text "+
+							"you when other users message you. You "+
 							"can turn text notifications on or off "+
 							"anytime in ",
 					),
@@ -49,11 +62,9 @@ var faqSections = map[string]faqSectionData{
 					g.Text("."),
 				),
 				faqParagraph(g.Text(
-					"We do not sell your phone number, use it for " +
-						"marketing unrelated to your account, or " +
-						"share it with other users. It is used only " +
-						"for verification and essential " +
-						"communications about your account.",
+					"We do not sell your phone number, share it " +
+						"with other users, or use it for marketing " +
+						"unrelated to your account.",
 				)),
 			}
 		},
