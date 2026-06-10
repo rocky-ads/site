@@ -39,6 +39,9 @@ func CreateAd(input CreateInput) (int, error) {
 	if utf8.RuneCountInString(title) > config.MaxAdTitleLength {
 		return 0, fmt.Errorf("title must be at most %d characters", config.MaxAdTitleLength)
 	}
+	if TitleContainsEmoji(title) {
+		return 0, fmt.Errorf("title cannot contain emoji")
+	}
 	if utf8.RuneCountInString(description) > config.MaxAdDescriptionLength {
 		return 0, fmt.Errorf("description must be at most %d characters", config.MaxAdDescriptionLength)
 	}

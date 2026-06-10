@@ -35,6 +35,10 @@ func CanViewConversation(conv Conversation, userID int) bool {
 		conv.EnquirerID == userID
 }
 
+func IsParticipant(conv Conversation, userID int) bool {
+	return conv.OwnerID == userID || conv.EnquirerID == userID
+}
+
 // OpenConversation loads a conversation the user may view and marks it read
 // when the user is a participant. The second return value is true when marked.
 func OpenConversation(conversationID, userID int) (Conversation, bool, error) {
@@ -46,8 +50,10 @@ func OpenConversation(conversationID, userID int) (Conversation, bool, error) {
 		return Conversation{}, false, ErrModalAccess
 	}
 	markedRead := false
-	if err := MarkConversationAsRead(conversationID, userID); err == nil {
-		markedRead = true
+	if IsParticipant(conv, userID) {
+		if err := MarkConversationAsRead(conversationID, userID); err == nil {
+			markedRead = true
+		}
 	}
 	return conv, markedRead, nil
 }

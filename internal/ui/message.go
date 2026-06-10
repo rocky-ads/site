@@ -161,7 +161,14 @@ func ConversationContentInput(conversationID int, attrs ...g.Node) g.Node {
 	return Input(g.Group(allAttrs))
 }
 
-func ConversationForm(conversationID, adID int, csrfToken string, canPost bool, hasThrownEgg, canThrowEgg bool, messageCount int) g.Node {
+func ConversationForm(
+	conversationID, adID int,
+	csrfToken string,
+	canPost bool,
+	hasThrownEgg, canThrowEgg bool,
+	hasPublicEgg bool,
+	messageCount int,
+) g.Node {
 	modalName := fmt.Sprintf("conversation-%d", conversationID)
 	attrs := []g.Node{
 		ID(fmt.Sprintf("%s-form", modalName)),
@@ -220,6 +227,13 @@ func ConversationForm(conversationID, adID int, csrfToken string, canPost bool, 
 			Div(
 				ID(fmt.Sprintf("%s-egg-link-container", modalName)),
 				Class("mt-2"),
+			),
+		),
+		g.If(canPost && hasPublicEgg,
+			Div(
+				Class("mt-2"),
+				EggOpinionLink(conversationID),
+				EggOpinionIndicator(),
 			),
 		),
 	)
@@ -329,7 +343,11 @@ func ConversationModalSwapOOB(d ConversationModalData) g.Node {
 				),
 				ConversationMessagesSentinel(d.ConversationID),
 			),
-			ConversationForm(d.ConversationID, d.AdID, d.CSRFToken, d.CanPost, d.HasThrownEgg, d.CanThrowEgg, len(d.MessageNodes)),
+			ConversationForm(
+				d.ConversationID, d.AdID, d.CSRFToken,
+				d.CanPost, d.HasThrownEgg, d.CanThrowEgg,
+				d.EggThrowerID != nil, len(d.MessageNodes),
+			),
 		),
 	)
 }
@@ -432,7 +450,11 @@ func ConversationModalWithEgg(d ConversationModalData) g.Node {
 					),
 					ConversationMessagesSentinel(d.ConversationID),
 				),
-				ConversationForm(d.ConversationID, d.AdID, d.CSRFToken, d.CanPost, d.HasThrownEgg, d.CanThrowEgg, len(d.MessageNodes)),
+				ConversationForm(
+					d.ConversationID, d.AdID, d.CSRFToken,
+					d.CanPost, d.HasThrownEgg, d.CanThrowEgg,
+					d.EggThrowerID != nil, len(d.MessageNodes),
+				),
 			),
 		),
 	})

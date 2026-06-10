@@ -6,8 +6,10 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cookie"
+	"github.com/rocky-ads/site/internal/eggopinion"
 	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/local"
+	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/param"
 	"github.com/rocky-ads/site/internal/ui"
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
@@ -91,6 +93,10 @@ func UpdateAdHandler(c *fiber.Ctx) error {
 	})
 	if err != nil {
 		return showError(c, err.Error())
+	}
+	if err := eggopinion.InvalidateForAd(adID); err != nil {
+		logger.Error("Failed to invalidate egg opinions",
+			"error", err, "adID", adID)
 	}
 
 	redirect := "/ad/" + strconv.Itoa(adID)

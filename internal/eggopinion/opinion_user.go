@@ -1,0 +1,89 @@
+package eggopinion
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/rocky-ads/site/internal/ad"
+	"github.com/rocky-ads/site/internal/message"
+)
+
+type promptInput struct {
+	AdTitle      string
+	AdOriginal   string
+	AdHistory    []ad.HistoryEntryDisplay
+	FormalFacets []string
+	Tags         []string
+	Messages     []message.Message
+	OwnerID      int
+	EnquirerID   int
+	EggThrowerID int
+	EggThrownAt  time.Time
+	Loc          *time.Location
+}
+
+func buildUserPrompt(in promptInput) string {
+	var b strings.Builder
+	b.WriteString("AD:\n")
+	fmt.Fprintf(&b, "Title: %s\n", in.AdTitle)
+	fmt.Fprintf(&b, "Original description: %s\n", in.AdOriginal)
+
+	if len(in.AdHistory) > 0 {
+		b.WriteString("\nEdit history (newest first):\n")
+		for _, e := range in.AdHistory {
+			fmt.Fprintf(&b, "  [%s] %s\n", e.Header, e.Body)
+		}
+	}
+
+	if len(in.FormalFacets) > 0 {
+		b.WriteString("\nFormal fields:\n")
+		for _, line := range in.FormalFacets {
+			fmt.Fprintf(&b, "  %s\n", line)
+		}
+	}
+
+	if len(in.Tags) > 0 {
+		b.WriteString("\nTags:\n")
+		for _, t := range in.Tags {
+			fmt.Fprintf(&b, "  %s\n", t)
+		}
+	}
+
+	complaintAt := in.EggThrownAt
+	if in.Loc != nil {
+		complaintAt = complaintAt.In(in.Loc)
+	}
+	b.WriteString("\nDispute metadata:\n")
+	if in.EggThrowerID == in.EnquirerID {
+		b.WriteString(
+			"The enquirer filed a complaint about the ad with the owner.\n",
+		)
+	} else {
+		b.WriteString(
+			"The owner filed a complaint about the enquirer regarding this ad.\n",
+		)
+	}
+	fmt.Fprintf(&b, "Complaint filed at: %s\n",
+		complaintAt.Format(time.RFC3339))
+
+	if len(in.Messages) > 0 {
+		b.WriteString("\nConversation:\n")
+		for _, m := range in.Messages {
+			sender := "Enquirer"
+			if m.SenderID == in.OwnerID {
+				sender = "Owner"
+			}
+			at := m.CreatedAt
+			if in.Loc != nil {
+				at = at.In(in.Loc)
+			}
+			fmt.Fprintf(&b, "[%s] %s: %s\n",
+				at.Format(time.RFC3339), sender, m.Content)
+		}
+	} else {
+		b.WriteString("\nConversation: (no messages)\n")
+	}
+
+	return b.String()
+}

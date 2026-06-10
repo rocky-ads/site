@@ -127,7 +127,10 @@ func AdEggConversationHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
 	}
 
-	return renderConversationModal(c, conv, currentUserID, loc, csrfToken)
+	if message.IsParticipant(conv, currentUserID) {
+		return renderConversationModal(c, conv, currentUserID, loc, csrfToken)
+	}
+	return renderEggOpinionModal(c, conv, currentUserID, loc)
 }
 
 func AdShareHandler(c *fiber.Ctx) error {

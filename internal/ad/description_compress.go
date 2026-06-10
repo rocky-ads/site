@@ -19,16 +19,7 @@ const (
 		"Output only the summary text."
 )
 
-// TextCompressor summarizes text (Grok in production; mock in tests).
-type TextCompressor interface {
-	Compress(systemPrompt, text string, maxRunes int) (string, error)
-}
-
-type grokCompressor struct{}
-
-func (grokCompressor) Compress(
-	systemPrompt, text string, maxRunes int,
-) (string, error) {
+func compressWithGrok(systemPrompt, text string, maxRunes int) (string, error) {
 	userPrompt := fmt.Sprintf(
 		"Summarize to at most %d characters (Unicode runes). "+
 			"Keep the most important facts.\n\n%s",
@@ -40,17 +31,6 @@ func (grokCompressor) Compress(
 	}
 	out = strings.TrimSpace(SanitizeAdText(out))
 	return truncateRunes(out, maxRunes), nil
-}
-
-var defaultCompressor TextCompressor = grokCompressor{}
-
-// SetTextCompressor replaces the compressor used by EnsureDescriptionFits (tests).
-func SetTextCompressor(c TextCompressor) {
-	if c == nil {
-		defaultCompressor = grokCompressor{}
-		return
-	}
-	defaultCompressor = c
 }
 
 func descriptionRuneCount(desc string) int {
@@ -87,14 +67,13 @@ func EnsureDescriptionFits(
 	at time.Time,
 	loc *time.Location,
 ) (string, error) {
-	return ensureDescriptionFits(desc, at, loc, defaultCompressor)
+	return ensureDescriptionFits(desc, at, loc)
 }
 
 func ensureDescriptionFits(
 	desc string,
 	at time.Time,
 	loc *time.Location,
-	compressor TextCompressor,
 ) (string, error) {
 	max := config.MaxAdDescriptionLength
 	if descriptionRuneCount(desc) <= max {
@@ -108,7 +87,7 @@ func ensureDescriptionFits(
 	if targetOriginal < 100 {
 		targetOriginal = 100
 	}
-	compressed, err := compressor.Compress(
+	compressed, err := compressWithGrok(
 		compressOriginalSystemPrompt, original, targetOriginal,
 	)
 	if err != nil {
@@ -146,7 +125,7 @@ func ensureDescriptionFits(
 	if targetHistory < 80 {
 		targetHistory = 80
 	}
-	compressedHistory, err := compressor.Compress(
+	compressedHistory, err := compressWithGrok(
 		compressHistorySystemPrompt, oldText, targetHistory,
 	)
 	if err != nil {

@@ -9,7 +9,18 @@ import (
 
 func phoneInput() g.Node {
 	return Div(
-		label("Phone Number"),
+		Div(
+			Class("flex items-baseline justify-between mb-1"),
+			Label(
+				Class("text-base font-medium"),
+				g.Text("Phone Number"),
+			),
+			A(
+				Href("/faq/phone-number"),
+				Class("text-sm text-blue-600 dark:text-blue-400 hover:underline shrink-0"),
+				g.Text("Why do you need my phone number?"),
+			),
+		),
 		Input(
 			Class("w-full p-2 border rounded-md"),
 			Type("tel"),

@@ -376,7 +376,7 @@ func NotificationsSection(smsOptedOut bool) g.Node {
 			P(
 				Class("mt-4 text-sm"),
 				A(
-					Href("/faq#sms-notifications"),
+					Href("/faq/sms-notifications"),
 					Class("text-blue-600 dark:text-blue-400 hover:underline"),
 					g.Text("Why am I not getting text messages?"),
 				),
@@ -454,46 +454,6 @@ func AboutPage() []g.Node {
 					Href("/faq"),
 					Class("text-blue-600 dark:text-blue-400 hover:underline"),
 					g.Text("Frequently asked questions"),
-				),
-			),
-		),
-	}
-}
-
-func FAQPage() []g.Node {
-	fromNumber := config.TwilioFromNumber
-	smsResumeHelp := "If you previously replied STOP to a text message from us, your carrier may have blocked further texts. Text START to our number to resume delivery."
-	if fromNumber != "" {
-		smsResumeHelp = fmt.Sprintf(
-			"If you previously replied STOP to a text message from us, your carrier may have blocked further texts. Text START to %s to resume delivery.",
-			fromNumber,
-		)
-	}
-
-	return []g.Node{
-		pageTitle("FAQ"),
-		Div(
-			Class("mt-8 space-y-8 text-zinc-700 dark:text-zinc-300"),
-			Div(
-				ID("sms-notifications"),
-				H2(
-					Class("text-xl font-semibold mb-3"),
-					g.Text("Why am I not getting text messages?"),
-				),
-				Div(
-					Class("space-y-2"),
-					P(
-						Class("text-sm text-zinc-600 dark:text-zinc-400"),
-						g.Text("First, open Settings and confirm text messages are turned on."),
-					),
-					P(
-						Class("text-sm text-zinc-600 dark:text-zinc-400"),
-						g.Text(smsResumeHelp),
-					),
-					P(
-						Class("text-sm text-zinc-600 dark:text-zinc-400"),
-						g.Text("You can also turn notifications off or on anytime from Settings without texting STOP or START."),
-					),
 				),
 			),
 		),

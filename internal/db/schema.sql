@@ -127,6 +127,16 @@ CREATE TABLE messages (
 CREATE INDEX idx_messages_conversation ON messages(conversation_id);
 CREATE INDEX idx_messages_created_at ON messages(created_at);
 
+-- Cached LLM arbitrator opinions for public egg conversations
+CREATE TABLE egg_opinions (
+    conversation_id INTEGER PRIMARY KEY REFERENCES conversations(id),
+    generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    summary TEXT NOT NULL,
+    assessment INTEGER NOT NULL CHECK (assessment BETWEEN 1 AND 10),
+    assessment_detail TEXT NOT NULL,
+    resolution TEXT NOT NULL,
+    reasoning TEXT NOT NULL
+);
 
 -- SMS notification queue table
 CREATE TABLE sms_notification_queue (

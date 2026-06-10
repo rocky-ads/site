@@ -36,14 +36,7 @@ type LocationResponse struct {
 	Longitude *float64 `json:"longitude"`
 }
 
-// LocationResolver resolves user location text (Grok in production; mock in tests).
-type LocationResolver interface {
-	Resolve(text string) (*LocationResponse, error)
-}
-
-type grokLocationResolver struct{}
-
-func (grokLocationResolver) Resolve(text string) (*LocationResponse, error) {
+func resolveWithGrok(text string) (*LocationResponse, error) {
 	resp, err := grok.CallGrokConv(
 		locationResolverPrompt, text, locationResolverConvID,
 	)
@@ -51,17 +44,6 @@ func (grokLocationResolver) Resolve(text string) (*LocationResponse, error) {
 		return nil, fmt.Errorf("resolve location with grok: %w", err)
 	}
 	return parseLocationResponse(resp)
-}
-
-var defaultLocationResolver LocationResolver = grokLocationResolver{}
-
-// SetLocationResolver replaces the resolver used by resolveAndStore (tests).
-func SetLocationResolver(r LocationResolver) {
-	if r == nil {
-		defaultLocationResolver = grokLocationResolver{}
-		return
-	}
-	defaultLocationResolver = r
 }
 
 type resolvedLoc struct {
@@ -88,7 +70,7 @@ func resolveAndStore(text string) (resolvedLoc, bool, error) {
 		return resolvedLoc{}, false, fmt.Errorf("resolve location: %w", err)
 	}
 
-	resolved, err := defaultLocationResolver.Resolve(text)
+	resolved, err := resolveWithGrok(text)
 	if err != nil {
 		logger.Warn("resolve location: grok failed", "text", text, "error", err)
 		return resolvedLoc{}, false, nil

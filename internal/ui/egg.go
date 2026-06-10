@@ -27,7 +27,7 @@ func renderEggIconsByOrdinal(eggCount int, urlPattern string, id int) g.Node {
 					Src("/images/broken-egg.svg"),
 					Alt("Egg thrown"),
 					Class("w-5 h-5 flex-shrink-0"),
-					Title("Egg thrown - click to view conversation"),
+					Title("Egg thrown - click to view dispute assessment"),
 				),
 			),
 		)

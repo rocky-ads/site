@@ -24,3 +24,22 @@ func TestSanitizeAdText(t *testing.T) {
 		}
 	}
 }
+
+func TestTitleContainsEmoji(t *testing.T) {
+	tests := []struct {
+		in   string
+		want bool
+	}{
+		{"2020 Honda Civic", false},
+		{"caf\u00e9 sale", false},
+		{"Huge sale \U0001F95A", true},
+		{"Party \U0001F389", true},
+		{"Warning \u26A0", true},
+		{"US flag \U0001F1FA\U0001F1F8", true},
+	}
+	for _, tt := range tests {
+		if got := TitleContainsEmoji(tt.in); got != tt.want {
+			t.Errorf("TitleContainsEmoji(%q) = %v, want %v", tt.in, got, tt.want)
+		}
+	}
+}

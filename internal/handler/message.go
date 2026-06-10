@@ -8,6 +8,7 @@ import (
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/egg"
+	"github.com/rocky-ads/site/internal/eggopinion"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/message"
@@ -263,6 +264,10 @@ func sendMessageAndRenderUpdate(c *fiber.Ctx, conv message.Conversation, current
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to send message")
 	}
+	if err := eggopinion.Invalidate(conv.ID); err != nil {
+		logger.Error("Failed to invalidate egg opinion",
+			"error", err, "conversationID", conv.ID)
+	}
 
 	// Step 2: Send SSE updates
 	sendMessageSSE(conv, currentUserID, msg)
@@ -461,6 +466,98 @@ func SendConversationMessageHandler(c *fiber.Ctx) error {
 	}
 
 	return sendMessageAndRenderUpdate(c, conv, currentUserID, loc, false)
+}
+
+func eggOpinionModalData(
+	conv message.Conversation,
+	currentUserID int,
+	loc *time.Location,
+) (ui.EggOpinionModalData, error) {
+	ownerName, enquirerName, err := message.OwnerAndEnquirerNames(conv)
+	if err != nil {
+		return ui.EggOpinionModalData{}, err
+	}
+
+	a, err := ad.GetAd(currentUserID, conv.AdID, loc)
+	if err != nil {
+		return ui.EggOpinionModalData{}, err
+	}
+
+	d := ui.EggOpinionModalData{
+		ConversationID: conv.ID,
+		AdID:           conv.AdID,
+		AdTitle:        a.Title,
+		OwnerID:        conv.OwnerID,
+		EnquirerID:     conv.EnquirerID,
+		OwnerName:      ownerName,
+		EnquirerName:   enquirerName,
+		CurrentUserID:  currentUserID,
+		AdFacts:        eggopinion.AdFactLines(a, loc),
+	}
+	if conv.EggThrowerID != nil {
+		d.EggThrowerID = *conv.EggThrowerID
+	}
+
+	op, err := eggopinion.GetOrGenerate(conv, loc)
+	if errors.Is(err, eggopinion.ErrUnavailable) {
+		d.Unavailable = true
+		return d, nil
+	}
+	if err != nil {
+		return ui.EggOpinionModalData{}, err
+	}
+
+	d.Summary = op.Summary
+	d.AssessmentScore = op.Assessment
+	d.AssessmentDetail = op.AssessmentDetail
+	d.Resolution = op.Resolution
+	d.Reasoning = op.Reasoning
+	genAt := op.GeneratedAt
+	if loc != nil {
+		genAt = genAt.In(loc)
+	}
+	d.GeneratedAt = &genAt
+	return d, nil
+}
+
+func renderEggOpinionModal(
+	c *fiber.Ctx,
+	conv message.Conversation,
+	currentUserID int,
+	loc *time.Location,
+) error {
+	d, err := eggOpinionModalData(conv, currentUserID, loc)
+	if err != nil {
+		logger.Error("Failed to build egg opinion modal", "error", err)
+		return fiber.NewError(
+			fiber.StatusInternalServerError,
+			"Failed to load dispute assessment",
+		)
+	}
+	return render(c, ui.EggOpinionModal(d))
+}
+
+func EggOpinionHandler(c *fiber.Ctx) error {
+	conversationID, err := c.ParamsInt("id")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid conversation ID")
+	}
+
+	currentUserID := local.GetUserID(c)
+	loc := cookie.GetLocation(c)
+
+	conv, err := message.GetConversationByID(conversationID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
+	}
+	if !message.CanViewConversation(conv, currentUserID) {
+		return fiber.NewError(fiber.StatusForbidden, "Conversation not found")
+	}
+	if conv.EggThrowerID == nil {
+		return fiber.NewError(fiber.StatusNotFound, "No dispute assessment")
+	}
+
+	return renderEggOpinionModal(c, conv, currentUserID, loc)
 }
 
 func ConversationModalHandler(c *fiber.Ctx) error {

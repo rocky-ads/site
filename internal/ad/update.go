@@ -51,6 +51,9 @@ func UpdateAd(input UpdateInput) error {
 			config.MaxAdTitleLength,
 		)
 	}
+	if TitleContainsEmoji(title) {
+		return fmt.Errorf("title cannot contain emoji")
+	}
 
 	addition := strings.TrimSpace(SanitizeAdText(input.DescriptionAddition))
 	if strings.Contains(addition, historyMarker) ||

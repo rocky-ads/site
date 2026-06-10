@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/egg"
+	"github.com/rocky-ads/site/internal/eggopinion"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/message"
@@ -74,6 +75,10 @@ func UnthrowEggHandler(c *fiber.Ctx) error {
 		}
 		logger.Error("Failed to unthrow egg", "error", err, "conversationID", conversationID, "userID", currentUserID)
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to remove egg")
+	}
+	if err := eggopinion.Invalidate(conversationID); err != nil {
+		logger.Error("Failed to invalidate egg opinion",
+			"error", err, "conversationID", conversationID)
 	}
 
 	conv, err = message.GetConversationByID(conversationID)

@@ -174,7 +174,11 @@ func AboutHandler(c *fiber.Ctx) error {
 }
 
 func FAQHandler(c *fiber.Ctx) error {
-	return renderPage(c, "FAQ", ui.FAQPage())
+	section := c.Params("section")
+	if section != "" && !ui.ValidFAQSection(section) {
+		return fiber.NewError(fiber.StatusNotFound)
+	}
+	return renderPage(c, "FAQ", ui.FAQPage(section))
 }
 
 func UserProfileHandler(c *fiber.Ctx) error {
@@ -238,5 +242,8 @@ func UserEggConversationHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
 	}
 
-	return renderConversationModal(c, conv, currentUserID, loc, csrfToken)
+	if message.IsParticipant(conv, currentUserID) {
+		return renderConversationModal(c, conv, currentUserID, loc, csrfToken)
+	}
+	return renderEggOpinionModal(c, conv, currentUserID, loc)
 }

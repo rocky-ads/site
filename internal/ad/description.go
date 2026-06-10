@@ -29,6 +29,38 @@ func SanitizeAdText(s string) string {
 	return b.String()
 }
 
+// TitleContainsEmoji reports whether s includes emoji or other pictographs
+// unsuitable for ad titles (e.g. egg or warning icons).
+func TitleContainsEmoji(s string) bool {
+	for _, r := range s {
+		if isEmojiRune(r) {
+			return true
+		}
+	}
+	return false
+}
+
+func isEmojiRune(r rune) bool {
+	switch {
+	case r == 0x200D, r == 0xFE0F:
+		return true
+	case r >= 0x2300 && r <= 0x23FF:
+		return true
+	case r >= 0x2600 && r <= 0x27BF:
+		return true
+	case r >= 0x2B05 && r <= 0x2B07:
+		return true
+	case r == 0x2B1B, r == 0x2B1C, r == 0x2B50, r == 0x2B55:
+		return true
+	case r >= 0x1F000 && r <= 0x1FAFF:
+		return true
+	case r >= 0x1F1E6 && r <= 0x1F1FF:
+		return true
+	default:
+		return false
+	}
+}
+
 func normalizeDescriptionRune(r rune) rune {
 	switch r {
 	case '\u2018', '\u2019', '\u201A', '\u201B':
