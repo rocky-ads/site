@@ -107,12 +107,12 @@ func (f adFields) formRadio(d facet.Def) g.Node {
 			attrs = append(attrs, g.Attr("checked", "checked"))
 		}
 		nodes[i] = Label(
-			Class("flex items-center gap-2"),
+			Class("field-option"),
 			Input(attrs...),
 			Span(g.Text(o)),
 		)
 	}
-	return Div(Class("flex flex-wrap items-center gap-4"), g.Group(nodes))
+	return Div(Class("field-options"), g.Group(nodes))
 }
 
 func (f adFields) formDate(d facet.Def) g.Node {
@@ -147,12 +147,12 @@ func (f adFields) formCheckboxes(d facet.Def) g.Node {
 			attrs = append(attrs, g.Attr("checked", "checked"))
 		}
 		nodes[i] = Label(
-			Class("flex items-center gap-2"),
+			Class("field-option"),
 			Input(attrs...),
 			Span(g.Text(o)),
 		)
 	}
-	return Div(Class("flex flex-wrap items-center gap-4"), g.Group(nodes))
+	return Div(Class("field-options"), g.Group(nodes))
 }
 
 func (f adFields) facetNumberInput(d facet.Def) g.Node {
@@ -223,8 +223,8 @@ func facetFieldBlock(d facet.Def, input g.Node) g.Node {
 
 func fieldBlock(label string, input g.Node) g.Node {
 	return Div(
-		Class("mt-3"),
-		Label(Class("field-label block mb-1"), g.Text(label)),
+		Class("field-group"),
+		Label(Class("field-label"), g.Text(label)),
 		input,
 	)
 }
@@ -254,9 +254,9 @@ func (f adFields) editDescriptionFields() g.Node {
 	nodes := []g.Node{
 		editDescriptionWithSuggestionsBox(f.cfg),
 		Div(
-			Class("mt-3"),
+			Class("field-group"),
 			Label(
-				Class("field-label block mb-1"),
+				Class("field-label"),
 				g.Text("Add to Description (optional)"),
 			),
 			Textarea(

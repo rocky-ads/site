@@ -47,10 +47,49 @@ func SearchResultsOOB(view int, results []g.Node) g.Node {
 }
 
 // FilterPanel is the HTMX fragment inserted into #filter-panel when expanded.
-func FilterPanel(filterFacets []facet.Def, filters uiads.SearchFilters) g.Node {
+func FilterPanel(
+	q string,
+	filterFacets []facet.Def,
+	filters uiads.SearchFilters,
+) g.Node {
 	return Div(
 		Class("border rounded-lg p-4 mt-4"),
+		Div(
+			Class("flex gap-2 items-center mb-4"),
+			Div(Class("flex-1 min-w-0"), searchBox(q)),
+			FilterToggle(true),
+		),
 		uiads.SearchFiltersPanel(filterFacets, filters),
+	)
+}
+
+func searchBarRow(q string, expanded bool) g.Node {
+	if expanded {
+		return Div(ID("search-bar"), Class("hidden"))
+	}
+	return Div(
+		ID("search-bar"),
+		Class("flex gap-2 items-center"),
+		Div(Class("flex-1 min-w-0"), searchBox(q)),
+		FilterToggle(false),
+	)
+}
+
+// SearchBarOOB swaps #search-bar when the filter panel is shown or hidden.
+func SearchBarOOB(q string, expanded bool) g.Node {
+	if expanded {
+		return Div(
+			ID("search-bar"),
+			Class("hidden"),
+			hx.SwapOOB("outerHTML"),
+		)
+	}
+	return Div(
+		ID("search-bar"),
+		Class("flex gap-2 items-center"),
+		hx.SwapOOB("outerHTML"),
+		Div(Class("flex-1 min-w-0"), searchBox(q)),
+		FilterToggle(false),
 	)
 }
 
@@ -94,15 +133,10 @@ func searchBox(q string) g.Node {
 }
 
 func FilterToggle(expanded bool) g.Node {
-	return filterToggle(expanded, false)
+	return filterToggle(expanded)
 }
 
-// FilterToggleOOB swaps #filter-toggle when the panel is shown or hidden.
-func FilterToggleOOB(expanded bool) g.Node {
-	return filterToggle(expanded, true)
-}
-
-func filterToggle(expanded bool, oob bool) g.Node {
+func filterToggle(expanded bool) g.Node {
 	label := "Expand filters"
 	icon := "/images/expand.svg"
 	var actionAttrs []g.Node
@@ -128,9 +162,6 @@ func filterToggle(expanded bool, oob bool) g.Node {
 		Class("p-2 border border-zinc-300 dark:border-zinc-600 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"),
 		g.Attr("aria-label", label),
 		g.Attr("title", label),
-	}
-	if oob {
-		attrs = append(attrs, hx.SwapOOB("outerHTML"))
 	}
 	attrs = append(attrs, actionAttrs...)
 	attrs = append(attrs, Img(
@@ -172,7 +203,7 @@ func newAdButton(userID int) g.Node {
 func SearchWidget(userID, view int, q string, filtersExpanded bool, category CategoryOption, filterFacets []facet.Def, filters uiads.SearchFilters, results []g.Node) g.Node {
 	var panel g.Node
 	if filtersExpanded {
-		panel = FilterPanel(filterFacets, filters)
+		panel = FilterPanel(q, filterFacets, filters)
 	}
 	return Form(
 		Class("flex flex-col gap-4"),
@@ -182,12 +213,7 @@ func SearchWidget(userID, view int, q string, filtersExpanded bool, category Cat
 		hx.Swap("outerHTML"),
 		hx.Include("#search-widget"),
 		hx.Trigger("search, keydown[key=='Tab'] from:#searchBox, change from:#filter-panel input delay:300ms, change from:#filter-panel select delay:300ms, keydown[key=='Enter'] from:#filter-location"),
-		Div(
-			ID("search-bar"),
-			Class("flex gap-2 items-center"),
-			searchBox(q),
-			FilterToggle(filtersExpanded),
-		),
+		searchBarRow(q, filtersExpanded),
 		Div(ID("filter-panel"), panel),
 		SearchView(userID, view, results),
 	)

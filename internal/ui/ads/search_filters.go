@@ -48,7 +48,7 @@ func enumFilterRow(d facet.Def, filter facet.Filter) g.Node {
 		opts = append(opts, enumOption(e, e, selected))
 	}
 	return Div(
-		Class("col-span-2"),
+		Class("col-span-2 field-group"),
 		Label(For(id), Class("field-label"), g.Text(d.Label)),
 		Select(
 			Name(d.Key),
@@ -77,15 +77,15 @@ func enumCheckboxesFilterRow(d facet.Def, filter facet.Filter) g.Node {
 			attrs = append(attrs, g.Attr("checked", "checked"))
 		}
 		nodes[i] = Label(
-			Class("flex items-center gap-2"),
+			Class("field-option"),
 			Input(attrs...),
 			g.Text(e),
 		)
 	}
 	return Div(
-		Class("col-span-2"),
+		Class("col-span-2 field-group"),
 		Label(Class("field-label"), g.Text(d.Label)),
-		Div(Class("flex flex-wrap items-center gap-4"), g.Group(nodes)),
+		Div(Class("field-options"), g.Group(nodes)),
 	)
 }
 
@@ -100,7 +100,7 @@ func rangeFilterRow(name, label string, min, max *int) g.Node {
 	minID := "filter-" + name + "-min"
 	maxID := "filter-" + name + "-max"
 	return Div(
-		Class("col-span-2"),
+		Class("col-span-2 field-group"),
 		Label(For(minID), Class("field-label"), g.Text(label)),
 		Div(Class("ad-filter-price-range flex flex-wrap items-center gap-2"),
 			Input(
@@ -140,7 +140,7 @@ func dateRangeFilterRow(name, label string, min, max *string) g.Node {
 		maxVal = *max
 	}
 	return Div(
-		Class("col-span-2"),
+		Class("col-span-2 field-group"),
 		Label(For(minID), Class("field-label"), g.Text(label)),
 		Div(Class("ad-filter-price-range flex flex-wrap items-center gap-2"),
 			Input(
@@ -176,10 +176,12 @@ func searchLocationRadiusRow(f SearchFilters) g.Node {
 	return Div(
 		Class("col-span-2 grid grid-cols-2 gap-4"),
 		Div(
+			Class("field-group"),
 			Label(For("filter-location"), Class("field-label"), g.Text("Location")),
 			LocationInput("filter-location", "location", f.Location, "City, State or ZIP"),
 		),
 		Div(
+			Class("field-group"),
 			Label(For("filter-radius"), Class("field-label"), g.Text(radiusLabel)),
 			radiusSelect(f.Radius, f.RadiusOptions, suffix),
 		),

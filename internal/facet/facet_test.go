@@ -251,6 +251,16 @@ func TestDateFacet(t *testing.T) {
 	if start.Form != FormDate {
 		t.Fatalf("Form = %v, want FormDate", start.Form)
 	}
+	if start.Filter != FilterExact {
+		t.Fatalf("Filter = %v, want FilterExact", start.Filter)
+	}
+	end, ok := Get("sale_end_date")
+	if !ok {
+		t.Fatal("sale_end_date facet not registered")
+	}
+	if end.Filterable {
+		t.Error("sale_end_date should not be filterable")
+	}
 	v := Value{Text: strPtr("2026-06-14")}
 	if err := start.Validate(v); err != nil {
 		t.Errorf("valid date rejected: %v", err)
@@ -273,6 +283,49 @@ func TestDateFacet(t *testing.T) {
 	if got := SaleDateDetailDisplays("2026-06-07", "2026-06-08"); len(got) != 1 || got[0] != "Sale Date: Jun 7–8, 2026" {
 		t.Errorf("multi-day detail = %v", got)
 	}
+}
+
+func TestSaleWeekRange(t *testing.T) {
+	loc := time.FixedZone("test", -7*3600)
+	wed := time.Date(2026, 6, 10, 15, 0, 0, 0, loc)
+
+	t.Run("this week", func(t *testing.T) {
+		min, max, ok := SaleWeekRange("This week", wed)
+		if !ok {
+			t.Fatal("expected ok")
+		}
+		if min.Format(dateLayout) != "2026-06-07" || max.Format(dateLayout) != "2026-06-13" {
+			t.Fatalf("range = %s to %s", min.Format(dateLayout), max.Format(dateLayout))
+		}
+	})
+	t.Run("next week", func(t *testing.T) {
+		min, max, ok := SaleWeekRange("Next week", wed)
+		if !ok {
+			t.Fatal("expected ok")
+		}
+		if min.Format(dateLayout) != "2026-06-14" || max.Format(dateLayout) != "2026-06-20" {
+			t.Fatalf("range = %s to %s", min.Format(dateLayout), max.Format(dateLayout))
+		}
+	})
+	t.Run("this weekend", func(t *testing.T) {
+		min, max, ok := SaleWeekRange("This weekend", wed)
+		if !ok {
+			t.Fatal("expected ok")
+		}
+		if min.Format(dateLayout) != "2026-06-13" || max.Format(dateLayout) != "2026-06-14" {
+			t.Fatalf("range = %s to %s", min.Format(dateLayout), max.Format(dateLayout))
+		}
+	})
+	t.Run("resolve filter", func(t *testing.T) {
+		preset := "Next week"
+		got := ResolveFilterForSearch("sale_start_date", Filter{Value: &preset}, wed)
+		if got.TextMin == nil || *got.TextMin != "2026-06-14" {
+			t.Fatalf("TextMin = %v", got.TextMin)
+		}
+		if got.TextMax == nil || *got.TextMax != "2026-06-20" {
+			t.Fatalf("TextMax = %v", got.TextMax)
+		}
+	})
 }
 
 func TestMultiEnumFacet(t *testing.T) {

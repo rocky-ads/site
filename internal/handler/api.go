@@ -39,7 +39,7 @@ func renderFilterPanelResponse(c *fiber.Ctx, state cookie.SearchState, panel g.N
 
 	return render(c, g.Group([]g.Node{
 		panel,
-		ui.FilterToggleOOB(state.Expanded),
+		ui.SearchBarOOB(state.Q, state.Expanded),
 		ui.SearchResultsOOB(view, results),
 	}))
 }
@@ -53,7 +53,7 @@ func ShowFiltersHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	return renderFilterPanelResponse(c, state, ui.FilterPanel(filterableFacets(category), searchStateToFilters(state, unit)))
+	return renderFilterPanelResponse(c, state, ui.FilterPanel(state.Q, filterableFacets(category), searchStateToFilters(state, unit)))
 }
 
 func HideFiltersHandler(c *fiber.Ctx) error {

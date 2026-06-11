@@ -100,7 +100,7 @@ func parseSearchParamsFromState(c *fiber.Ctx, state cookie.SearchState, category
 		Location:     state.Location,
 		Radius:       state.Radius,
 		RadiusUnit:   unit,
-		FacetFilters: state.Facets,
+		FacetFilters: expandFacetFilters(state.Facets, cookie.GetLocation(c)),
 	})
 }
 
@@ -139,7 +139,7 @@ func parseFacetFilters(c *fiber.Ctx, category ad.Category) map[string]facet.Filt
 		switch d.Filter {
 		case facet.FilterExact:
 			val := strings.TrimSpace(c.Query(d.Key))
-			if val != "" {
+			if val != "" && d.ValidFilterValue(val) {
 				filters[d.Key] = facet.Filter{Value: &val}
 			}
 		case facet.FilterCheckboxes:
@@ -166,6 +166,21 @@ func parseFacetFilters(c *fiber.Ctx, category ad.Category) map[string]facet.Filt
 		return nil
 	}
 	return filters
+}
+
+func expandFacetFilters(
+	filters map[string]facet.Filter,
+	loc *time.Location,
+) map[string]facet.Filter {
+	if len(filters) == 0 {
+		return filters
+	}
+	now := time.Now().In(loc)
+	out := make(map[string]facet.Filter, len(filters))
+	for k, f := range filters {
+		out[k] = facet.ResolveFilterForSearch(k, f, now)
+	}
+	return out
 }
 
 func parseEnumCheckboxQuery(c *fiber.Ctx, key string, allowed []string) []string {

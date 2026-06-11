@@ -99,7 +99,7 @@ func TestParseFacetFiltersConditionCheckboxes(t *testing.T) {
 	}
 }
 
-func TestParseFacetFiltersDateRange(t *testing.T) {
+func TestParseFacetFiltersSaleWeek(t *testing.T) {
 	category := ad.Category{FacetKeys: []string{"sale_start_date"}}
 
 	app := fiber.New()
@@ -109,16 +109,13 @@ func TestParseFacetFiltersDateRange(t *testing.T) {
 		return c.SendStatus(fiber.StatusOK)
 	})
 
-	req := httptest.NewRequest("GET", "/search?sale_start_date_min=2026-06-01&sale_start_date_max=2026-06-30", nil)
+	req := httptest.NewRequest("GET", "/search?sale_start_date=Next+week", nil)
 	if _, err := app.Test(req); err != nil {
 		t.Fatal(err)
 	}
 	got := filters["sale_start_date"]
-	if got.TextMin == nil || *got.TextMin != "2026-06-01" {
-		t.Fatalf("TextMin = %v", got.TextMin)
-	}
-	if got.TextMax == nil || *got.TextMax != "2026-06-30" {
-		t.Fatalf("TextMax = %v", got.TextMax)
+	if got.Value == nil || *got.Value != "Next week" {
+		t.Fatalf("Value = %v", got.Value)
 	}
 }
 

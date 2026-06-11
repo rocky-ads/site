@@ -91,6 +91,16 @@ func (d Def) LocationPlaceholder() string {
 	return "City, State or ZIP"
 }
 
+// ValidFilterValue reports whether val is an allowed search filter option.
+func (d Def) ValidFilterValue(val string) bool {
+	for _, e := range d.Enum {
+		if e == val {
+			return true
+		}
+	}
+	return false
+}
+
 // ValidUnit reports whether unit is allowed for this facet.
 func (d Def) ValidUnit(unit string) bool {
 	unit = strings.TrimSpace(unit)
@@ -289,6 +299,66 @@ func formatDateDisplay(iso string) string {
 	return t.Format("Jan 2, 2006")
 }
 
+// ResolveFilterForSearch converts stored filter presets into query constraints.
+func ResolveFilterForSearch(key string, f Filter, now time.Time) Filter {
+	if key != "sale_start_date" || f.Value == nil {
+		return f
+	}
+	min, max, ok := SaleWeekRange(*f.Value, now)
+	if !ok {
+		return f
+	}
+	minS := min.Format(dateLayout)
+	maxS := max.Format(dateLayout)
+	return Filter{TextMin: &minS, TextMax: &maxS}
+}
+
+// SaleWeekRange maps a when-filter preset to an inclusive sale_start_date range.
+func SaleWeekRange(preset string, now time.Time) (min, max time.Time, ok bool) {
+	loc := now.Location()
+	today := time.Date(
+		now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc,
+	)
+	weekStart := weekStartSunday(today)
+
+	switch preset {
+	case "This week":
+		return weekStart, weekStart.AddDate(0, 0, 6), true
+	case "Next week":
+		start := weekStart.AddDate(0, 0, 7)
+		return start, start.AddDate(0, 0, 6), true
+	case "This weekend":
+		sat, sun := thisWeekend(today)
+		return sat, sun, true
+	case "Next weekend":
+		sat, sun := thisWeekend(today)
+		return sat.AddDate(0, 0, 7), sun.AddDate(0, 0, 7), true
+	case "Later":
+		start := weekStart.AddDate(0, 0, 14)
+		far := time.Date(9999, 12, 31, 0, 0, 0, 0, loc)
+		return start, far, true
+	default:
+		return time.Time{}, time.Time{}, false
+	}
+}
+
+func weekStartSunday(t time.Time) time.Time {
+	return t.AddDate(0, 0, -int(t.Weekday()))
+}
+
+func thisWeekend(today time.Time) (sat, sun time.Time) {
+	switch today.Weekday() {
+	case time.Sunday:
+		return today.AddDate(0, 0, -1), today
+	case time.Saturday:
+		return today, today.AddDate(0, 0, 1)
+	default:
+		daysUntilSat := int(time.Saturday - today.Weekday())
+		sat = today.AddDate(0, 0, daysUntilSat)
+		return sat, sat.AddDate(0, 0, 1)
+	}
+}
+
 var defs = []Def{
 	{
 		Key:        "price",
@@ -378,11 +448,18 @@ var defs = []Def{
 		Required:   true,
 	},
 	{
-		Key:        "sale_start_date",
-		Label:      "Sale Start Date",
-		Kind:       Date,
-		Form:       FormDate,
-		Filter:     FilterRange,
+		Key:    "sale_start_date",
+		Label:  "When",
+		Kind:   Date,
+		Form:   FormDate,
+		Filter: FilterExact,
+		Enum: []string{
+			"This week",
+			"Next week",
+			"This weekend",
+			"Next weekend",
+			"Later",
+		},
 		Filterable: true,
 		Required:   true,
 	},
@@ -392,7 +469,7 @@ var defs = []Def{
 		Kind:       Date,
 		Form:       FormDate,
 		Filter:     FilterRange,
-		Filterable: true,
+		Filterable: false,
 		Required:   true,
 	},
 	{

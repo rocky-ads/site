@@ -1,4 +1,22 @@
 @import "tailwindcss";
 
 @custom-variant dark (@media (prefers-color-scheme: dark));
+
+@layer components {
+  .field-group {
+    @apply rounded-lg bg-zinc-100 dark:bg-zinc-950 px-3 py-2.5;
+  }
+
+  .field-label {
+    @apply block text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-2;
+  }
+
+  .field-options {
+    @apply flex flex-wrap items-center gap-x-4 gap-y-2;
+  }
+
+  .field-option {
+    @apply flex items-center gap-2 text-sm font-normal text-zinc-600 dark:text-zinc-400 cursor-pointer;
+  }
+}
  
