@@ -1,15 +1,9 @@
-# Dockerfile for Koyeb Jump Server with test_db_perf
-# Creates a server with pre-built test_db_perf binary and quote server
+# Dockerfile for Koyeb Jump Server
+# Creates a server with pre-built utilities and quote server
 
 # Stage 1: Build Go binary
 FROM golang:1.25.3 AS go-builder
 WORKDIR /build
-
-# Install WebP development libraries for gen_test_images (requires CGO)
-RUN apt-get update && \
-    apt-get install -y \
-    libwebp-dev \
-    && rm -rf /var/lib/apt/lists/*
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -18,20 +12,10 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build test_db_perf binary (statically linked)
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -o /build/test_db_perf \
-    ./cmd/test_db_perf
-
 # Build rebuild_db binary (statically linked)
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o /build/rebuild_db \
     ./cmd/rebuild_db
-
-# Build gen_test_images binary (requires CGO for WebP support)
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
-    -o /build/gen_test_images \
-    ./cmd/gen_test_images
 
 # Build quote_server binary (statically linked)
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
@@ -41,7 +25,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 # Stage 2: Final image
 FROM ubuntu:22.04
 
-# Install basic tools, monitoring tools, and WebP library
+# Install basic tools and monitoring tools
 RUN apt-get update && \
     apt-get install -y \
     curl \
@@ -59,7 +43,6 @@ RUN apt-get update && \
     ufw \
     rsyslog \
     sudo \
-    libwebp-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install MinIO Client (mc)
@@ -69,15 +52,11 @@ RUN wget -q https://dl.min.io/client/mc/release/linux-amd64/mc -O /tmp/mc && \
     mc --version
 
 # Copy the pre-built binaries
-COPY --from=go-builder /build/test_db_perf /usr/local/bin/test_db_perf
 COPY --from=go-builder /build/rebuild_db /usr/local/bin/rebuild_db
-COPY --from=go-builder /build/gen_test_images /usr/local/bin/gen_test_images
 COPY --from=go-builder /build/quote_server /usr/local/bin/quote_server
 
 # Make them executable
-RUN chmod +x /usr/local/bin/test_db_perf && \
-    chmod +x /usr/local/bin/rebuild_db && \
-    chmod +x /usr/local/bin/gen_test_images && \
+RUN chmod +x /usr/local/bin/rebuild_db && \
     chmod +x /usr/local/bin/quote_server
 
 # Create workspace directory
