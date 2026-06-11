@@ -62,13 +62,12 @@ RUN chmod +x /usr/local/bin/rebuild_db && \
 # Create workspace directory
 RUN mkdir -p /workspace && chmod 777 /workspace
 
-# Copy rebuild_db data files to workspace (needed for rebuild_db command)
-RUN mkdir -p /workspace/rebuild_db
-COPY --from=go-builder /build/cmd/rebuild_db/*.json /workspace/rebuild_db/
-COPY --from=go-builder /build/schema.sql /workspace/schema.sql
+# Copy rebuild_db seed data and schema (paths expected by rebuild_db at runtime)
+RUN mkdir -p /workspace/cmd/rebuild_db/seed /workspace/internal/db
+COPY --from=go-builder /build/cmd/rebuild_db/seed/*.json /workspace/cmd/rebuild_db/seed/
+COPY --from=go-builder /build/internal/db/schema.sql /workspace/internal/db/schema.sql
 
-# Set environment variable for rebuild_db data directory
-ENV REBUILD_DB_DATA_DIR=/workspace/rebuild_db
+WORKDIR /workspace
 
 # Create non-root jump user with sudo
 RUN useradd -m -s /bin/bash jump && \
