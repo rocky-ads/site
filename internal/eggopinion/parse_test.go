@@ -25,7 +25,7 @@ func TestParseOpinionResponseStripsFence(t *testing.T) {
 		`{"summary":"Summary text here for the dispute.",
 "assessment":8,
 "assessment_detail":"Owner disclosed terms clearly.",
-"resolution":"Enquirer should confirm before traveling.",
+"resolution":"Inquirer should confirm before traveling.",
 "reasoning":"Ad history supports the owner."}` +
 		"\n```"
 	op, err := parseOpinionResponse(resp)
@@ -66,7 +66,7 @@ func TestParseAssessmentScoreLegacyStrings(t *testing.T) {
 		raw  string
 		want int
 	}{
-		{`"enquirer"`, 2},
+		{`"inquirer"`, 2},
 		{`"owner"`, 8},
 		{`"neither"`, 5},
 		{`5`, 5},

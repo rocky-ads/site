@@ -47,7 +47,7 @@ func GetUnreadMessageCount(userID int) (int, error) {
 		SELECT COUNT(*)
 		FROM conversations
 		WHERE (owner_id = ? AND owner_has_unread = 1)
-		   OR (enquirer_id = ? AND enquirer_has_unread = 1)
+		   OR (inquirer_id = ? AND inquirer_has_unread = 1)
 	`
 	var count int
 	err := db.QueryRow(query, userID, userID).Scan(&count)

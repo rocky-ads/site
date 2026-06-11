@@ -21,7 +21,7 @@ func TestOpenConversationReadMarking(t *testing.T) {
 	}
 	_, err = db.Exec(`INSERT INTO users (encrypted_name, name_nonce, name_hash, password_hash, password_salt, encrypted_phone, phone_nonce, phone_hash)
 		VALUES (x'', x'', 'owner', 'p', 's', x'', x'', 'ph'),
-		       (x'', x'', 'enquirer', 'p', 's', x'', x'', 'ph2'),
+		       (x'', x'', 'inquirer', 'p', 's', x'', x'', 'ph2'),
 		       (x'', x'', 'viewer', 'p', 's', x'', x'', 'ph3')`)
 	if err != nil {
 		t.Fatal(err)
@@ -35,7 +35,7 @@ func TestOpenConversationReadMarking(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = db.Exec(`INSERT INTO conversations (ad_id, owner_id, enquirer_id, enquirer_has_unread, egg_thrower_id, egg_thrown_at)
+	_, err = db.Exec(`INSERT INTO conversations (ad_id, owner_id, inquirer_id, inquirer_has_unread, egg_thrower_id, egg_thrown_at)
 		VALUES (1, 1, 2, 1, 2, CURRENT_TIMESTAMP)`)
 	if err != nil {
 		t.Fatal(err)
@@ -51,18 +51,18 @@ func TestOpenConversationReadMarking(t *testing.T) {
 		}
 		var unread int
 		if err := db.QueryRow(
-			`SELECT enquirer_has_unread FROM conversations WHERE id = 1`,
+			`SELECT inquirer_has_unread FROM conversations WHERE id = 1`,
 		).Scan(&unread); err != nil {
 			t.Fatal(err)
 		}
 		if unread != 1 {
-			t.Fatalf("enquirer_has_unread = %d, want 1", unread)
+			t.Fatalf("inquirer_has_unread = %d, want 1", unread)
 		}
 	})
 
 	t.Run("marks read for participant", func(t *testing.T) {
 		_, err := db.Exec(
-			`UPDATE conversations SET enquirer_has_unread = 1 WHERE id = 1`,
+			`UPDATE conversations SET inquirer_has_unread = 1 WHERE id = 1`,
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -76,12 +76,12 @@ func TestOpenConversationReadMarking(t *testing.T) {
 		}
 		var unread int
 		if err := db.QueryRow(
-			`SELECT enquirer_has_unread FROM conversations WHERE id = 1`,
+			`SELECT inquirer_has_unread FROM conversations WHERE id = 1`,
 		).Scan(&unread); err != nil {
 			t.Fatal(err)
 		}
 		if unread != 0 {
-			t.Fatalf("enquirer_has_unread = %d, want 0", unread)
+			t.Fatalf("inquirer_has_unread = %d, want 0", unread)
 		}
 	})
 }

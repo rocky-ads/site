@@ -38,7 +38,7 @@ func parseAssessmentScore(raw json.RawMessage) (int, error) {
 	}
 	s = strings.TrimSpace(s)
 	switch strings.ToLower(s) {
-	case "enquirer":
+	case "inquirer":
 		return 2, nil
 	case "owner":
 		return 8, nil

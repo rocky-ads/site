@@ -24,7 +24,7 @@ func setupEggOpinionDB(t *testing.T) {
 	}
 	_, err = db.Exec(`INSERT INTO users (encrypted_name, name_nonce, name_hash, password_hash, password_salt, encrypted_phone, phone_nonce, phone_hash)
 		VALUES (x'', x'', 'owner', 'p', 's', x'', x'', 'ph'),
-		       (x'', x'', 'enquirer', 'p', 's', x'', x'', 'ph2')`)
+		       (x'', x'', 'inquirer', 'p', 's', x'', x'', 'ph2')`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func setupEggOpinionDB(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = db.Exec(`INSERT INTO conversations (ad_id, owner_id, enquirer_id, egg_thrower_id, egg_thrown_at)
+	_, err = db.Exec(`INSERT INTO conversations (ad_id, owner_id, inquirer_id, egg_thrower_id, egg_thrown_at)
 		VALUES (1, 1, 2, 2, CURRENT_TIMESTAMP)`)
 	if err != nil {
 		t.Fatal(err)

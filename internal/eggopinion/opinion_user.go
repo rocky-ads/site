@@ -17,7 +17,7 @@ type promptInput struct {
 	Tags         []string
 	Messages     []message.Message
 	OwnerID      int
-	EnquirerID   int
+	InquirerID   int
 	EggThrowerID int
 	EggThrownAt  time.Time
 	Loc          *time.Location
@@ -55,13 +55,13 @@ func buildUserPrompt(in promptInput) string {
 		complaintAt = complaintAt.In(in.Loc)
 	}
 	b.WriteString("\nDispute metadata:\n")
-	if in.EggThrowerID == in.EnquirerID {
+	if in.EggThrowerID == in.InquirerID {
 		b.WriteString(
-			"The enquirer filed a complaint about the ad with the owner.\n",
+			"The inquirer filed a complaint about the ad with the owner.\n",
 		)
 	} else {
 		b.WriteString(
-			"The owner filed a complaint about the enquirer regarding this ad.\n",
+			"The owner filed a complaint about the inquirer regarding this ad.\n",
 		)
 	}
 	fmt.Fprintf(&b, "Complaint filed at: %s\n",
@@ -70,7 +70,7 @@ func buildUserPrompt(in promptInput) string {
 	if len(in.Messages) > 0 {
 		b.WriteString("\nConversation:\n")
 		for _, m := range in.Messages {
-			sender := "Enquirer"
+			sender := "Inquirer"
 			if m.SenderID == in.OwnerID {
 				sender = "Owner"
 			}

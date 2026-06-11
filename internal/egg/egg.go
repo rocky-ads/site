@@ -13,17 +13,17 @@ var ErrMaxEggsReached = errors.New("user has reached maximum outstanding eggs")
 var ErrEggAlreadyThrown = errors.New("an egg has already been thrown at this conversation")
 
 // ThrowEgg throws an egg at a conversation, making it public
-// If enquirer throws: egg_thrower_id = enquirer_id (bound to ad)
-// If owner throws: egg_thrower_id = owner_id (bound to enquirer)
+// If inquirer throws: egg_thrower_id = inquirer_id (bound to ad)
+// If owner throws: egg_thrower_id = owner_id (bound to inquirer)
 func ThrowEgg(userID, conversationID int) error {
-	// Get conversation to determine owner and enquirer
+	// Get conversation to determine owner and inquirer
 	conv, err := getConversationForEgg(conversationID)
 	if err != nil {
 		return fmt.Errorf("failed to get conversation: %w", err)
 	}
 
 	// Verify user is participant
-	if conv.OwnerID != userID && conv.EnquirerID != userID {
+	if conv.OwnerID != userID && conv.InquirerID != userID {
 		return fmt.Errorf("only conversation participants can throw eggs")
 	}
 
@@ -61,17 +61,17 @@ func ThrowEgg(userID, conversationID int) error {
 // getConversationForEgg gets conversation details needed for egg throwing
 func getConversationForEgg(conversationID int) (struct {
 	OwnerID    int
-	EnquirerID int
+	InquirerID int
 }, error) {
 	var conv struct {
 		OwnerID    int
-		EnquirerID int
+		InquirerID int
 	}
 	err := db.QueryRow(`
-		SELECT owner_id, enquirer_id
+		SELECT owner_id, inquirer_id
 		FROM conversations
 		WHERE id = ?
-	`, conversationID).Scan(&conv.OwnerID, &conv.EnquirerID)
+	`, conversationID).Scan(&conv.OwnerID, &conv.InquirerID)
 	if err != nil {
 		return conv, fmt.Errorf("failed to get conversation: %w", err)
 	}
@@ -116,13 +116,13 @@ func UnthrowEgg(userID, conversationID int) error {
 }
 
 // GetPublicConversationsForAd returns public conversation IDs for an ad
-// Only returns conversations with eggs bound to the ad (egg_thrower_id = enquirer_id)
+// Only returns conversations with eggs bound to the ad (egg_thrower_id = inquirer_id)
 func GetPublicConversationsForAd(adID int) ([]int, error) {
 	query := `
 		SELECT c.id
 		FROM conversations c
 		LEFT JOIN messages m ON c.id = m.conversation_id
-		WHERE c.ad_id = ? AND c.egg_thrower_id IS NOT NULL AND c.egg_thrower_id = c.enquirer_id
+		WHERE c.ad_id = ? AND c.egg_thrower_id IS NOT NULL AND c.egg_thrower_id = c.inquirer_id
 		GROUP BY c.id
 		ORDER BY COALESCE(MAX(m.created_at), c.egg_thrown_at) DESC
 	`
@@ -135,13 +135,13 @@ func GetPublicConversationsForAd(adID int) ([]int, error) {
 }
 
 // GetPublicConversationIDByOrdinal returns the conversation ID at the given ordinal position (0-based)
-// for public conversations with eggs bound to the ad (egg_thrower_id = enquirer_id), ordered by latest activity DESC
+// for public conversations with eggs bound to the ad (egg_thrower_id = inquirer_id), ordered by latest activity DESC
 func GetPublicConversationIDByOrdinal(adID int, ordinal int) (int, error) {
 	query := `
 		SELECT c.id
 		FROM conversations c
 		LEFT JOIN messages m ON c.id = m.conversation_id
-		WHERE c.ad_id = ? AND c.egg_thrower_id IS NOT NULL AND c.egg_thrower_id = c.enquirer_id
+		WHERE c.ad_id = ? AND c.egg_thrower_id IS NOT NULL AND c.egg_thrower_id = c.inquirer_id
 		GROUP BY c.id
 		ORDER BY COALESCE(MAX(m.created_at), c.egg_thrown_at) DESC
 		LIMIT 1 OFFSET ?
@@ -209,12 +209,12 @@ func HasUserThrownEgg(userID, conversationID int) (bool, error) {
 }
 
 // GetConversationIDsForUserEggs returns conversation IDs for eggs bound to a user
-// (where egg_thrower_id = owner_id, meaning owner threw egg at enquirer)
+// (where egg_thrower_id = owner_id, meaning owner threw egg at inquirer)
 func GetConversationIDsForUserEggs(userID int) ([]int, error) {
 	query := `
 		SELECT id
 		FROM conversations
-		WHERE egg_thrower_id IS NOT NULL AND egg_thrower_id = owner_id AND enquirer_id = ?
+		WHERE egg_thrower_id IS NOT NULL AND egg_thrower_id = owner_id AND inquirer_id = ?
 		ORDER BY egg_thrown_at DESC
 	`
 	var conversationIDs []int
@@ -232,7 +232,7 @@ func GetEggCountForUser(userID int) (int, error) {
 	err := db.QueryRow(`
 		SELECT COUNT(*)
 		FROM conversations
-		WHERE egg_thrower_id IS NOT NULL AND egg_thrower_id = owner_id AND enquirer_id = ?
+		WHERE egg_thrower_id IS NOT NULL AND egg_thrower_id = owner_id AND inquirer_id = ?
 	`, userID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get egg count for user: %w", err)
@@ -241,12 +241,12 @@ func GetEggCountForUser(userID int) (int, error) {
 }
 
 // GetConversationIDForUserEggByOrdinal returns the conversation ID at the given ordinal position (0-based)
-// for eggs bound to a user (where egg_thrower_id = owner_id AND enquirer_id = userID), ordered by egg_thrown_at DESC
+// for eggs bound to a user (where egg_thrower_id = owner_id AND inquirer_id = userID), ordered by egg_thrown_at DESC
 func GetConversationIDForUserEggByOrdinal(userID int, ordinal int) (int, error) {
 	query := `
 		SELECT id
 		FROM conversations
-		WHERE egg_thrower_id IS NOT NULL AND egg_thrower_id = owner_id AND enquirer_id = ?
+		WHERE egg_thrower_id IS NOT NULL AND egg_thrower_id = owner_id AND inquirer_id = ?
 		ORDER BY egg_thrown_at DESC
 		LIMIT 1 OFFSET ?
 	`

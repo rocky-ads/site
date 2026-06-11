@@ -41,7 +41,7 @@ func renderEggIconsByOrdinal(eggCount int, urlPattern string, id int) g.Node {
 
 // EggIcons renders clickable egg icons for an ad
 // Each icon links to an egg by ordinal position
-// Only shows eggs bound to the ad (when enquirer throws)
+// Only shows eggs bound to the ad (when inquirer throws)
 func EggIcons(adID int, eggCount int) g.Node {
 	return renderEggIconsByOrdinal(eggCount, "/auth/ad/%d/egg/%d", adID)
 }

@@ -25,7 +25,7 @@ func ThrowEggHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
 	}
 
-	if conv.OwnerID != currentUserID && conv.EnquirerID != currentUserID {
+	if conv.OwnerID != currentUserID && conv.InquirerID != currentUserID {
 		return fiber.NewError(fiber.StatusForbidden, "Only conversation participants can throw eggs")
 	}
 
@@ -64,7 +64,7 @@ func UnthrowEggHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
 	}
 
-	if conv.OwnerID != currentUserID && conv.EnquirerID != currentUserID {
+	if conv.OwnerID != currentUserID && conv.InquirerID != currentUserID {
 		return fiber.NewError(fiber.StatusForbidden, "Only conversation participants can remove eggs")
 	}
 

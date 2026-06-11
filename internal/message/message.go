@@ -15,12 +15,12 @@ type Conversation struct {
 	ID                int        `db:"id"`
 	AdID              int        `db:"ad_id"`
 	OwnerID           int        `db:"owner_id"`
-	EnquirerID        int        `db:"enquirer_id"`
+	InquirerID        int        `db:"inquirer_id"`
 	CreatedAt         time.Time  `db:"created_at"` // Computed: MIN(messages.created_at) or egg_thrown_at
 	UpdatedAt         time.Time  `db:"updated_at"` // Computed: MAX(MAX(messages.created_at), egg_thrown_at)
 	OwnerHasUnread    bool       `db:"owner_has_unread"`
-	EnquirerHasUnread bool       `db:"enquirer_has_unread"`
-	EggThrowerID      *int       `db:"egg_thrower_id"` // nil = no egg (private), NOT NULL = public, owner_id = bound to enquirer, enquirer_id = bound to ad
+	InquirerHasUnread bool       `db:"inquirer_has_unread"`
+	EggThrowerID      *int       `db:"egg_thrower_id"` // nil = no egg (private), NOT NULL = public, owner_id = bound to inquirer, inquirer_id = bound to ad
 	EggThrownAt       *time.Time `db:"egg_thrown_at"`  // Only valid if egg_thrower_id IS NOT NULL
 }
 
@@ -51,19 +51,19 @@ type ConversationWithLastMessage struct {
 var ErrConversationNotFound = errors.New("conversation not found")
 var ErrNotParticipant = errors.New("user is not a participant in this conversation")
 
-// GetConversationByAdAndEnquirer gets an existing conversation by ad ID and enquirer ID
+// GetConversationByAdAndInquirer gets an existing conversation by ad ID and inquirer ID
 // Returns ErrConversationNotFound if the conversation does not exist
-func GetConversationByAdAndEnquirer(adID, ownerID, enquirerID int) (Conversation, error) {
-	if ownerID == enquirerID {
-		return Conversation{}, fmt.Errorf("owner and enquirer cannot be the same")
+func GetConversationByAdAndInquirer(adID, ownerID, inquirerID int) (Conversation, error) {
+	if ownerID == inquirerID {
+		return Conversation{}, fmt.Errorf("owner and inquirer cannot be the same")
 	}
 
 	var conv Conversation
 	var eggThrownAt sql.NullTime
 	query := `
 		SELECT
-			c.id, c.ad_id, c.owner_id, c.enquirer_id,
-			c.owner_has_unread, c.enquirer_has_unread, c.egg_thrower_id, c.egg_thrown_at,
+			c.id, c.ad_id, c.owner_id, c.inquirer_id,
+			c.owner_has_unread, c.inquirer_has_unread, c.egg_thrower_id, c.egg_thrown_at,
 			COALESCE(MIN(m.created_at), c.egg_thrown_at, datetime('now')) AS created_at,
 			COALESCE((SELECT MAX(ts) FROM (
 				SELECT MAX(m2.created_at) AS ts FROM messages m2 WHERE m2.conversation_id = c.id
@@ -72,19 +72,19 @@ func GetConversationByAdAndEnquirer(adID, ownerID, enquirerID int) (Conversation
 			)), datetime('now')) AS updated_at
 		FROM conversations c
 		LEFT JOIN messages m ON c.id = m.conversation_id
-		WHERE c.ad_id = ? AND c.enquirer_id = ?
+		WHERE c.ad_id = ? AND c.inquirer_id = ?
 		GROUP BY c.id
 	`
 	var eggThrowerID sql.NullInt64
 	var createdAtStr string
 	var updatedAtStr string
-	err := db.QueryRow(query, adID, enquirerID).Scan(
+	err := db.QueryRow(query, adID, inquirerID).Scan(
 		&conv.ID,
 		&conv.AdID,
 		&conv.OwnerID,
-		&conv.EnquirerID,
+		&conv.InquirerID,
 		&conv.OwnerHasUnread,
-		&conv.EnquirerHasUnread,
+		&conv.InquirerHasUnread,
 		&eggThrowerID,
 		&eggThrownAt,
 		&createdAtStr,
@@ -145,23 +145,23 @@ func GetConversationByAdAndEnquirer(adID, ownerID, enquirerID int) (Conversation
 }
 
 // CreateConversation creates a new conversation
-func CreateConversation(adID, ownerID, enquirerID int) (Conversation, error) {
-	if ownerID == enquirerID {
-		return Conversation{}, fmt.Errorf("owner and enquirer cannot be the same")
+func CreateConversation(adID, ownerID, inquirerID int) (Conversation, error) {
+	if ownerID == inquirerID {
+		return Conversation{}, fmt.Errorf("owner and inquirer cannot be the same")
 	}
 
 	result, err := db.Exec(`
-		INSERT INTO conversations (ad_id, owner_id, enquirer_id, owner_has_unread, enquirer_has_unread, egg_thrower_id)
+		INSERT INTO conversations (ad_id, owner_id, inquirer_id, owner_has_unread, inquirer_has_unread, egg_thrower_id)
 		VALUES (?, ?, ?, 0, 0, NULL)
-	`, adID, ownerID, enquirerID)
+	`, adID, ownerID, inquirerID)
 	if err != nil {
 		// If insert failed due to unique constraint (race condition), try to get the existing conversation
 		errStr := err.Error()
-		if errStr == "UNIQUE constraint failed: conversations.ad_id, conversations.enquirer_id" ||
-			errStr == "constraint failed: conversations.ad_id, conversations.enquirer_id" ||
+		if errStr == "UNIQUE constraint failed: conversations.ad_id, conversations.inquirer_id" ||
+			errStr == "constraint failed: conversations.ad_id, conversations.inquirer_id" ||
 			errStr == "UNIQUE constraint failed" {
 			// Retry SELECT to get the conversation that was just created by another request
-			return GetConversationByAdAndEnquirer(adID, ownerID, enquirerID)
+			return GetConversationByAdAndInquirer(adID, ownerID, inquirerID)
 		}
 		return Conversation{}, fmt.Errorf("failed to create conversation: %w", err)
 	}
@@ -175,7 +175,7 @@ func CreateConversation(adID, ownerID, enquirerID int) (Conversation, error) {
 	conv.ID = int(id)
 	conv.AdID = adID
 	conv.OwnerID = ownerID
-	conv.EnquirerID = enquirerID
+	conv.InquirerID = inquirerID
 	conv.EggThrowerID = nil
 	conv.EggThrownAt = nil
 	// CreatedAt and UpdatedAt will be computed from messages/egg_thrown_at on next query
@@ -188,8 +188,8 @@ func GetConversation(conversationID, userID int) (Conversation, error) {
 	var eggThrownAt sql.NullTime
 	query := `
 		SELECT 
-			c.id, c.ad_id, c.owner_id, c.enquirer_id,
-			c.owner_has_unread, c.enquirer_has_unread, c.egg_thrower_id, c.egg_thrown_at,
+			c.id, c.ad_id, c.owner_id, c.inquirer_id,
+			c.owner_has_unread, c.inquirer_has_unread, c.egg_thrower_id, c.egg_thrown_at,
 			COALESCE(MIN(m.created_at), c.egg_thrown_at, datetime('now')) AS created_at,
 			COALESCE((SELECT MAX(ts) FROM (
 				SELECT MAX(m2.created_at) AS ts FROM messages m2 WHERE m2.conversation_id = c.id
@@ -198,7 +198,7 @@ func GetConversation(conversationID, userID int) (Conversation, error) {
 			)), datetime('now')) AS updated_at
 		FROM conversations c
 		LEFT JOIN messages m ON c.id = m.conversation_id
-		WHERE c.id = ? AND (c.owner_id = ? OR c.enquirer_id = ? OR c.egg_thrower_id IS NOT NULL)
+		WHERE c.id = ? AND (c.owner_id = ? OR c.inquirer_id = ? OR c.egg_thrower_id IS NOT NULL)
 		GROUP BY c.id
 	`
 	var eggThrowerID sql.NullInt64
@@ -208,9 +208,9 @@ func GetConversation(conversationID, userID int) (Conversation, error) {
 		&conv.ID,
 		&conv.AdID,
 		&conv.OwnerID,
-		&conv.EnquirerID,
+		&conv.InquirerID,
 		&conv.OwnerHasUnread,
-		&conv.EnquirerHasUnread,
+		&conv.InquirerHasUnread,
 		&eggThrowerID,
 		&eggThrownAt,
 		&createdAtStr,
@@ -263,8 +263,8 @@ func GetConversationByID(conversationID int) (Conversation, error) {
 	var eggThrownAt sql.NullTime
 	query := `
 		SELECT
-			c.id, c.ad_id, c.owner_id, c.enquirer_id,
-			c.owner_has_unread, c.enquirer_has_unread, c.egg_thrower_id, c.egg_thrown_at,
+			c.id, c.ad_id, c.owner_id, c.inquirer_id,
+			c.owner_has_unread, c.inquirer_has_unread, c.egg_thrower_id, c.egg_thrown_at,
 			COALESCE(MIN(m.created_at), c.egg_thrown_at, datetime('now')) AS created_at,
 			COALESCE((SELECT MAX(ts) FROM (
 				SELECT MAX(m2.created_at) AS ts FROM messages m2 WHERE m2.conversation_id = c.id
@@ -283,9 +283,9 @@ func GetConversationByID(conversationID int) (Conversation, error) {
 		&conv.ID,
 		&conv.AdID,
 		&conv.OwnerID,
-		&conv.EnquirerID,
+		&conv.InquirerID,
 		&conv.OwnerHasUnread,
-		&conv.EnquirerHasUnread,
+		&conv.InquirerHasUnread,
 		&eggThrowerID,
 		&eggThrownAt,
 		&createdAtStr,
@@ -356,7 +356,7 @@ func CanUserPost(conversationID, userID int) (bool, error) {
 	err := db.QueryRow(`
 		SELECT COUNT(*)
 		FROM conversations
-		WHERE id = ? AND (owner_id = ? OR enquirer_id = ?)
+		WHERE id = ? AND (owner_id = ? OR inquirer_id = ?)
 	`, conversationID, userID, userID).Scan(&count)
 	if err != nil {
 		return false, fmt.Errorf("failed to check if user can post: %w", err)
@@ -368,8 +368,8 @@ func CanUserPost(conversationID, userID int) (bool, error) {
 func GetPublicConversations(adID int) ([]Conversation, error) {
 	query := `
 		SELECT 
-			c.id, c.ad_id, c.owner_id, c.enquirer_id,
-			c.owner_has_unread, c.enquirer_has_unread, c.egg_thrower_id, c.egg_thrown_at,
+			c.id, c.ad_id, c.owner_id, c.inquirer_id,
+			c.owner_has_unread, c.inquirer_has_unread, c.egg_thrower_id, c.egg_thrown_at,
 			COALESCE(MIN(m.created_at), c.egg_thrown_at, datetime('now')) AS created_at,
 			COALESCE(
 				(SELECT MAX(ts) FROM (
@@ -404,9 +404,9 @@ func GetPublicConversations(adID int) ([]Conversation, error) {
 			&conv.ID,
 			&conv.AdID,
 			&conv.OwnerID,
-			&conv.EnquirerID,
+			&conv.InquirerID,
 			&conv.OwnerHasUnread,
-			&conv.EnquirerHasUnread,
+			&conv.InquirerHasUnread,
 			&eggThrowerID,
 			&eggThrownAt,
 			&createdAtStr,
@@ -461,9 +461,9 @@ func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLas
 			c.id,
 			c.ad_id,
 			c.owner_id,
-			c.enquirer_id,
+			c.inquirer_id,
 			c.owner_has_unread,
-			c.enquirer_has_unread,
+			c.inquirer_has_unread,
 			c.egg_thrower_id,
 			c.egg_thrown_at,
 			a.title AS ad_title,
@@ -474,7 +474,7 @@ func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLas
 				FROM conversations c2
 				WHERE c2.ad_id = a.id
 					AND c2.egg_thrower_id IS NOT NULL
-					AND c2.egg_thrower_id = c2.enquirer_id
+					AND c2.egg_thrower_id = c2.inquirer_id
 			), 0) AS rock_count,
 			COALESCE(MIN(msg.created_at), c.egg_thrown_at, datetime('now')) AS created_at,
 			COALESCE(
@@ -486,12 +486,12 @@ func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLas
 				datetime('now')
 			) AS updated_at,
 			CASE
-				WHEN c.owner_id = ? THEN c.enquirer_id
+				WHEN c.owner_id = ? THEN c.inquirer_id
 				ELSE c.owner_id
 			END AS other_user_id,
 			CASE
 				WHEN c.owner_id = ? THEN c.owner_has_unread
-				ELSE c.enquirer_has_unread
+				ELSE c.inquirer_has_unread
 			END AS has_unread
 		FROM conversations c
 		JOIN ads a ON c.ad_id = a.id
@@ -503,7 +503,7 @@ func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLas
 			)
 		) m ON c.id = m.conversation_id
 		LEFT JOIN messages msg ON c.id = msg.conversation_id
-		WHERE (c.owner_id = ? OR c.enquirer_id = ?)
+		WHERE (c.owner_id = ? OR c.inquirer_id = ?)
 		GROUP BY c.id, a.title, m.content, m.created_at
 		ORDER BY updated_at DESC
 	`
@@ -527,9 +527,9 @@ func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLas
 			&conv.ID,
 			&conv.AdID,
 			&conv.OwnerID,
-			&conv.EnquirerID,
+			&conv.InquirerID,
 			&conv.OwnerHasUnread,
-			&conv.EnquirerHasUnread,
+			&conv.InquirerHasUnread,
 			&eggThrowerID,
 			&eggThrownAt,
 			&conv.AdTitle,
@@ -701,7 +701,7 @@ func CreateMessage(conversationID, senderID int, content string) (Message, error
 	// Set has_unread=true for the recipient (the one who didn't send the message)
 	var recipientField string
 	if conv.OwnerID == senderID {
-		recipientField = "enquirer_has_unread"
+		recipientField = "inquirer_has_unread"
 	} else {
 		recipientField = "owner_has_unread"
 	}
@@ -741,7 +741,7 @@ func GetHasUnread(userID int) (bool, error) {
 		SELECT COUNT(*) > 0
 		FROM conversations
 		WHERE (owner_id = ? AND owner_has_unread = 1)
-		   OR (enquirer_id = ? AND enquirer_has_unread = 1)
+		   OR (inquirer_id = ? AND inquirer_has_unread = 1)
 	`
 	var hasUnread bool
 	err := db.QueryRow(query, userID, userID).Scan(&hasUnread)
@@ -762,7 +762,7 @@ func MarkConversationAsRead(conversationID, userID int) error {
 	if conv.OwnerID == userID {
 		field = "owner_has_unread"
 	} else {
-		field = "enquirer_has_unread"
+		field = "inquirer_has_unread"
 	}
 
 	_, err = db.Exec(fmt.Sprintf(`

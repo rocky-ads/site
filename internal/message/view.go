@@ -20,9 +20,9 @@ type ConversationModalView struct {
 	Conversation     Conversation
 	AdTitle          string
 	OwnerName        string
-	EnquirerName     string
+	InquirerName     string
 	Messages         []Message
-	EnquirerEggCount int
+	InquirerEggCount int
 	OwnerEggCount    int
 	CanPost          bool
 	HasThrownEgg     bool
@@ -32,11 +32,11 @@ type ConversationModalView struct {
 func CanViewConversation(conv Conversation, userID int) bool {
 	return conv.EggThrowerID != nil ||
 		conv.OwnerID == userID ||
-		conv.EnquirerID == userID
+		conv.InquirerID == userID
 }
 
 func IsParticipant(conv Conversation, userID int) bool {
-	return conv.OwnerID == userID || conv.EnquirerID == userID
+	return conv.OwnerID == userID || conv.InquirerID == userID
 }
 
 // OpenConversation loads a conversation the user may view and marks it read
@@ -58,22 +58,22 @@ func OpenConversation(conversationID, userID int) (Conversation, bool, error) {
 	return conv, markedRead, nil
 }
 
-func OwnerAndEnquirerNames(conv Conversation) (ownerName, enquirerName string, err error) {
+func OwnerAndInquirerNames(conv Conversation) (ownerName, inquirerName string, err error) {
 	owner, err := user.GetByID(conv.OwnerID)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get owner name: %w", err)
 	}
-	enquirer, err := user.GetByID(conv.EnquirerID)
+	inquirer, err := user.GetByID(conv.InquirerID)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to get enquirer name: %w", err)
+		return "", "", fmt.Errorf("failed to get inquirer name: %w", err)
 	}
-	return owner.Name, enquirer.Name, nil
+	return owner.Name, inquirer.Name, nil
 }
 
 func OtherUserName(conv Conversation, currentUserID int) (string, error) {
 	var otherUserID int
 	if conv.OwnerID == currentUserID {
-		otherUserID = conv.EnquirerID
+		otherUserID = conv.InquirerID
 	} else {
 		otherUserID = conv.OwnerID
 	}
@@ -90,7 +90,7 @@ func BuildConversationModal(conv Conversation, currentUserID int, loc *time.Loca
 		return ConversationModalView{}, fmt.Errorf("%w: %v", ErrModalAdNotFound, err)
 	}
 
-	ownerName, enquirerName, err := OwnerAndEnquirerNames(conv)
+	ownerName, inquirerName, err := OwnerAndInquirerNames(conv)
 	if err != nil {
 		return ConversationModalView{}, err
 	}
@@ -99,8 +99,8 @@ func BuildConversationModal(conv Conversation, currentUserID int, loc *time.Loca
 		Conversation:     conv,
 		AdTitle:          a.Title,
 		OwnerName:        ownerName,
-		EnquirerName:     enquirerName,
-		EnquirerEggCount: eggCountForUser(conv.EnquirerID),
+		InquirerName:     inquirerName,
+		InquirerEggCount: eggCountForUser(conv.InquirerID),
 		OwnerEggCount:    eggCountForUser(conv.OwnerID),
 		Messages:         []Message{},
 	}

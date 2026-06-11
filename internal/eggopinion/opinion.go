@@ -134,9 +134,9 @@ func generate(conv message.Conversation, loc *time.Location) (Opinion, error) {
 	if err != nil {
 		return Opinion{}, fmt.Errorf("load owner: %w", err)
 	}
-	enquirer, err := user.GetByID(conv.EnquirerID)
+	inquirer, err := user.GetByID(conv.InquirerID)
 	if err != nil {
-		return Opinion{}, fmt.Errorf("load enquirer: %w", err)
+		return Opinion{}, fmt.Errorf("load inquirer: %w", err)
 	}
 
 	messages, err := listMessages(conv.ID, loc)
@@ -148,7 +148,7 @@ func generate(conv message.Conversation, loc *time.Location) (Opinion, error) {
 	for i, m := range messages {
 		redacted[i] = m
 		content := RedactText(m.Content)
-		content = RedactNames(content, owner.Name, enquirer.Name)
+		content = RedactNames(content, owner.Name, inquirer.Name)
 		redacted[i].Content = content
 	}
 
@@ -171,7 +171,7 @@ func generate(conv message.Conversation, loc *time.Location) (Opinion, error) {
 		Tags:         tags,
 		Messages:     redacted,
 		OwnerID:      conv.OwnerID,
-		EnquirerID:   conv.EnquirerID,
+		InquirerID:   conv.InquirerID,
 		EggThrowerID: *conv.EggThrowerID,
 		EggThrownAt:  thrownAt,
 		Loc:          loc,

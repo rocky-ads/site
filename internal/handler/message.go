@@ -27,8 +27,8 @@ const (
 
 func conversationModalData(
 	conv message.Conversation,
-	currentUserID, enquirerEggCount, ownerEggCount int,
-	adTitle, ownerName, enquirerName, csrfToken string,
+	currentUserID, inquirerEggCount, ownerEggCount int,
+	adTitle, ownerName, inquirerName, csrfToken string,
 	canPost, hasThrownEgg, canThrowEgg bool,
 	messageNodes []g.Node,
 	targetModalID string,
@@ -37,13 +37,13 @@ func conversationModalData(
 		ConversationID:   conv.ID,
 		AdID:             conv.AdID,
 		OwnerID:          conv.OwnerID,
-		EnquirerID:       conv.EnquirerID,
+		InquirerID:       conv.InquirerID,
 		CurrentUserID:    currentUserID,
-		EnquirerEggCount: enquirerEggCount,
+		InquirerEggCount: inquirerEggCount,
 		OwnerEggCount:    ownerEggCount,
 		AdTitle:          adTitle,
 		OwnerName:        ownerName,
-		EnquirerName:     enquirerName,
+		InquirerName:     inquirerName,
 		CSRFToken:        csrfToken,
 		CanPost:          canPost,
 		HasThrownEgg:     hasThrownEgg,
@@ -63,18 +63,18 @@ func messageItemData(msg message.Message, currentUserID int, loc *time.Location)
 	}
 }
 
-func eggEventData(throwerID, currentUserID, ownerID, enquirerID int, thrownAt time.Time, loc *time.Location) ui.EggEventData {
+func eggEventData(throwerID, currentUserID, ownerID, inquirerID int, thrownAt time.Time, loc *time.Location) ui.EggEventData {
 	return ui.EggEventData{
 		ThrowerID:     throwerID,
 		CurrentUserID: currentUserID,
 		ThrownAt:      thrownAt.In(loc),
 		OwnerID:       ownerID,
-		EnquirerID:    enquirerID,
+		InquirerID:    inquirerID,
 	}
 }
 
 func conversationListItemData(
-	conversationID, adID, ownerID, enquirerID, currentUserID int,
+	conversationID, adID, ownerID, inquirerID, currentUserID int,
 	adTitle, lastMessageContent, otherUserName string,
 	lastMessageAt *time.Time, updatedAt time.Time,
 	hasUnread bool, eggCount, otherUserEggCount int,
@@ -84,7 +84,7 @@ func conversationListItemData(
 		ConversationID:     conversationID,
 		AdID:               adID,
 		OwnerID:            ownerID,
-		EnquirerID:         enquirerID,
+		InquirerID:         inquirerID,
 		CurrentUserID:      currentUserID,
 		AdTitle:            adTitle,
 		LastMessageContent: lastMessageContent,
@@ -106,7 +106,7 @@ func conversationListItemFromConv(conv message.ConversationWithLastMessage, curr
 		ConversationID:     conv.ID,
 		AdID:               conv.AdID,
 		OwnerID:            conv.OwnerID,
-		EnquirerID:         conv.EnquirerID,
+		InquirerID:         conv.InquirerID,
 		CurrentUserID:      currentUserID,
 		AdTitle:            conv.AdTitle,
 		LastMessageContent: conv.LastMessageContent,
@@ -128,7 +128,7 @@ func messageTimelineFromView(view message.ConversationModalView, currentUserID i
 	conv := view.Conversation
 	if conv.EggThrowerID != nil && conv.EggThrownAt != nil {
 		e := eggEventData(
-			*conv.EggThrowerID, currentUserID, conv.OwnerID, conv.EnquirerID,
+			*conv.EggThrowerID, currentUserID, conv.OwnerID, conv.InquirerID,
 			*conv.EggThrownAt, loc)
 		egg = &e
 	}
@@ -143,8 +143,8 @@ func conversationModalDataFromView(
 ) ui.ConversationModalData {
 	return conversationModalData(
 		view.Conversation, currentUserID,
-		view.EnquirerEggCount, view.OwnerEggCount,
-		view.AdTitle, view.OwnerName, view.EnquirerName, csrfToken,
+		view.InquirerEggCount, view.OwnerEggCount,
+		view.AdTitle, view.OwnerName, view.InquirerName, csrfToken,
 		view.CanPost, view.HasThrownEgg, view.CanThrowEgg,
 		messageNodes, targetModalID,
 	)
@@ -194,7 +194,7 @@ func sendMessageSSE(conv message.Conversation, senderID int, msg message.Message
 	// Determine recipient user ID
 	recipientID := conv.OwnerID
 	if conv.OwnerID == senderID {
-		recipientID = conv.EnquirerID
+		recipientID = conv.InquirerID
 	}
 
 	// Send message update
@@ -276,7 +276,7 @@ func sendMessageAndRenderUpdate(c *fiber.Ctx, conv message.Conversation, current
 	// Determine recipient user ID
 	recipientID := conv.OwnerID
 	if conv.OwnerID == currentUserID {
-		recipientID = conv.EnquirerID
+		recipientID = conv.InquirerID
 	}
 	if err := sms.EnqueueNotification(recipientID, conv.ID); err != nil {
 		logger.Error("Failed to enqueue SMS notification",
@@ -326,7 +326,7 @@ func sendConversationListItemUpdate(conv message.Conversation, currentUserID int
 	// Get other user ID
 	var otherUserID int
 	if conv.OwnerID == currentUserID {
-		otherUserID = conv.EnquirerID
+		otherUserID = conv.InquirerID
 	} else {
 		otherUserID = conv.OwnerID
 	}
@@ -346,7 +346,7 @@ func sendConversationListItemUpdate(conv message.Conversation, currentUserID int
 
 	// Render conversation list item (always includes ID)
 	conversationItem := ui.ConversationListItem(conversationListItemData(
-		conv.ID, conv.AdID, conv.OwnerID, conv.EnquirerID, currentUserID,
+		conv.ID, conv.AdID, conv.OwnerID, conv.InquirerID, currentUserID,
 		a.Title, lastMessageContent, otherUserName,
 		lastMessageAt, conv.UpdatedAt,
 		hasUnread, a.RockCount, otherUserEggCount,
@@ -386,7 +386,7 @@ func MessageModalHandler(c *fiber.Ctx) error {
 	}
 
 	// Try to get existing conversation
-	conv, err := message.GetConversationByAdAndEnquirer(adID, a.UserID, currentUserID)
+	conv, err := message.GetConversationByAdAndInquirer(adID, a.UserID, currentUserID)
 	if err != nil {
 		if err == message.ErrConversationNotFound {
 			// No conversation exists yet - create a temporary conversation struct for the modal
@@ -395,12 +395,12 @@ func MessageModalHandler(c *fiber.Ctx) error {
 				ID:           0, // 0 indicates conversation doesn't exist yet
 				AdID:         adID,
 				OwnerID:      a.UserID,
-				EnquirerID:   currentUserID,
+				InquirerID:   currentUserID,
 				EggThrowerID: nil,
 				EggThrownAt:  nil,
 			}
 		} else {
-			logger.Error("Failed to get conversation", "error", err, "adID", adID, "ownerID", a.UserID, "enquirerID", currentUserID)
+			logger.Error("Failed to get conversation", "error", err, "adID", adID, "ownerID", a.UserID, "inquirerID", currentUserID)
 			return fiber.NewError(fiber.StatusInternalServerError, "Failed to get conversation")
 		}
 	}
@@ -423,14 +423,14 @@ func SendMessageHandler(c *fiber.Ctx) error {
 	}
 
 	// Try to get existing conversation
-	conv, err := message.GetConversationByAdAndEnquirer(adID, a.UserID, currentUserID)
+	conv, err := message.GetConversationByAdAndInquirer(adID, a.UserID, currentUserID)
 	isNewConversation := false
 	if err != nil {
 		if err == message.ErrConversationNotFound {
 			// Create conversation when sending first message
 			conv, err = message.CreateConversation(adID, a.UserID, currentUserID)
 			if err != nil {
-				logger.Error("Failed to create conversation", "error", err, "adID", adID, "ownerID", a.UserID, "enquirerID", currentUserID)
+				logger.Error("Failed to create conversation", "error", err, "adID", adID, "ownerID", a.UserID, "inquirerID", currentUserID)
 				return fiber.NewError(fiber.StatusInternalServerError, "Failed to create conversation")
 			}
 			isNewConversation = true
@@ -473,7 +473,7 @@ func eggOpinionModalData(
 	currentUserID int,
 	loc *time.Location,
 ) (ui.EggOpinionModalData, error) {
-	ownerName, enquirerName, err := message.OwnerAndEnquirerNames(conv)
+	ownerName, inquirerName, err := message.OwnerAndInquirerNames(conv)
 	if err != nil {
 		return ui.EggOpinionModalData{}, err
 	}
@@ -488,9 +488,9 @@ func eggOpinionModalData(
 		AdID:           conv.AdID,
 		AdTitle:        a.Title,
 		OwnerID:        conv.OwnerID,
-		EnquirerID:     conv.EnquirerID,
+		InquirerID:     conv.InquirerID,
 		OwnerName:      ownerName,
-		EnquirerName:   enquirerName,
+		InquirerName:   inquirerName,
 		CurrentUserID:  currentUserID,
 		AdFacts:        eggopinion.AdFactLines(a, loc),
 	}

@@ -15,9 +15,9 @@ type EggOpinionModalData struct {
 	AdID             int
 	AdTitle          string
 	OwnerID          int
-	EnquirerID       int
+	InquirerID       int
 	OwnerName        string
-	EnquirerName     string
+	InquirerName     string
 	CurrentUserID    int
 	EggThrowerID     int
 	Unavailable      bool
@@ -61,7 +61,7 @@ func assessmentScaleSection(score int, detail string) g.Node {
 		),
 		Div(
 			Class("flex justify-between text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-3"),
-			Span(g.Text("Enquirer")),
+			Span(g.Text("Inquirer")),
 			Span(
 				Class("text-lg font-bold text-zinc-800 dark:text-zinc-200"),
 				g.Text(fmt.Sprintf("%d", score)),
@@ -98,7 +98,7 @@ func assessmentScaleSection(score int, detail string) g.Node {
 		),
 		P(
 			Class("text-xs text-zinc-500 dark:text-zinc-400 text-center mb-2"),
-			g.Text("1 = enquirer in the right · 5 = balanced · 10 = owner in the right"),
+			g.Text("1 = inquirer in the right · 5 = balanced · 10 = owner in the right"),
 		),
 		P(
 			Class("text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap"),
@@ -154,8 +154,8 @@ func EggOpinionModal(d EggOpinionModalData) g.Node {
 							Span(Class("text-zinc-700 dark:text-zinc-300 font-medium"),
 								g.If(eggUserID == d.OwnerID,
 									UserNameLink(d.OwnerID, d.OwnerName)),
-								g.If(eggUserID == d.EnquirerID,
-									UserNameLink(d.EnquirerID, d.EnquirerName)),
+								g.If(eggUserID == d.InquirerID,
+									UserNameLink(d.InquirerID, d.InquirerName)),
 							),
 						),
 					),

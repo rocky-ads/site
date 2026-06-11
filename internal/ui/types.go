@@ -72,13 +72,13 @@ type ConversationModalData struct {
 	ConversationID   int
 	AdID             int
 	OwnerID          int
-	EnquirerID       int
+	InquirerID       int
 	CurrentUserID    int
-	EnquirerEggCount int
+	InquirerEggCount int
 	OwnerEggCount    int
 	AdTitle          string
 	OwnerName        string
-	EnquirerName     string
+	InquirerName     string
 	CSRFToken        string
 	CanPost          bool
 	HasThrownEgg     bool
@@ -94,7 +94,7 @@ type ConversationListItemData struct {
 	ConversationID     int
 	AdID               int
 	OwnerID            int
-	EnquirerID         int
+	InquirerID         int
 	CurrentUserID      int
 	AdTitle            string
 	LastMessageContent string
@@ -139,7 +139,7 @@ type EggEventData struct {
 	CurrentUserID int
 	ThrownAt      time.Time
 	OwnerID       int
-	EnquirerID    int
+	InquirerID    int
 }
 
 // QueueStats holds SMS queue counts for the admin dashboard.
