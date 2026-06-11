@@ -59,7 +59,7 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
+            type=sha,prefix={{branch}}-,event=branch
           labels: |
             org.opencontainers.image.title=Rocky Ads Site
             org.opencontainers.image.description=Rocky Ads Site
@@ -113,7 +113,7 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
+            type=sha,prefix={{branch}}-,event=branch
           labels: |
             org.opencontainers.image.title=Rocky Ads Jump Server
             org.opencontainers.image.description=Jump server with test_db_perf for database performance testing
@@ -167,7 +167,7 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
+            type=sha,prefix={{branch}}-,event=branch
           labels: |
             org.opencontainers.image.title=Rocky Ads MinIO Server
             org.opencontainers.image.description=MinIO object storage server for Rocky Ads
