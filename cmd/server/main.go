@@ -8,6 +8,7 @@ import (
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/handler"
+	"github.com/rocky-ads/site/internal/imagestore"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/service/sms"
 	"github.com/sasha-s/go-deadlock"
@@ -163,6 +164,14 @@ func main() {
 		logger.Fatal("Failed to initialize SMS service", "error", err)
 	}
 	sms.StartSMSWorker()
+
+	imageStore, err := imagestore.NewDefault()
+	if err != nil {
+		logger.Fatal("Failed to initialize image store", "error", err)
+	}
+	handler.SetAdImageStore(imageStore)
+	logger.Info("Image store configured",
+		"bucket", config.MinIOBucketName, "url", config.MinIOAPIURL)
 
 	app := setupApp()
 

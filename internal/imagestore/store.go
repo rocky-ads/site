@@ -1,7 +1,8 @@
 package imagestore
 
-// Store persists ad image files. Local disk is the default; MinIO can
-// implement this interface when object storage replaces local files.
+// Store persists ad image files in MinIO. LocalStore exists for tests only.
 type Store interface {
 	Put(adID, index int, suffix string, data []byte) error
+	Get(adID, index int, suffix string) ([]byte, error)
+	DeleteAd(adID int) error
 }

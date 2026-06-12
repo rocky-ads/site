@@ -17,6 +17,16 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o /build/rebuild_db \
     ./cmd/rebuild_db
 
+# Build gen_images binary (statically linked)
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -o /build/gen_images \
+    ./cmd/gen_images
+
+# Build migrate_images binary (statically linked)
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -o /build/migrate_images \
+    ./cmd/migrate_images
+
 # Build quote_server binary (statically linked)
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o /build/quote_server \
@@ -53,10 +63,14 @@ RUN wget -q https://dl.min.io/client/mc/release/linux-amd64/mc -O /tmp/mc && \
 
 # Copy the pre-built binaries
 COPY --from=go-builder /build/rebuild_db /usr/local/bin/rebuild_db
+COPY --from=go-builder /build/gen_images /usr/local/bin/gen_images
+COPY --from=go-builder /build/migrate_images /usr/local/bin/migrate_images
 COPY --from=go-builder /build/quote_server /usr/local/bin/quote_server
 
 # Make them executable
 RUN chmod +x /usr/local/bin/rebuild_db && \
+    chmod +x /usr/local/bin/gen_images && \
+    chmod +x /usr/local/bin/migrate_images && \
     chmod +x /usr/local/bin/quote_server
 
 # Create workspace directory

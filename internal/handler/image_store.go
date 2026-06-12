@@ -2,9 +2,9 @@ package handler
 
 import "github.com/rocky-ads/site/internal/imagestore"
 
-var adImageStore imagestore.Store = imagestore.NewLocal("static/images/ad")
+var adImageStore imagestore.Store
 
-// SetAdImageStore replaces the default local image store (for tests or MinIO).
+// SetAdImageStore replaces the image store (required at startup; for tests use local store).
 func SetAdImageStore(store imagestore.Store) {
 	adImageStore = store
 }

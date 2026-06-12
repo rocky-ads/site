@@ -15,3 +15,24 @@ The app uses Tailwind CSS v4 (listed in `package.json`; no need to install it se
    - Or production (minified): `npm run build-css-prod`
 
 Input: `input.css` → output: `static/css/output.css`.
+
+**Object storage (MinIO)**
+
+Ad images are stored in MinIO. The server requires `MINIO_API_URL` (and related credentials) to start.
+
+Local dev with docker-compose:
+
+```bash
+docker compose up -d   # starts postgres, minio, jump-server
+```
+
+Set in `.env`:
+
+```
+MINIO_API_URL=http://127.0.0.1:9000
+MINIO_USERNAME=minioadmin
+MINIO_PASSWORD=minioadmin
+MINIO_BUCKET_NAME=rockyads
+```
+
+After `rebuild_db`, populate images with `gen_images` or one-time `migrate_images`. See [doc/README.jump-server.md](doc/README.jump-server.md).

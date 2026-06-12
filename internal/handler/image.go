@@ -1,9 +1,6 @@
 package handler
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -29,19 +26,19 @@ func ImageHandler(c *fiber.Ctx) error {
 
 	size := c.Params("size")
 
-	// Check if image file exists at static/images/ad/:id/:index-:size.webp
-	imagePath := filepath.Join("static", "images", "ad", fmt.Sprintf("%d", adID), fmt.Sprintf("%d-%s.webp", imageID, size))
-	logger.Info("ImageHandler: checking for file", "path", imagePath, "adID", adID, "imageID", imageID, "size", size)
+	logger.Info("ImageHandler: fetching image",
+		"adID", adID, "imageID", imageID, "size", size)
 
-	fileInfo, err := os.Stat(imagePath)
+	data, err := adImageStore.Get(adID, imageID, size)
 	if err == nil {
-		// File exists, serve it
-		logger.Info("ImageHandler: file found, serving", "path", imagePath, "size", fileInfo.Size())
-		return c.SendFile(imagePath)
+		logger.Info("ImageHandler: serving image",
+			"adID", adID, "imageID", imageID, "size", size, "bytes", len(data))
+		c.Set("Content-Type", "image/webp")
+		return c.Send(data)
 	}
 
-	// File doesn't exist, fall back to SVG
-	logger.Info("ImageHandler: file not found, falling back to SVG", "path", imagePath, "error", err)
+	logger.Info("ImageHandler: image not found, falling back to SVG",
+		"adID", adID, "imageID", imageID, "size", size, "error", err)
 	return renderSVG(c, ui.GenerateSVG(adID, imageID, size))
 }
 

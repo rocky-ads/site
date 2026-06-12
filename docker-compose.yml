@@ -16,6 +16,24 @@ services:
       timeout: 5s
       retries: 5
 
+  minio:
+    image: minio/minio:latest
+    container_name: rockyads-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - rockyads_minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   jump-server:
     build:
       context: .
@@ -27,9 +45,16 @@ services:
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/rockyads?sslmode=disable
       USER_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      MINIO_API_URL: http://minio:9000
+      MINIO_USERNAME: minioadmin
+      MINIO_PASSWORD: minioadmin
+      MINIO_BUCKET_NAME: rockyads
     depends_on:
       postgres:
+        condition: service_healthy
+      minio:
         condition: service_healthy
 
 volumes:
   rockyads_pgdata:
+  rockyads_minio_data:

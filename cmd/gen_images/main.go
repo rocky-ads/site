@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/imagestore"
 	"github.com/rocky-ads/site/internal/logger"
 	"golang.org/x/image/draw"
 )
@@ -155,32 +155,12 @@ func generateImage(apiKey, prompt string) ([]byte, error) {
 	return imageData, nil
 }
 
-func ensureDir(dir string) error {
-	return os.MkdirAll(dir, 0755)
+func deleteExistingImages(store imagestore.Store, adID int) error {
+	return store.DeleteAd(adID)
 }
 
-func deleteExistingImages(adID int) error {
-	dir := fmt.Sprintf("static/images/ad/%d", adID)
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil // Directory doesn't exist, nothing to delete
-		}
-		return err
-	}
-
-	for _, entry := range entries {
-		if err := os.Remove(filepath.Join(dir, entry.Name())); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func imageExists(adID, imgIdx int) bool {
-	// imgIdx is 1-based (1, 2, 3, ...)
-	filename := fmt.Sprintf("static/images/ad/%d/%d-1200w.webp", adID, imgIdx)
-	_, err := os.Stat(filename)
+func imageExists(store imagestore.Store, adID, imgIdx int) bool {
+	_, err := store.Get(adID, imgIdx, "1200w")
 	return err == nil
 }
 
@@ -210,36 +190,24 @@ func resizeImage(imageData []byte, targetWidth int) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func saveImage(adID, imgIdx int, imageData []byte) error {
-	// imgIdx is 1-based (1, 2, 3, ...)
-	dir := fmt.Sprintf("static/images/ad/%d", adID)
-	if err := ensureDir(dir); err != nil {
-		return fmt.Errorf("creating directory: %w", err)
-	}
-
-	// Save 1200w image
-	filename1200 := filepath.Join(dir, fmt.Sprintf("%d-1200w.webp", imgIdx))
-	if err := os.WriteFile(filename1200, imageData, 0644); err != nil {
+func saveImage(store imagestore.Store, adID, imgIdx int, imageData []byte) error {
+	if err := store.Put(adID, imgIdx, "1200w", imageData); err != nil {
 		return fmt.Errorf("saving 1200w image: %w", err)
 	}
 
-	// Create and save 480w version
 	image480, err := resizeImage(imageData, 480)
 	if err != nil {
 		return fmt.Errorf("resizing to 480w: %w", err)
 	}
-	filename480 := filepath.Join(dir, fmt.Sprintf("%d-480w.webp", imgIdx))
-	if err := os.WriteFile(filename480, image480, 0644); err != nil {
+	if err := store.Put(adID, imgIdx, "480w", image480); err != nil {
 		return fmt.Errorf("saving 480w image: %w", err)
 	}
 
-	// Create and save 160w version
 	image160, err := resizeImage(imageData, 160)
 	if err != nil {
 		return fmt.Errorf("resizing to 160w: %w", err)
 	}
-	filename160 := filepath.Join(dir, fmt.Sprintf("%d-160w.webp", imgIdx))
-	if err := os.WriteFile(filename160, image160, 0644); err != nil {
+	if err := store.Put(adID, imgIdx, "160w", image160); err != nil {
 		return fmt.Errorf("saving 160w image: %w", err)
 	}
 
@@ -312,6 +280,12 @@ func main() {
 	}
 	defer db.Close()
 
+	store, err := imagestore.NewDefault()
+	if err != nil {
+		logger.Fatal("Failed to initialize image store", "error", err)
+	}
+	logger.Info("Using MinIO image store", "bucket", config.MinIOBucketName)
+
 	// Get ads
 	logger.Info("Fetching ads from database...")
 	ads, err := getAds(*startID, *numAds)
@@ -335,7 +309,7 @@ func main() {
 
 		// Delete existing images if -x is not set
 		if !*noOverwrite {
-			if err := deleteExistingImages(ad.ID); err != nil {
+			if err := deleteExistingImages(store, ad.ID); err != nil {
 				logger.Error("Failed to delete existing images", "ad_id", ad.ID, "error", err)
 				continue
 			}
@@ -344,7 +318,7 @@ func main() {
 		// Generate images for this ad (using 1-based indexing: 1, 2, 3, ...)
 		for imgIdx := 1; imgIdx <= ad.ImageCount; imgIdx++ {
 			// Check if image already exists and -x is set
-			if *noOverwrite && imageExists(ad.ID, imgIdx) {
+			if *noOverwrite && imageExists(store, ad.ID, imgIdx) {
 				logger.Info("Skipping existing image", "ad_id", ad.ID, "img_idx", imgIdx)
 				totalImagesGenerated++
 				continue
@@ -366,7 +340,7 @@ func main() {
 			}
 
 			// Save image (imgIdx is already 1-based)
-			if err := saveImage(ad.ID, imgIdx, imageData); err != nil {
+			if err := saveImage(store, ad.ID, imgIdx, imageData); err != nil {
 				logger.Error("Failed to save image", "ad_id", ad.ID, "img_idx", imgIdx, "error", err)
 				continue
 			}

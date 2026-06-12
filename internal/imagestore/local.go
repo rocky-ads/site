@@ -26,3 +26,20 @@ func (s *LocalStore) Put(adID, index int, suffix string, data []byte) error {
 	}
 	return nil
 }
+
+func (s *LocalStore) Get(adID, index int, suffix string) ([]byte, error) {
+	path := filepath.Join(s.baseDir, fmt.Sprintf("%d", adID), fmt.Sprintf("%d-%s.webp", index, suffix))
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read image: %w", err)
+	}
+	return data, nil
+}
+
+func (s *LocalStore) DeleteAd(adID int) error {
+	dir := filepath.Join(s.baseDir, fmt.Sprintf("%d", adID))
+	if err := os.RemoveAll(dir); err != nil {
+		return fmt.Errorf("delete ad images: %w", err)
+	}
+	return nil
+}
