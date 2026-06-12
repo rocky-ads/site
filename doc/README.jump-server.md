@@ -1,6 +1,6 @@
 # Jump Server
 
-The jump server image includes database utilities, image tools, and the MinIO client (`mc`).
+The jump server image includes database utilities and the MinIO client (`mc`).
 
 ## Building
 
@@ -25,38 +25,11 @@ rebuild_db
 
 ## Ad images
 
-Images are stored in MinIO (required). After seeding the database, populate images with one of:
+Images are stored in MinIO (required). After seeding the database, populate images from your dev machine with `go run ./cmd/gen_images` (requires `FAL_API_KEY`) or `go run ./cmd/migrate_images -dir static/images/ad` for a one-time upload of existing local files.
 
-### Generate new images (AI)
+On the jump server, you can also mirror files with `mc` (see below).
 
-```bash
-export MINIO_API_URL="http://minio:9000"
-export MINIO_USERNAME="minioadmin"
-export MINIO_PASSWORD="minioadmin"
-export MINIO_BUCKET_NAME="rockyads"
-export FAL_API_KEY="your-key"
-
-gen_images
-```
-
-Generates WebP images (160w, 480w, 1200w) and uploads them to MinIO for each ad.
-
-### Migrate existing local files (one-time)
-
-If you have files under `static/images/ad/` from before MinIO:
-
-```bash
-export MINIO_API_URL="http://minio:9000"
-export MINIO_USERNAME="minioadmin"
-export MINIO_PASSWORD="minioadmin"
-export MINIO_BUCKET_NAME="rockyads"
-
-migrate_images -dir static/images/ad
-```
-
-Use `-dry-run` to preview without uploading.
-
-### Manual copy with mc (optional)
+## Using mc
 
 The MinIO client is pre-installed:
 
@@ -64,11 +37,6 @@ The MinIO client is pre-installed:
 mc alias set local http://minio:9000 minioadmin minioadmin
 mc mb local/rockyads --ignore-existing
 mc mirror static/images/ad/ local/rockyads/
-```
-
-## Using mc
-
-```bash
 mc --version
 mc ls local/rockyads
 mc cp local/rockyads/23/1-480w.webp ./
@@ -81,7 +49,5 @@ See the [MinIO Client documentation](https://docs.min.io/docs/minio-client-quick
 | Binary | Purpose |
 |--------|---------|
 | `rebuild_db` | Drop/recreate schema and import seed data |
-| `gen_images` | Generate AI ad images and upload to MinIO |
-| `migrate_images` | One-time upload of local `static/images/ad/` files to MinIO |
 | `quote_server` | Quote-of-the-day page on port 10000 |
 | `mc` | MinIO command-line client |
