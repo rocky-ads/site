@@ -173,13 +173,16 @@ func UserMenu(userName, memberSince string, userID int, isAdmin bool, hasUnread 
 		modalBackdrop("user-menu"),
 		Div(
 			ID("user-menu-modal"),
-			Class("fixed z-50 top-20 right-6"),
+			Class("fixed inset-x-0 top-16 z-50 pointer-events-none"),
 			Div(
-				Class("bg-white rounded-lg shadow-lg border border-zinc-200 w-40"),
-				menuHeader(userID, userName, memberSince, eggCount, UserEggIcons(userID, userEggCount)),
+				Class("w-full md:max-w-3xl md:mx-auto px-6 flex justify-end"),
 				Div(
-					Class("py-1"),
-					g.Group(menuItems),
+					Class("pointer-events-auto bg-white rounded-lg shadow-lg border border-zinc-200 w-40"),
+					menuHeader(userID, userName, memberSince, eggCount, UserEggIcons(userID, userEggCount)),
+					Div(
+						Class("py-1"),
+						g.Group(menuItems),
+					),
 				),
 			),
 		),
