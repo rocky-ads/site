@@ -60,7 +60,7 @@ func resolveAndStore(text string) (resolvedLoc, bool, error) {
 	var loc resolvedLoc
 	err := db.QueryRow(
 		`SELECT id, latitude, longitude FROM locations
-		 WHERE lower(raw_text) = lower(?) LIMIT 1`,
+		 WHERE lower(raw_text) = lower($1) LIMIT 1`,
 		text,
 	).Scan(&loc.id, &loc.lat, &loc.lon)
 	if err == nil {
@@ -83,7 +83,7 @@ func resolveAndStore(text string) (resolvedLoc, bool, error) {
 	_, err = db.Exec(
 		`INSERT INTO locations
 		 (raw_text, city, admin_area, country, latitude, longitude)
-		 VALUES (?, ?, ?, ?, ?, ?)
+		 VALUES ($1, $2, $3, $4, $5, $6)
 		 ON CONFLICT(raw_text) DO NOTHING`,
 		text, resolved.City, resolved.AdminArea, resolved.Country,
 		*resolved.Latitude, *resolved.Longitude,
@@ -94,7 +94,7 @@ func resolveAndStore(text string) (resolvedLoc, bool, error) {
 
 	err = db.QueryRow(
 		`SELECT id, latitude, longitude FROM locations
-		 WHERE lower(raw_text) = lower(?) LIMIT 1`,
+		 WHERE lower(raw_text) = lower($1) LIMIT 1`,
 		text,
 	).Scan(&loc.id, &loc.lat, &loc.lon)
 	if err != nil {

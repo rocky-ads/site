@@ -60,7 +60,7 @@ func loadOpinion(conversationID int) (Opinion, error) {
 		SELECT conversation_id, generated_at, summary, assessment,
 			assessment_detail, resolution, reasoning
 		FROM egg_opinions
-		WHERE conversation_id = ?
+		WHERE conversation_id = $1
 	`, conversationID).Scan(
 		&op.ConversationID,
 		&op.GeneratedAt,
@@ -81,7 +81,7 @@ func storeOpinion(op Opinion) error {
 		INSERT INTO egg_opinions (
 			conversation_id, generated_at, summary, assessment,
 			assessment_detail, resolution, reasoning
-		) VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?)
+		) VALUES ($1, CURRENT_TIMESTAMP, $2, $3, $4, $5, $6)
 	`, op.ConversationID, op.Summary, op.Assessment,
 		op.AssessmentDetail, op.Resolution, op.Reasoning)
 	if err != nil {
@@ -93,7 +93,7 @@ func storeOpinion(op Opinion) error {
 // Invalidate removes the cached opinion for one conversation.
 func Invalidate(conversationID int) error {
 	_, err := db.Exec(
-		`DELETE FROM egg_opinions WHERE conversation_id = ?`,
+		`DELETE FROM egg_opinions WHERE conversation_id = $1`,
 		conversationID,
 	)
 	if err != nil {
@@ -107,7 +107,7 @@ func InvalidateForAd(adID int) error {
 	_, err := db.Exec(`
 		DELETE FROM egg_opinions
 		WHERE conversation_id IN (
-			SELECT id FROM conversations WHERE ad_id = ?
+			SELECT id FROM conversations WHERE ad_id = $1
 		)
 	`, adID)
 	if err != nil {
@@ -202,7 +202,7 @@ func listMessages(conversationID int, loc *time.Location) ([]message.Message, er
 	err := db.Select(&messages, `
 		SELECT id, conversation_id, sender_id, content, created_at
 		FROM messages
-		WHERE conversation_id = ?
+		WHERE conversation_id = $1
 		ORDER BY created_at ASC
 	`, conversationID)
 	if err != nil {

@@ -58,7 +58,26 @@ func LoadAll(includeTestAds bool) error {
 		}
 		logger.Info("LoadAds completed", "duration", time.Since(startTime))
 	}
+	if err := syncIdentitySequences(); err != nil {
+		return fmt.Errorf("syncing identity sequences: %w", err)
+	}
 	return nil
+}
+
+func syncIdentitySequences() error {
+	var maxID int
+	err := db.QueryRow(`SELECT COALESCE(MAX(id), 0) FROM ads`).Scan(&maxID)
+	if err != nil {
+		return err
+	}
+	if maxID == 0 {
+		return nil
+	}
+	_, err = db.Exec(`
+		SELECT setval(pg_get_serial_sequence('ads', 'id'), $1)`,
+		maxID,
+	)
+	return err
 }
 
 // userJSON represents a user from user.json
@@ -128,16 +147,22 @@ func LoadUsers() error {
 
 		phoneE64 = phonenumbers.Format(num, phonenumbers.E164)
 
-		result, err := db.Exec(
-			"INSERT INTO users (encrypted_name, name_nonce, name_hash, password_hash, password_salt, password_algo, encrypted_phone, phone_nonce, phone_hash, is_admin) VALUES (?, ?, ?, ?, ?, 'argon2id', ?, ?, ?, ?)",
+		isAdmin := 0
+		if u.IsAdmin {
+			isAdmin = 1
+		}
+		var userID int
+		err = db.QueryRow(
+			`INSERT INTO users (encrypted_name, name_nonce, name_hash, password_hash, password_salt, password_algo, encrypted_phone, phone_nonce, phone_hash, is_admin)
+			 VALUES ($1, $2, $3, $4, $5, 'argon2id', $6, $7, $8, $9)
+			 RETURNING id`,
 			[]byte{}, []byte{}, db.HashString(u.Name), passwordHash, passwordSalt,
 			[]byte{}, []byte{}, db.HashString(phoneE64),
-			u.IsAdmin,
-		)
+			isAdmin,
+		).Scan(&userID)
 		if err != nil {
 			return fmt.Errorf("inserting user %s: %w", u.Name, err)
 		}
-		userID, _ := result.LastInsertId()
 
 		encryptedName, nameNonce, err := encryption.Encrypt(int(userID), u.Name, config.UserEncryptionKey)
 		if err != nil {
@@ -158,10 +183,10 @@ func LoadUsers() error {
 
 		_, err = db.Exec(
 			`UPDATE users SET 
-				encrypted_name = ?, name_nonce = ?, name_hash = ?,
-				encrypted_phone = ?, phone_nonce = ?, phone_hash = ?,
+				encrypted_name = $1, name_nonce = $2, name_hash = $3,
+				encrypted_phone = $4, phone_nonce = $5, phone_hash = $6,
 				phone_verified = 1
-			WHERE id = ?`,
+			WHERE id = $7`,
 			encryptedNameBytes, nameNonceBytes, nameHash,
 			encryptedPhoneBytes, phoneNonceBytes, phoneHash,
 			userID,
@@ -200,15 +225,15 @@ func LoadCategories() error {
 			return fmt.Errorf("marshaling facets for category %s: %w", cat.Name, err)
 		}
 
-		result, err := db.Exec(
-			"INSERT INTO categories (name, seed_ad_file, image_file, facets) VALUES (?, ?, ?, ?)",
+		var categoryID int
+		err = db.QueryRow(
+			`INSERT INTO categories (name, seed_ad_file, image_file, facets) VALUES ($1, $2, $3, $4)
+			 RETURNING id`,
 			cat.Name, cat.SeedAdFile, cat.ImageFile, string(facetsJSON),
-		)
+		).Scan(&categoryID)
 		if err != nil {
 			return fmt.Errorf("inserting category %s: %w", cat.Name, err)
 		}
-
-		categoryID, _ := result.LastInsertId()
 		categoryFiles[cat.Name] = CategoryFiles{
 			ID:         int(categoryID),
 			SeedAdFile: cat.SeedAdFile,
@@ -343,7 +368,7 @@ func loadAdsFromFile(categoryID int, filename string, categoryFacets []string, u
 	}
 
 	var testUserID int
-	err = db.QueryRow("SELECT id FROM users WHERE name_hash = ?", db.HashString("test")).Scan(&testUserID)
+	err = db.QueryRow("SELECT id FROM users WHERE name_hash = $1", db.HashString("test")).Scan(&testUserID)
 	if err != nil {
 		return fmt.Errorf("finding test user: %w", err)
 	}
@@ -385,7 +410,7 @@ func loadAdsFromFile(categoryID int, filename string, categoryFacets []string, u
 		_, err = db.Exec(
 			`INSERT INTO ads (id, category_id, title, description, created_at,
 			 user_id, image_count, location_id, tags)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 			adID, categoryID, ad.Title, description, createdAt,
 			testUserID, ad.ImageCount, locationID, tagsJSON,
 		)
@@ -413,7 +438,7 @@ func insertAdFacets(adID, price int, priceCurrency string, categoryFacets []stri
 	}
 	if hasPrice {
 		if _, err := db.Exec(
-			`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES (?, 'price', ?, ?)`,
+			`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES ($1, 'price', $2, $3)`,
 			adID, price, priceCurrency,
 		); err != nil {
 			return err
@@ -429,7 +454,7 @@ func insertAdFacets(adID, price int, priceCurrency string, categoryFacets []stri
 			text = encoded.Text
 		}
 		if _, err := db.Exec(
-			`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES (?, ?, ?, ?)`,
+			`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES ($1, $2, $3, $4)`,
 			adID, key, v.Num, text,
 		); err != nil {
 			return err
@@ -449,40 +474,52 @@ func getOrCreateLocationForAd(aj adJSON) (int, error) {
 
 func getOrCreateLocationRaw(rawText string, loc LocationData) (int, error) {
 	var locationID int
-	err := db.QueryRow("SELECT id FROM locations WHERE raw_text = ?", rawText).Scan(&locationID)
+	err := db.QueryRow("SELECT id FROM locations WHERE raw_text = $1", rawText).Scan(&locationID)
 	if err == nil {
 		return locationID, nil
 	}
 
-	result, err := db.Exec(
-		"INSERT INTO locations (raw_text, city, admin_area, country, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?)",
+	err = db.QueryRow(
+		`INSERT INTO locations (raw_text, city, admin_area, country, latitude, longitude)
+		 VALUES ($1, $2, $3, $4, $5, $6)
+		 ON CONFLICT (raw_text) DO NOTHING
+		 RETURNING id`,
 		rawText, loc.City, loc.AdminArea, loc.Country, loc.Latitude, loc.Longitude,
-	)
+	).Scan(&locationID)
+	if err == nil {
+		return locationID, nil
+	}
+
+	err = db.QueryRow("SELECT id FROM locations WHERE raw_text = $1", rawText).Scan(&locationID)
 	if err != nil {
 		return 0, fmt.Errorf("inserting location: %w", err)
 	}
-
-	locationIDInt64, _ := result.LastInsertId()
-	return int(locationIDInt64), nil
+	return locationID, nil
 }
 
 func getOrCreateLocation(loc LocationData) (int, error) {
 	rawText := fmt.Sprintf("%s, %s, %s", loc.City, loc.AdminArea, loc.Country)
 
 	var locationID int
-	err := db.QueryRow("SELECT id FROM locations WHERE raw_text = ?", rawText).Scan(&locationID)
+	err := db.QueryRow("SELECT id FROM locations WHERE raw_text = $1", rawText).Scan(&locationID)
 	if err == nil {
 		return locationID, nil
 	}
 
-	result, err := db.Exec(
-		"INSERT INTO locations (raw_text, city, admin_area, country, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?)",
+	err = db.QueryRow(
+		`INSERT INTO locations (raw_text, city, admin_area, country, latitude, longitude)
+		 VALUES ($1, $2, $3, $4, $5, $6)
+		 ON CONFLICT (raw_text) DO NOTHING
+		 RETURNING id`,
 		rawText, loc.City, loc.AdminArea, loc.Country, loc.Latitude, loc.Longitude,
-	)
+	).Scan(&locationID)
+	if err == nil {
+		return locationID, nil
+	}
+
+	err = db.QueryRow("SELECT id FROM locations WHERE raw_text = $1", rawText).Scan(&locationID)
 	if err != nil {
 		return 0, fmt.Errorf("inserting location: %w", err)
 	}
-
-	locationIDInt64, _ := result.LastInsertId()
-	return int(locationIDInt64), nil
+	return locationID, nil
 }

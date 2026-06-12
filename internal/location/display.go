@@ -49,7 +49,7 @@ func DisplayTextForInput(raw string) (string, bool, error) {
 
 	var city, adminArea, country string
 	err = db.QueryRow(
-		`SELECT city, admin_area, country FROM locations WHERE id = ?`, id,
+		`SELECT city, admin_area, country FROM locations WHERE id = $1`, id,
 	).Scan(&city, &adminArea, &country)
 	if err != nil {
 		return "", false, fmt.Errorf("lookup location display: %w", err)

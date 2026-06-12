@@ -5,10 +5,12 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"net/url"
+	"strings"
 	"sync"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 var (
@@ -16,10 +18,10 @@ var (
 	once sync.Once
 )
 
-func Init(dbPath string) error {
+func Init(databaseURL string) error {
 	var err error
 	once.Do(func() {
-		db, err = sqlx.Open("sqlite3", dbPath+"?_foreign_keys=1")
+		db, err = sqlx.Open("pgx", databaseURL)
 		if err != nil {
 			return
 		}
@@ -31,39 +33,38 @@ func Init(dbPath string) error {
 	return err
 }
 
+// ConnectionTarget returns host and database name from a PostgreSQL URL (no credentials).
+func ConnectionTarget(databaseURL string) (host, database string) {
+	u, err := url.Parse(databaseURL)
+	if err != nil {
+		return "", ""
+	}
+	host = u.Host
+	database = strings.TrimPrefix(u.Path, "/")
+	if i := strings.IndexByte(database, '?'); i >= 0 {
+		database = database[:i]
+	}
+	return host, database
+}
+
+// ResetForTest closes the database and allows Init to run again. Test use only.
+func ResetForTest() {
+	if db != nil {
+		_ = db.Close()
+	}
+	db = nil
+	once = sync.Once{}
+}
+
 func Query(query string, args ...any) (*sql.Rows, error) {
-	/*
-		fmt.Println("")
-		fmt.Println("=== SQL Query ===")
-		fmt.Println(prettyPrintSQL(query))
-		fmt.Println("Args:", formatArgs(args))
-		fmt.Println("================")
-		fmt.Println("")
-	*/
 	return db.Query(query, args...)
 }
 
 func QueryRow(query string, args ...any) *sql.Row {
-	/*
-		fmt.Println("")
-		fmt.Println("=== SQL QueryRow ===")
-		fmt.Println(prettyPrintSQL(query))
-		fmt.Println("Args:", formatArgs(args))
-		fmt.Println("===================")
-		fmt.Println("")
-	*/
 	return db.QueryRow(query, args...)
 }
 
 func Exec(query string, args ...any) (sql.Result, error) {
-	/*
-		fmt.Println("")
-		fmt.Println("=== SQL Exec ===")
-		fmt.Println(prettyPrintSQL(query))
-		fmt.Println("Args:", args)
-		fmt.Println("===============")
-		fmt.Println("")
-	*/
 	return db.Exec(query, args...)
 }
 
@@ -72,14 +73,6 @@ func Begin() (*sql.Tx, error) {
 }
 
 func Select(dest any, query string, args ...any) error {
-	/*
-		fmt.Println("")
-		fmt.Println("=== SQL Select ===")
-		fmt.Println(prettyPrintSQL(query))
-		fmt.Println("Args:", formatArgs(args))
-		fmt.Println("=================")
-		fmt.Println("")
-	*/
 	return db.Select(dest, query, args...)
 }
 
@@ -87,22 +80,13 @@ func Ping() error {
 	return db.Ping()
 }
 
-// For SQLite, JSON functions return TEXT, so we scan as string
 func QueryJSON(dst any, query string, args ...any) error {
-	var jsonResult string
-	/*
-		fmt.Println("")
-		fmt.Println("=== SQL QueryJSON ===")
-		fmt.Println(prettyPrintSQL(query))
-		fmt.Println("Args:", formatArgs(args))
-		fmt.Println("===============")
-		fmt.Println("")
-	*/
+	var jsonResult []byte
 	err := db.QueryRow(query, args...).Scan(&jsonResult)
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal([]byte(jsonResult), dst)
+	return json.Unmarshal(jsonResult, dst)
 }
 
 func Close() error {

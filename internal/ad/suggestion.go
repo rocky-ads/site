@@ -189,7 +189,7 @@ func parseTagsJSON(raw string) ([]Suggestion, error) {
 func LoadTags(a *Ad) error {
 	var raw string
 	err := db.QueryRow(
-		`SELECT COALESCE(tags, '[]') FROM ads WHERE id = ?`,
+		`SELECT COALESCE(tags, '[]') FROM ads WHERE id = $1`,
 		a.ID,
 	).Scan(&raw)
 	if err != nil {

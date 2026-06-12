@@ -46,8 +46,8 @@ func GetUnreadMessageCount(userID int) (int, error) {
 	query := `
 		SELECT COUNT(*)
 		FROM conversations
-		WHERE (owner_id = ? AND owner_has_unread = 1)
-		   OR (inquirer_id = ? AND inquirer_has_unread = 1)
+		WHERE (owner_id = $1 AND owner_has_unread = 1)
+		   OR (inquirer_id = $2 AND inquirer_has_unread = 1)
 	`
 	var count int
 	err := db.QueryRow(query, userID, userID).Scan(&count)
@@ -62,7 +62,7 @@ func UpdateLastSMSSent(userID int) error {
 	_, err := db.Exec(`
 		UPDATE users
 		SET last_sms_sent_at = CURRENT_TIMESTAMP
-		WHERE id = ?
+		WHERE id = $1
 	`, userID)
 	if err != nil {
 		return fmt.Errorf("failed to update last SMS sent timestamp: %w", err)
@@ -76,7 +76,7 @@ func getLastSMSSent(userID int) (*time.Time, error) {
 	err := db.QueryRow(`
 		SELECT last_sms_sent_at
 		FROM users
-		WHERE id = ?
+		WHERE id = $1
 	`, userID).Scan(&lastSMSSent)
 	if err != nil {
 		if err == sql.ErrNoRows {

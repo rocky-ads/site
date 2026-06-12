@@ -54,22 +54,13 @@ func (a Ad) PriceValue() (amount int, currency string, ok bool) {
 	return *v.Num, currency, true
 }
 
-var placeholderString = strings.Repeat("?,", 1000)
-
-func placeholders(n int) string {
+func placeholdersFrom(start, n int) string {
 	if n == 0 {
 		return ""
 	}
-	if n == 1 {
-		return "?"
-	}
-	needed := 2*n - 1
-	if needed <= len(placeholderString) {
-		return placeholderString[:needed]
-	}
 	ph := make([]string, n)
 	for i := range ph {
-		ph[i] = "?"
+		ph[i] = fmt.Sprintf("$%d", start+i)
 	}
 	return strings.Join(ph, ",")
 }
@@ -101,8 +92,8 @@ func GetAds(userID int, ids []int, loc *time.Location) ([]Ad, error) {
 			), 0) AS rock_count
 		FROM ads a
 		LEFT JOIN locations l ON a.location_id = l.id
-		LEFT JOIN bookmarks b ON a.id = b.ad_id AND b.user_id = ?
-		WHERE a.id IN (` + placeholders(len(ids)) + `)
+		LEFT JOIN bookmarks b ON a.id = b.ad_id AND b.user_id = $1
+		WHERE a.id IN (` + placeholdersFrom(2, len(ids)) + `)
 	`
 	args := make([]any, len(ids)+1)
 	args[0] = userID
@@ -151,7 +142,7 @@ func attachFacets(ads []Ad) error {
 	}
 
 	query := `SELECT ad_id, "key", num, "text" FROM ad_facets WHERE ad_id IN (` +
-		placeholders(len(ids)) + `)`
+		placeholdersFrom(1, len(ids)) + `)`
 	args := make([]any, len(ids))
 	for i, id := range ids {
 		args[i] = id
@@ -193,27 +184,24 @@ func GetUserAdIDs(userID int, filterType string) ([]int, error) {
 	switch filterType {
 	case "bookmarked":
 		query = `
-			SELECT COALESCE(json_group_array(a.id), '[]')
+			SELECT COALESCE(json_agg(a.id ORDER BY a.created_at DESC), '[]'::json)
 			FROM ads a
 			JOIN bookmarks b ON a.id = b.ad_id
-			WHERE b.user_id = ? AND a.deleted_at IS NULL
-			ORDER BY a.created_at DESC
+			WHERE b.user_id = $1 AND a.deleted_at IS NULL
 		`
 		args = []any{userID}
 	case "active":
 		query = `
-			SELECT COALESCE(json_group_array(id), '[]')
+			SELECT COALESCE(json_agg(id ORDER BY created_at DESC), '[]'::json)
 			FROM ads
-			WHERE user_id = ? AND deleted_at IS NULL
-			ORDER BY created_at DESC
+			WHERE user_id = $1 AND deleted_at IS NULL
 		`
 		args = []any{userID}
 	case "deleted":
 		query = `
-			SELECT COALESCE(json_group_array(id), '[]')
+			SELECT COALESCE(json_agg(id ORDER BY deleted_at DESC), '[]'::json)
 			FROM ads
-			WHERE user_id = ? AND deleted_at IS NOT NULL
-			ORDER BY deleted_at DESC
+			WHERE user_id = $1 AND deleted_at IS NOT NULL
 		`
 		args = []any{userID}
 	default:
@@ -229,7 +217,7 @@ func GetUserAdIDs(userID int, filterType string) ([]int, error) {
 func CountActiveAdsByUser(userID int) (int, error) {
 	var n int
 	err := db.QueryRow(
-		"SELECT COUNT(*) FROM ads WHERE user_id = ? AND deleted_at IS NULL",
+		"SELECT COUNT(*) FROM ads WHERE user_id = $1 AND deleted_at IS NULL",
 		userID,
 	).Scan(&n)
 	return n, err
@@ -237,13 +225,13 @@ func CountActiveAdsByUser(userID int) (int, error) {
 
 func Delete(id int) error {
 	_, err := db.Exec(
-		"UPDATE ads SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
+		"UPDATE ads SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1",
 		id,
 	)
 	return err
 }
 
 func Restore(id int) error {
-	_, err := db.Exec("UPDATE ads SET deleted_at = NULL WHERE id = ?", id)
+	_, err := db.Exec("UPDATE ads SET deleted_at = NULL WHERE id = $1", id)
 	return err
 }

@@ -13,9 +13,9 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
   - Middleware support for security, logging, rate limiting
 
 ### Database
-- **SQLite 3** - Embedded relational database
-  - File-based database (`project.db`)
-  - JSON column support for flexible data storage
+- **PostgreSQL** - Relational database (managed or local)
+  - Connection via `DATABASE_URL` environment variable
+  - JSON stored in `TEXT` columns; queried with Postgres `json_*` functions
   - Foreign key constraints enabled
   - Indexes optimized for search performance
 
@@ -23,7 +23,7 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
 - **sqlx v1.4.0** - SQL toolkit providing extensions to database/sql
   - Named parameter support
   - Struct scanning capabilities
-- **go-sqlite3 v1.14.32** - SQLite driver for Go
+- **jackc/pgx/v5** - PostgreSQL driver for Go (via `database/sql`)
 
 ### Authentication & Security
 - **golang-jwt/jwt/v5 v5.3.0** - JSON Web Token implementation
@@ -147,7 +147,7 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
   - Handlers (HTTP request handling, map domain data to UI inputs)
   - Domain packages (business logic, data access)
   - UI (`ui/`, server-side HTML rendering via gomponents)
-  - Database (SQLite via sqlx)
+  - Database (PostgreSQL via sqlx + pgx)
 - **Middleware Chain**
   - Security headers (Helmet)
   - Rate limiting
@@ -187,7 +187,7 @@ Request flow: **handler → domain → handler maps to UI inputs → `ui/` rende
 ## Configuration
 
 Configuration is managed through environment variables:
-- Database connection
+- **Database connection** — set `DATABASE_URL` to a PostgreSQL DSN (e.g. `postgres://localhost:5432/rockyads?sslmode=disable` for local dev). For local Postgres via Docker: `docker compose up -d postgres`, then use `postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable`. Use `./rebuild_db -test-ads` to reset schema and seed data. Integration tests live in `cmd/server` (`integration_*.go`) and share one seeded database via `TestMain`.
 - MinIO credentials
 - API keys (Gemini, Grok, Twilio)
 - JWT secrets

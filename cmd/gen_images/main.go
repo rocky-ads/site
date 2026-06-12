@@ -15,6 +15,7 @@ import (
 
 	"github.com/chai2010/webp"
 	"github.com/rocky-ads/site/internal/ad"
+	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/logger"
@@ -269,7 +270,7 @@ func getAds(startID, limit int) ([]ad.Ad, error) {
 	`
 	args := []any{}
 	if startID > 0 {
-		query += " AND a.id >= ?"
+		query += " AND a.id >= $1"
 		args = append(args, startID)
 	}
 	query += " ORDER BY a.id"
@@ -288,7 +289,6 @@ func getAds(startID, limit int) ([]ad.Ad, error) {
 }
 
 func main() {
-	dbPath := flag.String("db", "project.db", "Path to database file")
 	numAds := flag.Int("n", 0, "Number of ads to process (0 = all)")
 	startID := flag.Int("s", 0, "Starting ad ID (process ads with ID >= this value)")
 	noOverwrite := flag.Bool("x", false, "Don't overwrite existing files")
@@ -307,7 +307,7 @@ func main() {
 	}
 
 	// Initialize database
-	if err := db.Init(*dbPath); err != nil {
+	if err := db.Init(config.DatabaseURL); err != nil {
 		logger.Fatal("Failed to open database", "error", err)
 	}
 	defer db.Close()

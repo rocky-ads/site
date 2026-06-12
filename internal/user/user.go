@@ -143,29 +143,29 @@ func getUserBy(whereClause string, args ...any) (User, error) {
 }
 
 func GetByID(id int) (User, error) {
-	return getUserBy("id = ? AND deleted_at IS NULL", id)
+	return getUserBy("id = $1 AND deleted_at IS NULL", id)
 }
 
 // GetByIDIncludingDeleted returns a user by ID, including deleted users
 func GetByIDIncludingDeleted(id int) (User, error) {
-	return getUserBy("id = ?", id)
+	return getUserBy("id = $1", id)
 }
 
 // Exists checks if a user exists and is not deleted (lightweight check without decryption)
 func Exists(id int) bool {
 	var exists int
-	err := db.QueryRow("SELECT 1 FROM users WHERE id = ? AND deleted_at IS NULL", id).Scan(&exists)
+	err := db.QueryRow("SELECT 1 FROM users WHERE id = $1 AND deleted_at IS NULL", id).Scan(&exists)
 	return err == nil
 }
 
 func GetByPhoneE64(phoneE64 string) (User, error) {
 	phoneHash := db.HashString(phoneE64)
-	return getUserBy("phone_hash = ? AND deleted_at IS NULL", phoneHash)
+	return getUserBy("phone_hash = $1 AND deleted_at IS NULL", phoneHash)
 }
 
 func GetByName(name string) (User, error) {
 	nameHash := db.HashString(name)
-	return getUserBy("name_hash = ? AND deleted_at IS NULL", nameHash)
+	return getUserBy("name_hash = $1 AND deleted_at IS NULL", nameHash)
 }
 
 // ErrUserAlreadyExists is returned when attempting to create a user that already exists
@@ -207,24 +207,20 @@ func CreateUser(username, phoneE64, plainPassword string) (User, error) {
 		return User{}, fmt.Errorf("failed to check for existing user: %w", err)
 	}
 
-	// Insert user with placeholder values to get ID
-	result, err := tx.Exec(`
+	var userID int
+	err = tx.QueryRow(`
 		INSERT INTO users (
 			encrypted_name, name_nonce, name_hash,
 			password_hash, password_salt, password_algo,
 			encrypted_phone, phone_nonce, phone_hash,
 			phone_verified, is_admin
 		) VALUES ($1, $2, $3, $4, $5, 'argon2id', $6, $7, $8, 0, 0)
+		RETURNING id
 	`, []byte{}, []byte{}, nameHash,
 		passwordHash, passwordSalt,
-		[]byte{}, []byte{}, phoneHash)
+		[]byte{}, []byte{}, phoneHash).Scan(&userID)
 	if err != nil {
 		return User{}, fmt.Errorf("failed to create user: %w", err)
-	}
-
-	userID, err := result.LastInsertId()
-	if err != nil {
-		return User{}, fmt.Errorf("failed to get user ID: %w", err)
 	}
 
 	// Encrypt name
@@ -281,12 +277,12 @@ func SetSMSOptOut(userID int, optedOut bool) error {
 	if optedOut {
 		val = 1
 	}
-	_, err := db.Exec("UPDATE Users SET sms_opted_out = $1 WHERE id = $2", val, userID)
+	_, err := db.Exec("UPDATE users SET sms_opted_out = $1 WHERE id = $2", val, userID)
 	return err
 }
 
 func UpdatePassword(userID int, hash, salt, algo string) error {
-	_, err := db.Exec("UPDATE users SET password_hash = ?, password_salt = ?, password_algo = ? WHERE id = ?", hash, salt, algo, userID)
+	_, err := db.Exec("UPDATE users SET password_hash = $1, password_salt = $2, password_algo = $3 WHERE id = $4", hash, salt, algo, userID)
 	return err
 }
 
@@ -356,22 +352,22 @@ func GetAllUsers(sortBy string, sortOrder string) ([]User, error) {
 
 func DeleteUser(userID int) error {
 	now := time.Now()
-	_, err := db.Exec("UPDATE users SET deleted_at = ? WHERE id = ?", now, userID)
+	_, err := db.Exec("UPDATE users SET deleted_at = $1 WHERE id = $2", now, userID)
 	return err
 }
 
 func RestoreUser(userID int) error {
-	_, err := db.Exec("UPDATE users SET deleted_at = NULL WHERE id = ?", userID)
+	_, err := db.Exec("UPDATE users SET deleted_at = NULL WHERE id = $1", userID)
 	return err
 }
 
 func PromoteToAdmin(userID int) error {
-	_, err := db.Exec("UPDATE users SET is_admin = 1 WHERE id = ?", userID)
+	_, err := db.Exec("UPDATE users SET is_admin = 1 WHERE id = $1", userID)
 	return err
 }
 
 func DemoteFromAdmin(userID int) error {
-	_, err := db.Exec("UPDATE users SET is_admin = 0 WHERE id = ?", userID)
+	_, err := db.Exec("UPDATE users SET is_admin = 0 WHERE id = $1", userID)
 	return err
 }
 

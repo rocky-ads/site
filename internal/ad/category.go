@@ -36,15 +36,15 @@ var (
 func LoadCategories() error {
 	query := `
 		SELECT COALESCE(
-			json_group_array(
-				json_object(
+			json_agg(
+				json_build_object(
 					'id', id,
 					'name', name,
 					'image_file', image_file,
-					'facets', json(facets)
+					'facets', facets::jsonb
 				)
 			),
-			'[]'
+			'[]'::json
 		)
 		FROM categories`
 	var allCategories []Category

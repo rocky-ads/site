@@ -32,9 +32,6 @@ go.work.sum
 # .vscode/
 
 /rebuild_db
-/project.db
-/project.db-shm
-/project.db-wal
 /site
 /static/images/ad
 

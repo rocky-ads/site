@@ -9,33 +9,49 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rockyads
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
     - uses: actions/checkout@v5
-    
+
     - name: Set up Go
       uses: actions/setup-go@v6
       with:
         go-version: '1.25.3'
-    
+
     - name: Download dependencies
       run: go mod download
-    
+
     - name: Build database rebuild tool
       run: go build -o rebuild_db ./cmd/rebuild_db
-    
+
     - name: Rebuild database with test data
       run: ./rebuild_db -test-ads
       env:
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable
         JWT_SECRET: 'test-jwt-secret-key-for-ci-minimum-32-chars-long'
         MESSAGE_ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
         USER_ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
-    
+
     - name: Run tests
-      run: go test -v ./...
+      run: go test ./...
       env:
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable
         JWT_SECRET: 'test-jwt-secret-key-for-ci-minimum-32-chars-long'
         MESSAGE_ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
         USER_ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
         LOCAL_DEVELOPMENT: 'true'
-

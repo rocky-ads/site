@@ -48,8 +48,8 @@ func ThrowEgg(userID, conversationID int) error {
 	// Update conversation with egg info (making it public)
 	_, err = db.Exec(`
 		UPDATE conversations
-		SET egg_thrower_id = ?, egg_thrown_at = CURRENT_TIMESTAMP
-		WHERE id = ?
+		SET egg_thrower_id = $1, egg_thrown_at = CURRENT_TIMESTAMP
+		WHERE id = $2
 	`, userID, conversationID)
 	if err != nil {
 		return fmt.Errorf("failed to throw egg: %w", err)
@@ -70,7 +70,7 @@ func getConversationForEgg(conversationID int) (struct {
 	err := db.QueryRow(`
 		SELECT owner_id, inquirer_id
 		FROM conversations
-		WHERE id = ?
+		WHERE id = $1
 	`, conversationID).Scan(&conv.OwnerID, &conv.InquirerID)
 	if err != nil {
 		return conv, fmt.Errorf("failed to get conversation: %w", err)
@@ -85,7 +85,7 @@ func UnthrowEgg(userID, conversationID int) error {
 	err := db.QueryRow(`
 		SELECT egg_thrower_id
 		FROM conversations
-		WHERE id = ?
+		WHERE id = $1
 	`, conversationID).Scan(&eggThrowerID)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -106,7 +106,7 @@ func UnthrowEgg(userID, conversationID int) error {
 	_, err = db.Exec(`
 		UPDATE conversations
 		SET egg_thrower_id = NULL, egg_thrown_at = NULL
-		WHERE id = ?
+		WHERE id = $1
 	`, conversationID)
 	if err != nil {
 		return fmt.Errorf("failed to remove egg: %w", err)
@@ -122,7 +122,7 @@ func GetPublicConversationsForAd(adID int) ([]int, error) {
 		SELECT c.id
 		FROM conversations c
 		LEFT JOIN messages m ON c.id = m.conversation_id
-		WHERE c.ad_id = ? AND c.egg_thrower_id IS NOT NULL AND c.egg_thrower_id = c.inquirer_id
+		WHERE c.ad_id = $1 AND c.egg_thrower_id IS NOT NULL AND c.egg_thrower_id = c.inquirer_id
 		GROUP BY c.id
 		ORDER BY COALESCE(MAX(m.created_at), c.egg_thrown_at) DESC
 	`
@@ -141,10 +141,10 @@ func GetPublicConversationIDByOrdinal(adID int, ordinal int) (int, error) {
 		SELECT c.id
 		FROM conversations c
 		LEFT JOIN messages m ON c.id = m.conversation_id
-		WHERE c.ad_id = ? AND c.egg_thrower_id IS NOT NULL AND c.egg_thrower_id = c.inquirer_id
+		WHERE c.ad_id = $1 AND c.egg_thrower_id IS NOT NULL AND c.egg_thrower_id = c.inquirer_id
 		GROUP BY c.id
 		ORDER BY COALESCE(MAX(m.created_at), c.egg_thrown_at) DESC
-		LIMIT 1 OFFSET ?
+		LIMIT 1 OFFSET $2
 	`
 	var conversationID int
 	err := db.QueryRow(query, adID, ordinal).Scan(&conversationID)
@@ -163,7 +163,7 @@ func GetUserEggCount(userID int) (int, error) {
 	err := db.QueryRow(`
 		SELECT COUNT(*)
 		FROM conversations
-		WHERE egg_thrower_id = ?
+		WHERE egg_thrower_id = $1
 	`, userID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get user egg count: %w", err)
@@ -177,7 +177,7 @@ func GetEggCountForConversation(conversationID int) (int, error) {
 	err := db.QueryRow(`
 		SELECT egg_thrower_id
 		FROM conversations
-		WHERE id = ?
+		WHERE id = $1
 	`, conversationID).Scan(&eggThrowerID)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -197,7 +197,7 @@ func HasUserThrownEgg(userID, conversationID int) (bool, error) {
 	err := db.QueryRow(`
 		SELECT egg_thrower_id
 		FROM conversations
-		WHERE id = ?
+		WHERE id = $1
 	`, conversationID).Scan(&eggThrowerID)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -214,7 +214,7 @@ func GetConversationIDsForUserEggs(userID int) ([]int, error) {
 	query := `
 		SELECT id
 		FROM conversations
-		WHERE egg_thrower_id IS NOT NULL AND egg_thrower_id = owner_id AND inquirer_id = ?
+		WHERE egg_thrower_id IS NOT NULL AND egg_thrower_id = owner_id AND inquirer_id = $1
 		ORDER BY egg_thrown_at DESC
 	`
 	var conversationIDs []int
@@ -232,7 +232,7 @@ func GetEggCountForUser(userID int) (int, error) {
 	err := db.QueryRow(`
 		SELECT COUNT(*)
 		FROM conversations
-		WHERE egg_thrower_id IS NOT NULL AND egg_thrower_id = owner_id AND inquirer_id = ?
+		WHERE egg_thrower_id IS NOT NULL AND egg_thrower_id = owner_id AND inquirer_id = $1
 	`, userID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get egg count for user: %w", err)
@@ -246,9 +246,9 @@ func GetConversationIDForUserEggByOrdinal(userID int, ordinal int) (int, error) 
 	query := `
 		SELECT id
 		FROM conversations
-		WHERE egg_thrower_id IS NOT NULL AND egg_thrower_id = owner_id AND inquirer_id = ?
+		WHERE egg_thrower_id IS NOT NULL AND egg_thrower_id = owner_id AND inquirer_id = $1
 		ORDER BY egg_thrown_at DESC
-		LIMIT 1 OFFSET ?
+		LIMIT 1 OFFSET $2
 	`
 	var conversationID int
 	err := db.QueryRow(query, userID, ordinal).Scan(&conversationID)

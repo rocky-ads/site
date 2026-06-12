@@ -148,10 +148,12 @@ func main() {
 
 	config.SecurityCheck()
 
-	if err := db.Init("project.db"); err != nil {
+	if err := db.Init(config.DatabaseURL); err != nil {
 		logger.Fatal("Failed to open database", "error", err)
 	}
 	defer db.Close()
+	host, database := db.ConnectionTarget(config.DatabaseURL)
+	logger.Info("Database connected", "host", host, "database", database)
 
 	if err := ad.LoadCategories(); err != nil {
 		logger.Fatal("Failed to initialize ads", "error", err)

@@ -70,7 +70,7 @@ const (
 // Global configuration variables
 var (
 	// Database configuration
-	DatabaseURL = getEnvWithDefault("DATABASE_URL", "project.db")
+	DatabaseURL = getEnvWithDefault("DATABASE_URL", "postgres://localhost:5432/rockyads?sslmode=disable")
 
 	// MinIO configuration
 	MinIOAPIURL     = getEnvWithDefault("MINIO_API_URL", "")

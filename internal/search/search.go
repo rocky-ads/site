@@ -10,19 +10,27 @@ import (
 	"github.com/rocky-ads/site/internal/facet"
 )
 
+type pgArgs struct {
+	args []any
+}
+
+func (p *pgArgs) add(v any) string {
+	p.args = append(p.args, v)
+	return fmt.Sprintf("$%d", len(p.args))
+}
+
 func Search(p Params) ([]int, error) {
+	var pa pgArgs
 	query := `
 		SELECT a.id
 		FROM ads a`
-	args := []any{p.CategoryID}
-
 	if p.HasGeo {
 		query += `
 		INNER JOIN locations l ON a.location_id = l.id`
 	}
 
 	query += `
-		WHERE a.category_id = ? AND a.deleted_at IS NULL`
+		WHERE a.category_id = ` + pa.add(p.CategoryID) + ` AND a.deleted_at IS NULL`
 
 	for _, key := range sortedFacetKeys(p.FacetFilters) {
 		f := p.FacetFilters[key]
@@ -38,92 +46,86 @@ func Search(p Params) ([]int, error) {
 			if len(f.Values) == 0 {
 				continue
 			}
-			placeholders := make([]string, len(f.Values))
-			facetArgs := []any{key}
+			keyPH := pa.add(key)
+			valuePH := make([]string, len(f.Values))
 			for i, v := range f.Values {
-				placeholders[i] = "?"
-				facetArgs = append(facetArgs, v)
+				valuePH[i] = pa.add(v)
 			}
-			clause := ` AND EXISTS (SELECT 1 FROM ad_facets f, json_each(f.text) je
-				WHERE f.ad_id = a.id AND f.key = ? AND je.value IN (` +
-				strings.Join(placeholders, ",") + `))`
+			clause := ` AND EXISTS (SELECT 1 FROM ad_facets f, jsonb_array_elements_text(f.text::jsonb) AS je(value)
+				WHERE f.ad_id = a.id AND f.key = ` + keyPH + ` AND je.value IN (` +
+				strings.Join(valuePH, ",") + `))`
 			query += clause
-			args = append(args, facetArgs...)
 		case facet.Date:
 			if f.TextMin == nil && f.TextMax == nil {
 				continue
 			}
 			clause := ` AND EXISTS (SELECT 1 FROM ad_facets f
-				WHERE f.ad_id = a.id AND f.key = ?`
-			facetArgs := []any{key}
+				WHERE f.ad_id = a.id AND f.key = ` + pa.add(key)
 			if f.TextMin != nil {
-				clause += ` AND f."text" >= ?`
-				facetArgs = append(facetArgs, *f.TextMin)
+				clause += ` AND f."text" >= ` + pa.add(*f.TextMin)
 			}
 			if f.TextMax != nil {
-				clause += ` AND f."text" <= ?`
-				facetArgs = append(facetArgs, *f.TextMax)
+				clause += ` AND f."text" <= ` + pa.add(*f.TextMax)
 			}
 			clause += `)`
 			query += clause
-			args = append(args, facetArgs...)
 		default:
 			clause := ` AND EXISTS (SELECT 1 FROM ad_facets f
-				WHERE f.ad_id = a.id AND f.key = ?`
-			facetArgs := []any{key}
+				WHERE f.ad_id = a.id AND f.key = ` + pa.add(key)
 			switch {
 			case len(f.Values) > 0:
-				placeholders := make([]string, len(f.Values))
+				valuePH := make([]string, len(f.Values))
 				for i, v := range f.Values {
-					placeholders[i] = "?"
-					facetArgs = append(facetArgs, v)
+					valuePH[i] = pa.add(v)
 				}
-				clause += ` AND f."text" IN (` + strings.Join(placeholders, ",") + `)`
+				clause += ` AND f."text" IN (` + strings.Join(valuePH, ",") + `)`
 			case f.Value != nil:
-				clause += ` AND f."text" = ?`
-				facetArgs = append(facetArgs, *f.Value)
+				clause += ` AND f."text" = ` + pa.add(*f.Value)
 			}
 			if f.Min != nil {
-				clause += ` AND f.num >= ?`
-				facetArgs = append(facetArgs, *f.Min)
+				clause += ` AND f.num >= ` + pa.add(*f.Min)
 			}
 			if f.Max != nil {
-				clause += ` AND f.num <= ?`
-				facetArgs = append(facetArgs, *f.Max)
+				clause += ` AND f.num <= ` + pa.add(*f.Max)
 			}
 			clause += `)`
 			query += clause
-			args = append(args, facetArgs...)
 		}
 	}
 
 	if p.HasTextQuery() {
 		pattern := "%" + escapeLike(p.Q) + "%"
-		query += ` AND (LOWER(a.title) LIKE LOWER(?) OR LOWER(a.description) LIKE LOWER(?))`
-		args = append(args, pattern, pattern)
+		titlePH := pa.add(pattern)
+		descPH := pa.add(pattern)
+		query += ` AND (a.title ILIKE ` + titlePH + ` OR a.description ILIKE ` + descPH + `)`
 	}
 	if p.HasGeo {
 		minLat, maxLat, minLon, maxLon := geoBoundingBox(p.CenterLat, p.CenterLon, p.RadiusKm)
-		query += ` AND l.latitude BETWEEN ? AND ? AND l.longitude BETWEEN ? AND ?`
-		args = append(args, minLat, maxLat, minLon, maxLon)
+		minLatPH := pa.add(minLat)
+		maxLatPH := pa.add(maxLat)
+		minLonPH := pa.add(minLon)
+		maxLonPH := pa.add(maxLon)
+		query += ` AND l.latitude BETWEEN ` + minLatPH + ` AND ` + maxLatPH +
+			` AND l.longitude BETWEEN ` + minLonPH + ` AND ` + maxLonPH
 	}
 
-	query += ` ORDER BY a.created_at DESC LIMIT ? OFFSET ?`
-	args = append(args, p.Limit, p.Offset)
+	limitPH := pa.add(p.Limit)
+	offsetPH := pa.add(p.Offset)
+	query += ` ORDER BY a.created_at DESC LIMIT ` + limitPH + ` OFFSET ` + offsetPH
 
 	wrapped := fmt.Sprintf(
-		`SELECT COALESCE(json_group_array(id), '[]') FROM (%s) AS limited_ads`,
+		`SELECT COALESCE(json_agg(id), '[]'::json) FROM (%s) AS limited_ads`,
 		query,
 	)
 
 	var adIDs []int
-	if err := db.QueryJSON(&adIDs, wrapped, args...); err != nil {
+	if err := db.QueryJSON(&adIDs, wrapped, pa.args...); err != nil {
 		return nil, fmt.Errorf("search: %w", err)
 	}
 	return adIDs, nil
 }
 
-// geoBoundingBox returns an approximate lat/lon window for radiusKm (SQLite-safe).
+// geoBoundingBox returns an approximate lat/lon window for radiusKm.
 func geoBoundingBox(lat, lon, radiusKm float64) (minLat, maxLat, minLon, maxLon float64) {
 	const kmPerDegreeLat = 111.0
 	deltaLat := radiusKm / kmPerDegreeLat

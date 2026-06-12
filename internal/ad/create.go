@@ -78,25 +78,22 @@ func CreateAd(input CreateInput) (int, error) {
 	}
 	defer tx.Rollback()
 
-	result, err := tx.Exec(
+	var id int
+	err = tx.QueryRow(
 		`INSERT INTO ads (category_id, title, description, user_id, location_id,
 		 tags, image_count)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)
+		 RETURNING id`,
 		input.CategoryID, title, description, input.UserID, locationID,
 		tagsJSON(input.Suggestions), input.ImageCount,
-	)
+	).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("create ad: %w", err)
 	}
 
-	id, err := result.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("create ad id: %w", err)
-	}
-
 	for key, v := range values {
 		if _, err := tx.Exec(
-			`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES (?, ?, ?, ?)`,
+			`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES ($1, $2, $3, $4)`,
 			id, key, v.Num, v.Text,
 		); err != nil {
 			return 0, fmt.Errorf("create ad facet %s: %w", key, err)
@@ -106,5 +103,5 @@ func CreateAd(input CreateInput) (int, error) {
 	if err := tx.Commit(); err != nil {
 		return 0, fmt.Errorf("create ad commit: %w", err)
 	}
-	return int(id), nil
+	return id, nil
 }

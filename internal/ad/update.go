@@ -142,9 +142,9 @@ func UpdateAd(input UpdateInput) error {
 	newImageCount := a.ImageCount + input.ImagesAdded
 
 	_, err = tx.Exec(
-		`UPDATE ads SET title = ?, description = ?, location_id = ?, tags = ?,
-		 image_count = ?
-		 WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
+		`UPDATE ads SET title = $1, description = $2, location_id = $3, tags = $4,
+		 image_count = $5
+		 WHERE id = $6 AND user_id = $7 AND deleted_at IS NULL`,
 		title, desc, locationID, tagsJSON(newSuggestions), newImageCount,
 		input.AdID, input.UserID,
 	)
@@ -152,12 +152,12 @@ func UpdateAd(input UpdateInput) error {
 		return fmt.Errorf("update ad: %w", err)
 	}
 
-	if _, err := tx.Exec(`DELETE FROM ad_facets WHERE ad_id = ?`, input.AdID); err != nil {
+	if _, err := tx.Exec(`DELETE FROM ad_facets WHERE ad_id = $1`, input.AdID); err != nil {
 		return fmt.Errorf("update ad facets: %w", err)
 	}
 	for key, v := range values {
 		if _, err := tx.Exec(
-			`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES (?, ?, ?, ?)`,
+			`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES ($1, $2, $3, $4)`,
 			input.AdID, key, v.Num, v.Text,
 		); err != nil {
 			return fmt.Errorf("update ad facet %s: %w", key, err)

@@ -42,7 +42,7 @@ type QueueStats struct {
 func EnqueueNotification(recipientUserID, conversationID int) error {
 	_, err := db.Exec(`
 		INSERT INTO sms_notification_queue (recipient_user_id, conversation_id, status, created_at)
-		VALUES (?, ?, 'pending', CURRENT_TIMESTAMP)
+		VALUES ($1, $2, 'pending', CURRENT_TIMESTAMP)
 	`, recipientUserID, conversationID)
 	if err != nil {
 		return fmt.Errorf("failed to enqueue notification: %w", err)
@@ -57,7 +57,7 @@ func DequeuePendingNotifications(limit int) ([]Notification, error) {
 		FROM sms_notification_queue
 		WHERE status = 'pending'
 		ORDER BY created_at ASC
-		LIMIT ?
+		LIMIT $1
 	`
 	var notifications []Notification
 	rows, err := db.Query(query, limit)
@@ -98,7 +98,7 @@ func MarkProcessed(id int) error {
 	_, err := db.Exec(`
 		UPDATE sms_notification_queue
 		SET status = 'processed', processed_at = CURRENT_TIMESTAMP
-		WHERE id = ?
+		WHERE id = $1
 	`, id)
 	if err != nil {
 		return fmt.Errorf("failed to mark notification as processed: %w", err)
@@ -111,7 +111,7 @@ func MarkSuppressed(id int) error {
 	_, err := db.Exec(`
 		UPDATE sms_notification_queue
 		SET status = 'suppressed', processed_at = CURRENT_TIMESTAMP
-		WHERE id = ?
+		WHERE id = $1
 	`, id)
 	if err != nil {
 		return fmt.Errorf("failed to mark notification as suppressed: %w", err)
@@ -124,7 +124,7 @@ func CleanupOldRecords(retentionHours int) error {
 	_, err := db.Exec(`
 		DELETE FROM sms_notification_queue
 		WHERE status IN ('processed', 'suppressed')
-		AND processed_at < datetime('now', '-' || ? || ' hours')
+		AND processed_at < NOW() - ($1 || ' hours')::interval
 	`, retentionHours)
 	if err != nil {
 		return fmt.Errorf("failed to cleanup old records: %w", err)
@@ -168,7 +168,7 @@ func GetQueueEntries(status string, limit, offset int) ([]QueueEntry, error) {
 			JOIN conversations c ON q.conversation_id = c.id
 			JOIN ads a ON c.ad_id = a.id
 			ORDER BY q.created_at DESC
-			LIMIT ? OFFSET ?
+			LIMIT $1 OFFSET $2
 		`
 		args = []interface{}{limit, offset}
 	} else {
@@ -184,9 +184,9 @@ func GetQueueEntries(status string, limit, offset int) ([]QueueEntry, error) {
 			FROM sms_notification_queue q
 			JOIN conversations c ON q.conversation_id = c.id
 			JOIN ads a ON c.ad_id = a.id
-			WHERE q.status = ?
+			WHERE q.status = $1
 			ORDER BY q.created_at DESC
-			LIMIT ? OFFSET ?
+			LIMIT $2 OFFSET $3
 		`
 		args = []interface{}{status, limit, offset}
 	}
