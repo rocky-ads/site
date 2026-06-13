@@ -6,8 +6,9 @@ require (
 	github.com/chai2010/webp v1.4.0
 	github.com/gofiber/fiber/v2 v2.52.13
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/jackc/pgx/v5 v5.7.2
+	github.com/jackc/pgx/v5 v5.10.0
 	github.com/jmoiron/sqlx v1.4.0
+	github.com/minio/minio-go/v7 v7.2.0
 	github.com/nyaruka/phonenumbers v1.8.0
 	github.com/sasha-s/go-deadlock v0.3.9
 	github.com/twilio/twilio-go v1.30.9
@@ -38,7 +39,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.24 // indirect
 	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
-	github.com/minio/minio-go/v7 v7.2.0 // indirect
 	github.com/petermattis/goid v0.0.0-20260330135022-df67b199bc81 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
