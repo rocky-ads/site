@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 	"sync"
@@ -78,6 +79,23 @@ func Select(dest any, query string, args ...any) error {
 
 func Ping() error {
 	return db.Ping()
+}
+
+// CheckSchema reports whether rebuild_db (or equivalent) has been applied.
+func CheckSchema() error {
+	var exists bool
+	err := QueryRow(`
+		SELECT EXISTS (
+			SELECT 1 FROM information_schema.tables
+			WHERE table_schema = 'public' AND table_name = 'categories'
+		)`).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("checking database schema: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("database not initialized — run: go run ./cmd/rebuild_db")
+	}
+	return nil
 }
 
 func QueryJSON(dst any, query string, args ...any) error {

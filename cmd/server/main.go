@@ -156,6 +156,10 @@ func main() {
 	host, database := db.ConnectionTarget(config.DatabaseURL)
 	logger.Info("Database connected", "host", host, "database", database)
 
+	if err := db.CheckSchema(); err != nil {
+		logger.Fatal("Database not ready", "error", err)
+	}
+
 	if err := ad.LoadCategories(); err != nil {
 		logger.Fatal("Failed to initialize ads", "error", err)
 	}
