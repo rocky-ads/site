@@ -64,7 +64,7 @@ func CallGrokConv(systemPrompt, userPrompt, convID string) (string, error) {
 		return "", fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
-	printGrokRequest(payload, convID)
+	//printGrokRequest(payload, convID)
 
 	logger.Debug("Grok API request",
 		"systemPrompt", systemPrompt, "userPrompt", userPrompt)
@@ -102,12 +102,13 @@ func CallGrokConv(systemPrompt, userPrompt, convID string) (string, error) {
 		return "", fmt.Errorf("no response from Grok API")
 	}
 
-	fmt.Println("RESPONSE")
-	fmt.Println(grokResp.Choices[0].Message.Content)
+	//fmt.Println("RESPONSE")
+	//fmt.Println(grokResp.Choices[0].Message.Content)
 
 	return grokResp.Choices[0].Message.Content, nil
 }
 
+/*
 func printGrokRequest(payload GrokRequest, convID string) {
 	fmt.Printf("Grok request: model=%s reasoning=%s", payload.Model, payload.ReasoningEffort)
 	if convID != "" {
@@ -118,3 +119,4 @@ func printGrokRequest(payload GrokRequest, convID string) {
 		fmt.Printf("--- %s ---\n%s\n", msg.Role, msg.Content)
 	}
 }
+*/

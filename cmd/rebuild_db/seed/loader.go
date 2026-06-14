@@ -37,8 +37,18 @@ type CategoryFiles struct {
 
 var categoryFiles = make(map[string]CategoryFiles)
 
-// LoadAll loads all seed data into the database
+// Options configures which seed data to load.
+type Options struct {
+	SkipTestAds bool
+}
+
+// LoadAll loads all seed data into the database.
 func LoadAll() error {
+	return LoadAllOptions(Options{})
+}
+
+// LoadAllOptions loads seed data into the database.
+func LoadAllOptions(opts Options) error {
 	startTime := time.Now()
 	if err := LoadUsers(); err != nil {
 		return fmt.Errorf("loading users: %w", err)
@@ -51,11 +61,15 @@ func LoadAll() error {
 	}
 	logger.Info("LoadCategories completed", "duration", time.Since(startTime))
 
-	startTime = time.Now()
-	if err := LoadAds(); err != nil {
-		return fmt.Errorf("loading ads: %w", err)
+	if !opts.SkipTestAds {
+		startTime = time.Now()
+		if err := LoadAds(); err != nil {
+			return fmt.Errorf("loading ads: %w", err)
+		}
+		logger.Info("LoadAds completed", "duration", time.Since(startTime))
+	} else {
+		logger.Info("Skipping test ads")
 	}
-	logger.Info("LoadAds completed", "duration", time.Since(startTime))
 
 	if err := syncIdentitySequences(); err != nil {
 		return fmt.Errorf("syncing identity sequences: %w", err)

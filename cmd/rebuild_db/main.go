@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"flag"
 	"fmt"
 	"os"
 	"time"
@@ -58,6 +59,12 @@ func setupDatabase(databaseURL string) error {
 }
 
 func main() {
+	skipTestAds := flag.Bool(
+		"skip-test-ads", false,
+		"Skip loading seed ad data from ad-*.json files",
+	)
+	flag.Parse()
+
 	startTime := time.Now()
 
 	if err := logger.Init("info", "text", ""); err != nil {
@@ -85,7 +92,9 @@ func main() {
 
 	stepStart = time.Now()
 	logger.Info("Loading seed data...")
-	if err := seed.LoadAll(); err != nil {
+	if err := seed.LoadAllOptions(seed.Options{
+		SkipTestAds: *skipTestAds,
+	}); err != nil {
 		logger.Fatal("Failed to load seed data", "error", err)
 	}
 	logger.Info("Load seed data step", "duration", time.Since(stepStart))
