@@ -212,7 +212,7 @@ func SearchWidget(userID, view int, q string, filtersExpanded bool, category Cat
 		hx.Target("#search-results"),
 		hx.Swap("outerHTML"),
 		hx.Include("#search-widget"),
-		hx.Trigger("search, keydown[key=='Tab'] from:#searchBox, change from:#filter-panel input delay:300ms, change from:#filter-panel select delay:300ms, keydown[key=='Enter'] from:#filter-location"),
+		hx.Trigger("search, keydown[key=='Tab'] from:#searchBox, change from:(#filter-panel input) delay:300ms, change from:(#filter-panel select) delay:300ms, keydown[key=='Enter'] from:#filter-location"),
 		searchBarRow(q, filtersExpanded),
 		Div(ID("filter-panel"), panel),
 		SearchView(userID, view, results),
