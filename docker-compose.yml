@@ -44,8 +44,8 @@ services:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/rockyads?sslmode=disable
       USER_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       MINIO_API_URL: http://minio:9000
-      MINIO_USERNAME: minioadmin
-      MINIO_PASSWORD: minioadmin
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
       MINIO_BUCKET_NAME: rockyads
     depends_on:
       postgres:

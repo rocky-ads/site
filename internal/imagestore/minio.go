@@ -27,11 +27,11 @@ func newMinioClient() (*minio.Client, error) {
 	if config.MinIOAPIURL == "" {
 		return nil, fmt.Errorf("MINIO_API_URL environment variable not set")
 	}
-	if config.MinIOUsername == "" {
-		return nil, fmt.Errorf("MINIO_USERNAME environment variable not set")
+	if config.MinIORootUser == "" {
+		return nil, fmt.Errorf("MINIO_ROOT_USER environment variable not set")
 	}
-	if config.MinIOPassword == "" {
-		return nil, fmt.Errorf("MINIO_PASSWORD environment variable not set")
+	if config.MinIORootPassword == "" {
+		return nil, fmt.Errorf("MINIO_ROOT_PASSWORD environment variable not set")
 	}
 	if config.MinIOBucketName == "" {
 		return nil, fmt.Errorf("MINIO_BUCKET_NAME environment variable not set")
@@ -53,7 +53,7 @@ func newMinioClient() (*minio.Client, error) {
 	}
 
 	client, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(config.MinIOUsername, config.MinIOPassword, ""),
+		Creds:  credentials.NewStaticV4(config.MinIORootUser, config.MinIORootPassword, ""),
 		Secure: endpointURL.Scheme == "https",
 	})
 	if err != nil {

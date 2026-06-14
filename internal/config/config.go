@@ -73,10 +73,10 @@ var (
 	DatabaseURL = getEnvWithDefault("DATABASE_URL", "postgres://localhost:5432/rockyads?sslmode=disable")
 
 	// MinIO configuration
-	MinIOAPIURL     = getEnvWithDefault("MINIO_API_URL", "")
-	MinIOUsername   = getEnvWithDefault("MINIO_USERNAME", "")
-	MinIOPassword   = getEnvWithDefault("MINIO_PASSWORD", "")
-	MinIOBucketName = getEnvWithDefault("MINIO_BUCKET_NAME", "")
+	MinIOAPIURL       = getEnvWithDefault("MINIO_API_URL", "")
+	MinIORootUser     = getEnvWithDefault("MINIO_ROOT_USER", "")
+	MinIORootPassword = getEnvWithDefault("MINIO_ROOT_PASSWORD", "")
+	MinIOBucketName   = getEnvWithDefault("MINIO_BUCKET_NAME", "")
 
 	// AI/ML API configuration
 	GeminiAPIKey = getEnvWithDefault("GEMINI_API_KEY", "")

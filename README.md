@@ -30,8 +30,8 @@ Set in `.env`:
 
 ```
 MINIO_API_URL=http://127.0.0.1:9000
-MINIO_USERNAME=minioadmin
-MINIO_PASSWORD=minioadmin
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin
 MINIO_BUCKET_NAME=rockyads
 ```
 
