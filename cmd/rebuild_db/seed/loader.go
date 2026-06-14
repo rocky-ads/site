@@ -38,7 +38,7 @@ type CategoryFiles struct {
 var categoryFiles = make(map[string]CategoryFiles)
 
 // LoadAll loads all seed data into the database
-func LoadAll(includeTestAds bool) error {
+func LoadAll() error {
 	startTime := time.Now()
 	if err := LoadUsers(); err != nil {
 		return fmt.Errorf("loading users: %w", err)
@@ -51,13 +51,12 @@ func LoadAll(includeTestAds bool) error {
 	}
 	logger.Info("LoadCategories completed", "duration", time.Since(startTime))
 
-	if includeTestAds {
-		startTime = time.Now()
-		if err := LoadAds(includeTestAds); err != nil {
-			return fmt.Errorf("loading ads: %w", err)
-		}
-		logger.Info("LoadAds completed", "duration", time.Since(startTime))
+	startTime = time.Now()
+	if err := LoadAds(); err != nil {
+		return fmt.Errorf("loading ads: %w", err)
 	}
+	logger.Info("LoadAds completed", "duration", time.Since(startTime))
+
 	if err := syncIdentitySequences(); err != nil {
 		return fmt.Errorf("syncing identity sequences: %w", err)
 	}
@@ -245,11 +244,7 @@ func LoadCategories() error {
 }
 
 // LoadAds loads ad files into ads table
-func LoadAds(includeTestAds bool) error {
-	if !includeTestAds {
-		return nil
-	}
-
+func LoadAds() error {
 	usedIDs := make(map[int]string)
 
 	categoryNames := make([]string, 0, len(categoryFiles))

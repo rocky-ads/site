@@ -108,8 +108,7 @@ func TestMain(m *testing.M) {
 		panic(fmt.Sprintf("Failed to initialize test database: %v", err))
 	}
 
-	// Load seed data (including test ads)
-	if err := seed.LoadAll(true); err != nil {
+	if err := seed.LoadAll(); err != nil {
 		db.Close()
 		panic(fmt.Sprintf("Failed to load seed data: %v", err))
 	}

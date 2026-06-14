@@ -40,7 +40,7 @@ jobs:
       run: go build -o rebuild_db ./cmd/rebuild_db
 
     - name: Rebuild database with test data
-      run: ./rebuild_db -test-ads
+      run: ./rebuild_db
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable
         JWT_SECRET: 'test-jwt-secret-key-for-ci-minimum-32-chars-long'

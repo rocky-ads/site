@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"flag"
 	"fmt"
 	"os"
 	"time"
@@ -59,9 +58,6 @@ func setupDatabase(databaseURL string) error {
 }
 
 func main() {
-	includeTestAds := flag.Bool("test-ads", false, "Include test ads in seed data")
-	flag.Parse()
-
 	startTime := time.Now()
 
 	if err := logger.Init("info", "text", ""); err != nil {
@@ -89,15 +85,11 @@ func main() {
 
 	stepStart = time.Now()
 	logger.Info("Loading seed data...")
-	if err := seed.LoadAll(*includeTestAds); err != nil {
+	if err := seed.LoadAll(); err != nil {
 		logger.Fatal("Failed to load seed data", "error", err)
 	}
 	logger.Info("Load seed data step", "duration", time.Since(stepStart))
-	if *includeTestAds {
-		logger.Info("Seed data (including test ads) loaded successfully")
-	} else {
-		logger.Info("Seed data (schema and spec data only) loaded successfully")
-	}
+	logger.Info("Seed data loaded successfully")
 
 	logger.Info("Database rebuild complete!", "total_duration", time.Since(startTime))
 }

@@ -187,7 +187,7 @@ Request flow: **handler → domain → handler maps to UI inputs → `ui/` rende
 ## Configuration
 
 Configuration is managed through environment variables:
-- **Database connection** — set `DATABASE_URL` to a PostgreSQL DSN (e.g. `postgres://localhost:5432/rockyads?sslmode=disable` for local dev). For local Postgres via Docker: `docker compose up -d postgres`, then use `postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable`. Use `./rebuild_db -test-ads` to reset schema and seed data. Integration tests live in `cmd/server` (`integration_*.go`) and share one seeded database via `TestMain`.
+- **Database connection** — set `DATABASE_URL` to a PostgreSQL DSN (e.g. `postgres://localhost:5432/rockyads?sslmode=disable` for local dev). For local Postgres via Docker: `docker compose up -d postgres`, then use `postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable`. Use `./rebuild_db` to reset schema and seed data. Integration tests live in `cmd/server` (`integration_*.go`) and share one seeded database via `TestMain`.
 - MinIO credentials
 - API keys (Gemini, Grok, Twilio)
 - JWT secrets
