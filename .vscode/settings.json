@@ -1,6 +1,22 @@
 {
         "sqltools.connections": [
                 {
+                        "pgOptions": {
+                                "ssl": {
+                                        "rejectUnauthorized": true
+                                }
+                        },
+                        "ssh": "Disabled",
+                        "previewLimit": 50,
+                        "server": "dpg-d8mcm2r7uimc738nrk20-a.oregon-postgres.render.com",
+                        "port": 5432,
+                        "driver": "PostgreSQL",
+                        "name": "render postgress",
+                        "database": "rockyads_db",
+                        "username": "rockyads_db_user",
+                        "password": "si37Z6nUvGEj7Ey8mp63G31idRiOHqoG"
+                },
+                {
                         "ssh": "Disabled",
                         "previewLimit": 50,
                         "server": "127.0.0.1",
@@ -9,7 +25,7 @@
                                 "port": 22
                         },
                         "driver": "PostgreSQL",
-                        "name": "postgres",
+                        "name": "local postgres",
                         "database": "rockyads",
                         "username": "postgres",
                         "password": "postgres"

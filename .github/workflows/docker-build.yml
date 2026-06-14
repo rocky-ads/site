@@ -116,7 +116,7 @@ jobs:
             type=sha,prefix={{branch}}-,enable=${{ github.ref_type == 'branch' }}
           labels: |
             org.opencontainers.image.title=Rocky Ads Jump Server
-            org.opencontainers.image.description=Jump server with test_db_perf for database performance testing
+            org.opencontainers.image.description=Ops jump server with rebuild_db and MinIO client
 
       - name: Build and push jump server image
         uses: docker/build-push-action@v7

@@ -1,6 +1,6 @@
 # Jump Server
 
-The jump server image includes database utilities and the MinIO client (`mc`).
+The jump server is an ops container for shell access (e.g. Render private service). It includes database utilities and the MinIO client (`mc`). No HTTP server or public port is required.
 
 ## Building
 
@@ -49,5 +49,4 @@ See the [MinIO Client documentation](https://docs.min.io/docs/minio-client-quick
 | Binary | Purpose |
 |--------|---------|
 | `rebuild_db` | Drop/recreate schema and import seed data |
-| `quote_server` | Quote-of-the-day page on port 10000 |
 | `mc` | MinIO command-line client |

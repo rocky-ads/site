@@ -41,7 +41,7 @@ const (
 
 	// Gemini API configuration
 	GeminiEmbeddingModel      = "gemini-embedding-001"
-	GeminiEmbeddingDimensions = 3072
+	GeminiEmbeddingDimensions = 768
 
 	// Ad configuration
 	MaxImagesPerAd         = 20

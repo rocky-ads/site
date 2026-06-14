@@ -1,5 +1,5 @@
-# Dockerfile for Koyeb Jump Server
-# Creates a server with pre-built utilities and quote server
+# Dockerfile for ops jump server (private service / shell access)
+# Includes rebuild_db, MinIO client, and PostgreSQL client tools
 
 # Stage 1: Build Go binary
 FROM golang:1.25.3 AS go-builder
@@ -16,11 +16,6 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o /build/rebuild_db \
     ./cmd/rebuild_db
-
-# Build quote_server binary (statically linked)
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -o /build/quote_server \
-    ./cmd/quote_server
 
 # Stage 2: Final image
 FROM ubuntu:22.04
@@ -51,13 +46,9 @@ RUN wget -q https://dl.min.io/client/mc/release/linux-amd64/mc -O /tmp/mc && \
     mv /tmp/mc /usr/local/bin/mc && \
     mc --version
 
-# Copy the pre-built binaries
+# Copy the pre-built binary
 COPY --from=go-builder /build/rebuild_db /usr/local/bin/rebuild_db
-COPY --from=go-builder /build/quote_server /usr/local/bin/quote_server
-
-# Make them executable
-RUN chmod +x /usr/local/bin/rebuild_db && \
-    chmod +x /usr/local/bin/quote_server
+RUN chmod +x /usr/local/bin/rebuild_db
 
 # Create workspace directory
 RUN mkdir -p /workspace && chmod 777 /workspace
@@ -73,10 +64,9 @@ WORKDIR /workspace
 RUN useradd -m -s /bin/bash jump && \
     echo "jump ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-# Configure firewall (allow web server)
+# Deny all incoming connections (outbound-only ops container)
 RUN ufw default deny incoming && \
     ufw default allow outgoing && \
-    ufw allow 10000/tcp && \
     echo "y" | ufw enable || true
 
 # Set up command logging/auditing
@@ -126,17 +116,8 @@ sleep 1\n\
 logger -p local0.info "Jump server starting at $(date)"\n\
 echo "$(date): Jump server starting" >> /var/log/jump-server.log\n\
 \n\
-# Start quote server in background\n\
-/usr/local/bin/quote_server &\n\
-logger -p local0.info "Quote server started on port 10000"\n\
-echo "$(date): Quote server started on port 10000" >> /var/log/jump-server.log\n\
-\n\
 # Keep container running\n\
 tail -f /dev/null' > /entrypoint.sh && \
     chmod +x /entrypoint.sh
 
-# Expose web server port
-EXPOSE 10000
-
-# Use entrypoint script
 ENTRYPOINT ["/entrypoint.sh"]

@@ -40,8 +40,6 @@ services:
       dockerfile: dockerfiles/Dockerfile.jump-server
     image: rockyads-jump-server:dev
     container_name: rockyads-jump-server
-    ports:
-      - "8000:10000"
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/rockyads?sslmode=disable
       USER_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
