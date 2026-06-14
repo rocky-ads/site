@@ -1,6 +1,6 @@
 # Jump Server
 
-The jump server image includes database utilities and the MinIO client (`mc`).
+The jump server image includes database utilities, image migration, and the MinIO client (`mc`).
 
 ## Building
 
@@ -25,7 +25,17 @@ rebuild_db
 
 ## Ad images
 
-Images are stored in MinIO (required). After seeding the database, populate images from your dev machine with `go run ./cmd/gen_images` (requires `FAL_API_KEY`) or `go run ./cmd/migrate_images -dir static/images/ad` for a one-time upload of existing local files.
+Images are stored in MinIO (required). After seeding the database, populate images from your dev machine with `go run ./cmd/gen_images` (requires `FAL_API_KEY`) or upload existing local files with `migrate_images` on the jump server (see below).
+
+### Migrate existing local files (one-time)
+
+If you have files under `static/images/ad/` (or another directory):
+
+```bash
+migrate_images -dir static/images/ad
+```
+
+Use `-dry-run` to preview without uploading. MinIO connection uses `MINIO_API_URL`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, and `MINIO_BUCKET_NAME` from the service environment.
 
 On the jump server, you can also mirror files with `mc` (see below).
 
@@ -49,5 +59,6 @@ See the [MinIO Client documentation](https://docs.min.io/docs/minio-client-quick
 | Binary | Purpose |
 |--------|---------|
 | `rebuild_db` | Drop/recreate schema and import seed data |
+| `migrate_images` | One-time upload of local ad image files to MinIO |
 | `quote_server` | Quote-of-the-day page on port 10000 |
 | `mc` | MinIO command-line client |
