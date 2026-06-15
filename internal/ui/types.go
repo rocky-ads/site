@@ -149,3 +149,83 @@ type QueueStats struct {
 	Processed  int
 	Suppressed int
 }
+
+// EmbeddingAdminData holds presentation fields for the embeddings admin tab.
+type EmbeddingAdminData struct {
+	EmbeddedCount int
+	MissingCount  int
+	QueueDepth    int
+	Caches        []EmbeddingCachePanel
+	MissingAds    []MissingEmbeddingRow
+}
+
+// EmbeddingCachePanel holds cache metrics for one embedding cache tier.
+type EmbeddingCachePanel struct {
+	Name       string
+	Hits       int64
+	Misses     int64
+	HitRatePct float64
+	ItemCount  int64
+	MemoryKB   float64
+}
+
+// MissingEmbeddingRow holds one ad awaiting vector indexing.
+type MissingEmbeddingRow struct {
+	AdID         int
+	Title        string
+	CategoryName string
+}
+
+// ClickAdminData holds presentation fields for the clicks admin tab.
+type ClickAdminData struct {
+	UsersWithClicks int
+	AdsClicked      int
+	AdDetailViews   int
+	ImageNavClicks  int
+	ActiveLast7Days int
+	TopAds          []ClickAdRow
+	TopImages       []ClickImageRow
+	RecentActivity  []ClickActivityRow
+	TopUsers        []ClickUserRow
+}
+
+// ClickAdRow is one row in the top-ads table.
+type ClickAdRow struct {
+	AdID         int
+	Title        string
+	CategoryName string
+	UserCount    int
+	AdViews      int
+	ImageClicks  int
+	LastActivity string
+}
+
+// ClickImageRow is one row in the top-images table.
+type ClickImageRow struct {
+	AdID       int
+	Title      string
+	ImageIndex int
+	UserCount  int
+	Clicks     int
+	LastClick  string
+}
+
+// ClickActivityRow is one row in recent click activity.
+type ClickActivityRow struct {
+	When       string
+	UserName   string
+	UserID     int
+	AdID       int
+	AdTitle    string
+	ClickLabel string
+	ClickCount int
+}
+
+// ClickUserRow is one row in the top-users table.
+type ClickUserRow struct {
+	UserID      int
+	UserName    string
+	AdClicks    int
+	ImageClicks int
+	LastActive  string
+}

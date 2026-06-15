@@ -684,3 +684,39 @@ func formatCount(n int, compact bool) string {
 	p := message.NewPrinter(language.English)
 	return p.Sprint(number.Decimal(int64(n), number.Scale(0)))
 }
+
+// EmbeddingSnippet returns a prompt line for vector encoding.
+func (d Def) EmbeddingSnippet(v Value) string {
+	s := d.FormatFull(v)
+	if s == "" {
+		return ""
+	}
+	return d.Label + ": " + s
+}
+
+// VectorMetadataValue returns the JSONB value for search filters.
+func (d Def) VectorMetadataValue(v Value) (any, bool) {
+	if !v.Present() {
+		return nil, false
+	}
+	switch d.Kind {
+	case MultiEnum:
+		vals := v.MultiEnumValues()
+		if len(vals) == 0 {
+			return nil, false
+		}
+		return vals, true
+	case Money, Int:
+		if v.Num == nil {
+			return nil, false
+		}
+		return *v.Num, true
+	case Enum, Date, Location:
+		if v.Text == nil {
+			return nil, false
+		}
+		return *v.Text, true
+	default:
+		return nil, false
+	}
+}

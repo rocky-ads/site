@@ -14,6 +14,7 @@ import (
 	"github.com/rocky-ads/site/internal/param"
 	"github.com/rocky-ads/site/internal/ui"
 	"github.com/rocky-ads/site/internal/user"
+	"github.com/rocky-ads/site/internal/vector"
 )
 
 func AdHandler(c *fiber.Ctx) error {
@@ -41,6 +42,10 @@ func AdHandler(c *fiber.Ctx) error {
 
 	// Update the ad category cookie based on the ad
 	cookie.SetCategoryID(c, a.CategoryID)
+
+	if !a.IsDeleted() && userID != 0 {
+		_ = ad.IncrementAdClickForUser(adID, userID)
+	}
 
 	csrfToken := local.GetCSRFToken(c)
 
@@ -202,6 +207,7 @@ func DeleteAdHandler(c *fiber.Ctx) error {
 	if err := ad.Delete(adID); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to delete ad")
 	}
+	_ = vector.DeleteAdEmbedding(adID)
 
 	// Redirect to the ad page
 	c.Set("HX-Redirect", fmt.Sprintf("/ad/%d", adID))
@@ -232,6 +238,7 @@ func RestoreAdHandler(c *fiber.Ctx) error {
 	if err := ad.Restore(adID); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to restore ad")
 	}
+	vector.QueueAd(adID)
 
 	// Redirect to the ad page
 	c.Set("HX-Redirect", fmt.Sprintf("/ad/%d", adID))

@@ -32,6 +32,7 @@ import (
 	"github.com/rocky-ads/site/internal/handler"
 	"github.com/rocky-ads/site/internal/imagestore"
 	"github.com/rocky-ads/site/internal/logger"
+	"github.com/rocky-ads/site/internal/vector"
 )
 
 var baseURL = "http://localhost:" + config.TestPort
@@ -118,6 +119,17 @@ func TestMain(m *testing.M) {
 		db.Close()
 		panic(fmt.Sprintf("Failed to initialize ads: %v", err))
 	}
+
+	vector.SetEmbedder(vector.NewFakeEmbedder())
+	if err := vector.InitEmbeddingCaches(); err != nil {
+		db.Close()
+		panic(fmt.Sprintf("Failed to init embedding caches: %v", err))
+	}
+	if err := vector.BackfillAllAdsSync(); err != nil {
+		db.Close()
+		panic(fmt.Sprintf("Failed to backfill ad embeddings: %v", err))
+	}
+	vector.StartBackgroundProcessor()
 
 	var err error
 	testImageDir, err = os.MkdirTemp("", "test-ad-images-*")

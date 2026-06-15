@@ -9,11 +9,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/location"
 	"github.com/rocky-ads/site/internal/search"
+	"github.com/rocky-ads/site/internal/vector"
 )
 
 func TestSearchPageHandler(t *testing.T) {
@@ -200,6 +202,7 @@ func TestIntegrationSearchGeoAndFacetFilters(t *testing.T) {
 
 	p := search.Params{
 		CategoryID: integrationCarsCategory,
+		Expanded:   true,
 		Limit:      50,
 		CenterLat:  lat,
 		CenterLon:  lon,
@@ -220,6 +223,7 @@ func TestIntegrationSearchGeoAndFacetFilters(t *testing.T) {
 		insertIntegrationAdWithCondition(t, "Poor bike", "Used - Poor")
 		ids, err := search.Search(search.Params{
 			CategoryID: integrationCarsCategory,
+			Expanded:   true,
 			Limit:      10,
 			FacetFilters: map[string]facet.Filter{"condition": {
 				Values: []string{"New", "Used - Fair"},
@@ -239,6 +243,7 @@ func TestIntegrationSearchGeoAndFacetFilters(t *testing.T) {
 		max := 50000
 		ids, err := search.Search(search.Params{
 			CategoryID:   integrationCarsCategory,
+			Expanded:     true,
 			Limit:        10,
 			FacetFilters: map[string]facet.Filter{"mileage": {Min: &min, Max: &max}},
 		})
@@ -255,6 +260,7 @@ func TestIntegrationSearchGeoAndFacetFilters(t *testing.T) {
 		min := "2026-06-10"
 		ids, err := search.Search(search.Params{
 			CategoryID: integrationGarageCategory,
+			Expanded:   true,
 			Limit:      10,
 			FacetFilters: map[string]facet.Filter{"sale_start_date": {
 				TextMin: &min,
@@ -272,6 +278,7 @@ func TestIntegrationSearchGeoAndFacetFilters(t *testing.T) {
 		insertIntegrationAdWithPricingStyle(t, "Negotiable sale", `["Negotiable / Make Offer"]`)
 		ids, err := search.Search(search.Params{
 			CategoryID: integrationGarageCategory,
+			Expanded:   true,
 			Limit:      10,
 			FacetFilters: map[string]facet.Filter{"pricing_style": {
 				Values: []string{"Everything Priced"},
@@ -298,6 +305,18 @@ func insertIntegrationAdWithCondition(t *testing.T, title, condition string) {
 	if _, err := db.Exec(`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES ($1, 'condition', NULL, $2)`, id, condition); err != nil {
 		t.Fatal(err)
 	}
+	rebuildIntegrationAdVector(t, id)
+}
+
+func rebuildIntegrationAdVector(t *testing.T, adID int) {
+	t.Helper()
+	in, err := ad.GetForEmbedding(adID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := vector.BuildAdEmbedding(in); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func insertIntegrationAdWithMileage(t *testing.T, title string, mileage int) {
@@ -312,6 +331,7 @@ func insertIntegrationAdWithMileage(t *testing.T, title string, mileage int) {
 	if _, err := db.Exec(`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES ($1, 'mileage', $2, 'mi')`, id, mileage); err != nil {
 		t.Fatal(err)
 	}
+	rebuildIntegrationAdVector(t, id)
 }
 
 func insertIntegrationAdWithDate(t *testing.T, title, date string) {
@@ -326,6 +346,7 @@ func insertIntegrationAdWithDate(t *testing.T, title, date string) {
 	if _, err := db.Exec(`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES ($1, 'sale_start_date', NULL, $2)`, id, date); err != nil {
 		t.Fatal(err)
 	}
+	rebuildIntegrationAdVector(t, id)
 }
 
 func insertIntegrationAdWithPricingStyle(t *testing.T, title, jsonVal string) {
@@ -340,4 +361,5 @@ func insertIntegrationAdWithPricingStyle(t *testing.T, title, jsonVal string) {
 	if _, err := db.Exec(`INSERT INTO ad_facets (ad_id, "key", num, "text") VALUES ($1, 'pricing_style', NULL, $2)`, id, jsonVal); err != nil {
 		t.Fatal(err)
 	}
+	rebuildIntegrationAdVector(t, id)
 }
