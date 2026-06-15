@@ -57,6 +57,9 @@ const (
 	HTMXURL    = "https://unpkg.com/htmx.org@2.0.7"
 	HTMXSSEURL = "https://unpkg.com/htmx-ext-sse@2.2.3/dist/sse.min.js"
 
+	// Public links
+	GitHubRepoURL = "https://github.com/rocky-ads/site"
+
 	// SSE configuration
 	SSEChannelBufferSize = 100 // Buffer size for user event channels
 
@@ -100,8 +103,9 @@ var (
 	UserEncryptionKey = getEncryptionKey("USER_ENCRYPTION_KEY")
 
 	// Server configuration
-	ServerPort = getEnvWithDefault("PORT", "10000")
-	ServerName = getEnvWithDefault("APP_NAME", "Rocky Ads")
+	ServerPort   = getEnvWithDefault("PORT", "10000")
+	ServerName   = getEnvWithDefault("APP_NAME", "Rocky Ads")
+	ContactEmail = getEnvWithDefault("CONTACT_EMAIL", "contact@rockyads.com")
 
 	// Test port - used when running tests to avoid conflicts with main server
 	TestPort = getEnvWithDefault("PORT_TEST", "10001")

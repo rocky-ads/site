@@ -446,17 +446,78 @@ func SettingsPage(name, phoneE64 string, smsOptedOut bool) []g.Node {
 	}
 }
 
+func aboutIconLink(href, icon, alt string, external bool) g.Node {
+	attrs := []g.Node{
+		Href(href),
+		Class("p-2 border border-zinc-300 dark:border-zinc-600 rounded-md shrink-0 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"),
+		Img(
+			Class("w-5 h-5 dark:invert dark:opacity-80"),
+			Src(icon),
+			Alt(alt),
+		),
+	}
+	if external {
+		attrs = append(attrs, Target("_blank"), Rel("noopener noreferrer"))
+	}
+	return A(attrs...)
+}
+
+func aboutItem(icon, alt, label, href string, external bool, value g.Node) g.Node {
+	return Div(
+		Class("flex items-center gap-4 p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg"),
+		aboutIconLink(href, icon, alt, external),
+		Div(
+			Class("min-w-0"),
+			Div(
+				Class("text-sm font-medium text-zinc-500 dark:text-zinc-400"),
+				g.Text(label),
+			),
+			Div(Class("mt-0.5"), value),
+		),
+	)
+}
+
 func AboutPage() []g.Node {
 	return []g.Node{
 		pageTitle("About"),
 		Div(
 			Class("mt-8 space-y-8 text-zinc-700 dark:text-zinc-300"),
 			P(g.Textf("Welcome to %s.", config.ServerName)),
-			P(
-				A(
-					Href("/faq"),
-					Class("text-blue-600 dark:text-blue-400 hover:underline"),
-					g.Text("Frequently asked questions"),
+			Div(
+				Class("space-y-3"),
+				aboutItem(
+					"/images/question_mark.svg",
+					"FAQ",
+					"FAQ",
+					"/faq",
+					false,
+					faqLink("/faq", "Frequently asked questions"),
+				),
+				aboutItem(
+					"/images/contact_mail.svg",
+					"Contact",
+					"Contact",
+					"mailto:"+config.ContactEmail,
+					false,
+					A(
+						Href("mailto:"+config.ContactEmail),
+						Class("text-blue-600 dark:text-blue-400 hover:underline"),
+						g.Text(config.ContactEmail),
+					),
+				),
+				aboutItem(
+					"/images/code.svg",
+					"Source code",
+					"Source code",
+					config.GitHubRepoURL,
+					true,
+					A(
+						Href(config.GitHubRepoURL),
+						Target("_blank"),
+						Rel("noopener noreferrer"),
+						Class("text-blue-600 dark:text-blue-400 hover:underline break-all"),
+						g.Text(config.GitHubRepoURL),
+					),
 				),
 			),
 		),
