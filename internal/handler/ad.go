@@ -49,10 +49,15 @@ func AdHandler(c *fiber.Ctx) error {
 		reachable = false
 	}
 
-	return renderPage(c, a.Title, ui.Ad(adDetailFrom(a, userID, reachable), userID, csrfToken))
+	isTest, err := user.IsTestUser(a.UserID)
+	if err != nil {
+		isTest = false
+	}
+
+	return renderPage(c, a.Title, ui.Ad(adDetailFrom(a, userID, reachable, isTest), userID, csrfToken))
 }
 
-func adDetailFrom(a ad.Ad, viewerUserID int, reachable bool) ui.AdDetail {
+func adDetailFrom(a ad.Ad, viewerUserID int, reachable, isTest bool) ui.AdDetail {
 	price, priceCurrency, hasPrice := a.PriceValue()
 	priceDisplay := ""
 	if hasPrice {
@@ -83,6 +88,7 @@ func adDetailFrom(a ad.Ad, viewerUserID int, reachable bool) ui.AdDetail {
 		CreatedAt:           a.CreatedAt,
 		Bookmarked:          a.Bookmarked,
 		Active:              !a.IsDeleted(),
+		IsTest:              isTest,
 		Reachable:           reachable,
 		RockCount:           a.RockCount,
 		FacetLabel:          adFacetLabel(a),

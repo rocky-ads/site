@@ -45,6 +45,7 @@ type AdDetail struct {
 	CreatedAt           time.Time
 	Bookmarked          bool
 	Active              bool
+	IsTest              bool
 	Reachable           bool
 	RockCount           int
 	FacetLabel          string
