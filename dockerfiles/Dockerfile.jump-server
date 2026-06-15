@@ -1,4 +1,4 @@
-# Dockerfile for Koyeb Jump Server
+# Dockerfile for Jump Server
 # Creates a server with pre-built utilities and quote server
 
 # Stage 1: Build Go binary
