@@ -12,6 +12,7 @@ import (
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/local"
+	"github.com/rocky-ads/site/internal/vector"
 )
 
 func CreateAdHandler(c *fiber.Ctx) error {
@@ -48,6 +49,12 @@ func CreateAdHandler(c *fiber.Ctx) error {
 	}
 
 	uploadAdImages(adImageStore, adID, imageFiles)
+
+	if in, err := ad.GetForEmbedding(adID); err != nil {
+		vector.QueueAd(adID)
+	} else if err := vector.BuildAdEmbedding(in); err != nil {
+		vector.QueueAd(adID)
+	}
 
 	redirect := "/ad/" + strconv.Itoa(adID)
 	if c.Get("HX-Request") != "" {

@@ -49,7 +49,8 @@ func AdminDashboardHandler(c *fiber.Ctx) error {
 
 func AdminTabHandler(c *fiber.Ctx) error {
 	tabID := c.Params("tab")
-	if tabID != "users" && tabID != "settings" && tabID != "sms-queue" {
+	if tabID != "users" && tabID != "settings" && tabID != "sms-queue" &&
+		tabID != "embeddings" && tabID != "clicks" {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid tab")
 	}
 
@@ -69,6 +70,14 @@ func AdminTabHandler(c *fiber.Ctx) error {
 
 	if tabID == "sms-queue" {
 		return AdminSMSQueueHandler(c)
+	}
+
+	if tabID == "embeddings" {
+		return AdminEmbeddingsHandler(c)
+	}
+
+	if tabID == "clicks" {
+		return AdminClicksHandler(c)
 	}
 
 	return render(c, ui.AdminDashboardContainer("settings", nil, "", "", 0))

@@ -11,6 +11,7 @@ import (
 	"github.com/rocky-ads/site/internal/imagestore"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/service/sms"
+	"github.com/rocky-ads/site/internal/vector"
 	"github.com/sasha-s/go-deadlock"
 
 	"github.com/gofiber/fiber/v2"
@@ -110,6 +111,11 @@ func setupApp() *fiber.App {
 	admin.Post("/user/:id/restore", handler.AdminUserRestoreHandler)
 	admin.Post("/user/:id/promote", handler.AdminUserPromoteHandler)
 	admin.Post("/user/:id/demote", handler.AdminUserDemoteHandler)
+	admin.Post("/embeddings/backfill", handler.AdminEmbeddingsBackfillHandler)
+	admin.Post("/embeddings/cache/query/clear", handler.AdminEmbeddingsClearQueryCacheHandler)
+	admin.Post("/embeddings/cache/user/clear", handler.AdminEmbeddingsClearUserCacheHandler)
+	admin.Post("/embeddings/cache/site/clear", handler.AdminEmbeddingsClearSiteCacheHandler)
+	admin.Post("/embeddings/cache/clear-all", handler.AdminEmbeddingsClearAllCachesHandler)
 
 	// API routes
 
@@ -163,6 +169,15 @@ func main() {
 	if err := ad.LoadCategories(); err != nil {
 		logger.Fatal("Failed to initialize ads", "error", err)
 	}
+
+	if err := vector.InitEmbeddingCaches(); err != nil {
+		logger.Fatal("Failed to initialize embedding caches", "error", err)
+	}
+	if err := vector.InitGeminiClient(); err != nil {
+		logger.Fatal("Failed to initialize Gemini client", "error", err)
+	}
+	vector.StartBackgroundProcessor()
+	vector.ProcessAdsWithoutVectors()
 
 	if err := sms.Init(); err != nil {
 		logger.Fatal("Failed to initialize SMS service", "error", err)

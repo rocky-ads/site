@@ -85,6 +85,8 @@ func parseSearchParamsFromState(c *fiber.Ctx, state cookie.SearchState, category
 	if !state.Expanded {
 		return search.Params{
 			CategoryID: categoryID,
+			UserID:     local.GetUserID(c),
+			Expanded:   false,
 			Limit:      limit,
 			Offset:     offset,
 			Q:          state.Q,
@@ -92,7 +94,7 @@ func parseSearchParamsFromState(c *fiber.Ctx, state cookie.SearchState, category
 	}
 
 	unit := distanceUnit(c)
-	return search.BuildParams(search.BuildInput{
+	p := search.BuildParams(search.BuildInput{
 		CategoryID:   categoryID,
 		Limit:        limit,
 		Offset:       offset,
@@ -102,6 +104,9 @@ func parseSearchParamsFromState(c *fiber.Ctx, state cookie.SearchState, category
 		RadiusUnit:   unit,
 		FacetFilters: expandFacetFilters(state.Facets, cookie.GetLocation(c)),
 	})
+	p.UserID = local.GetUserID(c)
+	p.Expanded = true
+	return p
 }
 
 // saveSearchStateFromRequest updates the search cookie and returns the new

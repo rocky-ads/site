@@ -25,6 +25,80 @@ func AdminDashboardContainer(activeTab string, users []UserRowData, sortBy, sort
 	)
 }
 
+func AdminDashboardContainerWithClicks(
+	activeTab string,
+	users []UserRowData,
+	sortBy, sortOrder string,
+	currentUserID int,
+	clicks ClickAdminData,
+) g.Node {
+	return Div(
+		ID("admin-dashboard-container"),
+		Class("space-y-6 mt-6"),
+		AdminTabs(activeTab),
+		AdminContentWithClicks(
+			activeTab, users, sortBy, sortOrder, currentUserID, clicks,
+		),
+	)
+}
+
+func AdminContentWithClicks(
+	activeTab string,
+	users []UserRowData,
+	sortBy, sortOrder string,
+	currentUserID int,
+	clicks ClickAdminData,
+) g.Node {
+	return Div(
+		ID("admin-content"),
+		g.If(activeTab == "users", Div(
+			Class("mt-4"),
+			UsersTable(users, sortBy, sortOrder, currentUserID),
+		)),
+		g.If(activeTab == "sms-queue", SMSQueueTab(QueueStats{}, []SMSQueueEntry{})),
+		g.If(activeTab == "embeddings", EmbeddingsTab(EmbeddingAdminData{})),
+		g.If(activeTab == "clicks", ClicksTab(clicks)),
+		g.If(activeTab == "settings", AdminSettingsTab()),
+	)
+}
+
+func AdminDashboardContainerWithEmbeddings(
+	activeTab string,
+	users []UserRowData,
+	sortBy, sortOrder string,
+	currentUserID int,
+	emb EmbeddingAdminData,
+) g.Node {
+	return Div(
+		ID("admin-dashboard-container"),
+		Class("space-y-6 mt-6"),
+		AdminTabs(activeTab),
+		AdminContentWithEmbeddings(
+			activeTab, users, sortBy, sortOrder, currentUserID, emb,
+		),
+	)
+}
+
+func AdminContentWithEmbeddings(
+	activeTab string,
+	users []UserRowData,
+	sortBy, sortOrder string,
+	currentUserID int,
+	emb EmbeddingAdminData,
+) g.Node {
+	return Div(
+		ID("admin-content"),
+		g.If(activeTab == "users", Div(
+			Class("mt-4"),
+			UsersTable(users, sortBy, sortOrder, currentUserID),
+		)),
+		g.If(activeTab == "sms-queue", SMSQueueTab(QueueStats{}, []SMSQueueEntry{})),
+		g.If(activeTab == "embeddings", EmbeddingsTab(emb)),
+		g.If(activeTab == "clicks", ClicksTab(ClickAdminData{})),
+		g.If(activeTab == "settings", AdminSettingsTab()),
+	)
+}
+
 func AdminDashboardContainerWithQueue(activeTab string, users []UserRowData, sortBy, sortOrder string, currentUserID int, queueStats QueueStats, queueEntries []SMSQueueEntry) g.Node {
 	return Div(
 		ID("admin-dashboard-container"),
@@ -42,6 +116,8 @@ func AdminTabs(activeTab string) g.Node {
 			Class("flex space-x-8"),
 			adminTab("Users", "users", activeTab == "users"),
 			adminTab("SMS Queue", "sms-queue", activeTab == "sms-queue"),
+			adminTab("Embeddings", "embeddings", activeTab == "embeddings"),
+			adminTab("Clicks", "clicks", activeTab == "clicks"),
 			adminTab("Settings", "settings", activeTab == "settings"),
 		),
 	)
@@ -75,6 +151,8 @@ func AdminContent(activeTab string, users []UserRowData, sortBy, sortOrder strin
 			UsersTable(users, sortBy, sortOrder, currentUserID),
 		)),
 		g.If(activeTab == "sms-queue", SMSQueueTab(QueueStats{}, []SMSQueueEntry{})),
+		g.If(activeTab == "embeddings", EmbeddingsTab(EmbeddingAdminData{})),
+		g.If(activeTab == "clicks", ClicksTab(ClickAdminData{})),
 		g.If(activeTab == "settings", AdminSettingsTab()),
 	)
 }
@@ -87,6 +165,8 @@ func AdminContentWithQueue(activeTab string, users []UserRowData, sortBy, sortOr
 			UsersTable(users, sortBy, sortOrder, currentUserID),
 		)),
 		g.If(activeTab == "sms-queue", SMSQueueTab(queueStats, queueEntries)),
+		g.If(activeTab == "embeddings", EmbeddingsTab(EmbeddingAdminData{})),
+		g.If(activeTab == "clicks", ClicksTab(ClickAdminData{})),
 		g.If(activeTab == "settings", AdminSettingsTab()),
 	)
 }

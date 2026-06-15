@@ -208,6 +208,7 @@ func SearchWidget(userID, view int, q string, filtersExpanded bool, category Cat
 	return Form(
 		Class("flex flex-col gap-4"),
 		ID("search-widget"),
+		g.Attr("onsubmit", "event.preventDefault(); return false;"),
 		hx.Get("/api/search/"),
 		hx.Target("#search-results"),
 		hx.Swap("outerHTML"),

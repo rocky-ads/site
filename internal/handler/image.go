@@ -61,6 +61,10 @@ func ImageNavigationHandler(c *fiber.Ctx) error {
 	size := c.Query("size", "480w")
 	heightClass := c.Query("heightClass", "h-48")
 	clickable := c.Query("clickable", "false") == "true"
+	userID := local.GetUserID(c)
+	if clickable && userID != 0 {
+		_ = ad.IncrementAdImageClickForUser(adID, userID, imageID)
+	}
 
 	if size == "1200w" && clickable {
 		return render(c, ui.ImageNodeWithThumbnails(adID, count, imageID, size, heightClass, clickable))

@@ -13,6 +13,7 @@ import (
 	"github.com/rocky-ads/site/internal/param"
 	"github.com/rocky-ads/site/internal/ui"
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
+	"github.com/rocky-ads/site/internal/vector"
 )
 
 func EditAdHandler(c *fiber.Ctx) error {
@@ -112,6 +113,7 @@ func UpdateAdHandler(c *fiber.Ctx) error {
 		logger.Error("Failed to invalidate egg opinions",
 			"error", err, "adID", adID)
 	}
+	vector.QueueAd(adID)
 
 	redirect := "/ad/" + strconv.Itoa(adID)
 	if c.Get("HX-Request") != "" {

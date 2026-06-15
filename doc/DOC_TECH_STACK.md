@@ -101,8 +101,8 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
 ### AI/ML Services
 - **Google Gemini API** - Embedding generation
   - Model: `gemini-embedding-001`
-  - Dimensions: 3072
-  - Used for vector search functionality
+  - Dimensions: 768
+  - Used for ad and query vector search
 - **Grok API (x.ai)** - Chat completions
   - Model: `grok-3-mini`
   - Endpoint: `https://api.x.ai/v1/chat/completions`
@@ -175,7 +175,7 @@ Request flow: **handler → domain → handler maps to UI inputs → `ui/` rende
 ### Data Patterns
 - **Normalized Database** - Users, categories, ads, locations, bookmarks, conversations
 - **Hard-filter search** - Category, price range, location + radius (bounding box on lat/lon); interim text match on title/description (`q`)
-- **Planned semantic search** - Postgres + pgvector + embeddings on `q` (see `service/gemini`)
+- **Semantic search** - Postgres pgvector cosine similarity on ad embeddings; metadata filters via `vector_metadata` JSONB; query/user/site embedding modes for empty search box
 
 ### Security Patterns
 - **Encryption at Rest** - AES-GCM for sensitive user data

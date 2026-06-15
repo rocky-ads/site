@@ -29,8 +29,9 @@ func (c Category) Facets() []facet.Def {
 }
 
 var (
-	categories      = make(map[int]Category)
-	defaultCategory int
+	categories           = make(map[int]Category)
+	defaultCategory      int
+	queryPromptTemplates = make(map[int]string)
 )
 
 func LoadCategories() error {
@@ -54,6 +55,8 @@ func LoadCategories() error {
 	for _, cat := range allCategories {
 		categories[cat.ID] = cat
 	}
+
+	precalculateQueryPrompts()
 
 	// Precalculate default category ID
 	var err error
@@ -122,4 +125,24 @@ func GetCategoryIDByName(name string) (int, error) {
 		}
 	}
 	return 0, fmt.Errorf("category not found: %s", name)
+}
+
+func precalculateQueryPrompts() {
+	for id, cat := range categories {
+		queryPromptTemplates[id] = fmt.Sprintf(
+			"Find ads in the %s category matching: %%s",
+			cat.Name,
+		)
+	}
+}
+
+func GetCategoryQueryPromptTemplate(categoryID int) string {
+	if t, ok := queryPromptTemplates[categoryID]; ok {
+		return t
+	}
+	name, err := GetCategoryName(categoryID)
+	if err != nil {
+		return "Find ads matching: %s"
+	}
+	return fmt.Sprintf("Find ads in the %s category matching: %%s", name)
 }
