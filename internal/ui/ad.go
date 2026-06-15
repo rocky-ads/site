@@ -85,17 +85,25 @@ func formatListedAge(t time.Time) string {
 
 func newBadge() g.Node {
 	return Span(
-		Class("px-2 py-0.5 rounded-full border border-orange-500 text-orange-500 text-xs font-medium"),
-		g.Text("New!"),
+		Class("px-2 py-0.5 rounded-full bg-zinc-100 text-black text-xs font-medium shadow-sm"),
+		g.Text("Just listed"),
+	)
+}
+
+func newBadgeImageOverlay() g.Node {
+	return Div(
+		Class("absolute top-[10px] left-[10px] z-10 pointer-events-none"),
+		newBadge(),
 	)
 }
 
 func listedAgeDetailNode(createdAt time.Time) g.Node {
-	isNew := time.Since(createdAt) < 4*time.Hour
+	if time.Since(createdAt) < 4*time.Hour {
+		return g.Text("")
+	}
 	return Div(
 		Class("shrink-0 text-right"),
-		g.If(isNew, newBadge()),
-		g.If(!isNew, g.Text(formatListedAge(createdAt))),
+		g.Text(formatListedAge(createdAt)),
 	)
 }
 
@@ -205,6 +213,16 @@ func deletedWatermark() g.Node {
 		Div(
 			Class("font-bold text-8xl text-red-500 transform rotate-[-45deg]"),
 			g.Text("DELETED"),
+		),
+	)
+}
+
+func testWatermark() g.Node {
+	return Div(
+		Class("absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center pointer-events-none z-50"),
+		Div(
+			Class("watermark-test text-center whitespace-pre-line"),
+			g.Text("TEST\nAD"),
 		),
 	)
 }
@@ -386,9 +404,14 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 	return []g.Node{
 		Div(
 			Class("flex flex-col relative rounded-lg shadow-lg dark:shadow-xl dark:shadow-zinc-900/50 my-4 mx-2 col-span-full overflow-hidden bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700"),
-			g.If(d.ImageCount > 0, ImageNodeWithThumbnails(d.ID, d.ImageCount, 1, "1200w", "aspect-[4/3] w-full", true)),
-			g.If(d.ImageCount == 0, noImage("h-32 w-full")),
+			Div(
+				Class("relative"),
+				g.If(d.ImageCount > 0, ImageNodeWithThumbnails(d.ID, d.ImageCount, 1, "1200w", "aspect-[4/3] w-full", true)),
+				g.If(d.ImageCount == 0, noImage("h-32 w-full")),
+				g.If(time.Since(d.CreatedAt) < 4*time.Hour, newBadgeImageOverlay()),
+			),
 			g.If(!d.Active, deletedWatermark()),
+			g.If(d.IsTest && d.Active, testWatermark()),
 			Div(
 				Class("p-6 flex flex-col bg-white dark:bg-zinc-800"),
 				Div(

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"regexp"
 	"sort"
 	"time"
 
@@ -369,6 +370,22 @@ func PromoteToAdmin(userID int) error {
 func DemoteFromAdmin(userID int) error {
 	_, err := db.Exec("UPDATE users SET is_admin = 0 WHERE id = $1", userID)
 	return err
+}
+
+var testPhonePattern = regexp.MustCompile(`^\+1555010\d{4}$`)
+
+// IsTestPhoneE64 reports whether phoneE64 is a seeded test account.
+func IsTestPhoneE64(phoneE64 string) bool {
+	return testPhonePattern.MatchString(phoneE64)
+}
+
+// IsTestUser reports whether userID belongs to a seeded test account.
+func IsTestUser(userID int) (bool, error) {
+	u, err := GetByID(userID)
+	if err != nil {
+		return false, err
+	}
+	return IsTestPhoneE64(u.PhoneE64), nil
 }
 
 // IsReachable reports whether the user can be contacted via the platform.

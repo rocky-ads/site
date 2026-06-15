@@ -18,5 +18,10 @@
   .field-option {
     @apply flex items-center gap-2 text-sm font-normal text-zinc-600 dark:text-zinc-400 cursor-pointer;
   }
+
+  .watermark-test {
+    @apply font-bold text-8xl text-transparent transform rotate-[-45deg];
+    -webkit-text-stroke: 2px #3b82f6;
+  }
 }
  
