@@ -2,11 +2,104 @@ package ui
 
 import (
 	"fmt"
+	"net/url"
 
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
 )
+
+// PasswordFieldView holds state for a password input with visibility toggle.
+type PasswordFieldView struct {
+	Name         string
+	Autocomplete string
+	Value        string
+	Visible      bool
+}
+
+func passwordFieldID(name string) string {
+	return "password-field-" + name
+}
+
+func passwordFieldToggleURL(name, autocomplete string, visible bool) string {
+	vis := "false"
+	if visible {
+		vis = "true"
+	}
+	return fmt.Sprintf(
+		"/api/password-field?name=%s&visible=%s&autocomplete=%s",
+		url.QueryEscape(name),
+		vis,
+		url.QueryEscape(autocomplete),
+	)
+}
+
+// PasswordField renders a password input with an HTMX visibility toggle.
+func PasswordField(view PasswordFieldView) g.Node {
+	fieldID := passwordFieldID(view.Name)
+	inputType := "password"
+	iconSrc := "/images/eye.svg"
+	ariaLabel := "Show password"
+	ariaPressed := "false"
+	if view.Visible {
+		inputType = "text"
+		iconSrc = "/images/eye-off.svg"
+		ariaLabel = "Hide password"
+		ariaPressed = "true"
+	}
+
+	inputAttrs := []g.Node{
+		Class(
+			"w-full p-2 pr-10 border rounded-md " +
+				"dark:bg-zinc-800 dark:border-zinc-600",
+		),
+		Type(inputType),
+		Name(view.Name),
+		MaxLength("32"),
+		g.Attr("autocomplete", view.Autocomplete),
+		Required(),
+	}
+	if view.Value != "" {
+		inputAttrs = append(inputAttrs, Value(view.Value))
+	}
+
+	toggleVisible := !view.Visible
+	return Div(
+		ID(fieldID),
+		Class("relative"),
+		Input(inputAttrs...),
+		Button(
+			Type("button"),
+			Class(
+				"absolute right-2 top-1/2 -translate-y-1/2 p-1 "+
+					"rounded hover:bg-zinc-100 dark:hover:bg-zinc-700",
+			),
+			g.Attr("aria-label", ariaLabel),
+			g.Attr("aria-pressed", ariaPressed),
+			hx.Post(passwordFieldToggleURL(
+				view.Name, view.Autocomplete, toggleVisible,
+			)),
+			hx.Target("#"+fieldID),
+			hx.Swap("outerHTML"),
+			hx.Include("#"+fieldID),
+			Img(
+				Src(iconSrc),
+				Alt(""),
+				Class("w-5 h-5 dark:invert dark:opacity-80"),
+			),
+		),
+	)
+}
+
+func labeledPasswordField(labelText, name, autocomplete string) g.Node {
+	return Div(
+		label(labelText),
+		PasswordField(PasswordFieldView{
+			Name:         name,
+			Autocomplete: autocomplete,
+		}),
+	)
+}
 
 // buttonProps contains properties for creating a button
 type buttonProps struct {

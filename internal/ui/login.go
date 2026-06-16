@@ -27,17 +27,7 @@ func userNameInput(showHelp bool, autocomplete string) g.Node {
 }
 
 func passwordInput(autocomplete string) g.Node {
-	return Div(
-		label("Password"),
-		Input(
-			Class("w-full p-2 border rounded-md"),
-			Type("password"),
-			Name("password"),
-			MaxLength("32"),
-			g.Attr("autocomplete", autocomplete),
-			Required(),
-		),
-	)
+	return labeledPasswordField("Password", "password", autocomplete)
 }
 
 func LoginForm() g.Node {

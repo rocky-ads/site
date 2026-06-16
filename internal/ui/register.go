@@ -126,17 +126,7 @@ func verificationCodeInput() g.Node {
 }
 
 func passwordInput2() g.Node {
-	return Div(
-		label("Confirm Password"),
-		Input(
-			Class("w-full p-2 border rounded-md"),
-			Type("password"),
-			Name("password2"),
-			MaxLength("32"),
-			g.Attr("autocomplete", "off"),
-			Required(),
-		),
-	)
+	return labeledPasswordField("Confirm Password", "password2", "off")
 }
 
 func terms() g.Node {

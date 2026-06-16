@@ -324,14 +324,10 @@ func settingsAccountSection(userName, phoneE64 string) g.Node {
 }
 
 func namedPasswordInput(name, autocomplete string) g.Node {
-	return Input(
-		Class("w-full p-2 border rounded-md dark:bg-zinc-800 dark:border-zinc-600"),
-		Type("password"),
-		Name(name),
-		MaxLength("32"),
-		g.Attr("autocomplete", autocomplete),
-		Required(),
-	)
+	return PasswordField(PasswordFieldView{
+		Name:         name,
+		Autocomplete: autocomplete,
+	})
 }
 
 func NotificationsSection(smsOptedOut bool) g.Node {

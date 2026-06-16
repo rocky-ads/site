@@ -33,6 +33,7 @@ FROM ubuntu:22.04
 # Install basic tools and monitoring tools
 RUN apt-get update && \
     apt-get install -y \
+    tree \
     curl \
     wget \
     git \
