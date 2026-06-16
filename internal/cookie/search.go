@@ -16,7 +16,7 @@ type SearchState struct {
 	Q        string                  `json:"q,omitempty"`
 	Facets   map[string]facet.Filter `json:"facets,omitempty"`
 	Location string                  `json:"location,omitempty"`
-	Radius   int                     `json:"radius,omitempty"`
+	Within   int                     `json:"within,omitempty"`
 	Expanded bool                    `json:"expanded,omitempty"`
 }
 

@@ -24,12 +24,15 @@ func HomeHandler(c *fiber.Ctx) error {
 	csrfToken := local.GetCSRFToken(c)
 
 	p := parseSearchParams(c, categoryID)
-	results, err := searchAndRenderAds(p, userID, view, loc, csrfToken)
+	state := cookie.GetSearchState(c)
+	results, err := searchAndRenderAds(
+		p, userID, view, loc, csrfToken,
+		searchLocationDisplay(state.Location), state.Within, distanceUnit(c),
+	)
 	if err != nil {
 		return err
 	}
 
-	state := cookie.GetSearchState(c)
 	return renderPage(c, config.ServerName,
 		ui.HomePage(userID, view, state.Q, state.Expanded,
 			categoryOption(category), filterableFacets(category),

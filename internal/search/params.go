@@ -2,11 +2,11 @@ package search
 
 import "github.com/rocky-ads/site/internal/facet"
 
-// RadiusMileOptions are valid search radius dropdown values (miles).
-var RadiusMileOptions = []int{1, 5, 10, 25, 50, 100, 500}
+// WithinMileOptions are valid search within-distance dropdown values (miles).
+var WithinMileOptions = []int{1, 5, 10, 25, 50, 100, 500}
 
-// RadiusKmOptions are valid search radius dropdown values (kilometers).
-var RadiusKmOptions = []int{1, 5, 10, 25, 50, 100, 500, 1000}
+// WithinKmOptions are valid search within-distance dropdown values (kilometers).
+var WithinKmOptions = []int{1, 5, 10, 25, 50, 100, 500, 1000}
 
 // Params holds hard filters for listing search.
 type Params struct {
@@ -17,13 +17,19 @@ type Params struct {
 	Offset       int
 	Q            string
 	FacetFilters map[string]facet.Filter
-	// CenterLat/CenterLon and RadiusKm apply when location text resolved and radius > 0.
+	// CenterLat/CenterLon and WithinKm apply when location text resolved and within > 0.
 	CenterLat float64
 	CenterLon float64
-	RadiusKm  float64
+	WithinKm  float64
 	HasGeo    bool
 }
 
 func (p Params) HasTextQuery() bool {
 	return p.Q != ""
+}
+
+// Results holds vector search output including in-area match count for geo searches.
+type Results struct {
+	IDs         []int
+	InAreaCount int
 }

@@ -61,6 +61,7 @@ func QuerySimilarAdIDs(
 	embedding []float32,
 	whereClause string,
 	whereArgs []any,
+	orderPrefix string,
 	limit, offset int,
 	threshold float64,
 ) ([]int, error) {
@@ -80,8 +81,12 @@ func QuerySimilarAdIDs(
 		args = append(args, whereArgs...)
 		argIndex += len(whereArgs)
 	}
+	query += " ORDER BY "
+	if orderPrefix != "" {
+		query += replacePlaceholders(orderPrefix, 3)
+	}
 	query += fmt.Sprintf(
-		` ORDER BY embedding <=> $1::vector LIMIT $%d OFFSET $%d`,
+		`embedding <=> $1::vector LIMIT $%d OFFSET $%d`,
 		argIndex, argIndex+1,
 	)
 	args = append(args, limit, offset)
@@ -120,6 +125,32 @@ func QuerySimilarAdIDs(
 		logVectorSearchDiagnostics(vec, filterWhere, whereArgs, threshold)
 	}
 	return ids, nil
+}
+
+func CountSimilarAdIDs(
+	embedding []float32,
+	whereClause string,
+	whereArgs []any,
+	threshold float64,
+) (int, error) {
+	vec := pgvector.NewVector(embedding)
+	query := `
+		SELECT COUNT(*)::int
+		FROM ads
+		WHERE embedding IS NOT NULL
+		  AND deleted_at IS NULL
+		  AND (embedding <=> $1::vector) < $2`
+	args := []any{vec, threshold}
+	if whereClause != "" {
+		whereClause = replacePlaceholders(whereClause, 3)
+		query += " AND " + whereClause
+		args = append(args, whereArgs...)
+	}
+	var count int
+	if err := db.QueryRow(query, args...).Scan(&count); err != nil {
+		return 0, fmt.Errorf("vector count: %w", err)
+	}
+	return count, nil
 }
 
 func GetAdEmbeddings(adIDs []int) ([][]float32, error) {

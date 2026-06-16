@@ -12,8 +12,8 @@ type BuildInput struct {
 	Offset       int
 	Q            string
 	Location     string
-	Radius       int
-	RadiusUnit   string
+	Within       int
+	WithinUnit   string
 	FacetFilters map[string]facet.Filter
 }
 
@@ -27,7 +27,7 @@ func BuildParams(in BuildInput) Params {
 		FacetFilters: in.FacetFilters,
 	}
 
-	if in.Location == "" || in.Radius <= 0 {
+	if in.Location == "" || in.Within <= 0 {
 		return p
 	}
 
@@ -38,10 +38,10 @@ func BuildParams(in BuildInput) Params {
 
 	p.CenterLat = lat
 	p.CenterLon = lon
-	if in.RadiusUnit == location.UnitKm {
-		p.RadiusKm = float64(in.Radius)
+	if in.WithinUnit == location.UnitKm {
+		p.WithinKm = float64(in.Within)
 	} else {
-		p.RadiusKm = location.MilesToKm(float64(in.Radius))
+		p.WithinKm = location.MilesToKm(float64(in.Within))
 	}
 	p.HasGeo = true
 	return p

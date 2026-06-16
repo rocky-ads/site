@@ -35,17 +35,6 @@ func buildVectorMetadataWhere(p Params, pa *pgArgs) string {
 		}
 	}
 
-	if p.HasGeo {
-		minLat, maxLat, minLon, maxLon := geoBoundingBox(
-			p.CenterLat, p.CenterLon, p.RadiusKm,
-		)
-		latKey := `(vector_metadata->'location'->>'lat')::float`
-		lonKey := `(vector_metadata->'location'->>'lon')::float`
-		clause += ` AND ` + latKey + ` BETWEEN ` + pa.add(minLat) +
-			` AND ` + pa.add(maxLat)
-		clause += ` AND ` + lonKey + ` BETWEEN ` + pa.add(minLon) +
-			` AND ` + pa.add(maxLon)
-	}
 	return clause
 }
 
@@ -130,14 +119,40 @@ func sortedFacetKeys(filters map[string]facet.Filter) []string {
 }
 
 func geoBoundingBox(
-	lat, lon, radiusKm float64,
+	lat, lon, withinKm float64,
 ) (minLat, maxLat, minLon, maxLon float64) {
 	const kmPerDegreeLat = 111.0
-	deltaLat := radiusKm / kmPerDegreeLat
+	deltaLat := withinKm / kmPerDegreeLat
 	cosLat := math.Cos(lat * math.Pi / 180)
-	deltaLon := radiusKm / kmPerDegreeLat
+	deltaLon := withinKm / kmPerDegreeLat
 	if cosLat > 0.01 {
-		deltaLon = radiusKm / (kmPerDegreeLat * cosLat)
+		deltaLon = withinKm / (kmPerDegreeLat * cosLat)
 	}
 	return lat - deltaLat, lat + deltaLat, lon - deltaLon, lon + deltaLon
+}
+
+const (
+	latMetaKey = `(vector_metadata->'location'->>'lat')::float`
+	lonMetaKey = `(vector_metadata->'location'->>'lon')::float`
+)
+
+func geoInAreaWhereClause(p Params, pa *pgArgs) string {
+	minLat, maxLat, minLon, maxLon := geoBoundingBox(
+		p.CenterLat, p.CenterLon, p.WithinKm,
+	)
+	return latMetaKey + ` BETWEEN ` + pa.add(minLat) +
+		` AND ` + pa.add(maxLat) +
+		` AND ` + lonMetaKey + ` BETWEEN ` + pa.add(minLon) +
+		` AND ` + pa.add(maxLon)
+}
+
+func geoInAreaOrderExpr(p Params, pa *pgArgs) string {
+	minLat, maxLat, minLon, maxLon := geoBoundingBox(
+		p.CenterLat, p.CenterLon, p.WithinKm,
+	)
+	return `CASE WHEN ` + latMetaKey + ` BETWEEN ` + pa.add(minLat) +
+		` AND ` + pa.add(maxLat) +
+		` AND ` + lonMetaKey + ` BETWEEN ` + pa.add(minLon) +
+		` AND ` + pa.add(maxLon) +
+		` THEN 0 ELSE 1 END`
 }

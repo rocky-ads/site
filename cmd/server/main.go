@@ -132,6 +132,8 @@ func setupApp() *fiber.App {
 	api.Get("/show-filters", handler.ShowFiltersHandler)
 	api.Get("/hide-filters", handler.HideFiltersHandler)
 	api.Get("/category-select", handler.CategorySelectHandler)
+	api.Get("/search-location-modal", handler.SearchLocationModalHandler)
+	api.Get("/search-location/save", handler.SearchLocationSaveHandler)
 	api.Post("/password-field", handler.PasswordFieldHandler)
 	api.Get("/modal-remove/:name", handler.ModalRemoveHandler)
 	api.Get("/search/", handler.SearchPageHandler)

@@ -5,13 +5,17 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
+const fieldInputClass = "w-full p-2 border border-zinc-300 dark:border-zinc-600 rounded-md " +
+	"bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 " +
+	"placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
+
 // LocationInput renders the shared location text field (search and new-ad forms).
 func LocationInput(id, name, value, placeholder string) g.Node {
 	attrs := []g.Node{
 		Type("text"),
 		Name(name),
 		ID(id),
-		Class("w-full p-2 border rounded-md"),
+		Class(fieldInputClass),
 		g.Attr("placeholder", placeholder),
 	}
 	if value != "" {

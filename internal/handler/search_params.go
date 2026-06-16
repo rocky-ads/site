@@ -37,17 +37,30 @@ func distanceUnit(c *fiber.Ctx) string {
 }
 
 func searchStateToFilters(state cookie.SearchState, unit string) uiads.SearchFilters {
-	opts := search.RadiusMileOptions
+	opts := search.WithinMileOptions
 	if unit == location.UnitKm {
-		opts = search.RadiusKmOptions
+		opts = search.WithinKmOptions
 	}
 	return uiads.SearchFilters{
-		Facets:        state.Facets,
-		Location:      state.Location,
-		Radius:        state.Radius,
-		RadiusUnit:    unit,
-		RadiusOptions: opts,
+		Facets:          state.Facets,
+		Location:        state.Location,
+		LocationDisplay: searchLocationDisplay(state.Location),
+		Within:          state.Within,
+		WithinUnit:      unit,
+		WithinOptions:   opts,
 	}
+}
+
+func searchLocationDisplay(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	display, ok, err := location.DisplayTextForInput(raw)
+	if err != nil || !ok || display == "" {
+		return raw
+	}
+	return display
 }
 
 func categoryOption(cat ad.Category) ui.CategoryOption {
@@ -82,30 +95,24 @@ func pageLimitOffset(c *fiber.Ctx) (limit, offset int) {
 
 func parseSearchParamsFromState(c *fiber.Ctx, state cookie.SearchState, categoryID int) search.Params {
 	limit, offset := pageLimitOffset(c)
-	if !state.Expanded {
-		return search.Params{
-			CategoryID: categoryID,
-			UserID:     local.GetUserID(c),
-			Expanded:   false,
-			Limit:      limit,
-			Offset:     offset,
-			Q:          state.Q,
-		}
+	unit := distanceUnit(c)
+
+	in := search.BuildInput{
+		CategoryID: categoryID,
+		Limit:      limit,
+		Offset:     offset,
+		Q:          state.Q,
+		Location:   state.Location,
+		Within:     state.Within,
+		WithinUnit: unit,
+	}
+	if state.Expanded {
+		in.FacetFilters = expandFacetFilters(state.Facets, cookie.GetLocation(c))
 	}
 
-	unit := distanceUnit(c)
-	p := search.BuildParams(search.BuildInput{
-		CategoryID:   categoryID,
-		Limit:        limit,
-		Offset:       offset,
-		Q:            state.Q,
-		Location:     state.Location,
-		Radius:       state.Radius,
-		RadiusUnit:   unit,
-		FacetFilters: expandFacetFilters(state.Facets, cookie.GetLocation(c)),
-	})
+	p := search.BuildParams(in)
 	p.UserID = local.GetUserID(c)
-	p.Expanded = true
+	p.Expanded = state.Expanded
 	return p
 }
 
@@ -116,15 +123,15 @@ func saveSearchStateFromRequest(c *fiber.Ctx, expanded *bool, fromForm bool) coo
 	state := cookie.GetSearchState(c)
 	if fromForm {
 		state.Q = strings.TrimSpace(c.Query("q"))
+		state.Location = strings.TrimSpace(c.Query("location"))
+		state.Within = parseWithin(c.Query("within"), unit)
+		if state.Location == "" {
+			state.Within = 0
+		}
 		if state.Expanded {
 			category, err := ad.GetCategory(cookie.GetCategoryID(c))
 			if err == nil {
 				state.Facets = parseFacetFilters(c, category)
-			}
-			state.Location = strings.TrimSpace(c.Query("location"))
-			state.Radius = parseRadius(c.Query("radius"), unit)
-			if state.Location == "" {
-				state.Radius = 0
 			}
 		}
 	}
@@ -235,7 +242,7 @@ func parseOptionalAmount(raw string) *int {
 	return &amount
 }
 
-func parseRadius(raw, unit string) int {
+func parseWithin(raw, unit string) int {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return 0
@@ -244,9 +251,9 @@ func parseRadius(raw, unit string) int {
 	if err != nil {
 		return 0
 	}
-	opts := search.RadiusMileOptions
+	opts := search.WithinMileOptions
 	if unit == location.UnitKm {
-		opts = search.RadiusKmOptions
+		opts = search.WithinKmOptions
 	}
 	for _, opt := range opts {
 		if n == opt {

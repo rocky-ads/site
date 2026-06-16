@@ -9,13 +9,12 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-// SearchFiltersPanel renders facet, location, and radius controls for the search widget.
+// SearchFiltersPanel renders facet controls for the search widget.
 func SearchFiltersPanel(facets []facet.Def, f SearchFilters) g.Node {
 	var nodes []g.Node
 	for _, d := range facets {
 		nodes = append(nodes, facetFilterRow(d, f.Facets[d.Key]))
 	}
-	nodes = append(nodes, searchLocationRadiusRow(f))
 	return Div(
 		Class("grid grid-cols-2 gap-4"),
 		g.Group(nodes),
@@ -161,55 +160,6 @@ func dateRangeFilterRow(name, label string, min, max *string) g.Node {
 		),
 	)
 }
-
-func searchLocationRadiusRow(f SearchFilters) g.Node {
-	unit := f.RadiusUnit
-	if unit == "" {
-		unit = "mi"
-	}
-	radiusLabel := "Radius (miles)"
-	suffix := " mi"
-	if unit == "km" {
-		radiusLabel = "Radius (km)"
-		suffix = " km"
-	}
-	return Div(
-		Class("col-span-2 grid grid-cols-2 gap-4"),
-		Div(
-			Class("field-group"),
-			Label(For("filter-location"), Class("field-label"), g.Text("Location")),
-			LocationInput("filter-location", "location", f.Location, "City, State or ZIP"),
-		),
-		Div(
-			Class("field-group"),
-			Label(For("filter-radius"), Class("field-label"), g.Text(radiusLabel)),
-			radiusSelect(f.Radius, f.RadiusOptions, suffix),
-		),
-	)
-}
-
-func radiusSelect(selected int, options []int, suffix string) g.Node {
-	if selected == 0 {
-		selected = defaultRadius
-	}
-	opts := make([]g.Node, 0, len(options))
-	for _, n := range options {
-		label := strconv.Itoa(n) + suffix
-		opt := Option(Value(strconv.Itoa(n)), g.Text(label))
-		if n == selected {
-			opt = Option(Value(strconv.Itoa(n)), g.Attr("selected", "selected"), g.Text(label))
-		}
-		opts = append(opts, opt)
-	}
-	return Select(
-		Name("radius"),
-		ID("filter-radius"),
-		Class("w-full p-2 border rounded-md"),
-		g.Group(opts),
-	)
-}
-
-const defaultRadius = 25
 
 func priceAmount(p *int) string {
 	if p == nil {

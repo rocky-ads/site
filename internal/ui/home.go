@@ -2,6 +2,7 @@ package ui
 
 import (
 	"net/url"
+	"strconv"
 
 	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/local"
@@ -24,7 +25,7 @@ func SearchContainer(userID, view int, q string, filtersExpanded bool, category 
 				SearchWidget(userID, view, q, filtersExpanded, category, filterFacets, filters, results),
 			),
 		),
-	}, RemoveModal("category")...))
+	}, append(RemoveModal("category"), RemoveModal("search-location")...)...))
 }
 
 func SearchResults(view int, results []g.Node) g.Node {
@@ -205,7 +206,9 @@ func SearchWidget(userID, view int, q string, filtersExpanded bool, category Cat
 	if filtersExpanded {
 		panel = FilterPanel(q, filterFacets, filters)
 	}
-	return Form(
+	locationBar := uiads.SearchLocationBar(filters)
+
+	attrs := []g.Node{
 		Class("flex flex-col gap-4"),
 		ID("search-widget"),
 		g.Attr("onsubmit", "event.preventDefault(); return false;"),
@@ -213,11 +216,27 @@ func SearchWidget(userID, view int, q string, filtersExpanded bool, category Cat
 		hx.Target("#search-results"),
 		hx.Swap("outerHTML"),
 		hx.Include("#search-widget"),
-		hx.Trigger("search, keydown[key=='Tab'] from:#searchBox, change from:(#filter-panel input) delay:300ms, change from:(#filter-panel select) delay:300ms, keydown[key=='Enter'] from:#filter-location"),
-		searchBarRow(q, filtersExpanded),
-		Div(ID("filter-panel"), panel),
-		SearchView(userID, view, results),
-	)
+		hx.Trigger("search, keydown[key=='Tab'] from:#searchBox, change from:(#filter-panel input) delay:300ms, change from:(#filter-panel select) delay:300ms"),
+	}
+
+	if filtersExpanded {
+		attrs = append(attrs,
+			searchBarRow(q, true),
+			Div(ID("filter-panel"), panel),
+			locationBar,
+		)
+	} else {
+		attrs = append(attrs,
+			Div(
+				Class("flex flex-col gap-1"),
+				searchBarRow(q, false),
+				locationBar,
+			),
+			Div(ID("filter-panel")),
+		)
+	}
+	attrs = append(attrs, SearchView(userID, view, results))
+	return Form(attrs...)
 }
 
 func searchResults(view int, results []g.Node, oob bool) g.Node {
@@ -249,8 +268,35 @@ func searchResults(view int, results []g.Node, oob bool) g.Node {
 }
 
 func searchResultsEmpty() g.Node {
+	return SearchResultsEmptyMessage()
+}
+
+// SearchResultsEmptyMessage is the standard no-results copy for search grids.
+func SearchResultsEmptyMessage() g.Node {
 	return P(
 		Class("col-span-full py-8 text-center text-zinc-500 dark:text-zinc-400"),
 		g.Text("Sorry, no ads found matching that criteria."),
+	)
+}
+
+// OutsideAreaHeading separates in-area from out-of-area search results.
+func OutsideAreaHeading() g.Node {
+	return H2(
+		Class("col-span-full text-lg font-semibold mt-4 mb-2"),
+		g.Text("Outside of area"),
+	)
+}
+
+// NoInAreaMatchesMessage is shown when geo search has no matches in the within area.
+func NoInAreaMatchesMessage(within int, unit, location string) g.Node {
+	suffix := " mi"
+	if unit == "km" {
+		suffix = " km"
+	}
+	msg := "No matching ads were found within " +
+		strconv.Itoa(within) + suffix + " of " + location
+	return P(
+		Class("col-span-full py-4 text-center text-zinc-500 dark:text-zinc-400"),
+		g.Text(msg),
 	)
 }

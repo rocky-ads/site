@@ -119,7 +119,18 @@ func GetAds(userID int, ids []int, loc *time.Location) ([]Ad, error) {
 		return nil, err
 	}
 
-	return ads, nil
+	byID := make(map[int]Ad, len(ads))
+	for _, a := range ads {
+		byID[a.ID] = a
+	}
+	ordered := make([]Ad, 0, len(ids))
+	for _, id := range ids {
+		if a, ok := byID[id]; ok {
+			ordered = append(ordered, a)
+		}
+	}
+
+	return ordered, nil
 }
 
 type facetRow struct {

@@ -7,8 +7,46 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
+	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/facet"
 )
+
+func TestParseSearchParamsCollapsedNoFacets(t *testing.T) {
+	app := fiber.New()
+	app.Get("/search", func(c *fiber.Ctx) error {
+		state := cookie.SearchState{Q: "Honda"}
+		p := parseSearchParamsFromState(c, state, 6)
+		if p.Expanded {
+			t.Fatal("expected Expanded false when filter panel collapsed")
+		}
+		if p.FacetFilters != nil {
+			t.Fatal("expected no facet filters when collapsed")
+		}
+		if p.Q != "Honda" {
+			t.Fatalf("q = %q", p.Q)
+		}
+		return c.SendStatus(fiber.StatusOK)
+	})
+	if _, err := app.Test(httptest.NewRequest("GET", "/search", nil)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSaveSearchStateAlwaysPersistsLocation(t *testing.T) {
+	app := fiber.New()
+	var state cookie.SearchState
+	app.Get("/search", func(c *fiber.Ctx) error {
+		state = saveSearchStateFromRequest(c, nil, true)
+		return c.SendStatus(fiber.StatusOK)
+	})
+	req := httptest.NewRequest("GET", "/search?location=Denver&within=50&q=test", nil)
+	if _, err := app.Test(req); err != nil {
+		t.Fatal(err)
+	}
+	if state.Location != "Denver" || state.Within != 50 || state.Q != "test" {
+		t.Fatalf("got state %+v", state)
+	}
+}
 
 func TestParseFacetFiltersConditionCheckboxes(t *testing.T) {
 	category := ad.Category{FacetKeys: []string{"condition"}}

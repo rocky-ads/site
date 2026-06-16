@@ -39,10 +39,10 @@ func TestSearchPageHandler(t *testing.T) {
 			expectContains: []string{"search-results"},
 		},
 		{
-			name:           "location and radius",
+			name:           "location and within",
 			categoryID:     6,
-			query:          "?location=Denver&radius=50",
-			expectContains: []string{"search-results"},
+			query:          "?location=Denver&within=50",
+			expectContains: []string{"search-results", "search-location"},
 		},
 	}
 
@@ -52,7 +52,7 @@ func TestSearchPageHandler(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create client: %v", err)
 			}
-			if tt.query != "?q=Honda" {
+			if tt.query != "?q=Honda" && tt.name != "location and within" {
 				if err := setSearchCookieOnClient(client, cookie.SearchState{Expanded: true}); err != nil {
 					t.Fatalf("set search cookie: %v", err)
 				}
@@ -206,14 +206,14 @@ func TestIntegrationSearchGeoAndFacetFilters(t *testing.T) {
 		Limit:      50,
 		CenterLat:  lat,
 		CenterLon:  lon,
-		RadiusKm:   location.MilesToKm(50),
+		WithinKm:   location.MilesToKm(50),
 		HasGeo:     true,
 	}
-	ids, err := search.Search(p)
+	result, err := search.Search(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(ids) == 0 {
+	if len(result.IDs) == 0 {
 		t.Fatal("expected geo search to match seeded Los Angeles car ads")
 	}
 
@@ -221,7 +221,7 @@ func TestIntegrationSearchGeoAndFacetFilters(t *testing.T) {
 		insertIntegrationAdWithCondition(t, "New bike", "New")
 		insertIntegrationAdWithCondition(t, "Fair bike", "Used - Fair")
 		insertIntegrationAdWithCondition(t, "Poor bike", "Used - Poor")
-		ids, err := search.Search(search.Params{
+		result, err := search.Search(search.Params{
 			CategoryID: integrationCarsCategory,
 			Expanded:   true,
 			Limit:      10,
@@ -232,8 +232,8 @@ func TestIntegrationSearchGeoAndFacetFilters(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(ids) < 2 {
-			t.Fatalf("expected at least 2 ads, got %v", ids)
+		if len(result.IDs) < 2 {
+			t.Fatalf("expected at least 2 ads, got %v", result.IDs)
 		}
 	})
 	t.Run("mileage range", func(t *testing.T) {
@@ -241,7 +241,7 @@ func TestIntegrationSearchGeoAndFacetFilters(t *testing.T) {
 		insertIntegrationAdWithMileage(t, "Higher miles car", 45000)
 		min := 40000
 		max := 50000
-		ids, err := search.Search(search.Params{
+		result, err := search.Search(search.Params{
 			CategoryID:   integrationCarsCategory,
 			Expanded:     true,
 			Limit:        10,
@@ -250,15 +250,15 @@ func TestIntegrationSearchGeoAndFacetFilters(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(ids) == 0 {
-			t.Fatalf("expected ads in mileage range, got %v", ids)
+		if len(result.IDs) == 0 {
+			t.Fatalf("expected ads in mileage range, got %v", result.IDs)
 		}
 	})
 	t.Run("sale start date range", func(t *testing.T) {
 		insertIntegrationAdWithDate(t, "Early sale", "2026-06-01")
 		insertIntegrationAdWithDate(t, "Late sale", "2026-06-20")
 		min := "2026-06-10"
-		ids, err := search.Search(search.Params{
+		result, err := search.Search(search.Params{
 			CategoryID: integrationGarageCategory,
 			Expanded:   true,
 			Limit:      10,
@@ -269,14 +269,14 @@ func TestIntegrationSearchGeoAndFacetFilters(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(ids) == 0 {
-			t.Fatalf("expected ads after sale date min, got %v", ids)
+		if len(result.IDs) == 0 {
+			t.Fatalf("expected ads after sale date min, got %v", result.IDs)
 		}
 	})
 	t.Run("pricing style multi enum", func(t *testing.T) {
 		insertIntegrationAdWithPricingStyle(t, "Priced sale", `["Everything Priced"]`)
 		insertIntegrationAdWithPricingStyle(t, "Negotiable sale", `["Negotiable / Make Offer"]`)
-		ids, err := search.Search(search.Params{
+		result, err := search.Search(search.Params{
 			CategoryID: integrationGarageCategory,
 			Expanded:   true,
 			Limit:      10,
@@ -287,8 +287,8 @@ func TestIntegrationSearchGeoAndFacetFilters(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(ids) == 0 {
-			t.Fatalf("expected priced sale ads, got %v", ids)
+		if len(result.IDs) == 0 {
+			t.Fatalf("expected priced sale ads, got %v", result.IDs)
 		}
 	})
 }

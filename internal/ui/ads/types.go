@@ -15,11 +15,12 @@ type PriceRowView struct {
 
 // SearchFilters holds search filter panel state passed from handlers.
 type SearchFilters struct {
-	Facets        map[string]facet.Filter
-	Location      string
-	Radius        int
-	RadiusUnit    string
-	RadiusOptions []int
+	Facets          map[string]facet.Filter
+	Location        string
+	LocationDisplay string
+	Within          int
+	WithinUnit      string
+	WithinOptions   []int
 }
 
 // SuggestionOption holds one LLM suggestion pill on the new-ad form.
