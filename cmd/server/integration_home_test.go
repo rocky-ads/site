@@ -123,11 +123,11 @@ func TestHomeHandlerFiltersExpanded(t *testing.T) {
 	if !strings.Contains(body, "filter-price-min") {
 		t.Error("Expected expanded filter panel with price field")
 	}
-	if !strings.Contains(body, `id="filter-panel"`) {
-		t.Error("Expected #filter-panel on home page")
+	if !strings.Contains(body, `id="search-area"`) {
+		t.Error("Expected #search-area on home page")
 	}
-	if !strings.Contains(body, `id="search-bar"`) {
-		t.Error("Expected #search-bar on home page")
+	if !strings.Contains(body, `id="search-location"`) {
+		t.Error("Expected #search-location under search box when filters expanded")
 	}
 	if !strings.Contains(body, `id="filter-toggle"`) {
 		t.Error("Expected filter toggle on home page")

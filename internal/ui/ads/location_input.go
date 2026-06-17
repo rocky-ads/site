@@ -10,12 +10,16 @@ const fieldInputClass = "w-full p-2 border border-zinc-300 dark:border-zinc-600 
 	"placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
 
 // LocationInput renders the shared location text field (search and new-ad forms).
-func LocationInput(id, name, value, placeholder string) g.Node {
+func LocationInput(id, name, value, placeholder string, inputClass ...string) g.Node {
+	class := fieldInputClass
+	if len(inputClass) > 0 {
+		class = inputClass[0]
+	}
 	attrs := []g.Node{
 		Type("text"),
 		Name(name),
 		ID(id),
-		Class(fieldInputClass),
+		Class(class),
 		g.Attr("placeholder", placeholder),
 	}
 	if value != "" {

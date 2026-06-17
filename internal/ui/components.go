@@ -9,6 +9,25 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
+const textFieldClass = "w-full p-2 border border-zinc-300 dark:border-zinc-200 rounded-md " +
+	"bg-transparent text-zinc-900 dark:text-zinc-200"
+
+func labeledTextInput(labelText string, attrs ...g.Node) g.Node {
+	inputAttrs := append([]g.Node{Class(textFieldClass)}, attrs...)
+	return Div(
+		label(labelText),
+		Input(inputAttrs...),
+	)
+}
+
+func labeledSelect(labelText string, attrs ...g.Node) g.Node {
+	selectAttrs := append([]g.Node{Class(textFieldClass)}, attrs...)
+	return Div(
+		label(labelText),
+		Select(selectAttrs...),
+	)
+}
+
 // PasswordFieldView holds state for a password input with visibility toggle.
 type PasswordFieldView struct {
 	Name         string
@@ -49,10 +68,7 @@ func PasswordField(view PasswordFieldView) g.Node {
 	}
 
 	inputAttrs := []g.Node{
-		Class(
-			"w-full p-2 pr-10 border rounded-md " +
-				"dark:bg-zinc-800 dark:border-zinc-600",
-		),
+		Class(textFieldClass + " pr-10"),
 		Type(inputType),
 		Name(view.Name),
 		MaxLength("32"),
@@ -234,7 +250,7 @@ func checkbox(name string, value string, label string, checked bool, disabled bo
 
 func label(text string) g.Node {
 	return Label(
-		Class("block text-base font-medium mb-1"),
+		Class("block text-base font-medium mb-1 text-zinc-900 dark:text-zinc-200"),
 		g.Text(text),
 	)
 }

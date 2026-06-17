@@ -1,8 +1,8 @@
 package ui
 
 import (
+	"fmt"
 	"net/url"
-	"strconv"
 
 	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/local"
@@ -47,51 +47,43 @@ func SearchResultsOOB(view int, results []g.Node) g.Node {
 	return searchResults(view, results, true)
 }
 
-// FilterPanel is the HTMX fragment inserted into #filter-panel when expanded.
-func FilterPanel(
-	q string,
-	filterFacets []facet.Def,
-	filters uiads.SearchFilters,
-) g.Node {
-	return Div(
-		Class("border rounded-lg p-4 mt-4"),
+// SearchArea renders the search box, location link, and optional expanded facets.
+func SearchArea(q string, expanded bool, filterFacets []facet.Def, filters uiads.SearchFilters) g.Node {
+	return searchArea(q, expanded, filterFacets, filters, false)
+}
+
+// SearchAreaOOB swaps #search-area when the filter panel is shown or hidden.
+func SearchAreaOOB(q string, expanded bool, filterFacets []facet.Def, filters uiads.SearchFilters) g.Node {
+	return searchArea(q, expanded, filterFacets, filters, true)
+}
+
+func searchArea(q string, expanded bool, filterFacets []facet.Def, filters uiads.SearchFilters, oob bool) g.Node {
+	searchBlock := Div(
+		Class("flex flex-col gap-2"),
 		Div(
-			Class("flex gap-2 items-center mb-4"),
+			Class("flex gap-2 items-center"),
 			Div(Class("flex-1 min-w-0"), searchBox(q)),
-			FilterToggle(true),
+			filterToggle(expanded),
 		),
-		uiads.SearchFiltersPanel(filterFacets, filters),
+		uiads.SearchLocationBar(filters),
 	)
-}
 
-func searchBarRow(q string, expanded bool) g.Node {
+	children := []g.Node{searchBlock}
+	areaClass := "flex flex-col"
 	if expanded {
-		return Div(ID("search-bar"), Class("hidden"))
+		areaClass += " border rounded-lg p-4 mt-4 gap-4"
+		children = append(children, uiads.SearchFiltersPanel(filterFacets, filters))
 	}
-	return Div(
-		ID("search-bar"),
-		Class("flex gap-2 items-center"),
-		Div(Class("flex-1 min-w-0"), searchBox(q)),
-		FilterToggle(false),
-	)
-}
 
-// SearchBarOOB swaps #search-bar when the filter panel is shown or hidden.
-func SearchBarOOB(q string, expanded bool) g.Node {
-	if expanded {
-		return Div(
-			ID("search-bar"),
-			Class("hidden"),
-			hx.SwapOOB("outerHTML"),
-		)
+	attrs := []g.Node{
+		ID("search-area"),
+		Class(areaClass),
+		g.Group(children),
 	}
-	return Div(
-		ID("search-bar"),
-		Class("flex gap-2 items-center"),
-		hx.SwapOOB("outerHTML"),
-		Div(Class("flex-1 min-w-0"), searchBox(q)),
-		FilterToggle(false),
-	)
+	if oob {
+		attrs = append([]g.Node{hx.SwapOOB("outerHTML")}, attrs...)
+	}
+	return Div(attrs...)
 }
 
 func categoryButton(category CategoryOption, returnParam string) g.Node {
@@ -146,15 +138,15 @@ func filterToggle(expanded bool) g.Node {
 		icon = "/images/collapse.svg"
 		actionAttrs = []g.Node{
 			hx.Get("/api/hide-filters"),
-			hx.Target("#filter-panel"),
-			hx.Swap("innerHTML"),
+			hx.Target("#search-area"),
+			hx.Swap("outerHTML"),
 			hx.Include("#search-widget"),
 		}
 	} else {
 		actionAttrs = []g.Node{
 			hx.Get("/api/show-filters"),
-			hx.Target("#filter-panel"),
-			hx.Swap("innerHTML"),
+			hx.Target("#search-area"),
+			hx.Swap("outerHTML"),
 		}
 	}
 	attrs := []g.Node{
@@ -202,12 +194,6 @@ func newAdButton(userID int) g.Node {
 }
 
 func SearchWidget(userID, view int, q string, filtersExpanded bool, category CategoryOption, filterFacets []facet.Def, filters uiads.SearchFilters, results []g.Node) g.Node {
-	var panel g.Node
-	if filtersExpanded {
-		panel = FilterPanel(q, filterFacets, filters)
-	}
-	locationBar := uiads.SearchLocationBar(filters)
-
 	attrs := []g.Node{
 		Class("flex flex-col gap-4"),
 		ID("search-widget"),
@@ -216,26 +202,10 @@ func SearchWidget(userID, view int, q string, filtersExpanded bool, category Cat
 		hx.Target("#search-results"),
 		hx.Swap("outerHTML"),
 		hx.Include("#search-widget"),
-		hx.Trigger("search, keydown[key=='Tab'] from:#searchBox, change from:(#filter-panel input) delay:300ms, change from:(#filter-panel select) delay:300ms"),
+		hx.Trigger("search, keydown[key=='Tab'] from:#searchBox, change from:(#search-area input) delay:300ms, change from:(#search-area select) delay:300ms"),
+		SearchArea(q, filtersExpanded, filterFacets, filters),
+		SearchView(userID, view, results),
 	}
-
-	if filtersExpanded {
-		attrs = append(attrs,
-			searchBarRow(q, true),
-			Div(ID("filter-panel"), panel),
-			locationBar,
-		)
-	} else {
-		attrs = append(attrs,
-			Div(
-				Class("flex flex-col gap-1"),
-				searchBarRow(q, false),
-				locationBar,
-			),
-			Div(ID("filter-panel")),
-		)
-	}
-	attrs = append(attrs, SearchView(userID, view, results))
 	return Form(attrs...)
 }
 
@@ -271,32 +241,37 @@ func searchResultsEmpty() g.Node {
 	return SearchResultsEmptyMessage()
 }
 
-// SearchResultsEmptyMessage is the standard no-results copy for search grids.
-func SearchResultsEmptyMessage() g.Node {
+func searchResultsMessage(text string) g.Node {
 	return P(
 		Class("col-span-full py-8 text-center text-zinc-500 dark:text-zinc-400"),
-		g.Text("Sorry, no ads found matching that criteria."),
+		g.Text(text),
 	)
 }
 
-// OutsideAreaHeading separates in-area from out-of-area search results.
-func OutsideAreaHeading() g.Node {
-	return H2(
-		Class("col-span-full text-lg font-semibold mt-4 mb-2"),
-		g.Text("Outside of area"),
-	)
+// SearchResultsEmptyMessage is the standard no-results copy for search grids.
+func SearchResultsEmptyMessage() g.Node {
+	return searchResultsMessage("Sorry, no ads found matching that criteria.")
 }
 
 // NoInAreaMatchesMessage is shown when geo search has no matches in the within area.
 func NoInAreaMatchesMessage(within int, unit, location string) g.Node {
-	suffix := " mi"
+	unitLabel := "miles"
 	if unit == "km" {
-		suffix = " km"
+		unitLabel = "kilometers"
 	}
-	msg := "No matching ads were found within " +
-		strconv.Itoa(within) + suffix + " of " + location
-	return P(
-		Class("col-span-full py-4 text-center text-zinc-500 dark:text-zinc-400"),
-		g.Text(msg),
+	msg := fmt.Sprintf("Sorry, no ads found within %d %s of %s.", within, unitLabel, location)
+	return searchResultsMessage(msg)
+}
+
+// OutsideAreaHeading separates in-area from out-of-area search results.
+func OutsideAreaHeading() g.Node {
+	return Div(
+		Class("col-span-full flex items-center gap-4 my-6"),
+		Span(Class("flex-1 border-t border-blue-500 dark:border-blue-400")),
+		Span(
+			Class("shrink-0 text-base font-medium text-blue-600 dark:text-blue-400"),
+			g.Text("Outside of area"),
+		),
+		Span(Class("flex-1 border-t border-blue-500 dark:border-blue-400")),
 	)
 }

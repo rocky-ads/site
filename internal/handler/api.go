@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cookie"
+	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/param"
 	"github.com/rocky-ads/site/internal/ui"
 	g "maragu.dev/gomponents"
@@ -31,15 +32,25 @@ func SwitchCategoryHandler(c *fiber.Ctx) error {
 	return c.Send(nil)
 }
 
-func renderFilterPanelResponse(c *fiber.Ctx, state cookie.SearchState, panel g.Node) error {
+func renderFilterPanelResponse(c *fiber.Ctx, state cookie.SearchState) error {
 	view, _, results, err := searchFromRequest(c, state)
 	if err != nil {
 		return err
 	}
 
+	unit := distanceUnit(c)
+	categoryID := cookie.GetCategoryID(c)
+	category, err := ad.GetCategory(categoryID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+	var filterFacets []facet.Def
+	if state.Expanded {
+		filterFacets = filterableFacets(category)
+	}
+
 	return render(c, g.Group([]g.Node{
-		panel,
-		ui.SearchBarOOB(state.Q, state.Expanded),
+		ui.SearchAreaOOB(state.Q, state.Expanded, filterFacets, searchStateToFilters(state, unit)),
 		ui.SearchResultsOOB(view, results),
 	}))
 }
@@ -47,19 +58,13 @@ func renderFilterPanelResponse(c *fiber.Ctx, state cookie.SearchState, panel g.N
 func ShowFiltersHandler(c *fiber.Ctx) error {
 	expanded := true
 	state := saveSearchStateFromRequest(c, &expanded, false)
-	unit := distanceUnit(c)
-	categoryID := cookie.GetCategoryID(c)
-	category, err := ad.GetCategory(categoryID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-	return renderFilterPanelResponse(c, state, ui.FilterPanel(state.Q, filterableFacets(category), searchStateToFilters(state, unit)))
+	return renderFilterPanelResponse(c, state)
 }
 
 func HideFiltersHandler(c *fiber.Ctx) error {
 	expanded := false
 	state := saveSearchStateFromRequest(c, &expanded, true)
-	return renderFilterPanelResponse(c, state, g.Text(""))
+	return renderFilterPanelResponse(c, state)
 }
 
 func SearchPageHandler(c *fiber.Ctx) error {

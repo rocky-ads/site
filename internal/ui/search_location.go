@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"strconv"
+
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
@@ -31,26 +33,20 @@ func SearchLocationModal(f uiads.SearchFilters) g.Node {
 					modalClose("search-location"),
 				),
 				Div(
-					Class("p-6 space-y-4"),
+					Class("p-6 space-y-4 text-zinc-900 dark:text-zinc-200"),
 					Form(
 						ID("search-location-form"),
-						Class("space-y-4"),
+						Class("space-y-8"),
 						g.Attr("onsubmit", "event.preventDefault(); return false;"),
-						Div(
-							Class("field-group"),
-							Label(For("modal-search-location"), Class("field-label"), g.Text("Location")),
-							uiads.LocationInput("modal-search-location", "location", f.Location, "City, State or ZIP"),
-						),
-						Div(
-							Class("field-group"),
-							Label(For("modal-search-within"), Class("field-label"), g.Text("Within")),
-							uiads.WithinSelect("modal-search-within", f.Within, f.WithinOptions, suffix),
-						),
+						modalLocationField(f.Location),
+						modalWithinField(f.Within, f.WithinOptions, suffix),
 						Div(
 							Class("flex justify-end gap-2 pt-2"),
 							Button(
 								Type("button"),
-								Class("py-2 px-4 border border-zinc-300 dark:border-zinc-600 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-700"),
+								Class("py-2 px-4 border border-zinc-300 dark:border-zinc-600 rounded-md "+
+									"bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 "+
+									"hover:bg-zinc-100 dark:hover:bg-zinc-600 cursor-pointer"),
 								hx.Get("/api/modal-remove/search-location"),
 								hx.Swap("none"),
 								g.Text("Cancel"),
@@ -69,4 +65,37 @@ func SearchLocationModal(f uiads.SearchFilters) g.Node {
 			),
 		),
 	})
+}
+
+func modalLocationField(value string) g.Node {
+	attrs := []g.Node{
+		Type("text"),
+		Name("location"),
+		ID("modal-search-location"),
+		g.Attr("placeholder", "City, State or ZIP"),
+	}
+	if value != "" {
+		attrs = append(attrs, Value(value))
+	}
+	return labeledTextInput("Location", attrs...)
+}
+
+func modalWithinField(selected int, options []int, suffix string) g.Node {
+	if selected == 0 {
+		selected = 25
+	}
+	opts := make([]g.Node, 0, len(options))
+	for _, n := range options {
+		label := strconv.Itoa(n) + suffix
+		opt := Option(Value(strconv.Itoa(n)), g.Text(label))
+		if n == selected {
+			opt = Option(Value(strconv.Itoa(n)), g.Attr("selected", "selected"), g.Text(label))
+		}
+		opts = append(opts, opt)
+	}
+	return labeledSelect("Within",
+		Name("within"),
+		ID("modal-search-within"),
+		g.Group(opts),
+	)
 }

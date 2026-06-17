@@ -107,13 +107,9 @@ func searchAndRenderAds(
 	inAreaCount := result.InAreaCount
 
 	if offset == 0 && inAreaCount == 0 {
-		nodes := []g.Node{
-			ui.NoInAreaMatchesMessage(displayWithin, unit, location),
-			ui.OutsideAreaHeading(),
-		}
-		if len(cardNodes) == 0 {
-			nodes = append(nodes, ui.SearchResultsEmptyMessage())
-		} else {
+		nodes := []g.Node{ui.NoInAreaMatchesMessage(displayWithin, unit, location)}
+		if len(cardNodes) > 0 {
+			nodes = append(nodes, ui.OutsideAreaHeading())
 			nodes = append(nodes, cardNodes...)
 		}
 		return nodes, nil
@@ -126,7 +122,7 @@ func searchAndRenderAds(
 		headingAt = 0
 	}
 
-	if headingAt < 0 {
+	if headingAt < 0 || headingAt >= len(cardNodes) {
 		return cardNodes, nil
 	}
 
