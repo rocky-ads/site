@@ -16,7 +16,7 @@ func DatabaseURL() string {
 	if url := os.Getenv("DATABASE_URL"); url != "" {
 		return url
 	}
-	return "postgres://localhost:5432/rockyads?sslmode=disable"
+	return "postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable"
 }
 
 // InitSchema drops all tables and applies schema.sql.

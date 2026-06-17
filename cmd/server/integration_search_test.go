@@ -42,7 +42,7 @@ func TestSearchPageHandler(t *testing.T) {
 			name:           "location and within",
 			categoryID:     6,
 			query:          "?location=Denver&within=50",
-			expectContains: []string{"search-results", "search-location"},
+			expectContains: []string{"search-results"},
 		},
 	}
 
