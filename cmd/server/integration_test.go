@@ -523,6 +523,28 @@ func setSearchCookieOnClient(client *http.Client, state cookie.SearchState) erro
 	return nil
 }
 
+func getSearchStateFromClient(client *http.Client) (cookie.SearchState, error) {
+	baseURLParsed, err := url.Parse(baseURL)
+	if err != nil {
+		return cookie.SearchState{}, err
+	}
+	for _, c := range client.Jar.Cookies(baseURLParsed) {
+		if c.Name != "search" {
+			continue
+		}
+		data, err := base64.RawURLEncoding.DecodeString(c.Value)
+		if err != nil {
+			return cookie.SearchState{}, err
+		}
+		var state cookie.SearchState
+		if err := json.Unmarshal(data, &state); err != nil {
+			return cookie.SearchState{}, err
+		}
+		return state, nil
+	}
+	return cookie.SearchState{}, nil
+}
+
 func getRequestWithCookies(t *testing.T, client *http.Client, url string) (*http.Response, string) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {

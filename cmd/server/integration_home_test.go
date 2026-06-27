@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"strings"
 	"testing"
@@ -106,6 +107,49 @@ func TestHomeHandler(t *testing.T) {
 	})
 }
 
+func TestHomeHandlerSearchHiddenByDefault(t *testing.T) {
+	client, err := getClientWithCategoryCookie(6)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	resp, body := getRequestWithCookies(t, client, baseURL+"/")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", resp.StatusCode)
+	}
+	if !strings.Contains(body, `id="search-toggle"`) {
+		t.Error("Expected search toggle on category row")
+	}
+	if !strings.Contains(body, `/images/search.svg`) {
+		t.Error("Expected search icon on category row")
+	}
+	if !strings.Contains(body, `id="search-area" class="flex flex-col hidden"`) {
+		t.Error("Expected hidden #search-area on fresh home page")
+	}
+	if strings.Contains(body, `id="category-modal-backdrop"`) {
+		t.Error("home page should not embed category modal stub elements")
+	}
+}
+
+func TestToggleSearchHandler(t *testing.T) {
+	client, err := getClientWithCategoryCookie(6)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	resp, body := getRequestWithCookies(t, client, baseURL+"/api/toggle-search")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("toggle-search: expected 200, got %d", resp.StatusCode)
+	}
+	if !strings.Contains(body, `id="searchBox"`) {
+		t.Error("toggle-search should reveal search box")
+	}
+	if !strings.Contains(body, `id="search-toggle"`) || !strings.Contains(body, `id="search-toggle" class="`) || !strings.Contains(body, " hidden") {
+		t.Error("toggle-search should hide search icon when search is open")
+	}
+	if !strings.Contains(body, `hx-swap-oob="outerHTML"`) {
+		t.Error("toggle-search should OOB-swap search area and toggle")
+	}
+}
+
 func TestHomeHandlerFiltersExpanded(t *testing.T) {
 	client, err := getClientWithCategoryCookie(6)
 	if err != nil {
@@ -127,7 +171,7 @@ func TestHomeHandlerFiltersExpanded(t *testing.T) {
 		t.Error("Expected #search-area on home page")
 	}
 	if !strings.Contains(body, `id="search-location"`) {
-		t.Error("Expected #search-location under search box when filters expanded")
+		t.Error("Expected #search-location on home page")
 	}
 	if !strings.Contains(body, `id="filter-toggle"`) {
 		t.Error("Expected filter toggle on home page")
@@ -147,21 +191,30 @@ func TestSwitchCategoryHandler(t *testing.T) {
 		expectRedirect         string
 		expectRedirectContains []string
 	}{
-		{"Valid category", "6", "", "", 200, "/", nil},
-		{"Valid category with return", "5", "/auth/ad/new", "", 200, "/auth/ad/new", nil},
-		{"Invalid category ID defaults to default category", "999", "", "", 200, "/", nil},
+		{"Valid category", "6", "", "", 302, "/", nil},
+		{"Valid category with return", "5", "/auth/ad/new", "", 302, "/auth/ad/new", nil},
+		{"Invalid category ID defaults to default category", "999", "", "", 302, "/", nil},
 		{
 			name:           "Redirect URL has no filter query params",
 			categoryID:     "6",
 			queryParams:    "q=Honda&price_min=10000",
-			expectedStatus: 200,
+			expectedStatus: 302,
 			expectRedirect: "/",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := getTestClient()
+			jar, err := cookiejar.New(nil)
+			if err != nil {
+				t.Fatalf("Failed to create cookie jar: %v", err)
+			}
+			client := &http.Client{
+				Jar: jar,
+				CheckRedirect: func(req *http.Request, via []*http.Request) error {
+					return http.ErrUseLastResponse
+				},
+			}
 
 			requestURL := fmt.Sprintf("%s/api/category/%s/switch", baseURL, tt.categoryID)
 			q := url.Values{}
@@ -185,14 +238,14 @@ func TestSwitchCategoryHandler(t *testing.T) {
 				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
 			}
 
-			if tt.expectedStatus == 200 {
-				redirect := resp.Header.Get("HX-Redirect")
+			if tt.expectedStatus == 302 {
+				redirect := resp.Header.Get("Location")
 				if tt.expectRedirect != "" && redirect != tt.expectRedirect {
-					t.Errorf("Expected HX-Redirect %q, got %q", tt.expectRedirect, redirect)
+					t.Errorf("Expected Location %q, got %q", tt.expectRedirect, redirect)
 				}
 				for _, s := range tt.expectRedirectContains {
 					if !strings.Contains(redirect, s) {
-						t.Errorf("Expected HX-Redirect to contain %q, got %q", s, redirect)
+						t.Errorf("Expected Location to contain %q, got %q", s, redirect)
 					}
 				}
 
@@ -227,10 +280,10 @@ func TestSwitchCategoryPreservesSearchCookie(t *testing.T) {
 	}
 	switchURL := baseURL + "/api/category/5/switch?q=Honda&price_min=10000"
 	resp, _ := getRequestWithCookies(t, client, switchURL)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("switch: expected 200, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("switch: expected 302, got %d", resp.StatusCode)
 	}
-	if got := resp.Header.Get("HX-Redirect"); got != "/" {
+	if got := resp.Header.Get("Location"); got != "/" {
 		t.Fatalf("expected redirect /, got %q", got)
 	}
 
@@ -240,6 +293,137 @@ func TestSwitchCategoryPreservesSearchCookie(t *testing.T) {
 	}
 	if !strings.Contains(body, "Honda") {
 		t.Error("expected home page to show search query from cookie")
+	}
+}
+
+func TestSwitchCategoryPreservesSearchOpen(t *testing.T) {
+	client, err := getClientWithCategoryCookie(6)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	if err := setSearchCookieOnClient(client, cookie.SearchState{
+		SearchOpen: true,
+	}); err != nil {
+		t.Fatalf("set search cookie: %v", err)
+	}
+
+	switchURL := baseURL + "/api/category/5/switch"
+	resp, _ := getRequestWithCookies(t, client, switchURL)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("switch: expected 200, got %d", resp.StatusCode)
+	}
+
+	state, err := getSearchStateFromClient(client)
+	if err != nil {
+		t.Fatalf("read search cookie: %v", err)
+	}
+	if !state.SearchOpen {
+		t.Fatal("expected SearchOpen preserved after category switch")
+	}
+
+	resp, body := getRequestWithCookies(t, client, baseURL+"/")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("home: expected 200, got %d", resp.StatusCode)
+	}
+	if strings.Contains(body, `id="search-area" class="flex flex-col hidden"`) {
+		t.Error("expected search bar to stay visible after category switch")
+	}
+}
+
+func TestSwitchCategoryPreservesExpanded(t *testing.T) {
+	client, err := getClientWithCategoryCookie(6)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	if err := setSearchCookieOnClient(client, cookie.SearchState{
+		SearchOpen: true,
+		Expanded:   true,
+	}); err != nil {
+		t.Fatalf("set search cookie: %v", err)
+	}
+
+	switchURL := baseURL + "/api/category/5/switch"
+	resp, _ := getRequestWithCookies(t, client, switchURL)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("switch: expected 200, got %d", resp.StatusCode)
+	}
+
+	state, err := getSearchStateFromClient(client)
+	if err != nil {
+		t.Fatalf("read search cookie: %v", err)
+	}
+	if !state.Expanded {
+		t.Fatal("expected Expanded preserved after category switch")
+	}
+
+	resp, body := getRequestWithCookies(t, client, baseURL+"/")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("home: expected 200, got %d", resp.StatusCode)
+	}
+	if !strings.Contains(body, `title="Collapse filters"`) {
+		t.Error("expected expanded filter panel after category switch")
+	}
+}
+
+func TestSearchPaginationKeepsSearchHidden(t *testing.T) {
+	client, err := getClientWithCategoryCookie(6)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	resp, _ := getRequestWithCookies(t, client, baseURL+"/api/search/?page=2")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("search pagination: expected 200, got %d", resp.StatusCode)
+	}
+	state, err := getSearchStateFromClient(client)
+	if err != nil {
+		t.Fatalf("read search cookie: %v", err)
+	}
+	if state.SearchOpen {
+		t.Fatal("scroll pagination should not open search bar")
+	}
+
+	resp, body := getRequestWithCookies(t, client, baseURL+"/")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("home: expected 200, got %d", resp.StatusCode)
+	}
+	if !strings.Contains(body, `id="search-area" class="flex flex-col hidden"`) {
+		t.Error("expected search area hidden after scroll pagination request")
+	}
+}
+
+func TestMultipleCategorySwitchesKeepSearchHidden(t *testing.T) {
+	client, err := getClientWithCategoryCookie(6)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	// Simulate scroll sentinel firing while browsing.
+	resp, _ := getRequestWithCookies(t, client, baseURL+"/api/search/?page=2")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("search pagination: expected 200, got %d", resp.StatusCode)
+	}
+
+	categories := []int{5, 4, 3}
+	for _, id := range categories {
+		switchURL := fmt.Sprintf("%s/api/category/%d/switch", baseURL, id)
+		resp, _ = getRequestWithCookies(t, client, switchURL)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("switch to category %d: expected 200, got %d", id, resp.StatusCode)
+		}
+		state, err := getSearchStateFromClient(client)
+		if err != nil {
+			t.Fatalf("read search cookie: %v", err)
+		}
+		if state.SearchOpen {
+			t.Fatalf("category %d switch left SearchOpen true", id)
+		}
+	}
+
+	resp, body := getRequestWithCookies(t, client, baseURL+"/")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("home: expected 200, got %d", resp.StatusCode)
+	}
+	if !strings.Contains(body, `id="search-area" class="flex flex-col hidden"`) {
+		t.Error("expected search area hidden after multiple category switches")
 	}
 }
 

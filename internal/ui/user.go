@@ -191,7 +191,14 @@ func UserMenu(userName, memberSince string, userID int, isAdmin bool, hasUnread 
 
 func MyAdsPage(activeTab string, adNodes []g.Node) []g.Node {
 	return []g.Node{
-		pageTitle("My Ads"),
+		Div(
+			Class("flex items-center justify-between gap-4"),
+			pageTitle("My Ads"),
+			standardButton(buttonProps{
+				Href: "/auth/ad/new",
+				Text: "New Ad",
+			}),
+		),
 		MyAdsContainer(activeTab, adNodes),
 	}
 }
@@ -323,13 +330,6 @@ func settingsAccountSection(userName, phoneE64 string) g.Node {
 	)
 }
 
-func namedPasswordInput(name, autocomplete string) g.Node {
-	return PasswordField(PasswordFieldView{
-		Name:         name,
-		Autocomplete: autocomplete,
-	})
-}
-
 func NotificationsSection(smsOptedOut bool) g.Node {
 	enabled := !smsOptedOut
 	statusClass := "text-green-600 dark:text-green-400"
@@ -394,22 +394,15 @@ func SettingsPage(name, phoneE64 string, smsOptedOut bool) []g.Node {
 				Class("space-y-4"),
 				hx.Post("/auth/user/settings/password"),
 				hx.Swap("none"),
+				labeledPasswordField("Current Password", "current_password", "current-password"),
 				Div(
-					label("Current Password"),
-					namedPasswordInput("current_password", "current-password"),
-				),
-				Div(
-					label("New Password"),
-					namedPasswordInput("new_password", "new-password"),
+					labeledPasswordField("New Password", "new_password", "new-password"),
 					Span(
 						Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1 block"),
 						g.Text(password.StrengthRequirements),
 					),
 				),
-				Div(
-					label("Confirm New Password"),
-					namedPasswordInput("confirm_password", "new-password"),
-				),
+				labeledPasswordField("Confirm New Password", "confirm_password", "new-password"),
 				settingsFormActions(buttonProps{
 					Type: "submit",
 					Text: "Change Password",
@@ -425,10 +418,7 @@ func SettingsPage(name, phoneE64 string, smsOptedOut bool) []g.Node {
 				Class("space-y-4"),
 				hx.Post("/auth/user/settings/delete"),
 				hx.Swap("none"),
-				Div(
-					label("Password"),
-					namedPasswordInput("password", "current-password"),
-				),
+				labeledPasswordField("Password", "password", "current-password"),
 				settingsFormActions(buttonProps{
 					Type:  "submit",
 					Text:  "Delete My Account",

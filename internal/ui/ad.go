@@ -185,7 +185,7 @@ func AdGridNode(userID, adID, imageCount, nextPage int, priceDisplay, title, loc
 }
 
 func AdListNode(userID, adID int, priceDisplay, title, location, facetLabel string, hasPrice bool, createdAt time.Time, active, bookmarked bool, csrfToken string, isLast bool, nextPage int, eggCount int) g.Node {
-	class := "flex flex-wrap items-center justify-between py-2 px-3 cursor-pointer"
+	class := "flex flex-wrap items-center justify-between py-2 cursor-pointer"
 	if active {
 		class += " hover:bg-zinc-50 dark:hover:bg-zinc-800"
 	} else {
@@ -390,6 +390,7 @@ func AdShareModal(path string) g.Node {
 						Class("flex flex-col gap-2"),
 						Label(
 							Class("text-sm font-medium text-zinc-700 dark:text-zinc-300"),
+							For("ad-link-input"),
 							g.Text("Ad Link"),
 						),
 						Div(
@@ -745,29 +746,25 @@ func adForm(cfg uiads.AdFormConfig, fields g.Node) g.Node {
 }
 
 func NewAd(category CategoryOption, fields g.Node) []g.Node {
-	return append([]g.Node{
-		categoryButton(category, "/auth/ad/new"),
+	return []g.Node{
+		Div(Class("mb-4"), categoryButton(category, "/auth/ad/new")),
 		pageTitle("Create New Ad"),
 		newAdForm(fields),
-	}, RemoveModal("category")...)
+	}
 }
 
 func EditAd(category CategoryOption, cfg uiads.AdFormConfig, fields g.Node) []g.Node {
 	imagePath := "/images/category/" + category.ImageFile
 	return []g.Node{
 		Div(
-			Class("flex items-center gap-5 mb-4"),
-			Label(Class("font-bold"), g.Text("Category")),
-			Div(
-				Class("py-2 px-5 flex items-center gap-2 rounded-full border-2 "+
-					"border-zinc-300 bg-zinc-100 dark:bg-zinc-800 dark:border-zinc-600"),
-				Img(
-					Src(imagePath),
-					Alt("Category icon"),
-					Class("w-6 h-6 dark:invert dark:opacity-80"),
-				),
-				Span(g.Text(category.Name)),
+			Class("py-2 px-5 flex items-center gap-2 rounded-full border-2 mb-4 "+
+				"border-zinc-300 bg-zinc-100 dark:bg-zinc-800 dark:border-zinc-600"),
+			Img(
+				Src(imagePath),
+				Alt("Category icon"),
+				Class("w-6 h-6 dark:invert dark:opacity-80"),
 			),
+			Span(g.Text(category.Name)),
 		),
 		pageTitle("Edit Ad"),
 		adForm(cfg, fields),

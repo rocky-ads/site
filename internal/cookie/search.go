@@ -13,11 +13,12 @@ const searchCookieName = "search"
 
 // SearchState holds persisted search filters and panel expand/collapse.
 type SearchState struct {
-	Q        string                  `json:"q,omitempty"`
-	Facets   map[string]facet.Filter `json:"facets,omitempty"`
-	Location string                  `json:"location,omitempty"`
-	Within   int                     `json:"within,omitempty"`
-	Expanded bool                    `json:"expanded,omitempty"`
+	Q          string                  `json:"q,omitempty"`
+	Facets     map[string]facet.Filter `json:"facets,omitempty"`
+	Location   string                  `json:"location,omitempty"`
+	Within     int                     `json:"within,omitempty"`
+	Expanded   bool                    `json:"expanded,omitempty"`
+	SearchOpen bool                    `json:"search_open,omitempty"`
 }
 
 func GetSearchState(c *fiber.Ctx) SearchState {

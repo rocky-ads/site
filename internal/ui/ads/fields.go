@@ -21,14 +21,14 @@ func NewAdFieldsPartial(facets []facet.Def, defaults facet.FormDefaults) g.Node 
 func AdFieldsPartial(cfg AdFormConfig, facets []facet.Def) g.Node {
 	f := adFields{cfg: cfg}
 	nodes := []g.Node{
-		fieldBlock("Title", f.titleInput()),
-		fieldBlock("Description", f.descriptionFields()),
+		fieldBlock("Title", f.cfg.fieldID("title"), f.titleInput()),
+		fieldBlock("Description", "", f.descriptionFields()),
 	}
 	if !hasLocationFacet(facets) {
-		nodes = append(nodes, fieldBlock("Location (optional)", f.locationInput()))
+		nodes = append(nodes, fieldBlock("Location (optional)", f.cfg.fieldID("location"), f.locationInput()))
 	}
 	for _, d := range facets {
-		nodes = append(nodes, facetFieldBlock(d, f.facetInput(d)))
+		nodes = append(nodes, f.facetFieldBlock(d, f.facetInput(d)))
 	}
 
 	return Div(
@@ -213,18 +213,31 @@ func (f adFields) facetUnitSelect(name, selected string, units []string) g.Node 
 	)
 }
 
-func facetFieldBlock(d facet.Def, input g.Node) g.Node {
+func (f adFields) facetFieldBlock(d facet.Def, input g.Node) g.Node {
 	label := d.Label
 	if !d.Required {
 		label += " (optional)"
 	}
-	return fieldBlock(label, input)
+	fieldID := ""
+	switch d.Form {
+	case facet.FormRadio, facet.FormCheckboxes:
+		// Group headings are not tied to a single control.
+	default:
+		fieldID = f.cfg.fieldID(d.Key)
+	}
+	return fieldBlock(label, fieldID, input)
 }
 
-func fieldBlock(label string, input g.Node) g.Node {
+func fieldBlock(labelText, fieldID string, input g.Node) g.Node {
+	var labelNode g.Node
+	if fieldID != "" {
+		labelNode = Label(Class("field-label"), For(fieldID), g.Text(labelText))
+	} else {
+		labelNode = Span(Class("field-label"), g.Text(labelText))
+	}
 	return Div(
 		Class("field-group"),
-		Label(Class("field-label"), g.Text(label)),
+		labelNode,
 		input,
 	)
 }
@@ -257,6 +270,7 @@ func (f adFields) editDescriptionFields() g.Node {
 			Class("field-group"),
 			Label(
 				Class("field-label"),
+				For(f.cfg.fieldID("description-addition")),
 				g.Text("Add to Description (optional)"),
 			),
 			Textarea(

@@ -181,8 +181,8 @@ func TestSwitchCategoryClearsMileageFilter(t *testing.T) {
 
 	switchURL := baseURL + "/api/category/5/switch?q=Honda&mileage_min=10000"
 	resp, _ := getRequestWithCookies(t, client, switchURL)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("switch: expected 200, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("switch: expected 302, got %d", resp.StatusCode)
 	}
 
 	resp, body := getRequestWithCookies(t, client, baseURL+"/api/show-filters")
