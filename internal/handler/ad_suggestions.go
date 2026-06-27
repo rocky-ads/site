@@ -31,8 +31,8 @@ func EditSuggestionsHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
 	}
 
-	loc := cookie.GetLocation(c)
-	a, err := ad.GetAd(userID, adID, loc)
+	tz := cookie.GetTimezone(c)
+	a, err := ad.GetAd(userID, adID, tz)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
@@ -140,7 +140,7 @@ func parseFormFacetValues(c *fiber.Ctx, category ad.Category) map[string]facet.V
 			if len(d.Units) > 0 {
 				unit := strings.TrimSpace(c.FormValue(d.Key + "_unit"))
 				if unit == "" {
-					unit = distanceUnit(c)
+					unit = cookie.GetDistanceUnit(c)
 				}
 				if d.ValidUnit(unit) {
 					u := d.NormalizeUnit(unit)

@@ -21,16 +21,16 @@ const (
 	memberSinceLayoutSummary = "Jan 2006"
 )
 
-func userProfileData(u user.User, activeAdCount, userEggCount int, loc *time.Location, memberSinceLayout string) ui.UserProfileData {
+func userProfileData(u user.User, activeAdCount, userEggCount int, tz *time.Location, memberSinceLayout string) ui.UserProfileData {
 	return ui.UserProfileData{
 		Name:          u.Name,
-		MemberSince:   u.CreatedAt.In(loc).Format(memberSinceLayout),
+		MemberSince:   u.CreatedAt.In(tz).Format(memberSinceLayout),
 		ActiveAdCount: activeAdCount,
 		UserEggCount:  userEggCount,
 	}
 }
 
-func loadUserMenuContext(userID int, loc *time.Location) (name, memberSince string, isAdmin, hasUnread bool, eggCount, userEggCount int, err error) {
+func loadUserMenuContext(userID int, tz *time.Location) (name, memberSince string, isAdmin, hasUnread bool, eggCount, userEggCount int, err error) {
 	u, err := user.GetByID(userID)
 	if err != nil {
 		return "", "", false, false, 0, 0, err
@@ -38,14 +38,14 @@ func loadUserMenuContext(userID int, loc *time.Location) (name, memberSince stri
 	hasUnread, _ = message.GetHasUnread(userID)
 	eggCount, _ = egg.GetUserEggCount(userID)
 	userEggCount, _ = egg.GetEggCountForUser(userID)
-	memberSince = u.CreatedAt.In(loc).Format(memberSinceLayoutSummary)
+	memberSince = u.CreatedAt.In(tz).Format(memberSinceLayoutSummary)
 	return u.Name, memberSince, u.IsAdmin, hasUnread, eggCount, userEggCount, nil
 }
 
 func UserMenuHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
-	loc := cookie.GetLocation(c)
-	name, memberSince, isAdmin, hasUnread, eggCount, userEggCount, err := loadUserMenuContext(userID, loc)
+	tz := cookie.GetTimezone(c)
+	name, memberSince, isAdmin, hasUnread, eggCount, userEggCount, err := loadUserMenuContext(userID, tz)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to load user menu")
 	}
@@ -66,7 +66,7 @@ func UserMyAdsTabHandler(c *fiber.Ctx) error {
 
 func userMyAdsTabHandler(c *fiber.Ctx, activeTab string) error {
 	userID := local.GetUserID(c)
-	loc := cookie.GetLocation(c)
+	tz := cookie.GetTimezone(c)
 	csrfToken := local.GetCSRFToken(c)
 
 	// Get ad IDs for the selected tab
@@ -75,12 +75,12 @@ func userMyAdsTabHandler(c *fiber.Ctx, activeTab string) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to load ads")
 	}
 
-	ads, err := ad.GetAds(userID, adIDs, loc)
+	ads, err := ad.GetAds(userID, adIDs, tz)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to load ads")
 	}
 
-	adNodes := ui.AdNodes(adCardsFrom(ads, userID, loc), userID, ui.ViewList, 1, csrfToken, false)
+	adNodes := ui.AdNodes(adCardsFrom(ads, userID, tz), userID, ui.ViewList, 1, csrfToken, false)
 
 	// Check if this is a tab switch (HTMX request) or full page load
 	if c.Get("HX-Request") != "" {
@@ -192,8 +192,8 @@ func UserProfileHandler(c *fiber.Ctx) error {
 	}
 	activeAdCount, _ := ad.CountActiveAdsByUser(id)
 	userEggCount, _ := egg.GetEggCountForUser(id)
-	loc := cookie.GetLocation(c)
-	d := userProfileData(u, activeAdCount, userEggCount, loc, memberSinceLayoutPage)
+	tz := cookie.GetTimezone(c)
+	d := userProfileData(u, activeAdCount, userEggCount, tz, memberSinceLayoutPage)
 	return renderPage(c, u.Name, ui.UserProfilePage(d))
 }
 
@@ -208,8 +208,8 @@ func UserSummaryHandler(c *fiber.Ctx) error {
 	}
 	activeAdCount, _ := ad.CountActiveAdsByUser(id)
 	userEggCount, _ := egg.GetEggCountForUser(id)
-	loc := cookie.GetLocation(c)
-	d := userProfileData(u, activeAdCount, userEggCount, loc, memberSinceLayoutSummary)
+	tz := cookie.GetTimezone(c)
+	d := userProfileData(u, activeAdCount, userEggCount, tz, memberSinceLayoutSummary)
 	return render(c, ui.UserSummaryFragment(d))
 }
 
@@ -225,7 +225,7 @@ func UserEggConversationHandler(c *fiber.Ctx) error {
 	}
 
 	currentUserID := local.GetUserID(c)
-	loc := cookie.GetLocation(c)
+	tz := cookie.GetTimezone(c)
 	csrfToken := local.GetCSRFToken(c)
 
 	// Get conversation ID by ordinal
@@ -243,7 +243,7 @@ func UserEggConversationHandler(c *fiber.Ctx) error {
 	}
 
 	if message.IsParticipant(conv, currentUserID) {
-		return renderConversationModal(c, conv, currentUserID, loc, csrfToken)
+		return renderConversationModal(c, conv, currentUserID, tz, csrfToken)
 	}
-	return renderEggOpinionModal(c, conv, currentUserID, loc)
+	return renderEggOpinionModal(c, conv, currentUserID, tz)
 }

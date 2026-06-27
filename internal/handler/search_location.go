@@ -9,7 +9,7 @@ import (
 )
 
 func SearchLocationModalHandler(c *fiber.Ctx) error {
-	unit := distanceUnit(c)
+	unit := cookie.GetDistanceUnit(c)
 	state := cookie.GetSearchState(c)
 	filters := searchStateToFilters(state, unit)
 	return render(c, ui.SearchLocationModal(filters))
@@ -23,7 +23,7 @@ func SearchLocationSaveHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	unit := distanceUnit(c)
+	unit := cookie.GetDistanceUnit(c)
 	filters := searchStateToFilters(state, unit)
 
 	nodes := []g.Node{

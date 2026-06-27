@@ -41,7 +41,7 @@ func renderFilterPanelResponse(c *fiber.Ctx, state cookie.SearchState) error {
 		return err
 	}
 
-	unit := distanceUnit(c)
+	unit := cookie.GetDistanceUnit(c)
 	categoryID := cookie.GetCategoryID(c)
 	category, err := ad.GetCategory(categoryID)
 	if err != nil {

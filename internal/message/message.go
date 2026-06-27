@@ -449,7 +449,7 @@ func GetPublicConversations(adID int) ([]Conversation, error) {
 	return conversations, nil
 }
 
-func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLastMessage, error) {
+func GetUserConversations(userID int, tz *time.Location) ([]ConversationWithLastMessage, error) {
 	query := `
 		SELECT
 			c.id,
@@ -579,10 +579,10 @@ func GetUserConversations(userID int, loc *time.Location) ([]ConversationWithLas
 	}
 
 	for i := range conversations {
-		conversations[i].CreatedAt = conversations[i].CreatedAt.In(loc)
-		conversations[i].UpdatedAt = conversations[i].UpdatedAt.In(loc)
+		conversations[i].CreatedAt = conversations[i].CreatedAt.In(tz)
+		conversations[i].UpdatedAt = conversations[i].UpdatedAt.In(tz)
 		if conversations[i].LastMessageAt != nil {
-			converted := (*conversations[i].LastMessageAt).In(loc)
+			converted := (*conversations[i].LastMessageAt).In(tz)
 			conversations[i].LastMessageAt = &converted
 		}
 	}
@@ -625,7 +625,7 @@ func enrichConversationListItems(conversations []ConversationWithLastMessage) {
 	}
 }
 
-func GetConversationMessages(conversationID, userID int, loc *time.Location) ([]Message, error) {
+func GetConversationMessages(conversationID, userID int, tz *time.Location) ([]Message, error) {
 	// Allow access if user is participant OR conversation is public
 	conv, err := GetConversation(conversationID, userID)
 	if err != nil {
@@ -646,7 +646,7 @@ func GetConversationMessages(conversationID, userID int, loc *time.Location) ([]
 	}
 
 	for i := range messages {
-		messages[i].CreatedAt = messages[i].CreatedAt.In(loc)
+		messages[i].CreatedAt = messages[i].CreatedAt.In(tz)
 	}
 
 	return messages, nil

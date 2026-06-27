@@ -65,7 +65,7 @@ func placeholdersFrom(start, n int) string {
 	return strings.Join(ph, ",")
 }
 
-func GetAds(userID int, ids []int, loc *time.Location) ([]Ad, error) {
+func GetAds(userID int, ids []int, tz *time.Location) ([]Ad, error) {
 	if len(ids) == 0 {
 		return []Ad{}, nil
 	}
@@ -108,9 +108,9 @@ func GetAds(userID int, ids []int, loc *time.Location) ([]Ad, error) {
 
 	// Convert timestamps to local timezone
 	for i := range ads {
-		ads[i].CreatedAt = ads[i].CreatedAt.In(loc)
+		ads[i].CreatedAt = ads[i].CreatedAt.In(tz)
 		if ads[i].DeletedAt != nil {
-			converted := (*ads[i].DeletedAt).In(loc)
+			converted := (*ads[i].DeletedAt).In(tz)
 			ads[i].DeletedAt = &converted
 		}
 	}
@@ -175,8 +175,8 @@ func attachFacets(ads []Ad) error {
 	return nil
 }
 
-func GetAd(userID int, id int, loc *time.Location) (Ad, error) {
-	ads, err := GetAds(userID, []int{id}, loc)
+func GetAd(userID int, id int, tz *time.Location) (Ad, error) {
+	ads, err := GetAds(userID, []int{id}, tz)
 	if err != nil {
 		return Ad{}, err
 	}

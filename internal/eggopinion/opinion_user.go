@@ -20,7 +20,7 @@ type promptInput struct {
 	InquirerID   int
 	EggThrowerID int
 	EggThrownAt  time.Time
-	Loc          *time.Location
+	Tz           *time.Location
 }
 
 func buildUserPrompt(in promptInput) string {
@@ -51,8 +51,8 @@ func buildUserPrompt(in promptInput) string {
 	}
 
 	complaintAt := in.EggThrownAt
-	if in.Loc != nil {
-		complaintAt = complaintAt.In(in.Loc)
+	if in.Tz != nil {
+		complaintAt = complaintAt.In(in.Tz)
 	}
 	b.WriteString("\nDispute metadata:\n")
 	if in.EggThrowerID == in.InquirerID {
@@ -75,8 +75,8 @@ func buildUserPrompt(in promptInput) string {
 				sender = "Owner"
 			}
 			at := m.CreatedAt
-			if in.Loc != nil {
-				at = at.In(in.Loc)
+			if in.Tz != nil {
+				at = at.In(in.Tz)
 			}
 			fmt.Fprintf(&b, "[%s] %s: %s\n",
 				at.Format(time.RFC3339), sender, m.Content)

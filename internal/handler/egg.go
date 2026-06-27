@@ -17,7 +17,7 @@ func ThrowEggHandler(c *fiber.Ctx) error {
 	}
 
 	currentUserID := local.GetUserID(c)
-	loc := cookie.GetLocation(c)
+	tz := cookie.GetTimezone(c)
 	csrfToken := local.GetCSRFToken(c)
 
 	conv, err := message.GetConversation(conversationID, currentUserID)
@@ -46,7 +46,7 @@ func ThrowEggHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get conversation")
 	}
 
-	return renderConversationModalSwapOOB(c, conv, currentUserID, loc, csrfToken)
+	return renderConversationModalSwapOOB(c, conv, currentUserID, tz, csrfToken)
 }
 
 func UnthrowEggHandler(c *fiber.Ctx) error {
@@ -56,7 +56,7 @@ func UnthrowEggHandler(c *fiber.Ctx) error {
 	}
 
 	currentUserID := local.GetUserID(c)
-	loc := cookie.GetLocation(c)
+	tz := cookie.GetTimezone(c)
 	csrfToken := local.GetCSRFToken(c)
 
 	conv, err := message.GetConversation(conversationID, currentUserID)
@@ -86,5 +86,5 @@ func UnthrowEggHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get conversation")
 	}
 
-	return renderConversationModalSwapOOB(c, conv, currentUserID, loc, csrfToken)
+	return renderConversationModalSwapOOB(c, conv, currentUserID, tz, csrfToken)
 }

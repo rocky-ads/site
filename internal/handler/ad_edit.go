@@ -24,8 +24,8 @@ func EditAdHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
 	}
 
-	loc := cookie.GetLocation(c)
-	a, err := ad.GetAd(userID, adID, loc)
+	tz := cookie.GetTimezone(c)
+	a, err := ad.GetAd(userID, adID, tz)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
@@ -60,8 +60,8 @@ func UpdateAdHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
 	}
 
-	loc := cookie.GetLocation(c)
-	a, err := ad.GetAd(userID, adID, loc)
+	tz := cookie.GetTimezone(c)
+	a, err := ad.GetAd(userID, adID, tz)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
@@ -99,7 +99,7 @@ func UpdateAdHandler(c *fiber.Ctx) error {
 		Facets:              facets,
 		Suggestions:         parseAdSuggestions(c),
 		ImagesAdded:         len(imageFiles),
-		Loc:                 loc,
+		Tz:                  tz,
 	})
 	if err != nil {
 		return showError(c, err.Error())

@@ -100,8 +100,8 @@ func ImageFullScreenHandler(c *fiber.Ctx) error {
 
 func adImageCount(c *fiber.Ctx, adID int) (int, error) {
 	userID := local.GetUserID(c)
-	loc := cookie.GetLocation(c)
-	a, err := ad.GetAd(userID, adID, loc)
+	tz := cookie.GetTimezone(c)
+	a, err := ad.GetAd(userID, adID, tz)
 	if err != nil {
 		return 0, fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}

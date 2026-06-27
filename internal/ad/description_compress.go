@@ -65,15 +65,15 @@ func historyEntryText(e historyEntry) string {
 func EnsureDescriptionFits(
 	desc string,
 	at time.Time,
-	loc *time.Location,
+	tz *time.Location,
 ) (string, error) {
-	return ensureDescriptionFits(desc, at, loc)
+	return ensureDescriptionFits(desc, at, tz)
 }
 
 func ensureDescriptionFits(
 	desc string,
 	at time.Time,
-	loc *time.Location,
+	tz *time.Location,
 ) (string, error) {
 	max := config.MaxAdDescriptionLength
 	if descriptionRuneCount(desc) <= max {
@@ -100,7 +100,7 @@ func ensureDescriptionFits(
 		"Description compressed",
 		"Original description was summarized to make room for edit history.",
 		at,
-		loc,
+		tz,
 	)
 	if descriptionRuneCount(desc) <= max {
 		return desc, nil
@@ -132,7 +132,7 @@ func ensureDescriptionFits(
 		return "", fmt.Errorf("compress history: %w", err)
 	}
 	mergedOld := historyEntry{
-		header: historyMarker + formatHistoryTimestamp(at, loc) +
+		header: historyMarker + formatHistoryTimestamp(at, tz) +
 			"  History compressed",
 		body: compressedHistory,
 	}

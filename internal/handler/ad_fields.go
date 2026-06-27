@@ -50,7 +50,7 @@ func NewAdPriceFieldHandler(c *fiber.Ctx) error {
 func newAdFormDefaults(c *fiber.Ctx) facet.FormDefaults {
 	return facet.FormDefaults{
 		Currency: defaultCurrencyForUser(c),
-		Unit:     distanceUnit(c),
+		Unit:     cookie.GetDistanceUnit(c),
 	}
 }
 

@@ -270,8 +270,8 @@ func RegisterStep3Handler(c *fiber.Ctx) error {
 		return showError(c, "Registration successful, but login failed. Please try logging in.")
 	}
 
-	// Set JWT cookie
 	cookie.SetJWT(c, token)
+	cookie.SetDistanceUnitForUser(c, u.PhoneE64)
 
 	c.Set("HX-Redirect", "/auth/welcome")
 	return c.SendStatus(fiber.StatusOK)

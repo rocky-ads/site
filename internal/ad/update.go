@@ -21,12 +21,12 @@ type UpdateInput struct {
 	Facets              map[string]facet.Value
 	Suggestions         []Suggestion
 	ImagesAdded         int
-	Loc                 *time.Location
+	Tz                  *time.Location
 	Now                 time.Time
 }
 
 func UpdateAd(input UpdateInput) error {
-	a, err := GetAd(input.UserID, input.AdID, input.Loc)
+	a, err := GetAd(input.UserID, input.AdID, input.Tz)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func UpdateAd(input UpdateInput) error {
 	desc := a.Description
 	if addition != "" {
 		desc = AppendHistoryEntry(
-			desc, "Description Addition", addition, now, input.Loc,
+			desc, "Description Addition", addition, now, input.Tz,
 		)
 	}
 	if input.ImagesAdded > 0 {
@@ -99,7 +99,7 @@ func UpdateAd(input UpdateInput) error {
 		}
 		body := formatImageAdditionBody(a.ImageCount+1, input.ImagesAdded)
 		desc = AppendHistoryEntry(
-			desc, imagesAddedLabel, body, now, input.Loc,
+			desc, imagesAddedLabel, body, now, input.Tz,
 		)
 	}
 	locText := input.LocationText
@@ -109,15 +109,15 @@ func UpdateAd(input UpdateInput) error {
 	for _, e := range BuildFieldChangeEntries(
 		a, title, locText, values, category,
 	) {
-		desc = AppendHistoryEntry(desc, e.label, e.body, now, input.Loc)
+		desc = AppendHistoryEntry(desc, e.label, e.body, now, input.Tz)
 	}
 	if body := FormatTagUpdates(a.Tags, newSuggestions); body != "" {
 		desc = AppendHistoryEntry(
-			desc, "Description Tags", body, now, input.Loc,
+			desc, "Description Tags", body, now, input.Tz,
 		)
 	}
 
-	desc, err = EnsureDescriptionFits(desc, now, input.Loc)
+	desc, err = EnsureDescriptionFits(desc, now, input.Tz)
 	if err != nil {
 		return err
 	}

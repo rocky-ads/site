@@ -16,6 +16,7 @@ func LoginHandler(c *fiber.Ctx) error {
 
 func logout(c *fiber.Ctx) {
 	cookie.ClearJWT(c)
+	cookie.ResetDistanceUnit(c)
 	local.SetUserID(c, 0)
 	local.SetUserName(c, "")
 	local.SetUserIsAdmin(c, false)
@@ -59,8 +60,8 @@ func LoginSubmitHandler(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
 
-	// Set JWT cookie
 	cookie.SetJWT(c, token)
+	cookie.SetDistanceUnitForUser(c, u.PhoneE64)
 
 	// Redirect to home page using HTMX
 	c.Set("HX-Redirect", "/")

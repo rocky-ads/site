@@ -54,20 +54,20 @@ func conversationModalData(
 	}
 }
 
-func messageItemData(msg message.Message, currentUserID int, loc *time.Location) ui.MessageItemData {
+func messageItemData(msg message.Message, currentUserID int, tz *time.Location) ui.MessageItemData {
 	return ui.MessageItemData{
 		SenderID:      msg.SenderID,
 		CurrentUserID: currentUserID,
 		Content:       msg.Content,
-		CreatedAt:     msg.CreatedAt.In(loc),
+		CreatedAt:     msg.CreatedAt.In(tz),
 	}
 }
 
-func eggEventData(throwerID, currentUserID, ownerID, inquirerID int, thrownAt time.Time, loc *time.Location) ui.EggEventData {
+func eggEventData(throwerID, currentUserID, ownerID, inquirerID int, thrownAt time.Time, tz *time.Location) ui.EggEventData {
 	return ui.EggEventData{
 		ThrowerID:     throwerID,
 		CurrentUserID: currentUserID,
-		ThrownAt:      thrownAt.In(loc),
+		ThrownAt:      thrownAt.In(tz),
 		OwnerID:       ownerID,
 		InquirerID:    inquirerID,
 	}
@@ -78,7 +78,7 @@ func conversationListItemData(
 	adTitle, lastMessageContent, otherUserName string,
 	lastMessageAt *time.Time, updatedAt time.Time,
 	hasUnread bool, eggCount, otherUserEggCount int,
-	loc *time.Location,
+	tz *time.Location,
 ) ui.ConversationListItemData {
 	d := ui.ConversationListItemData{
 		ConversationID:     conversationID,
@@ -89,13 +89,13 @@ func conversationListItemData(
 		AdTitle:            adTitle,
 		LastMessageContent: lastMessageContent,
 		OtherUserName:      otherUserName,
-		UpdatedAt:          updatedAt.In(loc),
+		UpdatedAt:          updatedAt.In(tz),
 		HasUnread:          hasUnread,
 		EggCount:           eggCount,
 		OtherUserEggCount:  otherUserEggCount,
 	}
 	if lastMessageAt != nil {
-		t := lastMessageAt.In(loc)
+		t := lastMessageAt.In(tz)
 		d.LastMessageAt = &t
 	}
 	return d
@@ -119,17 +119,17 @@ func conversationListItemFromConv(conv message.ConversationWithLastMessage, curr
 	}
 }
 
-func messageTimelineFromView(view message.ConversationModalView, currentUserID int, loc *time.Location) []g.Node {
+func messageTimelineFromView(view message.ConversationModalView, currentUserID int, tz *time.Location) []g.Node {
 	msgs := make([]ui.MessageItemData, len(view.Messages))
 	for i, msg := range view.Messages {
-		msgs[i] = messageItemData(msg, currentUserID, loc)
+		msgs[i] = messageItemData(msg, currentUserID, tz)
 	}
 	var egg *ui.EggEventData
 	conv := view.Conversation
 	if conv.EggThrowerID != nil && conv.EggThrownAt != nil {
 		e := eggEventData(
 			*conv.EggThrowerID, currentUserID, conv.OwnerID, conv.InquirerID,
-			*conv.EggThrownAt, loc)
+			*conv.EggThrownAt, tz)
 		egg = &e
 	}
 	return ui.MessageTimeline(msgs, egg)
@@ -162,11 +162,11 @@ func renderConversationModalView(
 	c *fiber.Ctx,
 	view message.ConversationModalView,
 	currentUserID int,
-	loc *time.Location,
+	tz *time.Location,
 	csrfToken, targetModalID string,
 	mode conversationModalRenderMode,
 ) error {
-	messageNodes := messageTimelineFromView(view, currentUserID, loc)
+	messageNodes := messageTimelineFromView(view, currentUserID, tz)
 	data := conversationModalDataFromView(view, currentUserID, csrfToken, targetModalID, messageNodes)
 	if mode == modalRenderInitial {
 		return render(c, ui.ConversationModalWithEgg(data))
@@ -174,20 +174,20 @@ func renderConversationModalView(
 	return render(c, ui.ConversationModalSwapOOB(data))
 }
 
-func renderConversationModal(c *fiber.Ctx, conv message.Conversation, currentUserID int, loc *time.Location, csrfToken string) error {
-	view, err := message.BuildConversationModal(conv, currentUserID, loc)
+func renderConversationModal(c *fiber.Ctx, conv message.Conversation, currentUserID int, tz *time.Location, csrfToken string) error {
+	view, err := message.BuildConversationModal(conv, currentUserID, tz)
 	if err != nil {
 		return buildConversationModalError(err)
 	}
-	return renderConversationModalView(c, view, currentUserID, loc, csrfToken, "", modalRenderInitial)
+	return renderConversationModalView(c, view, currentUserID, tz, csrfToken, "", modalRenderInitial)
 }
 
-func renderConversationModalSwapOOB(c *fiber.Ctx, conv message.Conversation, currentUserID int, loc *time.Location, csrfToken string) error {
-	view, err := message.BuildConversationModal(conv, currentUserID, loc)
+func renderConversationModalSwapOOB(c *fiber.Ctx, conv message.Conversation, currentUserID int, tz *time.Location, csrfToken string) error {
+	view, err := message.BuildConversationModal(conv, currentUserID, tz)
 	if err != nil {
 		return buildConversationModalError(err)
 	}
-	return renderConversationModalView(c, view, currentUserID, loc, csrfToken, "", modalRenderSwapOOB)
+	return renderConversationModalView(c, view, currentUserID, tz, csrfToken, "", modalRenderSwapOOB)
 }
 
 func sendMessageSSE(conv message.Conversation, senderID int, msg message.Message) {
@@ -214,14 +214,14 @@ func sendMessageUpdate(conversationID int, msg message.Message, recipientID int)
 		return
 	}
 
-	loc := time.UTC
-	view, err := message.BuildConversationModal(conv, recipientID, loc)
+	tz := time.UTC
+	view, err := message.BuildConversationModal(conv, recipientID, tz)
 	if err != nil {
 		logger.Error("Failed to build conversation modal for SSE", "error", err, "conversationID", conversationID, "recipientID", recipientID)
 		return
 	}
 
-	messageNodes := messageTimelineFromView(view, recipientID, loc)
+	messageNodes := messageTimelineFromView(view, recipientID, tz)
 	modalSwapOOB := ui.ConversationModalSwapOOB(conversationModalDataFromView(
 		view, recipientID, "", "", messageNodes))
 	modalHTML, err := renderToString(modalSwapOOB)
@@ -252,7 +252,7 @@ func sendUnreadIndicatorUpdate(userID int, hasUnread bool) {
 }
 
 func sendMessageAndRenderUpdate(c *fiber.Ctx, conv message.Conversation, currentUserID int,
-	loc *time.Location, isNewConversation bool) error {
+	tz *time.Location, isNewConversation bool) error {
 
 	content := c.FormValue("content")
 	if content == "" {
@@ -295,7 +295,7 @@ func sendMessageAndRenderUpdate(c *fiber.Ctx, conv message.Conversation, current
 	}
 
 	csrfToken := local.GetCSRFToken(c)
-	view, err := message.BuildConversationModal(updatedConv, currentUserID, loc)
+	view, err := message.BuildConversationModal(updatedConv, currentUserID, tz)
 	if err != nil {
 		return buildConversationModalError(err)
 	}
@@ -305,7 +305,7 @@ func sendMessageAndRenderUpdate(c *fiber.Ctx, conv message.Conversation, current
 		targetModalID = "conversation-0-modal"
 	}
 
-	return renderConversationModalView(c, view, currentUserID, loc, csrfToken, targetModalID, modalRenderSwapOOB)
+	return renderConversationModalView(c, view, currentUserID, tz, csrfToken, targetModalID, modalRenderSwapOOB)
 }
 
 func sendConversationListItemUpdate(conv message.Conversation, currentUserID int, hasUnread bool) {
@@ -373,10 +373,10 @@ func MessageModalHandler(c *fiber.Ctx) error {
 	}
 
 	currentUserID := local.GetUserID(c)
-	loc := cookie.GetLocation(c)
+	tz := cookie.GetTimezone(c)
 	csrfToken := local.GetCSRFToken(c)
 
-	a, err := ad.GetAd(currentUserID, adID, loc)
+	a, err := ad.GetAd(currentUserID, adID, tz)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
@@ -405,7 +405,7 @@ func MessageModalHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	return renderConversationModal(c, conv, currentUserID, loc, csrfToken)
+	return renderConversationModal(c, conv, currentUserID, tz, csrfToken)
 }
 
 func SendMessageHandler(c *fiber.Ctx) error {
@@ -415,9 +415,9 @@ func SendMessageHandler(c *fiber.Ctx) error {
 	}
 
 	currentUserID := local.GetUserID(c)
-	loc := cookie.GetLocation(c)
+	tz := cookie.GetTimezone(c)
 
-	a, err := ad.GetAd(currentUserID, adID, loc)
+	a, err := ad.GetAd(currentUserID, adID, tz)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
@@ -439,7 +439,7 @@ func SendMessageHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	return sendMessageAndRenderUpdate(c, conv, currentUserID, loc, isNewConversation)
+	return sendMessageAndRenderUpdate(c, conv, currentUserID, tz, isNewConversation)
 }
 
 func SendConversationMessageHandler(c *fiber.Ctx) error {
@@ -449,7 +449,7 @@ func SendConversationMessageHandler(c *fiber.Ctx) error {
 	}
 
 	currentUserID := local.GetUserID(c)
-	loc := cookie.GetLocation(c)
+	tz := cookie.GetTimezone(c)
 
 	// Check if user can post (must be participant)
 	canPost, err := message.CanUserPost(conversationID, currentUserID)
@@ -465,20 +465,20 @@ func SendConversationMessageHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
 	}
 
-	return sendMessageAndRenderUpdate(c, conv, currentUserID, loc, false)
+	return sendMessageAndRenderUpdate(c, conv, currentUserID, tz, false)
 }
 
 func eggOpinionModalData(
 	conv message.Conversation,
 	currentUserID int,
-	loc *time.Location,
+	tz *time.Location,
 ) (ui.EggOpinionModalData, error) {
 	ownerName, inquirerName, err := message.OwnerAndInquirerNames(conv)
 	if err != nil {
 		return ui.EggOpinionModalData{}, err
 	}
 
-	a, err := ad.GetAd(currentUserID, conv.AdID, loc)
+	a, err := ad.GetAd(currentUserID, conv.AdID, tz)
 	if err != nil {
 		return ui.EggOpinionModalData{}, err
 	}
@@ -492,13 +492,13 @@ func eggOpinionModalData(
 		OwnerName:      ownerName,
 		InquirerName:   inquirerName,
 		CurrentUserID:  currentUserID,
-		AdFacts:        eggopinion.AdFactLines(a, loc),
+		AdFacts:        eggopinion.AdFactLines(a, tz),
 	}
 	if conv.EggThrowerID != nil {
 		d.EggThrowerID = *conv.EggThrowerID
 	}
 
-	op, err := eggopinion.GetOrGenerate(conv, loc)
+	op, err := eggopinion.GetOrGenerate(conv, tz)
 	if errors.Is(err, eggopinion.ErrUnavailable) {
 		d.Unavailable = true
 		return d, nil
@@ -513,8 +513,8 @@ func eggOpinionModalData(
 	d.Resolution = op.Resolution
 	d.Reasoning = op.Reasoning
 	genAt := op.GeneratedAt
-	if loc != nil {
-		genAt = genAt.In(loc)
+	if tz != nil {
+		genAt = genAt.In(tz)
 	}
 	d.GeneratedAt = &genAt
 	return d, nil
@@ -524,9 +524,9 @@ func renderEggOpinionModal(
 	c *fiber.Ctx,
 	conv message.Conversation,
 	currentUserID int,
-	loc *time.Location,
+	tz *time.Location,
 ) error {
-	d, err := eggOpinionModalData(conv, currentUserID, loc)
+	d, err := eggOpinionModalData(conv, currentUserID, tz)
 	if err != nil {
 		logger.Error("Failed to build egg opinion modal", "error", err)
 		return fiber.NewError(
@@ -544,7 +544,7 @@ func EggOpinionHandler(c *fiber.Ctx) error {
 	}
 
 	currentUserID := local.GetUserID(c)
-	loc := cookie.GetLocation(c)
+	tz := cookie.GetTimezone(c)
 
 	conv, err := message.GetConversationByID(conversationID)
 	if err != nil {
@@ -557,7 +557,7 @@ func EggOpinionHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "No dispute assessment")
 	}
 
-	return renderEggOpinionModal(c, conv, currentUserID, loc)
+	return renderEggOpinionModal(c, conv, currentUserID, tz)
 }
 
 func ConversationModalHandler(c *fiber.Ctx) error {
@@ -567,7 +567,7 @@ func ConversationModalHandler(c *fiber.Ctx) error {
 	}
 
 	currentUserID := local.GetUserID(c)
-	loc := cookie.GetLocation(c)
+	tz := cookie.GetTimezone(c)
 	csrfToken := local.GetCSRFToken(c)
 
 	conv, markedRead, err := message.OpenConversation(conversationID, currentUserID)
@@ -587,14 +587,14 @@ func ConversationModalHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	return renderConversationModal(c, conv, currentUserID, loc, csrfToken)
+	return renderConversationModal(c, conv, currentUserID, tz, csrfToken)
 }
 
 func UserMessagesHandler(c *fiber.Ctx) error {
 	currentUserID := local.GetUserID(c)
-	loc := cookie.GetLocation(c)
+	tz := cookie.GetTimezone(c)
 
-	conversations, err := message.GetUserConversations(currentUserID, loc)
+	conversations, err := message.GetUserConversations(currentUserID, tz)
 	if err != nil {
 		logger.Error("Failed to get user conversations", "error", err, "userID", currentUserID)
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to load conversations")

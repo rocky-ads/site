@@ -24,9 +24,9 @@ func AdHandler(c *fiber.Ctx) error {
 	}
 
 	userID := local.GetUserID(c)
-	loc := cookie.GetLocation(c)
+	tz := cookie.GetTimezone(c)
 
-	a, err := ad.GetAd(userID, adID, loc)
+	a, err := ad.GetAd(userID, adID, tz)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
@@ -125,7 +125,7 @@ func AdEggConversationHandler(c *fiber.Ctx) error {
 	}
 
 	currentUserID := local.GetUserID(c)
-	loc := cookie.GetLocation(c)
+	tz := cookie.GetTimezone(c)
 	csrfToken := local.GetCSRFToken(c)
 
 	// Get conversation ID by ordinal
@@ -143,9 +143,9 @@ func AdEggConversationHandler(c *fiber.Ctx) error {
 	}
 
 	if message.IsParticipant(conv, currentUserID) {
-		return renderConversationModal(c, conv, currentUserID, loc, csrfToken)
+		return renderConversationModal(c, conv, currentUserID, tz, csrfToken)
 	}
-	return renderEggOpinionModal(c, conv, currentUserID, loc)
+	return renderEggOpinionModal(c, conv, currentUserID, tz)
 }
 
 func AdShareHandler(c *fiber.Ctx) error {
@@ -155,8 +155,8 @@ func AdShareHandler(c *fiber.Ctx) error {
 	}
 
 	userID := local.GetUserID(c)
-	loc := cookie.GetLocation(c)
-	a, err := ad.GetAd(userID, adID, loc)
+	tz := cookie.GetTimezone(c)
+	a, err := ad.GetAd(userID, adID, tz)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
@@ -190,10 +190,10 @@ func DeleteAdHandler(c *fiber.Ctx) error {
 	}
 
 	userID := local.GetUserID(c)
-	loc := cookie.GetLocation(c)
+	tz := cookie.GetTimezone(c)
 
 	// Get ad to verify ownership
-	a, err := ad.GetAd(userID, adID, loc)
+	a, err := ad.GetAd(userID, adID, tz)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
@@ -221,10 +221,10 @@ func RestoreAdHandler(c *fiber.Ctx) error {
 	}
 
 	userID := local.GetUserID(c)
-	loc := cookie.GetLocation(c)
+	tz := cookie.GetTimezone(c)
 
 	// Get ad to verify ownership
-	a, err := ad.GetAd(userID, adID, loc)
+	a, err := ad.GetAd(userID, adID, tz)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}

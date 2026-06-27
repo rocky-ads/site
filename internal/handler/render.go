@@ -48,45 +48,45 @@ func searchFromRequest(c *fiber.Ctx, state cookie.SearchState) (view, page int, 
 	categoryID := cookie.GetCategoryID(c)
 	userID := local.GetUserID(c)
 	view = ui.ValidateView(cookie.GetView(c))
-	loc := cookie.GetLocation(c)
+	tz := cookie.GetTimezone(c)
 	csrfToken := local.GetCSRFToken(c)
 	page = c.QueryInt("page", 1)
 
 	p := parseSearchParamsFromState(c, state, categoryID)
-	unit := distanceUnit(c)
+	unit := cookie.GetDistanceUnit(c)
 	results, err = searchAndRenderAds(
-		p, userID, view, loc, csrfToken,
+		p, userID, view, tz, csrfToken,
 		searchLocationDisplay(state.Location), state.Within, unit,
 	)
 	return view, page, results, err
 }
 
 // searchAdsForUI runs search and returns presentation-ready ad cards in result order.
-func searchAdsForUI(p search.Params, userID int, loc *time.Location) ([]ui.AdCard, search.Results, error) {
+func searchAdsForUI(p search.Params, userID int, tz *time.Location) ([]ui.AdCard, search.Results, error) {
 	result, err := search.Search(p)
 	if err != nil {
 		return nil, search.Results{}, fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	ads, err := ad.GetAds(userID, result.IDs, loc)
+	ads, err := ad.GetAds(userID, result.IDs, tz)
 	if err != nil {
 		return nil, search.Results{}, fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	return adCardsFrom(ads, userID, loc), result, nil
+	return adCardsFrom(ads, userID, tz), result, nil
 }
 
 // searchAndRenderAds searches for ads and renders them into gomponents nodes.
 func searchAndRenderAds(
 	p search.Params,
 	userID, view int,
-	loc *time.Location,
+	tz *time.Location,
 	csrfToken string,
 	location string,
 	within int,
 	unit string,
 ) ([]g.Node, error) {
-	cards, result, err := searchAdsForUI(p, userID, loc)
+	cards, result, err := searchAdsForUI(p, userID, tz)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func searchAndRenderAds(
 	return nodes, nil
 }
 
-func adCardFrom(a ad.Ad, viewerUserID int, loc *time.Location) ui.AdCard {
+func adCardFrom(a ad.Ad, viewerUserID int, tz *time.Location) ui.AdCard {
 	price, priceCurrency, hasPrice := a.PriceValue()
 	priceDisplay := ""
 	if hasPrice {
@@ -143,7 +143,7 @@ func adCardFrom(a ad.Ad, viewerUserID int, loc *time.Location) ui.AdCard {
 		a.ID, a.ImageCount, a.RockCount,
 		priceDisplay, a.Title,
 		ad.AdLocationDisplay(a, viewerUserID), adFacetLabel(a),
-		hasPrice, a.CreatedAt.In(loc),
+		hasPrice, a.CreatedAt.In(tz),
 		!a.IsDeleted(), a.Bookmarked,
 	)
 }
@@ -249,10 +249,10 @@ func adFacetLabels(a ad.Ad, compact bool) []string {
 	return labels
 }
 
-func adCardsFrom(ads []ad.Ad, viewerUserID int, loc *time.Location) []ui.AdCard {
+func adCardsFrom(ads []ad.Ad, viewerUserID int, tz *time.Location) []ui.AdCard {
 	cards := make([]ui.AdCard, len(ads))
 	for i, a := range ads {
-		cards[i] = adCardFrom(a, viewerUserID, loc)
+		cards[i] = adCardFrom(a, viewerUserID, tz)
 	}
 	return cards
 }

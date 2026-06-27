@@ -84,8 +84,8 @@ func OtherUserName(conv Conversation, currentUserID int) (string, error) {
 	return u.Name, nil
 }
 
-func BuildConversationModal(conv Conversation, currentUserID int, loc *time.Location) (ConversationModalView, error) {
-	a, err := ad.GetAd(currentUserID, conv.AdID, loc)
+func BuildConversationModal(conv Conversation, currentUserID int, tz *time.Location) (ConversationModalView, error) {
+	a, err := ad.GetAd(currentUserID, conv.AdID, tz)
 	if err != nil {
 		return ConversationModalView{}, fmt.Errorf("%w: %v", ErrModalAdNotFound, err)
 	}
@@ -110,7 +110,7 @@ func BuildConversationModal(conv Conversation, currentUserID int, loc *time.Loca
 		return view, nil
 	}
 
-	messages, err := GetConversationMessages(conv.ID, currentUserID, loc)
+	messages, err := GetConversationMessages(conv.ID, currentUserID, tz)
 	if err != nil {
 		return ConversationModalView{}, fmt.Errorf("failed to get messages: %w", err)
 	}

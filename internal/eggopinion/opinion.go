@@ -30,7 +30,7 @@ type Opinion struct {
 // GetOrGenerate returns a cached opinion or generates and stores one.
 func GetOrGenerate(
 	conv message.Conversation,
-	loc *time.Location,
+	tz *time.Location,
 ) (Opinion, error) {
 	if conv.EggThrowerID == nil {
 		return Opinion{}, fmt.Errorf("conversation has no egg")
@@ -44,7 +44,7 @@ func GetOrGenerate(
 		return Opinion{}, err
 	}
 
-	op, err := generate(conv, loc)
+	op, err := generate(conv, tz)
 	if err != nil {
 		return Opinion{}, err
 	}
@@ -116,8 +116,8 @@ func InvalidateForAd(adID int) error {
 	return nil
 }
 
-func generate(conv message.Conversation, loc *time.Location) (Opinion, error) {
-	a, err := ad.GetAd(0, conv.AdID, loc)
+func generate(conv message.Conversation, tz *time.Location) (Opinion, error) {
+	a, err := ad.GetAd(0, conv.AdID, tz)
 	if err != nil {
 		return Opinion{}, fmt.Errorf("load ad: %w", err)
 	}
@@ -139,7 +139,7 @@ func generate(conv message.Conversation, loc *time.Location) (Opinion, error) {
 		return Opinion{}, fmt.Errorf("load inquirer: %w", err)
 	}
 
-	messages, err := listMessages(conv.ID, loc)
+	messages, err := listMessages(conv.ID, tz)
 	if err != nil {
 		return Opinion{}, err
 	}
@@ -174,7 +174,7 @@ func generate(conv message.Conversation, loc *time.Location) (Opinion, error) {
 		InquirerID:   conv.InquirerID,
 		EggThrowerID: *conv.EggThrowerID,
 		EggThrownAt:  thrownAt,
-		Loc:          loc,
+		Tz:           tz,
 	})
 
 	resp, err := grok.CallGrokConv(
@@ -197,7 +197,7 @@ func generate(conv message.Conversation, loc *time.Location) (Opinion, error) {
 	return op, nil
 }
 
-func listMessages(conversationID int, loc *time.Location) ([]message.Message, error) {
+func listMessages(conversationID int, tz *time.Location) ([]message.Message, error) {
 	var messages []message.Message
 	err := db.Select(&messages, `
 		SELECT id, conversation_id, sender_id, content, created_at
@@ -209,15 +209,15 @@ func listMessages(conversationID int, loc *time.Location) ([]message.Message, er
 		return nil, fmt.Errorf("list messages: %w", err)
 	}
 	for i := range messages {
-		if loc != nil {
-			messages[i].CreatedAt = messages[i].CreatedAt.In(loc)
+		if tz != nil {
+			messages[i].CreatedAt = messages[i].CreatedAt.In(tz)
 		}
 	}
 	return messages, nil
 }
 
 // AdFactLines returns description history lines for UI display.
-func AdFactLines(a ad.Ad, loc *time.Location) []string {
+func AdFactLines(a ad.Ad, tz *time.Location) []string {
 	desc := ad.ParseDescriptionForDisplay(a.Description)
 	var lines []string
 	if desc.Original != "" {

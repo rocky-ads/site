@@ -106,16 +106,16 @@ func imageIndicesFromHistoryEntry(header, body string) []int {
 	return indices
 }
 
-func formatHistoryTimestamp(at time.Time, loc *time.Location) string {
-	if loc != nil {
-		at = at.In(loc)
+func formatHistoryTimestamp(at time.Time, tz *time.Location) string {
+	if tz != nil {
+		at = at.In(tz)
 	}
 	return strings.ToLower(at.Format("1/2/2006 3:04 pm"))
 }
 
-func buildHistoryBlock(label, body string, at time.Time, loc *time.Location) string {
+func buildHistoryBlock(label, body string, at time.Time, tz *time.Location) string {
 	body = strings.TrimSpace(SanitizeAdText(body))
-	header := historyMarker + formatHistoryTimestamp(at, loc) +
+	header := historyMarker + formatHistoryTimestamp(at, tz) +
 		"  " + label
 	if body == "" {
 		return header
@@ -127,14 +127,14 @@ func buildHistoryBlock(label, body string, at time.Time, loc *time.Location) str
 func AppendHistoryEntry(
 	desc, label, body string,
 	at time.Time,
-	loc *time.Location,
+	tz *time.Location,
 ) string {
 	body = strings.TrimSpace(SanitizeAdText(body))
 	if body == "" && label != "Description compressed" &&
 		label != "History compressed" {
 		return desc
 	}
-	block := buildHistoryBlock(label, body, at, loc)
+	block := buildHistoryBlock(label, body, at, tz)
 	original, history := SplitDescription(desc)
 	original = strings.TrimRight(original, "\n")
 	if history == "" {
