@@ -278,6 +278,9 @@ func TestSwitchCategoryPreservesSearchCookie(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
 	switchURL := baseURL + "/api/category/5/switch?q=Honda&price_min=10000"
 	resp, _ := getRequestWithCookies(t, client, switchURL)
 	if resp.StatusCode != http.StatusFound {

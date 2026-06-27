@@ -172,6 +172,9 @@ func TestSwitchCategoryClearsMileageFilter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
 	min := 10000
 	if err := setSearchCookieOnClient(client, cookie.SearchState{
 		Q: "Honda", Facets: map[string]facet.Filter{"mileage": {Min: &min}}, Expanded: true,
