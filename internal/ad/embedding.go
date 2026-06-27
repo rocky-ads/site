@@ -90,10 +90,7 @@ func GetForEmbedding(adID int) (EmbeddingInput, error) {
 	); err != nil {
 		return EmbeddingInput{}, fmt.Errorf("embedding ad %d: %w", adID, err)
 	}
-	category, err := GetCategory(row.CategoryID)
-	if err != nil {
-		return EmbeddingInput{}, err
-	}
+	category := GetCategory(row.CategoryID)
 	facets, err := loadFacetsForAd(adID)
 	if err != nil {
 		return EmbeddingInput{}, err

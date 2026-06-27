@@ -37,10 +37,7 @@ func UpdateAd(input UpdateInput) error {
 		return fmt.Errorf("cannot edit a deleted ad")
 	}
 
-	category, err := GetCategory(a.CategoryID)
-	if err != nil {
-		return err
-	}
+	category := GetCategory(a.CategoryID)
 
 	title := strings.TrimSpace(SanitizeAdText(input.Title))
 	if title == "" {

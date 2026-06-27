@@ -23,10 +23,7 @@ type CreateInput struct {
 }
 
 func CreateAd(input CreateInput) (int, error) {
-	category, err := GetCategory(input.CategoryID)
-	if err != nil {
-		return 0, err
-	}
+	category := GetCategory(input.CategoryID)
 
 	title := strings.TrimSpace(SanitizeAdText(input.Title))
 	description := strings.TrimSpace(SanitizeAdText(input.Description))

@@ -15,12 +15,8 @@ import (
 )
 
 func SuggestionsHandler(c *fiber.Ctx) error {
-	categoryID := cookie.GetCategoryID(c)
-	category, err := ad.GetCategory(categoryID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-	return renderSuggestions(c, categoryID, category)
+	category := ad.GetCategory(cookie.GetCategoryID(c))
+	return renderSuggestions(c, category.ID, category)
 }
 
 func EditSuggestionsHandler(c *fiber.Ctx) error {
@@ -43,10 +39,7 @@ func EditSuggestionsHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Cannot edit a deleted ad")
 	}
 
-	category, err := ad.GetCategory(a.CategoryID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
+	category := ad.GetCategory(a.CategoryID)
 	return renderSuggestions(c, a.CategoryID, category)
 }
 

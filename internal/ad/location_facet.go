@@ -64,10 +64,7 @@ func fullAddressText(a Ad) string {
 // AdLocationDisplay returns the location line for cards and detail pages.
 // Full street addresses require a logged-in viewer.
 func AdLocationDisplay(a Ad, viewerUserID int) string {
-	cat, err := GetCategory(a.CategoryID)
-	if err != nil {
-		return location.DisplayText(a.City, a.AdminArea, a.Country)
-	}
+	cat := GetCategory(a.CategoryID)
 	return locationDisplayForCategory(a, cat, viewerUserID)
 }
 

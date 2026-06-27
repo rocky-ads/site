@@ -125,10 +125,7 @@ func generate(conv message.Conversation, tz *time.Location) (Opinion, error) {
 		return Opinion{}, fmt.Errorf("load ad tags: %w", err)
 	}
 
-	category, err := ad.GetCategory(a.CategoryID)
-	if err != nil {
-		return Opinion{}, fmt.Errorf("load category: %w", err)
-	}
+	category := ad.GetCategory(a.CategoryID)
 
 	owner, err := user.GetByID(conv.OwnerID)
 	if err != nil {

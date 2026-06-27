@@ -157,10 +157,7 @@ func adFacetLabel(a ad.Ad) string {
 // adDetailFacetDisplays returns formal facet pills for the ad detail page,
 // excluding facets already shown in the title (mileage/hours) or price row.
 func adDetailFacetDisplays(a ad.Ad) []string {
-	cat, err := ad.GetCategory(a.CategoryID)
-	if err != nil {
-		return nil
-	}
+	cat := ad.GetCategory(a.CategoryID)
 	var labels []string
 	for _, d := range cat.Facets() {
 		if d.Key == "price" || d.Kind == facet.Location {
@@ -200,10 +197,7 @@ func adDetailFacetDisplays(a ad.Ad) []string {
 // adFacetLabels returns the non-price facet labels for an ad. When compact is
 // true it keeps only card facets (e.g. mileage) and uses compact formatting.
 func adFacetLabels(a ad.Ad, compact bool) []string {
-	cat, err := ad.GetCategory(a.CategoryID)
-	if err != nil {
-		return nil
-	}
+	cat := ad.GetCategory(a.CategoryID)
 
 	var labels []string
 	for _, d := range cat.Facets() {

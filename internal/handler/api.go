@@ -15,10 +15,6 @@ func SwitchCategoryHandler(c *fiber.Ctx) error {
 
 	categoryID := param.GetCategoryID(c)
 
-	if _, err := ad.GetCategory(categoryID); err != nil {
-		return fiber.NewError(fiber.StatusNotFound, err.Error())
-	}
-
 	cookie.SetCategoryID(c, categoryID)
 
 	state = clearFacetFilters(state, categoryID)
@@ -42,11 +38,7 @@ func renderFilterPanelResponse(c *fiber.Ctx, state cookie.SearchState) error {
 	}
 
 	unit := cookie.GetDistanceUnit(c)
-	categoryID := cookie.GetCategoryID(c)
-	category, err := ad.GetCategory(categoryID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
+	category := ad.GetCategory(cookie.GetCategoryID(c))
 	var filterFacets []facet.Def
 	if state.Expanded {
 		filterFacets = filterableFacets(category)

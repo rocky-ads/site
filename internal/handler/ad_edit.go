@@ -36,10 +36,7 @@ func EditAdHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Cannot edit a deleted ad")
 	}
 
-	category, err := ad.GetCategory(a.CategoryID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
+	category := ad.GetCategory(a.CategoryID)
 
 	if err := ad.LoadTags(&a); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
@@ -72,10 +69,7 @@ func UpdateAdHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Cannot edit a deleted ad")
 	}
 
-	category, err := ad.GetCategory(a.CategoryID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
+	category := ad.GetCategory(a.CategoryID)
 
 	facets, err := parseAdFacets(c, category)
 	if err != nil {

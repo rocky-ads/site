@@ -15,11 +15,7 @@ import (
 )
 
 func NewAdHandler(c *fiber.Ctx) error {
-	categoryID := cookie.GetCategoryID(c)
-	category, err := ad.GetCategory(categoryID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
+	category := ad.GetCategory(cookie.GetCategoryID(c))
 	fieldsNode := uiads.NewAdFieldsPartial(category.Facets(), newAdFormDefaults(c))
 
 	return renderPage(c, "New Ad", ui.NewAd(categoryOption(category), fieldsNode))

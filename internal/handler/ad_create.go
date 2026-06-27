@@ -18,11 +18,7 @@ import (
 func CreateAdHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
 
-	categoryID := cookie.GetCategoryID(c)
-	category, err := ad.GetCategory(categoryID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
+	category := ad.GetCategory(cookie.GetCategoryID(c))
 
 	imageFiles, err := parseAdImageFiles(c)
 	if err != nil {
@@ -35,7 +31,7 @@ func CreateAdHandler(c *fiber.Ctx) error {
 	}
 
 	adID, err := ad.CreateAd(ad.CreateInput{
-		CategoryID:   categoryID,
+		CategoryID:   category.ID,
 		UserID:       userID,
 		Title:        c.FormValue("title"),
 		Description:  c.FormValue("description"),

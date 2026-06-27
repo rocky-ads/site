@@ -11,13 +11,7 @@ import (
 )
 
 func HomeHandler(c *fiber.Ctx) error {
-	categoryID := cookie.GetCategoryID(c)
-
-	category, err := ad.GetCategory(categoryID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, err.Error())
-	}
-
+	category := ad.GetCategory(cookie.GetCategoryID(c))
 	userID := local.GetUserID(c)
 	view := ui.ValidateView(cookie.GetView(c))
 	tz := cookie.GetTimezone(c)
@@ -25,7 +19,7 @@ func HomeHandler(c *fiber.Ctx) error {
 	searchState := cookie.GetSearchState(c)
 	unit := cookie.GetDistanceUnit(c)
 
-	p := parseSearchParamsFromState(c, searchState, categoryID)
+	p := parseSearchParamsFromState(c, searchState, category.ID)
 	results, err := searchAndRenderAds(
 		p, userID, view, tz, csrfToken,
 		searchLocationDisplay(searchState.Location), searchState.Within, unit,

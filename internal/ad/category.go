@@ -88,12 +88,11 @@ func GetCategoryName(categoryID int) (string, error) {
 	return category.Name, nil
 }
 
-func GetCategory(categoryID int) (Category, error) {
-	category, ok := categories[categoryID]
-	if !ok {
-		return Category{}, fmt.Errorf("category not found: %d", categoryID)
+func GetCategory(categoryID int) Category {
+	if cat, ok := categories[categoryID]; ok {
+		return cat
 	}
-	return category, nil
+	return categories[defaultCategory]
 }
 
 func GetCategoryImageFile(categoryID int) (string, error) {

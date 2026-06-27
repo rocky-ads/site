@@ -110,10 +110,8 @@ func saveSearchStateFromRequest(c *fiber.Ctx, expanded *bool, fromForm bool) coo
 			state.Within = 0
 		}
 		if state.Expanded {
-			category, err := ad.GetCategory(cookie.GetCategoryID(c))
-			if err == nil {
-				state.Facets = parseFacetFilters(c, category)
-			}
+			category := ad.GetCategory(cookie.GetCategoryID(c))
+			state.Facets = parseFacetFilters(c, category)
 		}
 	}
 	if expanded != nil {
@@ -255,10 +253,7 @@ func parseWithin(raw, unit string) int {
 }
 
 func clearFacetFilters(state cookie.SearchState, categoryID int) cookie.SearchState {
-	category, err := ad.GetCategory(categoryID)
-	if err != nil {
-		return state
-	}
+	category := ad.GetCategory(categoryID)
 	allowed := make(map[string]bool, len(category.FacetKeys))
 	for _, d := range category.Facets() {
 		allowed[d.Key] = true
