@@ -22,19 +22,20 @@ func HomeHandler(c *fiber.Ctx) error {
 	view := ui.ValidateView(cookie.GetView(c))
 	loc := cookie.GetLocation(c)
 	csrfToken := local.GetCSRFToken(c)
+	searchState := cookie.GetSearchState(c)
+	unit := distanceUnit(c)
 
-	p := parseSearchParams(c, categoryID)
-	state := cookie.GetSearchState(c)
+	p := parseSearchParamsFromState(c, searchState, categoryID)
 	results, err := searchAndRenderAds(
 		p, userID, view, loc, csrfToken,
-		searchLocationDisplay(state.Location), state.Within, distanceUnit(c),
+		searchLocationDisplay(searchState.Location), searchState.Within, unit,
 	)
 	if err != nil {
 		return err
 	}
 
 	return renderPage(c, config.ServerName,
-		ui.HomePage(userID, view, state.Q, state.Expanded,
+		ui.HomePage(userID, view, searchState.Q, searchState.Expanded, searchVisible(searchState),
 			categoryOption(category), filterableFacets(category),
-			parseSearchFilters(c), results))
+			searchStateToFilters(searchState, unit), results))
 }

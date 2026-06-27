@@ -28,8 +28,11 @@ func SwitchCategoryHandler(c *fiber.Ctx) error {
 	if redirect == "" || redirect[0] != '/' || (len(redirect) > 1 && redirect[1] == '/') {
 		redirect = "/"
 	}
-	c.Set("HX-Redirect", redirect)
-	return c.Send(nil)
+	if c.Get("HX-Request") == "true" {
+		c.Set("HX-Redirect", redirect)
+		return render(c, g.Group(ui.RemoveModal("category")))
+	}
+	return c.Redirect(redirect, fiber.StatusFound)
 }
 
 func renderFilterPanelResponse(c *fiber.Ctx, state cookie.SearchState) error {
@@ -50,7 +53,8 @@ func renderFilterPanelResponse(c *fiber.Ctx, state cookie.SearchState) error {
 	}
 
 	return render(c, g.Group([]g.Node{
-		ui.SearchAreaOOB(state.Q, state.Expanded, filterFacets, searchStateToFilters(state, unit)),
+		ui.SearchAreaOOB(state.Q, state.Expanded, filterFacets, searchStateToFilters(state, unit), searchVisible(state)),
+		ui.SearchToggleOOB(searchVisible(state)),
 		ui.SearchResultsOOB(view, results),
 	}))
 }
@@ -58,6 +62,8 @@ func renderFilterPanelResponse(c *fiber.Ctx, state cookie.SearchState) error {
 func ShowFiltersHandler(c *fiber.Ctx) error {
 	expanded := true
 	state := saveSearchStateFromRequest(c, &expanded, false)
+	state.SearchOpen = true
+	cookie.SetSearchState(c, state)
 	return renderFilterPanelResponse(c, state)
 }
 
@@ -67,8 +73,16 @@ func HideFiltersHandler(c *fiber.Ctx) error {
 	return renderFilterPanelResponse(c, state)
 }
 
+func ToggleSearchHandler(c *fiber.Ctx) error {
+	state := cookie.GetSearchState(c)
+	state.SearchOpen = true
+	cookie.SetSearchState(c, state)
+	return renderFilterPanelResponse(c, state)
+}
+
 func SearchPageHandler(c *fiber.Ctx) error {
 	state := saveSearchStateFromRequest(c, nil, true)
+	cookie.SetSearchState(c, state)
 	view, page, results, err := searchFromRequest(c, state)
 	if err != nil {
 		return err

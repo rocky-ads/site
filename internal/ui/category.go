@@ -41,23 +41,31 @@ func CategorySelectModal(selectedID int, returnParam string, categories []Catego
 	}
 
 	return g.Group([]g.Node{
-		modalBackdrop("category"),
 		Div(
 			ID("category-modal"),
-			Class("fixed inset-0 flex items-center justify-center z-50 p-8 pointer-events-none"),
+			Class("fixed inset-0 z-50"),
 			Div(
-				Class("bg-white dark:bg-zinc-800 rounded-lg w-full shadow-2xl border-2 border-zinc-300 dark:border-zinc-600 flex flex-col pointer-events-auto"),
-				Style("max-width: 400px; max-height: 80vh"),
+				Class("absolute inset-0 bg-black/30"),
+				hx.Get("/api/modal-remove/category"),
+				hx.Swap("none"),
+				hx.Trigger("click"),
+			),
+			Div(
+				Class("relative flex min-h-full items-center justify-center p-8 pointer-events-none"),
 				Div(
-					Class("flex items-center justify-between p-6 border-b border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
-					H3(Class("text-xl font-bold text-zinc-900 dark:text-zinc-200"), g.Text("Select Category")),
-					modalClose("category"),
-				),
-				Div(
-					Class("flex-1 overflow-y-auto p-6 pt-4"),
+					Class("bg-white dark:bg-zinc-800 rounded-lg w-full shadow-2xl border-2 border-zinc-300 dark:border-zinc-600 flex flex-col pointer-events-auto"),
+					Style("max-width: 400px; max-height: 80vh"),
 					Div(
-						Class("space-y-2"),
-						g.Group(items),
+						Class("flex items-center justify-between p-6 border-b border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
+						H3(Class("text-xl font-bold text-zinc-900 dark:text-zinc-200"), g.Text("Select Category")),
+						modalClose("category"),
+					),
+					Div(
+						Class("flex-1 overflow-y-auto p-6 pt-4"),
+						Div(
+							Class("space-y-2"),
+							g.Group(items),
+						),
 					),
 				),
 			),

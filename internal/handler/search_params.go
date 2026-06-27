@@ -142,6 +142,16 @@ func saveSearchStateFromRequest(c *fiber.Ctx, expanded *bool, fromForm bool) coo
 	return state
 }
 
+func searchVisible(state cookie.SearchState) bool {
+	if state.SearchOpen {
+		return true
+	}
+	if strings.TrimSpace(state.Q) != "" || state.Expanded || len(state.Facets) > 0 {
+		return true
+	}
+	return false
+}
+
 func parseFacetFilters(c *fiber.Ctx, category ad.Category) map[string]facet.Filter {
 	filters := map[string]facet.Filter{}
 	for _, d := range category.Facets() {

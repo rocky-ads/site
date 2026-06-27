@@ -13,6 +13,7 @@ func phoneInput() g.Node {
 			Class("flex items-baseline justify-between mb-1"),
 			Label(
 				Class("text-base font-medium"),
+				For("phone"),
 				g.Text("Phone Number"),
 			),
 			A(
@@ -25,6 +26,7 @@ func phoneInput() g.Node {
 			Class("w-full p-2 border rounded-md"),
 			Type("tel"),
 			Name("phone"),
+			ID("phone"),
 			MinLength("10"),
 			MaxLength("20"),
 			g.Attr("placeholder", "+12025550123 or 202-555-0123"),

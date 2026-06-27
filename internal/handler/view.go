@@ -27,5 +27,6 @@ func ViewHandler(c *fiber.Ctx) error {
 
 	cookie.SetView(c, view)
 
-	return render(c, ui.SearchView(userID, view, results))
+	filters := searchStateToFilters(state, distanceUnit(c))
+	return render(c, ui.SearchView(view, filters, results))
 }

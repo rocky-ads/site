@@ -11,6 +11,15 @@ import (
 	"github.com/rocky-ads/site/internal/facet"
 )
 
+func TestSearchVisibleToggle(t *testing.T) {
+	if searchVisible(cookie.SearchState{}) {
+		t.Fatal("expected search hidden on fresh state")
+	}
+	if !searchVisible(cookie.SearchState{SearchOpen: true}) {
+		t.Fatal("expected search visible when SearchOpen")
+	}
+}
+
 func TestParseSearchParamsCollapsedNoFacets(t *testing.T) {
 	app := fiber.New()
 	app.Get("/search", func(c *fiber.Ctx) error {

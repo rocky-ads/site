@@ -83,7 +83,7 @@ func enumCheckboxesFilterRow(d facet.Def, filter facet.Filter) g.Node {
 	}
 	return Div(
 		Class("col-span-2 field-group"),
-		Label(Class("field-label"), g.Text(d.Label)),
+		Span(Class("field-label"), g.Text(d.Label)),
 		Div(Class("field-options"), g.Group(nodes)),
 	)
 }

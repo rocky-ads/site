@@ -68,16 +68,12 @@ func SearchLocationModal(f uiads.SearchFilters) g.Node {
 }
 
 func modalLocationField(value string) g.Node {
-	attrs := []g.Node{
+	return labeledTextInput("Location", "modal-search-location",
 		Type("text"),
 		Name("location"),
-		ID("modal-search-location"),
 		g.Attr("placeholder", "City, State or ZIP"),
-	}
-	if value != "" {
-		attrs = append(attrs, Value(value))
-	}
-	return labeledTextInput("Location", attrs...)
+		g.If(value != "", Value(value)),
+	)
 }
 
 func modalWithinField(selected int, options []int, suffix string) g.Node {
@@ -93,9 +89,8 @@ func modalWithinField(selected int, options []int, suffix string) g.Node {
 		}
 		opts = append(opts, opt)
 	}
-	return labeledSelect("Within",
+	return labeledSelect("Within", "modal-search-within",
 		Name("within"),
-		ID("modal-search-within"),
 		g.Group(opts),
 	)
 }

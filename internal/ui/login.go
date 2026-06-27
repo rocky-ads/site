@@ -8,7 +8,7 @@ import (
 
 func userNameInput(showHelp bool, autocomplete string) g.Node {
 	return Div(
-		labeledTextInput("Username",
+		labeledTextInput("Username", "username",
 			Type("text"),
 			Name("username"),
 			MinLength("3"),

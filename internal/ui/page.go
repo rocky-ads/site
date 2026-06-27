@@ -91,11 +91,11 @@ func navLoggedIn(userName string, hasUnread bool) g.Node {
 }
 
 func loginNode() g.Node {
-	return A(Href("/login"), Class("text-blue-500 hover:underline"), g.Text("Login"))
+	return A(Href("/login"), Class("text-blue-600 dark:text-blue-400 hover:underline"), g.Text("Login"))
 }
 
 func registerNode() g.Node {
-	return A(Href("/register"), Class("text-blue-500 hover:underline"), g.Text("Register"))
+	return A(Href("/register"), Class("text-blue-600 dark:text-blue-400 hover:underline"), g.Text("Register"))
 }
 
 func navLoggedOut(currentPath string) g.Node {
@@ -138,7 +138,7 @@ func swapOOBmessages() g.Node {
 
 func navigation(userID int, userName, currentPath string, hasUnread bool) g.Node {
 	return Nav(
-		Class("sticky top-0 z-10 bg-white/75 dark:bg-zinc-900/75 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between mb-8 py-4 -mx-4 px-4"),
+		Class("sticky top-0 z-10 bg-white/75 dark:bg-zinc-900/75 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between mb-4 py-4 -mx-4 px-4"),
 		A(
 			Href("/"),
 			Class("flex items-center gap-2"),

@@ -12,18 +12,18 @@ import (
 const textFieldClass = "w-full p-2 border border-zinc-300 dark:border-zinc-200 rounded-md " +
 	"bg-transparent text-zinc-900 dark:text-zinc-200"
 
-func labeledTextInput(labelText string, attrs ...g.Node) g.Node {
-	inputAttrs := append([]g.Node{Class(textFieldClass)}, attrs...)
+func labeledTextInput(labelText, fieldID string, attrs ...g.Node) g.Node {
+	inputAttrs := append([]g.Node{Class(textFieldClass), ID(fieldID)}, attrs...)
 	return Div(
-		label(labelText),
+		fieldLabel(labelText, fieldID),
 		Input(inputAttrs...),
 	)
 }
 
-func labeledSelect(labelText string, attrs ...g.Node) g.Node {
-	selectAttrs := append([]g.Node{Class(textFieldClass)}, attrs...)
+func labeledSelect(labelText, fieldID string, attrs ...g.Node) g.Node {
+	selectAttrs := append([]g.Node{Class(textFieldClass), ID(fieldID)}, attrs...)
 	return Div(
-		label(labelText),
+		fieldLabel(labelText, fieldID),
 		Select(selectAttrs...),
 	)
 }
@@ -38,6 +38,10 @@ type PasswordFieldView struct {
 
 func passwordFieldID(name string) string {
 	return "password-field-" + name
+}
+
+func passwordFieldWrapID(name string) string {
+	return passwordFieldID(name) + "-wrap"
 }
 
 func passwordFieldToggleURL(name, autocomplete string, visible bool) string {
@@ -71,6 +75,7 @@ func PasswordField(view PasswordFieldView) g.Node {
 		Class(textFieldClass + " pr-10"),
 		Type(inputType),
 		Name(view.Name),
+		ID(fieldID),
 		MaxLength("32"),
 		g.Attr("autocomplete", view.Autocomplete),
 		Required(),
@@ -79,9 +84,10 @@ func PasswordField(view PasswordFieldView) g.Node {
 		inputAttrs = append(inputAttrs, Value(view.Value))
 	}
 
+	wrapID := passwordFieldWrapID(view.Name)
 	toggleVisible := !view.Visible
 	return Div(
-		ID(fieldID),
+		ID(wrapID),
 		Class("relative"),
 		Input(inputAttrs...),
 		Button(
@@ -95,9 +101,9 @@ func PasswordField(view PasswordFieldView) g.Node {
 			hx.Post(passwordFieldToggleURL(
 				view.Name, view.Autocomplete, toggleVisible,
 			)),
-			hx.Target("#"+fieldID),
+			hx.Target("#"+wrapID),
 			hx.Swap("outerHTML"),
-			hx.Include("#"+fieldID),
+			hx.Include("#"+wrapID),
 			Img(
 				Src(iconSrc),
 				Alt(""),
@@ -109,7 +115,7 @@ func PasswordField(view PasswordFieldView) g.Node {
 
 func labeledPasswordField(labelText, name, autocomplete string) g.Node {
 	return Div(
-		label(labelText),
+		fieldLabel(labelText, passwordFieldID(name)),
 		PasswordField(PasswordFieldView{
 			Name:         name,
 			Autocomplete: autocomplete,
@@ -248,8 +254,17 @@ func checkbox(name string, value string, label string, checked bool, disabled bo
 	)
 }
 
-func label(text string) g.Node {
+func fieldLabel(text, forID string) g.Node {
 	return Label(
+		For(forID),
+		Class("block text-base font-medium mb-1 text-zinc-900 dark:text-zinc-200"),
+		g.Text(text),
+	)
+}
+
+// label renders a section heading styled like a form label.
+func label(text string) g.Node {
+	return Span(
 		Class("block text-base font-medium mb-1 text-zinc-900 dark:text-zinc-200"),
 		g.Text(text),
 	)
