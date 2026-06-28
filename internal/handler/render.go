@@ -50,13 +50,12 @@ func searchFromRequest(c *fiber.Ctx, state cookie.SearchState) (view, page int, 
 	view = ui.ValidateView(cookie.GetView(c))
 	tz := cookie.GetTimezone(c)
 	csrfToken := local.GetCSRFToken(c)
+	distanceUnit := cookie.GetDistanceUnit(c)
 	page = c.QueryInt("page", 1)
-
-	p := parseSearchParamsFromState(c, state, categoryID)
-	unit := cookie.GetDistanceUnit(c)
+	p := parseSearchParams(state, page, categoryID, userID, distanceUnit, tz)
 	results, err = searchAndRenderAds(
 		p, userID, view, tz, csrfToken,
-		searchLocationDisplay(state.Location), state.Within, unit,
+		searchLocationDisplay(state.Location), state.Within, distanceUnit,
 	)
 	return view, page, results, err
 }
@@ -84,7 +83,7 @@ func searchAndRenderAds(
 	csrfToken string,
 	location string,
 	within int,
-	unit string,
+	distanceUnit string,
 ) ([]g.Node, error) {
 	cards, result, err := searchAdsForUI(p, userID, tz)
 	if err != nil {
@@ -107,7 +106,7 @@ func searchAndRenderAds(
 	inAreaCount := result.InAreaCount
 
 	if offset == 0 && inAreaCount == 0 {
-		nodes := []g.Node{ui.NoInAreaMatchesMessage(displayWithin, unit, location)}
+		nodes := []g.Node{ui.NoInAreaMatchesMessage(displayWithin, distanceUnit, location)}
 		if len(cardNodes) > 0 {
 			nodes = append(nodes, ui.OutsideAreaHeading())
 			nodes = append(nodes, cardNodes...)

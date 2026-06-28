@@ -17,9 +17,9 @@ import (
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
 )
 
-func searchStateToFilters(state cookie.SearchState, unit string) uiads.SearchFilters {
+func searchStateToFilters(state cookie.SearchState, distanceUnit string) uiads.SearchFilters {
 	opts := search.WithinMileOptions
-	if unit == location.UnitKm {
+	if distanceUnit == location.UnitKm {
 		opts = search.WithinKmOptions
 	}
 	return uiads.SearchFilters{
@@ -27,7 +27,7 @@ func searchStateToFilters(state cookie.SearchState, unit string) uiads.SearchFil
 		Location:        state.Location,
 		LocationDisplay: searchLocationDisplay(state.Location),
 		Within:          state.Within,
-		WithinUnit:      unit,
+		WithinUnit:      distanceUnit,
 		WithinOptions:   opts,
 	}
 }
@@ -59,40 +59,23 @@ func filterableFacets(cat ad.Category) []facet.Def {
 	return out
 }
 
-func parseSearchFilters(c *fiber.Ctx) uiads.SearchFilters {
-	return searchStateToFilters(cookie.GetSearchState(c), cookie.GetDistanceUnit(c))
-}
+func parseSearchParams(
+	state cookie.SearchState, page, categoryID, userID int, distanceUnit string, tz *time.Location,
+) search.Params {
+	limit := config.SearchPageSize
+	offset := (page - 1) * limit
 
-func parseSearchParams(c *fiber.Ctx, categoryID int) search.Params {
-	return parseSearchParamsFromState(c, cookie.GetSearchState(c), categoryID)
-}
-
-func pageLimitOffset(c *fiber.Ctx) (limit, offset int) {
-	page := c.QueryInt("page", 1)
-	limit = config.SearchPageSize
-	offset = (page - 1) * limit
-	return limit, offset
-}
-
-func parseSearchParamsFromState(c *fiber.Ctx, state cookie.SearchState, categoryID int) search.Params {
-	limit, offset := pageLimitOffset(c)
-	unit := cookie.GetDistanceUnit(c)
-
-	in := search.BuildInput{
-		CategoryID: categoryID,
-		Limit:      limit,
-		Offset:     offset,
-		Q:          state.Q,
-		Location:   state.Location,
-		Within:     state.Within,
-		WithinUnit: unit,
-	}
+	var facetFilters map[string]facet.Filter
 	if state.Expanded {
-		in.FacetFilters = expandFacetFilters(state.Facets, cookie.GetTimezone(c))
+		facetFilters = expandFacetFilters(state.Facets, tz)
 	}
 
-	p := search.BuildParams(in)
-	p.UserID = local.GetUserID(c)
+	p := search.BuildParams(
+		categoryID, limit, offset,
+		state.Q, state.Location, state.Within, distanceUnit,
+		facetFilters,
+	)
+	p.UserID = userID
 	p.Expanded = state.Expanded
 	return p
 }
@@ -100,12 +83,12 @@ func parseSearchParamsFromState(c *fiber.Ctx, state cookie.SearchState, category
 // saveSearchStateFromRequest updates the search cookie and returns the new
 // state (the request cookie is unchanged until the response is received).
 func saveSearchStateFromRequest(c *fiber.Ctx, expanded *bool, fromForm bool) cookie.SearchState {
-	unit := cookie.GetDistanceUnit(c)
+	distanceUnit := cookie.GetDistanceUnit(c)
 	state := cookie.GetSearchState(c)
 	if fromForm {
 		state.Q = strings.TrimSpace(c.Query("q"))
 		state.Location = strings.TrimSpace(c.Query("location"))
-		state.Within = parseWithin(c.Query("within"), unit)
+		state.Within = parseWithin(c.Query("within"), distanceUnit)
 		if state.Location == "" {
 			state.Within = 0
 		}
@@ -231,7 +214,7 @@ func parseOptionalAmount(raw string) *int {
 	return &amount
 }
 
-func parseWithin(raw, unit string) int {
+func parseWithin(raw, distanceUnit string) int {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return 0
@@ -241,7 +224,7 @@ func parseWithin(raw, unit string) int {
 		return 0
 	}
 	opts := search.WithinMileOptions
-	if unit == location.UnitKm {
+	if distanceUnit == location.UnitKm {
 		opts = search.WithinKmOptions
 	}
 	for _, opt := range opts {
@@ -274,7 +257,10 @@ func SaveSearchStateForTest(c *fiber.Ctx, fromForm bool) cookie.SearchState {
 	return saveSearchStateFromRequest(c, nil, fromForm)
 }
 
-// BuildSearchParamsForTest exposes parseSearchParamsFromState for integration tests.
+// BuildSearchParamsForTest exposes parseSearchParams for integration tests.
 func BuildSearchParamsForTest(c *fiber.Ctx, state cookie.SearchState, categoryID int) search.Params {
-	return parseSearchParamsFromState(c, state, categoryID)
+	return parseSearchParams(
+		state, c.QueryInt("page", 1), categoryID,
+		local.GetUserID(c), cookie.GetDistanceUnit(c), cookie.GetTimezone(c),
+	)
 }

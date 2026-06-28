@@ -5,43 +5,36 @@ import (
 	"github.com/rocky-ads/site/internal/location"
 )
 
-// BuildInput holds filter fields used to construct search Params.
-type BuildInput struct {
-	CategoryID   int
-	Limit        int
-	Offset       int
-	Q            string
-	Location     string
-	Within       int
-	WithinUnit   string
-	FacetFilters map[string]facet.Filter
-}
-
-// BuildParams converts filter input into search Params, resolving geo when applicable.
-func BuildParams(in BuildInput) Params {
+// BuildParams converts filter fields into search Params, resolving geo when applicable.
+func BuildParams(
+	categoryID, limit, offset int,
+	q, locationText string,
+	within int, withinUnit string,
+	facetFilters map[string]facet.Filter,
+) Params {
 	p := Params{
-		CategoryID:   in.CategoryID,
-		Limit:        in.Limit,
-		Offset:       in.Offset,
-		Q:            in.Q,
-		FacetFilters: in.FacetFilters,
+		CategoryID:   categoryID,
+		Limit:        limit,
+		Offset:       offset,
+		Q:            q,
+		FacetFilters: facetFilters,
 	}
 
-	if in.Location == "" || in.Within <= 0 {
+	if locationText == "" || within <= 0 {
 		return p
 	}
 
-	lat, lon, ok, err := location.ResolveLocation(in.Location)
+	lat, lon, ok, err := location.ResolveLocation(locationText)
 	if err != nil || !ok {
 		return p
 	}
 
 	p.CenterLat = lat
 	p.CenterLon = lon
-	if in.WithinUnit == location.UnitKm {
-		p.WithinKm = float64(in.Within)
+	if withinUnit == location.UnitKm {
+		p.WithinKm = float64(within)
 	} else {
-		p.WithinKm = location.MilesToKm(float64(in.Within))
+		p.WithinKm = location.MilesToKm(float64(within))
 	}
 	p.HasGeo = true
 	return p

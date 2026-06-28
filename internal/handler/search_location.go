@@ -9,9 +9,9 @@ import (
 )
 
 func SearchLocationModalHandler(c *fiber.Ctx) error {
-	unit := cookie.GetDistanceUnit(c)
+	distanceUnit := cookie.GetDistanceUnit(c)
 	state := cookie.GetSearchState(c)
-	filters := searchStateToFilters(state, unit)
+	filters := searchStateToFilters(state, distanceUnit)
 	return render(c, ui.SearchLocationModal(filters))
 }
 
@@ -23,8 +23,8 @@ func SearchLocationSaveHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	unit := cookie.GetDistanceUnit(c)
-	filters := searchStateToFilters(state, unit)
+	distanceUnit := cookie.GetDistanceUnit(c)
+	filters := searchStateToFilters(state, distanceUnit)
 
 	nodes := []g.Node{
 		uiads.SearchLocationOOB(filters),

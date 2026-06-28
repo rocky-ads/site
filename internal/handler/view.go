@@ -14,12 +14,13 @@ func ViewHandler(c *fiber.Ctx) error {
 	tz := cookie.GetTimezone(c)
 	categoryID := cookie.GetCategoryID(c)
 	csrfToken := local.GetCSRFToken(c)
-
-	p := parseSearchParams(c, categoryID)
-	state := cookie.GetSearchState(c)
+	distanceUnit := cookie.GetDistanceUnit(c)
+	searchState := cookie.GetSearchState(c)
+	page := c.QueryInt("page", 1)
+	p := parseSearchParams(searchState, page, categoryID, userID, distanceUnit, tz)
 	results, err := searchAndRenderAds(
 		p, userID, view, tz, csrfToken,
-		searchLocationDisplay(state.Location), state.Within, cookie.GetDistanceUnit(c),
+		searchLocationDisplay(searchState.Location), searchState.Within, distanceUnit,
 	)
 	if err != nil {
 		return err
@@ -27,6 +28,6 @@ func ViewHandler(c *fiber.Ctx) error {
 
 	cookie.SetView(c, view)
 
-	filters := searchStateToFilters(state, cookie.GetDistanceUnit(c))
+	filters := searchStateToFilters(searchState, distanceUnit)
 	return render(c, ui.SearchView(view, filters, results))
 }

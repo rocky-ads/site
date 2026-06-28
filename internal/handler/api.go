@@ -37,7 +37,7 @@ func renderFilterPanelResponse(c *fiber.Ctx, state cookie.SearchState) error {
 		return err
 	}
 
-	unit := cookie.GetDistanceUnit(c)
+	distanceUnit := cookie.GetDistanceUnit(c)
 	category := ad.GetCategory(cookie.GetCategoryID(c))
 	var filterFacets []facet.Def
 	if state.Expanded {
@@ -45,7 +45,7 @@ func renderFilterPanelResponse(c *fiber.Ctx, state cookie.SearchState) error {
 	}
 
 	return render(c, g.Group([]g.Node{
-		ui.SearchAreaOOB(state.Q, state.Expanded, filterFacets, searchStateToFilters(state, unit), searchVisible(state)),
+		ui.SearchAreaOOB(state.Q, state.Expanded, filterFacets, searchStateToFilters(state, distanceUnit), searchVisible(state)),
 		ui.SearchToggleOOB(searchVisible(state)),
 		ui.SearchResultsOOB(view, results),
 	}))

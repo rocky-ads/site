@@ -11,18 +11,20 @@ import (
 )
 
 func HomeHandler(c *fiber.Ctx) error {
+
 	category := ad.GetCategory(cookie.GetCategoryID(c))
 	userID := local.GetUserID(c)
 	view := ui.ValidateView(cookie.GetView(c))
 	tz := cookie.GetTimezone(c)
 	csrfToken := local.GetCSRFToken(c)
+	distanceUnit := cookie.GetDistanceUnit(c)
 	searchState := cookie.GetSearchState(c)
-	unit := cookie.GetDistanceUnit(c)
+	page := c.QueryInt("page", 1)
 
-	p := parseSearchParamsFromState(c, searchState, category.ID)
+	p := parseSearchParams(searchState, page, category.ID, userID, distanceUnit, tz)
 	results, err := searchAndRenderAds(
 		p, userID, view, tz, csrfToken,
-		searchLocationDisplay(searchState.Location), searchState.Within, unit,
+		searchLocationDisplay(searchState.Location), searchState.Within, distanceUnit,
 	)
 	if err != nil {
 		return err
@@ -31,5 +33,5 @@ func HomeHandler(c *fiber.Ctx) error {
 	return renderPage(c, config.ServerName,
 		ui.HomePage(userID, view, searchState.Q, searchState.Expanded, searchVisible(searchState),
 			categoryOption(category), filterableFacets(category),
-			searchStateToFilters(searchState, unit), results))
+			searchStateToFilters(searchState, distanceUnit), results))
 }

@@ -23,8 +23,7 @@ func TestSearchVisibleToggle(t *testing.T) {
 func TestParseSearchParamsCollapsedNoFacets(t *testing.T) {
 	app := fiber.New()
 	app.Get("/search", func(c *fiber.Ctx) error {
-		state := cookie.SearchState{Q: "Honda"}
-		p := parseSearchParamsFromState(c, state, 6)
+		p := parseSearchParams(cookie.SearchState{Q: "Honda"}, c.QueryInt("page", 1), 6, 0, cookie.GetDistanceUnit(c), cookie.GetTimezone(c))
 		if p.Expanded {
 			t.Fatal("expected Expanded false when filter panel collapsed")
 		}
