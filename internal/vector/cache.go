@@ -47,12 +47,9 @@ func GetQueryEmbedding(userQuery string, categoryID int) ([]float32, error) {
 	}
 	key := fmt.Sprintf("query_cat_%d:%s", categoryID, userQuery)
 	if cached, ok := queryEmbeddingCache.Get(key); ok {
-		dim, norm := embeddingSummary(cached)
 		logger.Debug("query embedding cache hit",
 			"categoryID", categoryID,
 			"query", userQuery,
-			"dim", dim,
-			"norm", norm,
 		)
 		return cached, nil
 	}
@@ -60,7 +57,7 @@ func GetQueryEmbedding(userQuery string, categoryID int) ([]float32, error) {
 	logger.Debug("query embedding cache miss",
 		"categoryID", categoryID,
 		"query", userQuery,
-		"prompt", truncateForLog(prompt, 200),
+		"prompt", prompt,
 	)
 	embedding, err := embedText(prompt)
 	if err != nil {
@@ -78,19 +75,13 @@ func GetQueryEmbedding(userQuery string, categoryID int) ([]float32, error) {
 	return embedding, nil
 }
 
-func GetUserPersonalizedEmbedding(userID, categoryID int,
-	forceRecompute bool) ([]float32, error) {
-	if !forceRecompute {
-		if cached, err := getUserEmbedding(userID, categoryID); err == nil {
-			dim, norm := embeddingSummary(cached)
-			logger.Debug("user embedding cache hit",
-				"userID", userID,
-				"categoryID", categoryID,
-				"dim", dim,
-				"norm", norm,
-			)
-			return cached, nil
-		}
+func GetUserPersonalizedEmbedding(userID, categoryID int) ([]float32, error) {
+	if cached, err := getUserEmbedding(userID, categoryID); err == nil {
+		logger.Debug("user embedding cache hit",
+			"userID", userID,
+			"categoryID", categoryID,
+		)
+		return cached, nil
 	}
 	activities, err := getUserActivities(
 		userID, categoryID, config.VectorUserEmbeddingLimit,
@@ -116,13 +107,10 @@ func GetUserPersonalizedEmbedding(userID, categoryID int,
 		return nil, ErrNoUserActivity
 	}
 	_ = setUserEmbedding(userID, categoryID, emb)
-	dim, norm := embeddingSummary(emb)
 	logger.Debug("user embedding computed",
 		"userID", userID,
 		"categoryID", categoryID,
 		"activities", len(activities),
-		"dim", dim,
-		"norm", norm,
 	)
 	return emb, nil
 }
@@ -151,12 +139,9 @@ func GetSiteEmbedding(categoryID int, campaignKey string) ([]float32, error) {
 	}
 	key := fmt.Sprintf("site_cat_%d_%s", categoryID, campaignKey)
 	if cached, ok := siteEmbeddingCache.Get(key); ok {
-		dim, norm := embeddingSummary(cached)
 		logger.Debug("site embedding cache hit",
 			"categoryID", categoryID,
 			"campaignKey", campaignKey,
-			"dim", dim,
-			"norm", norm,
 		)
 		return cached, nil
 	}
@@ -180,35 +165,14 @@ func GetSiteEmbedding(categoryID int, campaignKey string) ([]float32, error) {
 	return embedding, nil
 }
 
-func ResolveSearchEmbedding(userID, categoryID int,
-	query string) ([]float32, error) {
+func ResolveSearchEmbedding(userID, categoryID int, query string) ([]float32, error) {
 	query = strings.TrimSpace(query)
 	if query != "" {
-		emb, err := GetQueryEmbedding(query, categoryID)
-		if err != nil {
-			return nil, err
-		}
-		dim, norm := embeddingSummary(emb)
-		logger.Debug("search embedding resolved",
-			"source", "query",
-			"categoryID", categoryID,
-			"query", query,
-			"dim", dim,
-			"norm", norm,
-		)
-		return emb, nil
+		return GetQueryEmbedding(query, categoryID)
 	}
 	if userID != 0 {
-		emb, err := GetUserPersonalizedEmbedding(userID, categoryID, false)
+		emb, err := GetUserPersonalizedEmbedding(userID, categoryID)
 		if err == nil {
-			dim, norm := embeddingSummary(emb)
-			logger.Debug("search embedding resolved",
-				"source", "user",
-				"categoryID", categoryID,
-				"userID", userID,
-				"dim", dim,
-				"norm", norm,
-			)
 			return emb, nil
 		}
 		if !errors.Is(err, ErrNoUserActivity) {
@@ -220,16 +184,5 @@ func ResolveSearchEmbedding(userID, categoryID int,
 			"reason", "no user activity",
 		)
 	}
-	emb, err := GetSiteEmbedding(categoryID, "default")
-	if err != nil {
-		return nil, err
-	}
-	dim, norm := embeddingSummary(emb)
-	logger.Debug("search embedding resolved",
-		"source", "site",
-		"categoryID", categoryID,
-		"dim", dim,
-		"norm", norm,
-	)
-	return emb, nil
+	return GetSiteEmbedding(categoryID, "default")
 }

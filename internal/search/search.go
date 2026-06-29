@@ -21,9 +21,7 @@ func Search(p Params) (Results, error) {
 		"threshold", config.SearchThreshold,
 	)
 
-	embedding, err := vector.ResolveSearchEmbedding(
-		p.UserID, p.CategoryID, p.Q,
-	)
+	embedding, err := vector.ResolveSearchEmbedding(p.UserID, p.CategoryID, p.Q)
 	if err != nil {
 		logger.Debug("search embedding error", "error", err)
 		return Results{}, fmt.Errorf("search embedding: %w", err)

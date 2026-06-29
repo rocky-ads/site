@@ -56,8 +56,7 @@ func calculateWeightedVectors(activities []AdActivity) ([][]float32, []float32) 
 	return vectors, weights
 }
 
-func calculateSiteLevelVector(categoryID int,
-	campaignKey string) ([]float32, error) {
+func calculateSiteLevelVector(categoryID int, campaignKey string) ([]float32, error) {
 	if categoryID <= 0 {
 		return nil, fmt.Errorf("categoryID must be greater than 0")
 	}

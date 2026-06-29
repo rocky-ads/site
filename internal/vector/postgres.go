@@ -101,10 +101,7 @@ func QuerySimilarAdIDs(embedding []float32, whereClause string, whereArgs []any,
 		return nil, err
 	}
 
-	dim, norm := embeddingSummary(embedding)
 	logger.Debug("vector search query",
-		"dim", dim,
-		"norm", norm,
 		"threshold", threshold,
 		"limit", limit,
 		"offset", offset,
