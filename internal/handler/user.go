@@ -21,7 +21,8 @@ const (
 	memberSinceLayoutSummary = "Jan 2006"
 )
 
-func userProfileData(u user.User, activeAdCount, userEggCount int, tz *time.Location, memberSinceLayout string) ui.UserProfileData {
+func userProfileData(u user.User, activeAdCount, userEggCount int,
+	tz *time.Location, memberSinceLayout string) ui.UserProfileData {
 	return ui.UserProfileData{
 		Name:          u.Name,
 		MemberSince:   u.CreatedAt.In(tz).Format(memberSinceLayout),
@@ -30,7 +31,8 @@ func userProfileData(u user.User, activeAdCount, userEggCount int, tz *time.Loca
 	}
 }
 
-func loadUserMenuContext(userID int, tz *time.Location) (name, memberSince string, isAdmin, hasUnread bool, eggCount, userEggCount int, err error) {
+func loadUserMenuContext(userID int, tz *time.Location) (name, memberSince string,
+	isAdmin, hasUnread bool, eggCount, userEggCount int, err error) {
 	u, err := user.GetByID(userID)
 	if err != nil {
 		return "", "", false, false, 0, 0, err

@@ -129,7 +129,8 @@ func imageCount(current, count int) g.Node {
 	)
 }
 
-func imageNav(adID, current, count int, size, heightClass string, clickable bool) g.Node {
+func imageNav(adID, current, count int, size, heightClass string,
+	clickable bool) g.Node {
 	if count <= 1 {
 		return g.Group([]g.Node{}) // Return empty group if count is 0 or 1
 	}
@@ -169,7 +170,8 @@ func imageNav(adID, current, count int, size, heightClass string, clickable bool
 	})
 }
 
-func ImageNode(adID, count, current int, size, heightClass string, clickable bool) g.Node {
+func ImageNode(adID, count, current int, size, heightClass string,
+	clickable bool) g.Node {
 	containerID := fmt.Sprintf("image-%d", adID)
 	imgElement := Img(
 		Class("max-w-full max-h-full object-contain"),
@@ -308,7 +310,8 @@ func imageFullScreenCount(current, count int) g.Node {
 	)
 }
 
-func ImageThumbnails(adID, current, count int, size, heightClass string, clickable bool) g.Node {
+func ImageThumbnails(adID, current, count int, size, heightClass string,
+	clickable bool) g.Node {
 	if count <= 1 {
 		return g.Group([]g.Node{}) // Return empty group if count is 0 or 1
 	}
@@ -358,7 +361,8 @@ func ImageThumbnails(adID, current, count int, size, heightClass string, clickab
 	)
 }
 
-func ImageNodeWithThumbnails(adID, count, current int, size, heightClass string, clickable bool) g.Node {
+func ImageNodeWithThumbnails(adID, count, current int, size, heightClass string,
+	clickable bool) g.Node {
 	containerID := fmt.Sprintf("image-%d", adID)
 	imgElement := Img(
 		Class("max-w-full max-h-full object-contain"),

@@ -122,7 +122,8 @@ Tailor options to the specific sale described.`,
 
 // suggestionsSystemPrompt builds the constant-per-category system prompt:
 // shared header + formal fields + category guidance.
-func suggestionsSystemPrompt(categoryName string, facets map[string]string) string {
+func suggestionsSystemPrompt(categoryName string,
+	facets map[string]string) string {
 	systemPrompt := suggestionsSharedHeader
 	systemPrompt += "\nAd CATEGORY: " + categoryName
 	systemPrompt += "\n" + categorySuggestionInstructions[categoryName]

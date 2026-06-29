@@ -18,7 +18,8 @@ const (
 
 // Encrypt encrypts plaintext data using an ID
 // Returns encrypted content (base64) and nonce (base64)
-func Encrypt(id int, plaintext string, masterKey []byte) (encryptedContent, nonce string, err error) {
+func Encrypt(id int,
+	plaintext string, masterKey []byte) (encryptedContent, nonce string, err error) {
 	// Derive key for this ID
 	key, err := deriveKey(id, masterKey)
 	if err != nil {
@@ -54,7 +55,8 @@ func Encrypt(id int, plaintext string, masterKey []byte) (encryptedContent, nonc
 }
 
 // Decrypt decrypts encrypted data using an ID
-func Decrypt(id int, encryptedContent, nonce string, masterKey []byte) (plaintext string, err error) {
+func Decrypt(id int, encryptedContent,
+	nonce string, masterKey []byte) (plaintext string, err error) {
 	// Derive key for this ID
 	key, err := deriveKey(id, masterKey)
 	if err != nil {

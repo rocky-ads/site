@@ -41,7 +41,8 @@ func resizeImage(imageData []byte, targetWidth int) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func processImage(baseDir string, adID, imgIdx int) (created480, created160 bool, err error) {
+func processImage(baseDir string, adID,
+	imgIdx int) (created480, created160 bool, err error) {
 	// Read 1200w image
 	sourcePath := filepath.Join(baseDir, fmt.Sprintf("%d", adID), fmt.Sprintf("%d-1200w.webp", imgIdx))
 	imageData, err := os.ReadFile(sourcePath)

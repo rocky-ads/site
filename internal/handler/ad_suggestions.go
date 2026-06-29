@@ -50,7 +50,8 @@ func renderSuggestions(c *fiber.Ctx, categoryID int, category ad.Category) error
 	return render(c, uiads.SuggestionsPartial(merged))
 }
 
-func suggestInputFrom(c *fiber.Ctx, categoryID int, category ad.Category, selected []ad.Suggestion) ad.SuggestInput {
+func suggestInputFrom(c *fiber.Ctx, categoryID int, category ad.Category,
+	selected []ad.Suggestion) ad.SuggestInput {
 	facets := category.Facets()
 	formalFacets := make(map[string]string, len(facets))
 	for _, d := range facets {
@@ -74,7 +75,8 @@ func suggestInputFrom(c *fiber.Ctx, categoryID int, category ad.Category, select
 }
 
 // parseFormFacetValues reads facet values from the ad form without validation.
-func parseFormFacetValues(c *fiber.Ctx, category ad.Category) map[string]facet.Value {
+func parseFormFacetValues(c *fiber.Ctx,
+	category ad.Category) map[string]facet.Value {
 	values := make(map[string]facet.Value)
 	for _, d := range category.Facets() {
 		switch d.Kind {
@@ -173,10 +175,8 @@ func dedupeSuggestions(suggestions []ad.Suggestion) []ad.Suggestion {
 	return out
 }
 
-func mergeSuggestionOptions(
-	selected []ad.Suggestion,
-	suggested []ad.Suggestion,
-) []uiads.SuggestionOption {
+func mergeSuggestionOptions(selected []ad.Suggestion,
+	suggested []ad.Suggestion) []uiads.SuggestionOption {
 	seen := make(map[string]struct{}, len(selected)+len(suggested))
 	out := make([]uiads.SuggestionOption, 0, len(selected)+len(suggested))
 

@@ -223,7 +223,8 @@ func iconButton(props buttonProps) g.Node {
 	return Button(allNodes...)
 }
 
-func checkbox(name string, value string, label string, checked bool, disabled bool, attrs ...g.Node) g.Node {
+func checkbox(name string, value string, label string, checked bool,
+	disabled bool, attrs ...g.Node) g.Node {
 	inputAttrs := []g.Node{
 		Type("checkbox"),
 		Name(name),
@@ -271,7 +272,8 @@ func label(text string) g.Node {
 }
 
 // inputText creates a standardized text input element with dark mode support
-func inputText(name, placeholder string, isRequired bool, attrs ...g.Node) g.Node {
+func inputText(name, placeholder string, isRequired bool,
+	attrs ...g.Node) g.Node {
 	inputAttrs := []g.Node{
 		Type("text"),
 		Name(name),

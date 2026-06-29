@@ -36,10 +36,8 @@ func UsesFullAddressDisplay(category Category) bool {
 }
 
 // LocationTextFromFacets returns trimmed location/address text from facets.
-func LocationTextFromFacets(
-	category Category,
-	facets map[string]facet.Value,
-) string {
+func LocationTextFromFacets(category Category,
+	facets map[string]facet.Value) string {
 	key := LocationFacetKey(category)
 	if key == "" {
 		return ""

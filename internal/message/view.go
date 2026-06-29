@@ -58,7 +58,8 @@ func OpenConversation(conversationID, userID int) (Conversation, bool, error) {
 	return conv, markedRead, nil
 }
 
-func OwnerAndInquirerNames(conv Conversation) (ownerName, inquirerName string, err error) {
+func OwnerAndInquirerNames(conv Conversation) (ownerName, inquirerName string,
+	err error) {
 	owner, err := user.GetByID(conv.OwnerID)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get owner name: %w", err)
@@ -84,7 +85,8 @@ func OtherUserName(conv Conversation, currentUserID int) (string, error) {
 	return u.Name, nil
 }
 
-func BuildConversationModal(conv Conversation, currentUserID int, tz *time.Location) (ConversationModalView, error) {
+func BuildConversationModal(conv Conversation, currentUserID int,
+	tz *time.Location) (ConversationModalView, error) {
 	a, err := ad.GetAd(currentUserID, conv.AdID, tz)
 	if err != nil {
 		return ConversationModalView{}, fmt.Errorf("%w: %v", ErrModalAdNotFound, err)
@@ -137,7 +139,8 @@ func eggCountForUser(userID int) int {
 	return count
 }
 
-func eggThrowPermissions(conversationID, userID int, canPost bool) (hasThrown, canThrow bool) {
+func eggThrowPermissions(conversationID, userID int,
+	canPost bool) (hasThrown, canThrow bool) {
 	hasThrown, err := egg.HasUserThrownEgg(userID, conversationID)
 	if err != nil {
 		hasThrown = false

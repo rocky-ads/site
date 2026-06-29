@@ -17,7 +17,8 @@ import (
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
 )
 
-func searchStateToFilters(state cookie.SearchState, distanceUnit string) uiads.SearchFilters {
+func searchStateToFilters(state cookie.SearchState,
+	distanceUnit string) uiads.SearchFilters {
 	opts := search.WithinMileOptions
 	if distanceUnit == location.UnitKm {
 		opts = search.WithinKmOptions
@@ -59,9 +60,8 @@ func filterableFacets(cat ad.Category) []facet.Def {
 	return out
 }
 
-func parseSearchParams(
-	state cookie.SearchState, page, categoryID, userID int, distanceUnit string, tz *time.Location,
-) search.Params {
+func parseSearchParams(state cookie.SearchState, page, categoryID, userID int,
+	distanceUnit string, tz *time.Location) search.Params {
 	limit := config.SearchPageSize
 	offset := (page - 1) * limit
 
@@ -82,7 +82,8 @@ func parseSearchParams(
 
 // saveSearchStateFromRequest updates the search cookie and returns the new
 // state (the request cookie is unchanged until the response is received).
-func saveSearchStateFromRequest(c *fiber.Ctx, expanded *bool, fromForm bool) cookie.SearchState {
+func saveSearchStateFromRequest(c *fiber.Ctx, expanded *bool,
+	fromForm bool) cookie.SearchState {
 	distanceUnit := cookie.GetDistanceUnit(c)
 	state := cookie.GetSearchState(c)
 	if fromForm {
@@ -114,7 +115,8 @@ func searchVisible(state cookie.SearchState) bool {
 	return false
 }
 
-func parseFacetFilters(c *fiber.Ctx, category ad.Category) map[string]facet.Filter {
+func parseFacetFilters(c *fiber.Ctx,
+	category ad.Category) map[string]facet.Filter {
 	filters := map[string]facet.Filter{}
 	for _, d := range category.Facets() {
 		if !d.Filterable {
@@ -152,10 +154,8 @@ func parseFacetFilters(c *fiber.Ctx, category ad.Category) map[string]facet.Filt
 	return filters
 }
 
-func expandFacetFilters(
-	filters map[string]facet.Filter,
-	tz *time.Location,
-) map[string]facet.Filter {
+func expandFacetFilters(filters map[string]facet.Filter,
+	tz *time.Location) map[string]facet.Filter {
 	if len(filters) == 0 {
 		return filters
 	}
@@ -235,7 +235,8 @@ func parseWithin(raw, distanceUnit string) int {
 	return 0
 }
 
-func clearFacetFilters(state cookie.SearchState, categoryID int) cookie.SearchState {
+func clearFacetFilters(state cookie.SearchState,
+	categoryID int) cookie.SearchState {
 	category := ad.GetCategory(categoryID)
 	allowed := make(map[string]bool, len(category.FacetKeys))
 	for _, d := range category.Facets() {
@@ -258,7 +259,8 @@ func SaveSearchStateForTest(c *fiber.Ctx, fromForm bool) cookie.SearchState {
 }
 
 // BuildSearchParamsForTest exposes parseSearchParams for integration tests.
-func BuildSearchParamsForTest(c *fiber.Ctx, state cookie.SearchState, categoryID int) search.Params {
+func BuildSearchParamsForTest(c *fiber.Ctx, state cookie.SearchState,
+	categoryID int) search.Params {
 	return parseSearchParams(
 		state, c.QueryInt("page", 1), categoryID,
 		local.GetUserID(c), cookie.GetDistanceUnit(c), cookie.GetTimezone(c),

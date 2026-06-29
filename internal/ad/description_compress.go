@@ -62,19 +62,13 @@ func historyEntryText(e historyEntry) string {
 }
 
 // EnsureDescriptionFits compresses description text until it fits MaxAdDescriptionLength.
-func EnsureDescriptionFits(
-	desc string,
-	at time.Time,
-	tz *time.Location,
-) (string, error) {
+func EnsureDescriptionFits(desc string, at time.Time,
+	tz *time.Location) (string, error) {
 	return ensureDescriptionFits(desc, at, tz)
 }
 
-func ensureDescriptionFits(
-	desc string,
-	at time.Time,
-	tz *time.Location,
-) (string, error) {
+func ensureDescriptionFits(desc string, at time.Time,
+	tz *time.Location) (string, error) {
 	max := config.MaxAdDescriptionLength
 	if descriptionRuneCount(desc) <= max {
 		return desc, nil

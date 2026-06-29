@@ -267,7 +267,8 @@ func formalFacetKeySet(facets map[string]string) map[string]struct{} {
 	return set
 }
 
-func usefulSuggestion(s Suggestion, facetSet map[string]struct{}) (Suggestion, bool) {
+func usefulSuggestion(s Suggestion,
+	facetSet map[string]struct{}) (Suggestion, bool) {
 	n, ok := normalizeSuggestion(s)
 	if !ok {
 		return Suggestion{}, false

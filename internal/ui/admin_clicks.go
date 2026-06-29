@@ -250,11 +250,8 @@ func clickTopUserRows(rows []ClickUserRow) []g.Node {
 	return out
 }
 
-func clickTableSection(
-	title, subtitle string,
-	header g.Node,
-	rows []g.Node,
-) g.Node {
+func clickTableSection(title, subtitle string, header g.Node,
+	rows []g.Node) g.Node {
 	var body g.Node
 	if len(rows) == 0 {
 		body = Div(

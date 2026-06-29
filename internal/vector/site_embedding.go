@@ -6,9 +6,8 @@ import (
 	"github.com/rocky-ads/site/internal/db"
 )
 
-func getSiteActivities(
-	categoryID int, _ string, limit int,
-) ([]AdActivity, error) {
+func getSiteActivities(categoryID int, _ string,
+	limit int) ([]AdActivity, error) {
 	query := `
 		SELECT COALESCE(
 			json_agg(

@@ -22,6 +22,7 @@ func HomeHandler(c *fiber.Ctx) error {
 	page := c.QueryInt("page", 1)
 
 	p := parseSearchParams(searchState, page, category.ID, userID, distanceUnit, tz)
+
 	results, err := searchAndRenderAds(
 		p, userID, view, tz, csrfToken,
 		searchLocationDisplay(searchState.Location), searchState.Within, distanceUnit,

@@ -57,10 +57,9 @@ const userSelectFields = `SELECT
 FROM users`
 
 func processUserRow(id int, encryptedNameBytes, nameNonceBytes []byte,
-	encryptedPhoneBytes, phoneNonceBytes []byte, passwordHash, passwordSalt, passwordAlgo string,
-	phoneVerifiedInt int,
-	createdAt time.Time, isAdminInt int, smsOptedOutInt int, deletedAt *time.Time,
-) (User, error) {
+	encryptedPhoneBytes, phoneNonceBytes []byte, passwordHash, passwordSalt,
+	passwordAlgo string, phoneVerifiedInt int, createdAt time.Time, isAdminInt int,
+	smsOptedOutInt int, deletedAt *time.Time) (User, error) {
 	var u User
 
 	u.ID = id

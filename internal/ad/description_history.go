@@ -113,7 +113,8 @@ func formatHistoryTimestamp(at time.Time, tz *time.Location) string {
 	return strings.ToLower(at.Format("1/2/2006 3:04 pm"))
 }
 
-func buildHistoryBlock(label, body string, at time.Time, tz *time.Location) string {
+func buildHistoryBlock(label, body string, at time.Time,
+	tz *time.Location) string {
 	body = strings.TrimSpace(SanitizeAdText(body))
 	header := historyMarker + formatHistoryTimestamp(at, tz) +
 		"  " + label
@@ -124,11 +125,8 @@ func buildHistoryBlock(label, body string, at time.Time, tz *time.Location) stri
 }
 
 // AppendHistoryEntry prepends a labeled, timestamped history block (newest first).
-func AppendHistoryEntry(
-	desc, label, body string,
-	at time.Time,
-	tz *time.Location,
-) string {
+func AppendHistoryEntry(desc, label, body string, at time.Time,
+	tz *time.Location) string {
 	body = strings.TrimSpace(SanitizeAdText(body))
 	if body == "" && label != "Description compressed" &&
 		label != "History compressed" {
@@ -319,11 +317,8 @@ func formatLocationChange(oldText, newText string) string {
 	return fmt.Sprintf("Location changed from %s to %s", oldText, newText)
 }
 
-func formatLocationHistoryChange(
-	oldAd Ad,
-	newLocationText string,
-	category Category,
-) string {
+func formatLocationHistoryChange(oldAd Ad, newLocationText string,
+	category Category) string {
 	newRaw := strings.TrimSpace(newLocationText)
 	if UsesFullAddressDisplay(category) {
 		oldRaw := fullAddressText(oldAd)
@@ -353,13 +348,8 @@ func formatLocationHistoryChange(
 }
 
 // BuildFieldChangeEntries returns history entry bodies for changed ad fields.
-func BuildFieldChangeEntries(
-	oldAd Ad,
-	newTitle string,
-	newLocationText string,
-	newFacets map[string]facet.Value,
-	category Category,
-) []struct {
+func BuildFieldChangeEntries(oldAd Ad, newTitle string, newLocationText string,
+	newFacets map[string]facet.Value, category Category) []struct {
 	label string
 	body  string
 } {

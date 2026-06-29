@@ -225,7 +225,8 @@ func getTestClient() *http.Client {
 	return testClient
 }
 
-func postFormRequest(t *testing.T, requestURL string, body map[string]interface{}) (*http.Response, map[string]interface{}) {
+func postFormRequest(t *testing.T, requestURL string,
+	body map[string]interface{}) (*http.Response, map[string]interface{}) {
 	client := getTestClient()
 
 	baseURLParsed, err := url.Parse(baseURL)
@@ -336,12 +337,8 @@ type multipartUpload struct {
 	content   []byte
 }
 
-func postMultipartRequest(
-	t *testing.T,
-	requestURL string,
-	fields map[string]string,
-	uploads []multipartUpload,
-) (*http.Response, map[string]interface{}) {
+func postMultipartRequest(t *testing.T, requestURL string,
+	fields map[string]string, uploads []multipartUpload) (*http.Response, map[string]interface{}) {
 	t.Helper()
 	client := getTestClient()
 	baseURLParsed, _ := url.Parse(baseURL)
@@ -506,7 +503,8 @@ func getClientWithCategoryCookie(categoryID int) (*http.Client, error) {
 	return client, nil
 }
 
-func setSearchCookieOnClient(client *http.Client, state cookie.SearchState) error {
+func setSearchCookieOnClient(client *http.Client,
+	state cookie.SearchState) error {
 	data, err := json.Marshal(state)
 	if err != nil {
 		return err
@@ -545,7 +543,8 @@ func getSearchStateFromClient(client *http.Client) (cookie.SearchState, error) {
 	return cookie.SearchState{}, nil
 }
 
-func getRequestWithCookies(t *testing.T, client *http.Client, url string) (*http.Response, string) {
+func getRequestWithCookies(t *testing.T,
+	client *http.Client, url string) (*http.Response, string) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		t.Fatalf("Failed to create GET request: %v", err)
@@ -572,7 +571,8 @@ func getRequestWithCookies(t *testing.T, client *http.Client, url string) (*http
 	return resp, string(bodyBytes)
 }
 
-func adIDFromCreateResponse(t *testing.T, resp *http.Response, title string) string {
+func adIDFromCreateResponse(t *testing.T, resp *http.Response,
+	title string) string {
 	t.Helper()
 	if resp.StatusCode == http.StatusFound {
 		loc := resp.Header.Get("Location")

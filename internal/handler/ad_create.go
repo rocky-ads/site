@@ -60,7 +60,8 @@ func CreateAdHandler(c *fiber.Ctx) error {
 	return c.Redirect(redirect, fiber.StatusFound)
 }
 
-func parseAdFacets(c *fiber.Ctx, category ad.Category) (map[string]facet.Value, error) {
+func parseAdFacets(c *fiber.Ctx,
+	category ad.Category) (map[string]facet.Value, error) {
 	values := make(map[string]facet.Value)
 	for _, d := range category.Facets() {
 		switch d.Kind {
@@ -169,7 +170,8 @@ func validateSaleDates(values map[string]facet.Value) error {
 	return nil
 }
 
-func parseFormEnumCheckboxes(c *fiber.Ctx, key string, allowed []string) []string {
+func parseFormEnumCheckboxes(c *fiber.Ctx, key string,
+	allowed []string) []string {
 	allowedSet := make(map[string]bool, len(allowed))
 	for _, a := range allowed {
 		allowedSet[a] = true

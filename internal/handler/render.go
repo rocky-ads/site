@@ -44,7 +44,8 @@ func renderPage(c *fiber.Ctx, title string, body []gomponents.Node) error {
 }
 
 // searchFromRequest runs search for the current request page and renders ad nodes.
-func searchFromRequest(c *fiber.Ctx, state cookie.SearchState) (view, page int, results []g.Node, err error) {
+func searchFromRequest(c *fiber.Ctx,
+	state cookie.SearchState) (view, page int, results []g.Node, err error) {
 	categoryID := cookie.GetCategoryID(c)
 	userID := local.GetUserID(c)
 	view = ui.ValidateView(cookie.GetView(c))
@@ -61,7 +62,8 @@ func searchFromRequest(c *fiber.Ctx, state cookie.SearchState) (view, page int, 
 }
 
 // searchAdsForUI runs search and returns presentation-ready ad cards in result order.
-func searchAdsForUI(p search.Params, userID int, tz *time.Location) ([]ui.AdCard, search.Results, error) {
+func searchAdsForUI(p search.Params,
+	userID int, tz *time.Location) ([]ui.AdCard, search.Results, error) {
 	result, err := search.Search(p)
 	if err != nil {
 		return nil, search.Results{}, fiber.NewError(fiber.StatusInternalServerError, err.Error())
@@ -76,15 +78,8 @@ func searchAdsForUI(p search.Params, userID int, tz *time.Location) ([]ui.AdCard
 }
 
 // searchAndRenderAds searches for ads and renders them into gomponents nodes.
-func searchAndRenderAds(
-	p search.Params,
-	userID, view int,
-	tz *time.Location,
-	csrfToken string,
-	location string,
-	within int,
-	distanceUnit string,
-) ([]g.Node, error) {
+func searchAndRenderAds(p search.Params, userID, view int, tz *time.Location,
+	csrfToken string, location string, within int, distanceUnit string) ([]g.Node, error) {
 	cards, result, err := searchAdsForUI(p, userID, tz)
 	if err != nil {
 		return nil, err

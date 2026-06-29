@@ -7,13 +7,9 @@ import (
 )
 
 // AdCardFromFields builds an AdCard from presentation field values.
-func AdCardFromFields(
-	id, imageCount, rockCount int,
-	priceDisplay, title, location, facetLabel string,
-	hasPrice bool,
-	createdAt time.Time,
-	active, bookmarked bool,
-) AdCard {
+func AdCardFromFields(id, imageCount, rockCount int, priceDisplay, title,
+	location, facetLabel string, hasPrice bool, createdAt time.Time, active,
+	bookmarked bool) AdCard {
 	return AdCard{
 		ID:           id,
 		PriceDisplay: priceDisplay,
@@ -30,7 +26,8 @@ func AdCardFromFields(
 }
 
 // AdNodes renders search or list ad cards into gomponents nodes.
-func AdNodes(cards []AdCard, userID, view, page int, csrfToken string, pagination bool) []g.Node {
+func AdNodes(cards []AdCard, userID, view, page int, csrfToken string,
+	pagination bool) []g.Node {
 	results := make([]g.Node, len(cards))
 	for i, card := range cards {
 		isLast := i == len(cards)-1 && pagination
@@ -39,7 +36,8 @@ func AdNodes(cards []AdCard, userID, view, page int, csrfToken string, paginatio
 	return results
 }
 
-func adCardNode(card AdCard, userID, view, nextPage int, csrfToken string, isLast bool) g.Node {
+func adCardNode(card AdCard, userID, view, nextPage int, csrfToken string,
+	isLast bool) g.Node {
 	switch view {
 	case ViewGrid:
 		return AdGridNode(

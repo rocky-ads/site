@@ -71,9 +71,8 @@ func embeddingAdminData() (ui.EmbeddingAdminData, error) {
 	}, nil
 }
 
-func cachePanelFromStats(
-	name string, stats map[string]interface{},
-) ui.EmbeddingCachePanel {
+func cachePanelFromStats(name string,
+	stats map[string]interface{}) ui.EmbeddingCachePanel {
 	if stats == nil {
 		return ui.EmbeddingCachePanel{Name: name}
 	}
@@ -87,9 +86,7 @@ func cachePanelFromStats(
 	}
 }
 
-func missingEmbeddingRows(
-	rows []ad.MissingEmbedding,
-) []ui.MissingEmbeddingRow {
+func missingEmbeddingRows(rows []ad.MissingEmbedding) []ui.MissingEmbeddingRow {
 	out := make([]ui.MissingEmbeddingRow, len(rows))
 	for i, r := range rows {
 		out[i] = ui.MissingEmbeddingRow{

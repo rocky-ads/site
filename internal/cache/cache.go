@@ -30,9 +30,8 @@ func (c *Cache[T]) Get(key string) (T, bool) {
 	return c.impl.Get(key)
 }
 
-func (c *Cache[T]) SetWithTTL(
-	key string, value T, cost int64, ttl time.Duration,
-) bool {
+func (c *Cache[T]) SetWithTTL(key string, value T, cost int64,
+	ttl time.Duration) bool {
 	return c.impl.SetWithTTL(key, value, cost, ttl)
 }
 

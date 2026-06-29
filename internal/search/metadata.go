@@ -118,9 +118,8 @@ func sortedFacetKeys(filters map[string]facet.Filter) []string {
 	return keys
 }
 
-func geoBoundingBox(
-	lat, lon, withinKm float64,
-) (minLat, maxLat, minLon, maxLon float64) {
+func geoBoundingBox(lat, lon,
+	withinKm float64) (minLat, maxLat, minLon, maxLon float64) {
 	const kmPerDegreeLat = 111.0
 	deltaLat := withinKm / kmPerDegreeLat
 	cosLat := math.Cos(lat * math.Pi / 180)

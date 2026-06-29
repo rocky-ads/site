@@ -54,7 +54,8 @@ var ErrNotParticipant = errors.New("user is not a participant in this conversati
 
 // GetConversationByAdAndInquirer gets an existing conversation by ad ID and inquirer ID
 // Returns ErrConversationNotFound if the conversation does not exist
-func GetConversationByAdAndInquirer(adID, ownerID, inquirerID int) (Conversation, error) {
+func GetConversationByAdAndInquirer(adID, ownerID,
+	inquirerID int) (Conversation, error) {
 	if ownerID == inquirerID {
 		return Conversation{}, fmt.Errorf("owner and inquirer cannot be the same")
 	}
@@ -449,7 +450,8 @@ func GetPublicConversations(adID int) ([]Conversation, error) {
 	return conversations, nil
 }
 
-func GetUserConversations(userID int, tz *time.Location) ([]ConversationWithLastMessage, error) {
+func GetUserConversations(userID int,
+	tz *time.Location) ([]ConversationWithLastMessage, error) {
 	query := `
 		SELECT
 			c.id,
@@ -625,7 +627,8 @@ func enrichConversationListItems(conversations []ConversationWithLastMessage) {
 	}
 }
 
-func GetConversationMessages(conversationID, userID int, tz *time.Location) ([]Message, error) {
+func GetConversationMessages(conversationID, userID int,
+	tz *time.Location) ([]Message, error) {
 	// Allow access if user is participant OR conversation is public
 	conv, err := GetConversation(conversationID, userID)
 	if err != nil {
@@ -652,7 +655,8 @@ func GetConversationMessages(conversationID, userID int, tz *time.Location) ([]M
 	return messages, nil
 }
 
-func CreateMessage(conversationID, senderID int, content string) (Message, error) {
+func CreateMessage(conversationID, senderID int,
+	content string) (Message, error) {
 	if content == "" {
 		return Message{}, fmt.Errorf("message content cannot be empty")
 	}

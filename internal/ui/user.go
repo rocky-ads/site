@@ -20,7 +20,8 @@ func menuIcon(iconSrc, alt string) g.Node {
 	)
 }
 
-func menuHeader(userID int, userName, memberSince string, eggCount int, userEggIcons g.Node) g.Node {
+func menuHeader(userID int, userName, memberSince string, eggCount int,
+	userEggIcons g.Node) g.Node {
 	return Div(
 		Class("px-4 py-3 border-b border-zinc-100 text-center"),
 		Div(
@@ -67,7 +68,8 @@ func UserNameLink(userID int, userName string, extra ...g.Node) g.Node {
 	)
 }
 
-func userProfileStats(d UserProfileData, memberSinceClass, statClass string) []g.Node {
+func userProfileStats(d UserProfileData, memberSinceClass,
+	statClass string) []g.Node {
 	nodes := []g.Node{
 		Div(Class(memberSinceClass), g.Text("Member since "+d.MemberSince)),
 		Div(Class(statClass),
@@ -115,7 +117,8 @@ func UserProfilePage(d UserProfileData) []g.Node {
 	}
 }
 
-func UserMenu(userName, memberSince string, userID int, isAdmin bool, hasUnread bool, eggCount int, userEggCount int) g.Node {
+func UserMenu(userName, memberSince string, userID int, isAdmin bool,
+	hasUnread bool, eggCount int, userEggCount int) g.Node {
 	var menuItems []g.Node
 
 	if isAdmin {
@@ -448,7 +451,8 @@ func aboutIconLink(href, icon, alt string, external bool) g.Node {
 	return A(attrs...)
 }
 
-func aboutItem(icon, alt, label, href string, external bool, value g.Node) g.Node {
+func aboutItem(icon, alt, label, href string, external bool,
+	value g.Node) g.Node {
 	return Div(
 		Class("flex items-center gap-4 p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg"),
 		aboutIconLink(href, icon, alt, external),

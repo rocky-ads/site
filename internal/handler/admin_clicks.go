@@ -105,9 +105,8 @@ func clickImageRows(rows []ad.TopImageClick) []ui.ClickImageRow {
 	return out
 }
 
-func clickActivityRows(
-	rows []ad.RecentClick, names map[int]string,
-) []ui.ClickActivityRow {
+func clickActivityRows(rows []ad.RecentClick,
+	names map[int]string) []ui.ClickActivityRow {
 	out := make([]ui.ClickActivityRow, len(rows))
 	for i, r := range rows {
 		label := "Ad view"
@@ -131,9 +130,8 @@ func clickActivityRows(
 	return out
 }
 
-func clickUserRows(
-	rows []ad.TopUserClick, names map[int]string,
-) []ui.ClickUserRow {
+func clickUserRows(rows []ad.TopUserClick,
+	names map[int]string) []ui.ClickUserRow {
 	out := make([]ui.ClickUserRow, len(rows))
 	for i, r := range rows {
 		name := names[r.UserID]

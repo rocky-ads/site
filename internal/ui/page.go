@@ -150,7 +150,8 @@ func navigation(userID int, userName, currentPath string, hasUnread bool) g.Node
 	)
 }
 
-func Page(userID int, hasUnread bool, userName, title, currentPath, csrfToken string, body []g.Node) g.Node {
+func Page(userID int, hasUnread bool, userName, title, currentPath,
+	csrfToken string, body []g.Node) g.Node {
 	var headNodes []g.Node
 
 	// SEO meta tags for homepage

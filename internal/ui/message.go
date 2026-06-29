@@ -137,7 +137,8 @@ func ConversationMessagesSentinel(conversationID int) g.Node {
 	)
 }
 
-func ConversationListItemSwapOOB(conversationID int, conversationItemNode g.Node) g.Node {
+func ConversationListItemSwapOOB(conversationID int,
+	conversationItemNode g.Node) g.Node {
 	itemID := fmt.Sprintf("conversation-item-%d", conversationID)
 	return Div(
 		hx.SwapOOB("outerHTML"),
@@ -161,14 +162,8 @@ func ConversationContentInput(conversationID int, attrs ...g.Node) g.Node {
 	return Input(g.Group(allAttrs))
 }
 
-func ConversationForm(
-	conversationID, adID int,
-	csrfToken string,
-	canPost bool,
-	hasThrownEgg, canThrowEgg bool,
-	hasPublicEgg bool,
-	messageCount int,
-) g.Node {
+func ConversationForm(conversationID, adID int, csrfToken string, canPost bool,
+	hasThrownEgg, canThrowEgg bool, hasPublicEgg bool, messageCount int) g.Node {
 	modalName := fmt.Sprintf("conversation-%d", conversationID)
 	attrs := []g.Node{
 		ID(fmt.Sprintf("%s-form", modalName)),

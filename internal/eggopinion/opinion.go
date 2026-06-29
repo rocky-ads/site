@@ -28,10 +28,8 @@ type Opinion struct {
 }
 
 // GetOrGenerate returns a cached opinion or generates and stores one.
-func GetOrGenerate(
-	conv message.Conversation,
-	tz *time.Location,
-) (Opinion, error) {
+func GetOrGenerate(conv message.Conversation,
+	tz *time.Location) (Opinion, error) {
 	if conv.EggThrowerID == nil {
 		return Opinion{}, fmt.Errorf("conversation has no egg")
 	}
@@ -194,7 +192,8 @@ func generate(conv message.Conversation, tz *time.Location) (Opinion, error) {
 	return op, nil
 }
 
-func listMessages(conversationID int, tz *time.Location) ([]message.Message, error) {
+func listMessages(conversationID int,
+	tz *time.Location) ([]message.Message, error) {
 	var messages []message.Message
 	err := db.Select(&messages, `
 		SELECT id, conversation_id, sender_id, content, created_at

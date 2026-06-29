@@ -86,11 +86,8 @@ func NewFormConfig(defaults facet.FormDefaults) AdFormConfig {
 }
 
 // EditFormConfig returns config for the edit-ad form.
-func EditFormConfig(
-	adID int,
-	values AdFormValues,
-	defaults facet.FormDefaults,
-) AdFormConfig {
+func EditFormConfig(adID int, values AdFormValues,
+	defaults facet.FormDefaults) AdFormConfig {
 	if values.Facets == nil {
 		values.Facets = make(map[string]string)
 	}

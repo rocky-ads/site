@@ -6,12 +6,8 @@ import (
 )
 
 // BuildParams converts filter fields into search Params, resolving geo when applicable.
-func BuildParams(
-	categoryID, limit, offset int,
-	q, locationText string,
-	within int, withinUnit string,
-	facetFilters map[string]facet.Filter,
-) Params {
+func BuildParams(categoryID, limit, offset int, q, locationText string,
+	within int, withinUnit string, facetFilters map[string]facet.Filter) Params {
 	p := Params{
 		CategoryID:   categoryID,
 		Limit:        limit,

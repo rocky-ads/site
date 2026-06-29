@@ -43,9 +43,7 @@ func AggregateEmbeddings(vectors [][]float32, weights []float32) []float32 {
 	return result
 }
 
-func calculateWeightedVectors(
-	activities []AdActivity,
-) ([][]float32, []float32) {
+func calculateWeightedVectors(activities []AdActivity) ([][]float32, []float32) {
 	var vectors [][]float32
 	var weights []float32
 	for _, act := range activities {
@@ -58,9 +56,8 @@ func calculateWeightedVectors(
 	return vectors, weights
 }
 
-func calculateSiteLevelVector(
-	categoryID int, campaignKey string,
-) ([]float32, error) {
+func calculateSiteLevelVector(categoryID int,
+	campaignKey string) ([]float32, error) {
 	if categoryID <= 0 {
 		return nil, fmt.Errorf("categoryID must be greater than 0")
 	}

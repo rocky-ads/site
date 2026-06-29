@@ -151,7 +151,9 @@ func priceSpan(priceDisplay string, hasPrice bool) g.Node {
 	return Span(Class("text-green-600 font-semibold"), g.Text(priceDisplay))
 }
 
-func AdGridNode(userID, adID, imageCount, nextPage int, priceDisplay, title, location, facetLabel, csrfToken string, hasPrice bool, createdAt time.Time, active, bookmarked, isLast bool, eggCount int) g.Node {
+func AdGridNode(userID, adID, imageCount, nextPage int, priceDisplay, title,
+	location, facetLabel, csrfToken string, hasPrice bool, createdAt time.Time,
+	active, bookmarked, isLast bool, eggCount int) g.Node {
 	class := "flex flex-col cursor-pointer gap-1 py-3"
 	if !active {
 		class += " bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg"
@@ -184,7 +186,9 @@ func AdGridNode(userID, adID, imageCount, nextPage int, priceDisplay, title, loc
 	return node
 }
 
-func AdListNode(userID, adID int, priceDisplay, title, location, facetLabel string, hasPrice bool, createdAt time.Time, active, bookmarked bool, csrfToken string, isLast bool, nextPage int, eggCount int) g.Node {
+func AdListNode(userID, adID int, priceDisplay, title, location,
+	facetLabel string, hasPrice bool, createdAt time.Time, active, bookmarked bool,
+	csrfToken string, isLast bool, nextPage int, eggCount int) g.Node {
 	class := "flex flex-wrap items-center justify-between py-2 cursor-pointer"
 	if active {
 		class += " hover:bg-zinc-50 dark:hover:bg-zinc-800"
@@ -294,7 +298,8 @@ func messageButton(adID int) g.Node {
 	})
 }
 
-func adButtons(adID, userID, ownerID int, bookmarked, active, reachable bool, csrfToken string) g.Node {
+func adButtons(adID, userID, ownerID int, bookmarked, active, reachable bool,
+	csrfToken string) g.Node {
 	isOwner := local.IsLoggedIn(userID) && userID == ownerID
 	return Div(
 		Class("flex items-center gap-2"),
@@ -456,13 +461,8 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 	}
 }
 
-func descriptionDisplay(
-	adID int,
-	original string,
-	facetDetails []string,
-	tags []string,
-	history []AdHistoryEntry,
-) g.Node {
+func descriptionDisplay(adID int, original string, facetDetails []string,
+	tags []string, history []AdHistoryEntry) g.Node {
 	var nodes []g.Node
 	if len(facetDetails) > 0 {
 		nodes = append(nodes, adFacetList(facetDetails))
@@ -611,7 +611,8 @@ func imageUploadField(maxImagesPerAd, existingCount int, appendMode bool) g.Node
 	)
 }
 
-func imageUploadControls(maxImagesPerAd, existingCount int, appendMode bool) g.Node {
+func imageUploadControls(maxImagesPerAd, existingCount int,
+	appendMode bool) g.Node {
 	appendFlag := "false"
 	if appendMode {
 		appendFlag = "true"
@@ -753,7 +754,8 @@ func NewAd(category CategoryOption, fields g.Node) []g.Node {
 	}
 }
 
-func EditAd(category CategoryOption, cfg uiads.AdFormConfig, fields g.Node) []g.Node {
+func EditAd(category CategoryOption, cfg uiads.AdFormConfig,
+	fields g.Node) []g.Node {
 	imagePath := "/images/category/" + category.ImageFile
 	return []g.Node{
 		Div(

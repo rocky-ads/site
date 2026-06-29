@@ -9,14 +9,16 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-func AdminDashboardPage(users []UserRowData, sortBy, sortOrder string, currentUserID int) []g.Node {
+func AdminDashboardPage(users []UserRowData, sortBy, sortOrder string,
+	currentUserID int) []g.Node {
 	return []g.Node{
 		pageTitle("Admin Dashboard"),
 		AdminDashboardContainer("users", users, sortBy, sortOrder, currentUserID),
 	}
 }
 
-func AdminDashboardContainer(activeTab string, users []UserRowData, sortBy, sortOrder string, currentUserID int) g.Node {
+func AdminDashboardContainer(activeTab string, users []UserRowData, sortBy,
+	sortOrder string, currentUserID int) g.Node {
 	return Div(
 		ID("admin-dashboard-container"),
 		Class("space-y-6 mt-6"),
@@ -25,13 +27,8 @@ func AdminDashboardContainer(activeTab string, users []UserRowData, sortBy, sort
 	)
 }
 
-func AdminDashboardContainerWithClicks(
-	activeTab string,
-	users []UserRowData,
-	sortBy, sortOrder string,
-	currentUserID int,
-	clicks ClickAdminData,
-) g.Node {
+func AdminDashboardContainerWithClicks(activeTab string, users []UserRowData,
+	sortBy, sortOrder string, currentUserID int, clicks ClickAdminData) g.Node {
 	return Div(
 		ID("admin-dashboard-container"),
 		Class("space-y-6 mt-6"),
@@ -42,13 +39,8 @@ func AdminDashboardContainerWithClicks(
 	)
 }
 
-func AdminContentWithClicks(
-	activeTab string,
-	users []UserRowData,
-	sortBy, sortOrder string,
-	currentUserID int,
-	clicks ClickAdminData,
-) g.Node {
+func AdminContentWithClicks(activeTab string, users []UserRowData, sortBy,
+	sortOrder string, currentUserID int, clicks ClickAdminData) g.Node {
 	return Div(
 		ID("admin-content"),
 		g.If(activeTab == "users", Div(
@@ -62,13 +54,8 @@ func AdminContentWithClicks(
 	)
 }
 
-func AdminDashboardContainerWithEmbeddings(
-	activeTab string,
-	users []UserRowData,
-	sortBy, sortOrder string,
-	currentUserID int,
-	emb EmbeddingAdminData,
-) g.Node {
+func AdminDashboardContainerWithEmbeddings(activeTab string, users []UserRowData,
+	sortBy, sortOrder string, currentUserID int, emb EmbeddingAdminData) g.Node {
 	return Div(
 		ID("admin-dashboard-container"),
 		Class("space-y-6 mt-6"),
@@ -79,13 +66,8 @@ func AdminDashboardContainerWithEmbeddings(
 	)
 }
 
-func AdminContentWithEmbeddings(
-	activeTab string,
-	users []UserRowData,
-	sortBy, sortOrder string,
-	currentUserID int,
-	emb EmbeddingAdminData,
-) g.Node {
+func AdminContentWithEmbeddings(activeTab string, users []UserRowData, sortBy,
+	sortOrder string, currentUserID int, emb EmbeddingAdminData) g.Node {
 	return Div(
 		ID("admin-content"),
 		g.If(activeTab == "users", Div(
@@ -99,7 +81,9 @@ func AdminContentWithEmbeddings(
 	)
 }
 
-func AdminDashboardContainerWithQueue(activeTab string, users []UserRowData, sortBy, sortOrder string, currentUserID int, queueStats QueueStats, queueEntries []SMSQueueEntry) g.Node {
+func AdminDashboardContainerWithQueue(activeTab string, users []UserRowData,
+	sortBy, sortOrder string, currentUserID int, queueStats QueueStats,
+	queueEntries []SMSQueueEntry) g.Node {
 	return Div(
 		ID("admin-dashboard-container"),
 		Class("space-y-6 mt-6"),
@@ -143,7 +127,8 @@ func adminTab(name, tabID string, active bool) g.Node {
 	)
 }
 
-func AdminContent(activeTab string, users []UserRowData, sortBy, sortOrder string, currentUserID int) g.Node {
+func AdminContent(activeTab string, users []UserRowData, sortBy,
+	sortOrder string, currentUserID int) g.Node {
 	return Div(
 		ID("admin-content"),
 		g.If(activeTab == "users", Div(
@@ -157,7 +142,9 @@ func AdminContent(activeTab string, users []UserRowData, sortBy, sortOrder strin
 	)
 }
 
-func AdminContentWithQueue(activeTab string, users []UserRowData, sortBy, sortOrder string, currentUserID int, queueStats QueueStats, queueEntries []SMSQueueEntry) g.Node {
+func AdminContentWithQueue(activeTab string, users []UserRowData, sortBy,
+	sortOrder string, currentUserID int, queueStats QueueStats,
+	queueEntries []SMSQueueEntry) g.Node {
 	return Div(
 		ID("admin-content"),
 		g.If(activeTab == "users", Div(
@@ -398,7 +385,8 @@ func AdminSettingsTab() g.Node {
 	)
 }
 
-func UsersTable(users []UserRowData, sortBy, sortOrder string, currentUserID int) g.Node {
+func UsersTable(users []UserRowData, sortBy, sortOrder string,
+	currentUserID int) g.Node {
 	return Div(
 		ID("users-table"),
 		Class("w-full text-xs"),
@@ -601,7 +589,8 @@ func userActions(u UserRowData, currentUserID int) g.Node {
 	)
 }
 
-func actionIconButton(iconSrc, alt, actionURL, confirmMsg, colorClass string, targetRowID string) g.Node {
+func actionIconButton(iconSrc, alt, actionURL, confirmMsg, colorClass string,
+	targetRowID string) g.Node {
 	return Button(
 		Type("button"),
 		Class("p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors "+colorClass),

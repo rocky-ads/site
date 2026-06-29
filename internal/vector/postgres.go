@@ -20,11 +20,8 @@ func replacePlaceholders(query string, startIndex int) string {
 	})
 }
 
-func UpsertAdEmbeddings(
-	adIDs []int,
-	embeddings [][]float32,
-	metadatas []map[string]any,
-) error {
+func UpsertAdEmbeddings(adIDs []int, embeddings [][]float32,
+	metadatas []map[string]any) error {
 	if len(adIDs) == 0 {
 		return nil
 	}
@@ -57,14 +54,8 @@ func DeleteAdEmbedding(adID int) error {
 	return err
 }
 
-func QuerySimilarAdIDs(
-	embedding []float32,
-	whereClause string,
-	whereArgs []any,
-	orderPrefix string,
-	limit, offset int,
-	threshold float64,
-) ([]int, error) {
+func QuerySimilarAdIDs(embedding []float32, whereClause string, whereArgs []any,
+	orderPrefix string, limit, offset int, threshold float64) ([]int, error) {
 	vec := pgvector.NewVector(embedding)
 	query := `
 		SELECT id
@@ -127,12 +118,8 @@ func QuerySimilarAdIDs(
 	return ids, nil
 }
 
-func CountSimilarAdIDs(
-	embedding []float32,
-	whereClause string,
-	whereArgs []any,
-	threshold float64,
-) (int, error) {
+func CountSimilarAdIDs(embedding []float32, whereClause string, whereArgs []any,
+	threshold float64) (int, error) {
 	vec := pgvector.NewVector(embedding)
 	query := `
 		SELECT COUNT(*)::int
@@ -194,12 +181,8 @@ func GetAdEmbeddings(adIDs []int) ([][]float32, error) {
 	return out, nil
 }
 
-func logVectorSearchDiagnostics(
-	vec pgvector.Vector,
-	whereClause string,
-	whereArgs []any,
-	threshold float64,
-) {
+func logVectorSearchDiagnostics(vec pgvector.Vector, whereClause string,
+	whereArgs []any, threshold float64) {
 	baseWhere := `embedding IS NOT NULL AND deleted_at IS NULL`
 	if whereClause != "" {
 		filterClause := replacePlaceholders(whereClause, 3)

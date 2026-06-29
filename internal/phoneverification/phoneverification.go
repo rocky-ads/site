@@ -170,7 +170,8 @@ func InvalidateCodesTx(tx *sql.Tx, phoneE64 string) error {
 	return invalidateCodes(phoneE64, tx.Exec)
 }
 
-func invalidateCodes(phoneE64 string, exec func(string, ...any) (sql.Result, error)) error {
+func invalidateCodes(phoneE64 string,
+	exec func(string, ...any) (sql.Result, error)) error {
 	_, err := exec(`
 		DELETE FROM phone_verification 
 		WHERE phone_e64 = $1

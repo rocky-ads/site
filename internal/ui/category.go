@@ -9,7 +9,8 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-func CategoryItem(currentCategoryID, categoryID int, name, imageFile, returnParam string) g.Node {
+func CategoryItem(currentCategoryID, categoryID int, name, imageFile,
+	returnParam string) g.Node {
 	itemClass := "flex items-center gap-3 p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer rounded-lg transition-colors text-zinc-900 dark:text-zinc-200 "
 	if categoryID == currentCategoryID {
 		itemClass += "bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700"
@@ -34,7 +35,8 @@ func CategoryItem(currentCategoryID, categoryID int, name, imageFile, returnPara
 	)
 }
 
-func CategorySelectModal(selectedID int, returnParam string, categories []CategoryOption) g.Node {
+func CategorySelectModal(selectedID int, returnParam string,
+	categories []CategoryOption) g.Node {
 	items := make([]g.Node, len(categories))
 	for i, cat := range categories {
 		items[i] = CategoryItem(selectedID, cat.ID, cat.Name, cat.ImageFile, returnParam)

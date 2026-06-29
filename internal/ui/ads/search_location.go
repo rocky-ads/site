@@ -88,7 +88,8 @@ func withinHiddenValue(f SearchFilters) string {
 }
 
 // WithinSelect renders the within-distance dropdown.
-func WithinSelect(id string, selected int, options []int, suffix string, inputClass ...string) g.Node {
+func WithinSelect(id string, selected int, options []int, suffix string,
+	inputClass ...string) g.Node {
 	class := fieldInputClass
 	if len(inputClass) > 0 {
 		class = inputClass[0]

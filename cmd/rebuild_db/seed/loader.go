@@ -324,10 +324,8 @@ func init() {
 }
 
 // AssembleDescription applies seed history entries to the original body.
-func AssembleDescription(
-	original string,
-	history []HistoryEntryJSON,
-) (string, error) {
+func AssembleDescription(original string,
+	history []HistoryEntryJSON) (string, error) {
 	desc := original
 	for _, h := range history {
 		at, err := time.Parse(time.RFC3339, h.At)
@@ -365,7 +363,8 @@ func convertAdJSON(aj adJSON) Ad {
 	}
 }
 
-func loadAdsFromFile(categoryID int, filename string, categoryFacets []string, usedIDs map[int]string) error {
+func loadAdsFromFile(categoryID int, filename string, categoryFacets []string,
+	usedIDs map[int]string) error {
 	data, err := os.ReadFile("cmd/rebuild_db/seed/" + filename)
 	if err != nil {
 		return err
@@ -437,7 +436,8 @@ func loadAdsFromFile(categoryID int, filename string, categoryFacets []string, u
 
 // insertAdFacets writes the price facet (from the ad's top-level price) plus any
 // generic facets declared in the seed file into ad_facets.
-func insertAdFacets(adID, price int, priceCurrency string, categoryFacets []string, facets map[string]facetJSON) error {
+func insertAdFacets(adID, price int, priceCurrency string,
+	categoryFacets []string, facets map[string]facetJSON) error {
 	hasPrice := false
 	for _, key := range categoryFacets {
 		if key == "price" {

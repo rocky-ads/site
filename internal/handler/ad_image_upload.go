@@ -16,15 +16,13 @@ import (
 	"golang.org/x/image/draw"
 )
 
-func uploadAdImages(store imagestore.Store, adID int, files []*multipart.FileHeader) {
+func uploadAdImages(store imagestore.Store, adID int,
+	files []*multipart.FileHeader) {
 	uploadAdImagesFromIndex(store, adID, 1, files)
 }
 
-func uploadAdImagesFromIndex(
-	store imagestore.Store,
-	adID, startIndex int,
-	files []*multipart.FileHeader,
-) {
+func uploadAdImagesFromIndex(store imagestore.Store, adID, startIndex int,
+	files []*multipart.FileHeader) {
 	if len(files) == 0 {
 		return
 	}

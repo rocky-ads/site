@@ -321,12 +321,8 @@ func (f adFields) priceRow(d facet.Def) g.Node {
 }
 
 // AdPriceRow renders the price facet with a "List as FREE" HTMX toggle.
-func AdPriceRow(
-	cfg AdFormConfig,
-	d facet.Def,
-	defaults facet.FormDefaults,
-	view PriceRowView,
-) g.Node {
+func AdPriceRow(cfg AdFormConfig, d facet.Def, defaults facet.FormDefaults,
+	view PriceRowView) g.Node {
 	currencyCode := priceCurrencyCode(d, defaults, view.Currency)
 	rowID := cfg.priceRowID()
 
@@ -373,11 +369,8 @@ func AdPriceRow(
 	)
 }
 
-func priceFreeCheckboxAttrs(
-	cfg AdFormConfig,
-	rowID string,
-	checked bool,
-) []g.Node {
+func priceFreeCheckboxAttrs(cfg AdFormConfig, rowID string,
+	checked bool) []g.Node {
 	attrs := []g.Node{
 		Type("checkbox"),
 		Name("price_free"),
@@ -395,14 +388,16 @@ func priceFreeCheckboxAttrs(
 	return attrs
 }
 
-func priceCurrencyCode(d facet.Def, defaults facet.FormDefaults, selected string) string {
+func priceCurrencyCode(d facet.Def, defaults facet.FormDefaults,
+	selected string) string {
 	if selected != "" {
 		return d.FormDefaultCurrency(facet.FormDefaults{Currency: selected})
 	}
 	return d.FormDefaultCurrency(defaults)
 }
 
-func priceCurrencySelect(cfg AdFormConfig, selected string, currencies []string) g.Node {
+func priceCurrencySelect(cfg AdFormConfig, selected string,
+	currencies []string) g.Node {
 	opts := make([]g.Node, len(currencies))
 	for i, code := range currencies {
 		opt := Option(Value(code), g.Text(code))
@@ -420,6 +415,7 @@ func priceCurrencySelect(cfg AdFormConfig, selected string, currencies []string)
 }
 
 // NewAdPriceRow renders the price row for HTMX swaps on the create form.
-func NewAdPriceRow(d facet.Def, defaults facet.FormDefaults, view PriceRowView) g.Node {
+func NewAdPriceRow(d facet.Def, defaults facet.FormDefaults,
+	view PriceRowView) g.Node {
 	return AdPriceRow(NewFormConfig(defaults), d, defaults, view)
 }

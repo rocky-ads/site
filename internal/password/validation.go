@@ -50,7 +50,8 @@ func ValidatePasswordStrength(password string) error {
 }
 
 // ValidatePasswordChange validates a password change operation
-func ValidatePasswordChange(currentPassword, newPassword, confirmPassword string) error {
+func ValidatePasswordChange(currentPassword, newPassword,
+	confirmPassword string) error {
 	// Check if current password is provided
 	if currentPassword == "" {
 		return fmt.Errorf("current password is required")

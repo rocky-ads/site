@@ -51,9 +51,8 @@ func embeddingSummaryCards(d EmbeddingAdminData) g.Node {
 	)
 }
 
-func embeddingStatCard(
-	label, value, boxClass, labelClass, valueClass string,
-) g.Node {
+func embeddingStatCard(label, value, boxClass, labelClass,
+	valueClass string) g.Node {
 	return Div(
 		Class("border rounded-lg p-4 "+boxClass),
 		Div(Class("text-sm font-medium "+labelClass), g.Text(label)),

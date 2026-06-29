@@ -56,7 +56,8 @@ func UserEggIcons(userID int, eggCount int) g.Node {
 // EggThrowLink renders a link to throw/unthrow an egg in the conversation modal
 // hasThrownEgg: whether the current user has thrown an egg at this conversation
 // canThrow: whether the current user can throw an egg (is participant and has < 3 eggs)
-func EggThrowLink(conversationID int, hasThrownEgg, canThrow bool, csrfToken string) g.Node {
+func EggThrowLink(conversationID int, hasThrownEgg, canThrow bool,
+	csrfToken string) g.Node {
 	// Only show link if user has thrown an egg (to remove it) OR user can throw an egg (and hasn't thrown one)
 	if !hasThrownEgg && !canThrow {
 		return g.Raw("")

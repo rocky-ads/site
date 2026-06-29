@@ -78,9 +78,8 @@ func GetQueryEmbedding(userQuery string, categoryID int) ([]float32, error) {
 	return embedding, nil
 }
 
-func GetUserPersonalizedEmbedding(
-	userID, categoryID int, forceRecompute bool,
-) ([]float32, error) {
+func GetUserPersonalizedEmbedding(userID, categoryID int,
+	forceRecompute bool) ([]float32, error) {
 	if !forceRecompute {
 		if cached, err := getUserEmbedding(userID, categoryID); err == nil {
 			dim, norm := embeddingSummary(cached)
@@ -181,9 +180,8 @@ func GetSiteEmbedding(categoryID int, campaignKey string) ([]float32, error) {
 	return embedding, nil
 }
 
-func ResolveSearchEmbedding(
-	userID, categoryID int, query string,
-) ([]float32, error) {
+func ResolveSearchEmbedding(userID, categoryID int,
+	query string) ([]float32, error) {
 	query = strings.TrimSpace(query)
 	if query != "" {
 		emb, err := GetQueryEmbedding(query, categoryID)
