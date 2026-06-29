@@ -55,10 +55,19 @@ func DeleteAdEmbedding(adID int) error {
 }
 
 func QuerySimilarAdIDs(embedding []float32, whereClause string, whereArgs []any,
-	orderPrefix string, limit, offset int, threshold float64) ([]int, error) {
+	orderPrefix, inAreaExpr string, limit, offset int,
+	threshold float64) ([]int, int, error) {
 	vec := pgvector.NewVector(embedding)
+	selectCols := "id"
+	if inAreaExpr != "" {
+		filterExpr := replacePlaceholders(inAreaExpr, 3)
+		selectCols = fmt.Sprintf(
+			`id, COUNT(*) FILTER (WHERE %s) OVER () AS in_area_count`,
+			filterExpr,
+		)
+	}
 	query := `
-		SELECT id
+		SELECT ` + selectCols + `
 		FROM ads
 		WHERE embedding IS NOT NULL
 		  AND deleted_at IS NULL
@@ -82,23 +91,34 @@ func QuerySimilarAdIDs(embedding []float32, whereClause string, whereArgs []any,
 	)
 	args = append(args, limit, offset)
 
+	logger.Debug("vector search sql",
+		"sql", strings.Join(strings.Fields(query), " "),
+		"argCount", len(args),
+	)
+
 	rows, err := db.Query(query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("vector search: %w", err)
+		return nil, 0, fmt.Errorf("vector search: %w", err)
 	}
 	defer rows.Close()
 
 	var ids []int
+	inAreaCount := 0
 	for rows.Next() {
 		var id int
-		if err := rows.Scan(&id); err != nil {
+		if inAreaExpr != "" {
+			if err := rows.Scan(&id, &inAreaCount); err != nil {
+				logger.Warn("vector search scan", "error", err)
+				continue
+			}
+		} else if err := rows.Scan(&id); err != nil {
 			logger.Warn("vector search scan", "error", err)
 			continue
 		}
 		ids = append(ids, id)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	logger.Debug("vector search query",
@@ -106,35 +126,14 @@ func QuerySimilarAdIDs(embedding []float32, whereClause string, whereArgs []any,
 		"limit", limit,
 		"offset", offset,
 		"where", whereClause,
+		"inAreaCount", inAreaCount,
 		"resultCount", len(ids),
 		"resultIDs", ids,
 	)
 	if len(ids) == 0 {
 		logVectorSearchDiagnostics(vec, filterWhere, whereArgs, threshold)
 	}
-	return ids, nil
-}
-
-func CountSimilarAdIDs(embedding []float32, whereClause string, whereArgs []any,
-	threshold float64) (int, error) {
-	vec := pgvector.NewVector(embedding)
-	query := `
-		SELECT COUNT(*)::int
-		FROM ads
-		WHERE embedding IS NOT NULL
-		  AND deleted_at IS NULL
-		  AND (embedding <=> $1::vector) < $2`
-	args := []any{vec, threshold}
-	if whereClause != "" {
-		whereClause = replacePlaceholders(whereClause, 3)
-		query += " AND " + whereClause
-		args = append(args, whereArgs...)
-	}
-	var count int
-	if err := db.QueryRow(query, args...).Scan(&count); err != nil {
-		return 0, fmt.Errorf("vector count: %w", err)
-	}
-	return count, nil
+	return ids, inAreaCount, nil
 }
 
 func GetAdEmbeddings(adIDs []int) ([][]float32, error) {

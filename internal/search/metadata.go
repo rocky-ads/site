@@ -135,7 +135,7 @@ const (
 	lonMetaKey = `(vector_metadata->'location'->>'lon')::float`
 )
 
-func geoInAreaWhereClause(p Params, pa *pgArgs) string {
+func geoInAreaExpr(p Params, pa *pgArgs) string {
 	minLat, maxLat, minLon, maxLon := geoBoundingBox(
 		p.CenterLat, p.CenterLon, p.WithinKm,
 	)
@@ -145,13 +145,10 @@ func geoInAreaWhereClause(p Params, pa *pgArgs) string {
 		` AND ` + pa.add(maxLon)
 }
 
+func geoInAreaWhereClause(p Params, pa *pgArgs) string {
+	return geoInAreaExpr(p, pa)
+}
+
 func geoInAreaOrderExpr(p Params, pa *pgArgs) string {
-	minLat, maxLat, minLon, maxLon := geoBoundingBox(
-		p.CenterLat, p.CenterLon, p.WithinKm,
-	)
-	return `CASE WHEN ` + latMetaKey + ` BETWEEN ` + pa.add(minLat) +
-		` AND ` + pa.add(maxLat) +
-		` AND ` + lonMetaKey + ` BETWEEN ` + pa.add(minLon) +
-		` AND ` + pa.add(maxLon) +
-		` THEN 0 ELSE 1 END`
+	return `CASE WHEN ` + geoInAreaExpr(p, pa) + ` THEN 0 ELSE 1 END`
 }

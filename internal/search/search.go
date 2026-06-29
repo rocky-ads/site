@@ -30,14 +30,17 @@ func Search(p Params) (Results, error) {
 	var pa pgArgs
 	where := buildVectorMetadataWhere(p, &pa)
 	orderPrefix := ""
+	inAreaExpr := ""
 	if p.HasGeo {
-		orderPrefix = geoInAreaOrderExpr(p, &pa) + ", "
+		inAreaExpr = geoInAreaExpr(p, &pa)
+		orderPrefix = `CASE WHEN ` + inAreaExpr + ` THEN 0 ELSE 1 END, `
 	}
-	ids, err := vector.QuerySimilarAdIDs(
+	ids, inAreaCount, err := vector.QuerySimilarAdIDs(
 		embedding,
 		where,
 		pa.args,
 		orderPrefix,
+		inAreaExpr,
 		p.Limit,
 		p.Offset,
 		config.SearchThreshold,
@@ -47,15 +50,6 @@ func Search(p Params) (Results, error) {
 		return Results{}, err
 	}
 
-	inAreaCount := 0
-	if p.HasGeo {
-		inAreaCount, err = countInArea(embedding, p, config.SearchThreshold)
-		if err != nil {
-			logger.Debug("search in-area count error", "error", err)
-			return Results{}, err
-		}
-	}
-
 	logger.Debug("search complete",
 		"categoryID", p.CategoryID,
 		"q", p.Q,
@@ -63,11 +57,4 @@ func Search(p Params) (Results, error) {
 		"inAreaCount", inAreaCount,
 	)
 	return Results{IDs: ids, InAreaCount: inAreaCount}, nil
-}
-
-func countInArea(embedding []float32, p Params, threshold float64) (int, error) {
-	var pa pgArgs
-	where := buildVectorMetadataWhere(p, &pa)
-	where += " AND " + geoInAreaWhereClause(p, &pa)
-	return vector.CountSimilarAdIDs(embedding, where, pa.args, threshold)
 }
