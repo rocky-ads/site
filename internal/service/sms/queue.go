@@ -124,7 +124,7 @@ func CleanupOldRecords(retentionHours int) error {
 	_, err := db.Exec(`
 		DELETE FROM sms_notification_queue
 		WHERE status IN ('processed', 'suppressed')
-		AND processed_at < NOW() - ($1 || ' hours')::interval
+		AND processed_at < NOW() - ($1 * INTERVAL '1 hour')
 	`, retentionHours)
 	if err != nil {
 		return fmt.Errorf("failed to cleanup old records: %w", err)
