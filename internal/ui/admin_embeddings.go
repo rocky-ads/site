@@ -10,16 +10,18 @@ import (
 )
 
 func EmbeddingsTab(d EmbeddingAdminData) g.Node {
+	refreshURL := fmt.Sprintf("/admin/tab/embeddings?category=%d", d.CategoryID)
 	return Div(
 		ID("embeddings-tab"),
 		Class("mt-4 space-y-6"),
-		hx.Get("/admin/tab/embeddings"),
+		hx.Get(refreshURL),
 		hx.Target("#admin-dashboard-container"),
 		hx.Swap("outerHTML"),
 		hx.Trigger("every 10s"),
 		embeddingSummaryCards(d),
 		embeddingActions(),
 		embeddingCacheSection(d.Caches),
+		embeddingActivitiesSection(d),
 		embeddingMissingSection(d.MissingAds),
 	)
 }
@@ -222,4 +224,166 @@ func embeddingMissingRow(row MissingEmbeddingRow) g.Node {
 		),
 		Div(g.Text(row.CategoryName)),
 	)
+}
+
+func embeddingActivitiesSection(d EmbeddingAdminData) g.Node {
+	return Div(
+		Class("space-y-4"),
+		Div(
+			Class("flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"),
+			Div(
+				H2(
+					Class("text-lg font-semibold text-zinc-900 dark:text-zinc-200"),
+					g.Text("Search embedding inputs"),
+				),
+				P(
+					Class("text-sm text-zinc-600 dark:text-zinc-400 mt-1"),
+					g.Text("Weighted ad activities that feed user and site vectors when the search box is empty."),
+				),
+			),
+			embeddingCategoryFilter(d),
+		),
+		Div(
+			Class("grid grid-cols-1 lg:grid-cols-2 gap-4"),
+			embeddingUserActivitiesPanel(d.UserActivities),
+			embeddingSiteActivitiesPanel(d.SiteActivities),
+		),
+	)
+}
+
+func embeddingCategoryFilter(d EmbeddingAdminData) g.Node {
+	options := make([]g.Node, len(d.Categories))
+	for i, cat := range d.Categories {
+		options[i] = Option(
+			Value(strconv.Itoa(cat.ID)),
+			g.If(cat.ID == d.CategoryID, Selected()),
+			g.Text(cat.Name),
+		)
+	}
+	return Div(
+		Class("flex flex-col gap-1"),
+		Label(
+			For("embedding-category-filter"),
+			Class("text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide"),
+			g.Text("Category"),
+		),
+		Select(
+			ID("embedding-category-filter"),
+			Name("category"),
+			Class("px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md "+
+				"bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200 text-sm"),
+			hx.Get("/admin/tab/embeddings"),
+			hx.Target("#admin-dashboard-container"),
+			hx.Swap("outerHTML"),
+			hx.Trigger("change"),
+			hx.Include("#embedding-category-filter"),
+			g.Group(options),
+		),
+	)
+}
+
+func embeddingUserActivitiesPanel(rows []EmbeddingActivityRow) g.Node {
+	return embeddingActivitiesPanel(
+		"Your user embedding",
+		"Top weighted activity for the logged-in user in this category.",
+		rows,
+	)
+}
+
+func embeddingSiteActivitiesPanel(rows []EmbeddingActivityRow) g.Node {
+	return embeddingActivitiesPanel(
+		"Site embedding",
+		"Top weighted activity across all users in this category.",
+		rows,
+	)
+}
+
+func embeddingActivitiesPanel(title, subtitle string,
+	rows []EmbeddingActivityRow) g.Node {
+	return Div(
+		Class("bg-white dark:bg-zinc-800 rounded-lg shadow overflow-hidden "+
+			"border border-zinc-200 dark:border-zinc-700"),
+		Div(
+			Class("px-4 py-3 border-b border-zinc-200 dark:border-zinc-700"),
+			H3(
+				Class("text-sm font-semibold text-zinc-900 dark:text-zinc-200"),
+				g.Text(title),
+			),
+			P(
+				Class("text-sm text-zinc-600 dark:text-zinc-400 mt-1"),
+				g.Text(subtitle),
+			),
+		),
+		embeddingActivitiesTableHeader(),
+		embeddingActivityRows(rows),
+	)
+}
+
+func embeddingActivitiesTableHeader() g.Node {
+	return Div(
+		Class("grid grid-cols-5 gap-2 bg-zinc-50 dark:bg-zinc-900 px-4 py-2 "+
+			"border-b border-zinc-200 dark:border-zinc-700 text-xs"),
+		embeddingActivityHeaderCell("Ad"),
+		embeddingActivityHeaderCell("Type"),
+		embeddingActivityHeaderCell("Weight"),
+		embeddingActivityHeaderCell("When"),
+		embeddingActivityHeaderCell("ID"),
+	)
+}
+
+func embeddingActivityHeaderCell(label string) g.Node {
+	return Div(
+		Class("font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider"),
+		g.Text(label),
+	)
+}
+
+func embeddingActivityRows(rows []EmbeddingActivityRow) g.Node {
+	if len(rows) == 0 {
+		return Div(
+			Class("px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400"),
+			g.Text("No qualifying activity in this category."),
+		)
+	}
+	items := make([]g.Node, len(rows))
+	for i, row := range rows {
+		items[i] = embeddingActivityRow(row)
+	}
+	return Div(
+		Class("divide-y divide-zinc-200 dark:divide-zinc-700"),
+		g.Group(items),
+	)
+}
+
+func embeddingActivityRow(row EmbeddingActivityRow) g.Node {
+	return Div(
+		Class("grid grid-cols-5 gap-2 px-4 py-2 text-xs text-zinc-900 dark:text-zinc-200"),
+		Div(
+			Class("truncate col-span-1"),
+			A(
+				Href(fmt.Sprintf("/ad/%d", row.AdID)),
+				Class("text-blue-600 dark:text-blue-400 hover:underline"),
+				g.Text(row.AdTitle),
+			),
+		),
+		Div(g.Text(embeddingActivityTypeLabel(row.ActivityType))),
+		Div(g.Text(fmt.Sprintf("%.3f", row.Weight))),
+		Div(g.Text(row.Timestamp)),
+		Div(g.Text(strconv.Itoa(row.AdID))),
+	)
+}
+
+func embeddingActivityTypeLabel(activityType string) string {
+	switch activityType {
+	case "bookmark":
+		return "Bookmark"
+	case "ad_click":
+		return "Ad click"
+	case "image_click":
+		return "Image click"
+	case "ad_created":
+		return "Ad created"
+	default:
+		return activityType
+	}
 }

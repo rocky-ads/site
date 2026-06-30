@@ -2,9 +2,11 @@ package handler
 
 import (
 	"math"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
+	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/ui"
@@ -13,7 +15,8 @@ import (
 
 func AdminEmbeddingsHandler(c *fiber.Ctx) error {
 	currentUserID := local.GetUserID(c)
-	data, err := embeddingAdminData()
+	categoryID := embeddingCategoryID(c)
+	data, err := embeddingAdminData(currentUserID, categoryID)
 	if err != nil {
 		logger.Error("Failed to load embedding admin data", "error", err)
 		return showError(c, "Failed to load embedding data")
@@ -21,6 +24,13 @@ func AdminEmbeddingsHandler(c *fiber.Ctx) error {
 	return render(c, ui.AdminDashboardContainerWithEmbeddings(
 		"embeddings", nil, "", "", currentUserID, data,
 	))
+}
+
+func embeddingCategoryID(c *fiber.Ctx) int {
+	if q := c.Query("category"); q != "" {
+		return ad.ParseCategory(q)
+	}
+	return cookie.GetCategoryID(c)
 }
 
 func AdminEmbeddingsBackfillHandler(c *fiber.Ctx) error {
@@ -48,7 +58,7 @@ func AdminEmbeddingsClearAllCachesHandler(c *fiber.Ctx) error {
 	return AdminEmbeddingsHandler(c)
 }
 
-func embeddingAdminData() (ui.EmbeddingAdminData, error) {
+func embeddingAdminData(userID, categoryID int) (ui.EmbeddingAdminData, error) {
 	stats, err := ad.GetEmbeddingStats()
 	if err != nil {
 		return ui.EmbeddingAdminData{}, err
@@ -57,11 +67,27 @@ func embeddingAdminData() (ui.EmbeddingAdminData, error) {
 	if err != nil {
 		return ui.EmbeddingAdminData{}, err
 	}
+	categories, err := ad.GetCategories()
+	if err != nil {
+		return ui.EmbeddingAdminData{}, err
+	}
+	userActs, err := vector.InspectUserActivities(userID, categoryID)
+	if err != nil {
+		return ui.EmbeddingAdminData{}, err
+	}
+	siteActs, err := vector.InspectSiteActivities(categoryID)
+	if err != nil {
+		return ui.EmbeddingAdminData{}, err
+	}
 	cacheStats := vector.GetEmbeddingCacheStats()
 	return ui.EmbeddingAdminData{
-		EmbeddedCount: stats.Embedded,
-		MissingCount:  stats.Missing,
-		QueueDepth:    vector.QueueDepth(),
+		EmbeddedCount:  stats.Embedded,
+		MissingCount:   stats.Missing,
+		QueueDepth:     vector.QueueDepth(),
+		CategoryID:     categoryID,
+		Categories:     categoryOptions(categories),
+		UserActivities: embeddingActivityRows(userActs),
+		SiteActivities: embeddingActivityRows(siteActs),
 		Caches: []ui.EmbeddingCachePanel{
 			cachePanelFromStats("Query", cacheStats["query"]),
 			cachePanelFromStats("User", cacheStats["user"]),
@@ -69,6 +95,46 @@ func embeddingAdminData() (ui.EmbeddingAdminData, error) {
 		},
 		MissingAds: missingEmbeddingRows(missing),
 	}, nil
+}
+
+func categoryOptions(categories []ad.Category) []ui.CategoryOption {
+	out := make([]ui.CategoryOption, len(categories))
+	for i, cat := range categories {
+		out[i] = ui.CategoryOption{
+			ID:        cat.ID,
+			Name:      cat.Name,
+			ImageFile: cat.ImageFile,
+		}
+	}
+	return out
+}
+
+func embeddingActivityRows(rows []vector.ActivityInspect) []ui.EmbeddingActivityRow {
+	out := make([]ui.EmbeddingActivityRow, len(rows))
+	for i, r := range rows {
+		out[i] = ui.EmbeddingActivityRow{
+			AdID:         r.AdID,
+			AdTitle:      r.AdTitle,
+			ActivityType: r.ActivityType,
+			Weight:       r.Weight,
+			Timestamp:    formatActivityTime(r.Timestamp),
+		}
+	}
+	return out
+}
+
+func formatActivityTime(raw string) string {
+	if raw == "" {
+		return "—"
+	}
+	t, err := time.Parse(time.RFC3339Nano, raw)
+	if err != nil {
+		t, err = time.Parse("2006-01-02 15:04:05.999999-07:00", raw)
+		if err != nil {
+			return raw
+		}
+	}
+	return formatClickTime(&t)
 }
 
 func cachePanelFromStats(name string,

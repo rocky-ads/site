@@ -152,11 +152,24 @@ type QueueStats struct {
 
 // EmbeddingAdminData holds presentation fields for the embeddings admin tab.
 type EmbeddingAdminData struct {
-	EmbeddedCount int
-	MissingCount  int
-	QueueDepth    int
-	Caches        []EmbeddingCachePanel
-	MissingAds    []MissingEmbeddingRow
+	EmbeddedCount  int
+	MissingCount   int
+	QueueDepth     int
+	Caches         []EmbeddingCachePanel
+	MissingAds     []MissingEmbeddingRow
+	CategoryID     int
+	Categories     []CategoryOption
+	UserActivities []EmbeddingActivityRow
+	SiteActivities []EmbeddingActivityRow
+}
+
+// EmbeddingActivityRow holds one weighted activity used to build an embedding.
+type EmbeddingActivityRow struct {
+	AdID         int
+	AdTitle      string
+	ActivityType string
+	Weight       float32
+	Timestamp    string
 }
 
 // EmbeddingCachePanel holds cache metrics for one embedding cache tier.
