@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cache"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/logger"
@@ -35,34 +34,20 @@ func InitEmbeddingCaches() error {
 	return nil
 }
 
-func buildQueryPrompt(userQuery string, categoryID int) string {
-	template := ad.GetCategoryQueryPromptTemplate(categoryID)
-	return fmt.Sprintf(template, userQuery)
-}
-
-func GetQueryEmbedding(userQuery string, categoryID int) ([]float32, error) {
+func GetQueryEmbedding(userQuery string) ([]float32, error) {
 	userQuery = strings.TrimSpace(userQuery)
 	if userQuery == "" {
 		return nil, fmt.Errorf("cannot embed empty query")
 	}
-	key := fmt.Sprintf("query_cat_%d:%s", categoryID, userQuery)
+	key := userQuery
 	if cached, ok := queryEmbeddingCache.Get(key); ok {
-		logger.Debug("query embedding cache hit",
-			"categoryID", categoryID,
-			"query", userQuery,
-		)
+		logger.Debug("query embedding cache hit", "query", userQuery)
 		return cached, nil
 	}
-	prompt := buildQueryPrompt(userQuery, categoryID)
-	logger.Debug("query embedding cache miss",
-		"categoryID", categoryID,
-		"query", userQuery,
-		"prompt", prompt,
-	)
-	embedding, err := embedText(prompt)
+	logger.Debug("query embedding cache miss", "query", userQuery)
+	embedding, err := embedQuery(userQuery)
 	if err != nil {
 		logger.Debug("query embedding failed",
-			"categoryID", categoryID,
 			"query", userQuery,
 			"error", err,
 		)
@@ -168,7 +153,7 @@ func GetSiteEmbedding(categoryID int, campaignKey string) ([]float32, error) {
 func ResolveSearchEmbedding(userID, categoryID int, query string) ([]float32, error) {
 	query = strings.TrimSpace(query)
 	if query != "" {
-		return GetQueryEmbedding(query, categoryID)
+		return GetQueryEmbedding(query)
 	}
 	if userID != 0 {
 		emb, err := GetUserPersonalizedEmbedding(userID, categoryID)

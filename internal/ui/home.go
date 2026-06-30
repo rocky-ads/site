@@ -117,7 +117,7 @@ func categoryButton(category CategoryOption, returnParam string) g.Node {
 func categorySearchRow(category CategoryOption, returnParam string,
 	searchVisible bool) g.Node {
 	return Div(
-		Class("flex items-center gap-2"),
+		Class("flex items-center gap-2 justify-between"),
 		categoryButton(category, returnParam),
 		searchToggle(searchVisible, false),
 	)

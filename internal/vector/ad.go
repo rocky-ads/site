@@ -29,7 +29,7 @@ func BuildAdEmbeddings(inputs []ad.EmbeddingInput) error {
 	for i, in := range inputs {
 		prompts[i] = buildAdEmbeddingPrompt(in)
 	}
-	embeddings, err := embedTexts(prompts)
+	embeddings, err := embedDocuments(prompts)
 	if err != nil {
 		return err
 	}

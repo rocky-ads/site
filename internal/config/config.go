@@ -23,7 +23,7 @@ const (
 
 	// Vector search configuration
 	SearchPageSize                = 20  // Number of results per page for list/grid views
-	SearchThreshold               = 0.6 // Similarity threshold for filtering results (0.0 to 1.0)
+	SearchThreshold               = 0.6 // Max cosine distance for vector search (pgvector <=>)
 	VectorProcessingQueueSize     = 100
 	VectorProcessingSleepInterval = 100 * time.Millisecond
 	VectorUserEmbeddingLimit      = 30

@@ -3,7 +3,6 @@ package vector
 import (
 	"fmt"
 
-	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/logger"
@@ -70,12 +69,7 @@ func calculateSiteLevelVector(categoryID int, campaignKey string) ([]float32, er
 		if err == nil && emb != nil {
 			return emb, nil
 		}
-		name, err := ad.GetCategoryName(categoryID)
-		if err != nil {
-			return nil, err
-		}
-		prompt := fmt.Sprintf("any ad in the %s category", name)
-		return embedText(prompt)
+		return nil, fmt.Errorf("no site activity or embedded ads in category")
 	}
 	vectors, weights := calculateWeightedVectors(activities)
 	emb := AggregateEmbeddings(vectors, weights)

@@ -12,6 +12,8 @@ import (
 type Embedder interface {
 	EmbedText(text string) ([]float32, error)
 	EmbedTexts(texts []string) ([][]float32, error)
+	EmbedQuery(text string) ([]float32, error)
+	EmbedDocuments(texts []string) ([][]float32, error)
 }
 
 var activeEmbedder Embedder
@@ -32,6 +34,20 @@ func embedTexts(texts []string) ([][]float32, error) {
 		return nil, fmt.Errorf("embedder not initialized")
 	}
 	return activeEmbedder.EmbedTexts(texts)
+}
+
+func embedQuery(text string) ([]float32, error) {
+	if activeEmbedder == nil {
+		return nil, fmt.Errorf("embedder not initialized")
+	}
+	return activeEmbedder.EmbedQuery(text)
+}
+
+func embedDocuments(texts []string) ([][]float32, error) {
+	if activeEmbedder == nil {
+		return nil, fmt.Errorf("embedder not initialized")
+	}
+	return activeEmbedder.EmbedDocuments(texts)
 }
 
 type fakeEmbedder struct{}
@@ -61,6 +77,14 @@ func (fakeEmbedder) EmbedTexts(texts []string) ([][]float32, error) {
 		out[i] = hashEmbed(text)
 	}
 	return out, nil
+}
+
+func (f fakeEmbedder) EmbedQuery(text string) ([]float32, error) {
+	return f.EmbedText(text)
+}
+
+func (f fakeEmbedder) EmbedDocuments(texts []string) ([][]float32, error) {
+	return f.EmbedTexts(texts)
 }
 
 func hashEmbed(text string) []float32 {

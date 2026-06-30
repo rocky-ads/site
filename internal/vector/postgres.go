@@ -58,38 +58,59 @@ func QuerySimilarAdIDs(embedding []float32, whereClause string, whereArgs []any,
 	orderPrefix, inAreaExpr string, limit, offset int,
 	threshold float64) ([]int, int, error) {
 	vec := pgvector.NewVector(embedding)
-	selectCols := "id"
-	if inAreaExpr != "" {
-		filterExpr := replacePlaceholders(inAreaExpr, 3)
-		selectCols = fmt.Sprintf(
-			`id, COUNT(*) FILTER (WHERE %s) OVER () AS in_area_count`,
-			filterExpr,
-		)
-	}
-	query := `
-		SELECT ` + selectCols + `
-		FROM ads
-		WHERE embedding IS NOT NULL
-		  AND deleted_at IS NULL
-		  AND (embedding <=> $1::vector) < $2`
 	args := []any{vec, threshold}
 	argIndex := 3
 	filterWhere := whereClause
+	whereSQL := `embedding IS NOT NULL
+		  AND deleted_at IS NULL
+		  AND (embedding <=> $1::vector) < $2`
 	if whereClause != "" {
 		whereClause = replacePlaceholders(whereClause, argIndex)
-		query += " AND " + whereClause
+		whereSQL += " AND " + whereClause
 		args = append(args, whereArgs...)
 		argIndex += len(whereArgs)
 	}
-	query += " ORDER BY "
-	if orderPrefix != "" {
-		query += replacePlaceholders(orderPrefix, 3)
-	}
-	query += fmt.Sprintf(
-		`embedding <=> $1::vector LIMIT $%d OFFSET $%d`,
-		argIndex, argIndex+1,
-	)
+	limitPH := argIndex
+	offsetPH := argIndex + 1
 	args = append(args, limit, offset)
+
+	var query string
+	if inAreaExpr != "" {
+		isInArea := fmt.Sprintf(
+			`CASE WHEN %s THEN 1 ELSE 0 END`,
+			replacePlaceholders(inAreaExpr, 3),
+		)
+		orderBy := "is_in_area DESC, "
+		if orderPrefix != "" {
+			orderBy += replacePlaceholders(orderPrefix, 3)
+		}
+		orderBy += "dist"
+		query = fmt.Sprintf(`
+SELECT id, in_area_count
+FROM (
+  SELECT id, is_in_area, dist, SUM(is_in_area) OVER () AS in_area_count
+  FROM (
+    SELECT id, %s AS is_in_area, embedding <=> $1::vector AS dist
+    FROM ads
+    WHERE %s
+  ) base
+) ranked
+ORDER BY %s
+LIMIT $%d OFFSET $%d`, isInArea, whereSQL, orderBy, limitPH, offsetPH)
+	} else {
+		query = `
+		SELECT id
+		FROM ads
+		WHERE ` + whereSQL
+		query += " ORDER BY "
+		if orderPrefix != "" {
+			query += replacePlaceholders(orderPrefix, 3)
+		}
+		query += fmt.Sprintf(
+			`embedding <=> $1::vector LIMIT $%d OFFSET $%d`,
+			limitPH, offsetPH,
+		)
+	}
 
 	logger.Debug("vector search sql",
 		"sql", strings.Join(strings.Fields(query), " "),

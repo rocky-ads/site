@@ -29,17 +29,15 @@ func Search(p Params) (Results, error) {
 
 	var pa pgArgs
 	where := buildVectorMetadataWhere(p, &pa)
-	orderPrefix := ""
 	inAreaExpr := ""
 	if p.HasGeo {
 		inAreaExpr = geoInAreaExpr(p, &pa)
-		orderPrefix = `CASE WHEN ` + inAreaExpr + ` THEN 0 ELSE 1 END, `
 	}
 	ids, inAreaCount, err := vector.QuerySimilarAdIDs(
 		embedding,
 		where,
 		pa.args,
-		orderPrefix,
+		"",
 		inAreaExpr,
 		p.Limit,
 		p.Offset,

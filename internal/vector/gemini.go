@@ -9,6 +9,11 @@ import (
 	genai "google.golang.org/genai"
 )
 
+const (
+	geminiTaskRetrievalQuery    = "RETRIEVAL_QUERY"
+	geminiTaskRetrievalDocument = "RETRIEVAL_DOCUMENT"
+)
+
 type geminiEmbedder struct {
 	client *genai.Client
 }
@@ -34,6 +39,22 @@ func (g geminiEmbedder) EmbedText(text string) ([]float32, error) {
 }
 
 func (g geminiEmbedder) EmbedTexts(texts []string) ([][]float32, error) {
+	return g.embedTexts(texts, "")
+}
+
+func (g geminiEmbedder) EmbedQuery(text string) ([]float32, error) {
+	vecs, err := g.embedTexts([]string{text}, geminiTaskRetrievalQuery)
+	if err != nil || len(vecs) == 0 {
+		return nil, err
+	}
+	return vecs[0], nil
+}
+
+func (g geminiEmbedder) EmbedDocuments(texts []string) ([][]float32, error) {
+	return g.embedTexts(texts, geminiTaskRetrievalDocument)
+}
+
+func (g geminiEmbedder) embedTexts(texts []string, taskType string) ([][]float32, error) {
 	if g.client == nil {
 		return nil, fmt.Errorf("Gemini client not initialized")
 	}
@@ -49,11 +70,15 @@ func (g geminiEmbedder) EmbedTexts(texts []string) ([][]float32, error) {
 		contents = append(contents, genai.Text(text)...)
 	}
 	dim := int32(config.GeminiEmbeddingDimensions)
+	cfg := &genai.EmbedContentConfig{OutputDimensionality: &dim}
+	if taskType != "" {
+		cfg.TaskType = taskType
+	}
 	resp, err := g.client.Models.EmbedContent(
 		context.Background(),
 		config.GeminiEmbeddingModel,
 		contents,
-		&genai.EmbedContentConfig{OutputDimensionality: &dim},
+		cfg,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("Gemini embedding API: %w", err)
