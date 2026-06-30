@@ -34,7 +34,48 @@ func InspectSiteActivities(categoryID int) ([]ActivityInspect, error) {
 	if err != nil {
 		return nil, err
 	}
-	return enrichActivities(activities)
+	if len(activities) > 0 {
+		vectors, weights := calculateWeightedVectors(activities)
+		if AggregateEmbeddings(vectors, weights) != nil {
+			return enrichActivities(activities)
+		}
+	}
+	return inspectRecentAdEmbeddingSource(categoryID)
+}
+
+func inspectRecentAdEmbeddingSource(categoryID int) ([]ActivityInspect, error) {
+	ids, err := recentAdEmbeddingIDs(categoryID)
+	if err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 && categoryID > 0 {
+		ids, err = recentAdEmbeddingIDs(0)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	titles, err := adTitlesByIDs(ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ActivityInspect, len(ids))
+	for i, id := range ids {
+		title := titles[id]
+		if title == "" {
+			title = fmt.Sprintf("ad #%d", id)
+		}
+		out[i] = ActivityInspect{
+			AdID:         id,
+			AdTitle:      title,
+			ActivityType: "recent_ad",
+			Weight:       1,
+			Timestamp:    "—",
+		}
+	}
+	return out, nil
 }
 
 func enrichActivities(activities []AdActivity) ([]ActivityInspect, error) {

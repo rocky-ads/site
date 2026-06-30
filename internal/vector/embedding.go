@@ -64,42 +64,49 @@ func calculateSiteLevelVector(categoryID int, campaignKey string) ([]float32, er
 	if err != nil {
 		return nil, fmt.Errorf("fetch site activities: %w", err)
 	}
-	if len(activities) == 0 {
-		emb, err := averageCategoryAdEmbeddings(categoryID)
-		if err == nil && emb != nil {
+	if len(activities) > 0 {
+		vectors, weights := calculateWeightedVectors(activities)
+		emb := AggregateEmbeddings(vectors, weights)
+		if emb != nil {
+			logger.Debug("site embedding aggregated",
+				"categoryID", categoryID, "activities", len(activities))
 			return emb, nil
 		}
-		return nil, fmt.Errorf("no site activity or embedded ads in category")
 	}
-	vectors, weights := calculateWeightedVectors(activities)
-	emb := AggregateEmbeddings(vectors, weights)
-	if emb == nil {
-		return nil, fmt.Errorf("aggregate site embedding returned nil")
+	emb, err := aggregateRecentAdEmbeddings(categoryID)
+	if err != nil {
+		return nil, err
 	}
-	logger.Debug("site embedding aggregated",
-		"categoryID", categoryID, "activities", len(activities))
 	return emb, nil
 }
 
-func averageCategoryAdEmbeddings(categoryID int) ([]float32, error) {
-	var ids []int
-	err := db.QueryJSON(&ids, `
-		SELECT COALESCE(json_agg(id), '[]'::json)
-		FROM (
-			SELECT id FROM ads
-			WHERE category_id = $1
-			  AND deleted_at IS NULL
-			  AND embedding IS NOT NULL
-			ORDER BY created_at DESC
-			LIMIT $2
-		) recent`,
-		categoryID, config.VectorSystemEmbeddingLimit,
-	)
+func aggregateRecentAdEmbeddings(categoryID int) ([]float32, error) {
+	emb, err := averageRecentAdEmbeddings(categoryID)
+	if err == nil && emb != nil {
+		return emb, nil
+	}
+	if categoryID <= 0 {
+		return nil, fmt.Errorf("no embedded ads available")
+	}
+	emb, err = averageRecentAdEmbeddings(0)
+	if err != nil {
+		return nil, err
+	}
+	if emb == nil {
+		return nil, fmt.Errorf("no embedded ads available")
+	}
+	logger.Debug("site embedding from recent ads",
+		"categoryID", categoryID, "source", "site-wide")
+	return emb, nil
+}
+
+func averageRecentAdEmbeddings(categoryID int) ([]float32, error) {
+	ids, err := recentAdEmbeddingIDs(categoryID)
 	if err != nil {
 		return nil, err
 	}
 	if len(ids) == 0 {
-		return nil, fmt.Errorf("no embedded ads in category")
+		return nil, fmt.Errorf("no embedded ads")
 	}
 	embeddings, err := GetAdEmbeddings(ids)
 	if err != nil {
@@ -115,7 +122,24 @@ func averageCategoryAdEmbeddings(categoryID int) ([]float32, error) {
 		weights = append(weights, 1)
 	}
 	if len(vectors) == 0 {
-		return nil, fmt.Errorf("no embedded ads in category")
+		return nil, fmt.Errorf("no embedded ads")
 	}
 	return AggregateEmbeddings(vectors, weights), nil
+}
+
+func recentAdEmbeddingIDs(categoryID int) ([]int, error) {
+	var ids []int
+	err := db.QueryJSON(&ids, `
+		SELECT COALESCE(json_agg(id), '[]'::json)
+		FROM (
+			SELECT id FROM ads
+			WHERE deleted_at IS NULL
+			  AND embedding IS NOT NULL
+			  AND ($1 = 0 OR category_id = $1)
+			ORDER BY created_at DESC
+			LIMIT $2
+		) recent`,
+		categoryID, config.VectorSystemEmbeddingLimit,
+	)
+	return ids, err
 }

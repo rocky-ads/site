@@ -383,6 +383,8 @@ func embeddingActivityTypeLabel(activityType string) string {
 		return "Image click"
 	case "ad_created":
 		return "Ad created"
+	case "recent_ad":
+		return "Recent ad"
 	default:
 		return activityType
 	}
