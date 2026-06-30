@@ -9,20 +9,5 @@
     "password": "admin",
     "phone": "+15550100124",
     "is_admin": true
-  },
-  {
-    "name": "john_doe",
-    "password": "foo",
-    "phone": "+15550100125"
-  },
-  {
-    "name": "jane_smith",
-    "password": "foo",
-    "phone": "+15550100126"
-  },
-  {
-    "name": "mike_wilson",
-    "password": "foo",
-    "phone": "+15550100127"
   }
 ] 
