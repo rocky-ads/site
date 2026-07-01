@@ -128,6 +128,29 @@ func TestHomeHandlerSearchHiddenByDefault(t *testing.T) {
 	if strings.Contains(body, `id="category-modal-backdrop"`) {
 		t.Error("home page should not embed category modal stub elements")
 	}
+	if strings.Contains(body, `/images/post_add.svg`) {
+		t.Error("new ad link should not appear when logged out")
+	}
+}
+
+func TestHomeHandlerNewAdLinkWhenLoggedIn(t *testing.T) {
+	client := getTestClient()
+	baseURLParsed, _ := url.Parse(baseURL)
+	loginTestUser(t, client, baseURLParsed)
+	categoryCookie := &http.Cookie{
+		Name: "category", Value: "6", Path: "/", HttpOnly: true, Secure: false,
+	}
+	client.Jar.SetCookies(baseURLParsed, []*http.Cookie{categoryCookie})
+	resp, body := getRequestWithCookies(t, client, baseURL+"/")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", resp.StatusCode)
+	}
+	if !strings.Contains(body, `/images/post_add.svg`) {
+		t.Error("Expected new ad icon on category row when logged in")
+	}
+	if !strings.Contains(body, `href="/auth/ad/new"`) {
+		t.Error("Expected new ad link to /auth/ad/new when logged in")
+	}
 }
 
 func TestToggleSearchHandler(t *testing.T) {

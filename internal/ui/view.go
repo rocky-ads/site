@@ -36,29 +36,32 @@ func ValidateView(viewStr string) int {
 
 func viewToggle(view, target int) g.Node {
 	active := view == target
-	class := "p-2 rounded-full border-2 "
+	class := "p-1.5 rounded-full shrink-0 "
 	if active {
-		class += "border-blue-500 bg-blue-100 dark:bg-blue-900 dark:border-blue-400"
+		class += "bg-white dark:bg-zinc-600 shadow-sm"
 	} else {
-		class += "border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800"
+		class += "hover:bg-zinc-200/60 dark:hover:bg-zinc-700"
 	}
 	return Button(
 		Type("button"),
 		Class(class),
+		g.Attr("aria-label", GetViewName(target)+" view"),
+		g.Attr("aria-pressed", strconv.FormatBool(active)),
 		hx.Get("/api/view/"+strconv.Itoa(target)),
 		hx.Target("#search-view"),
 		hx.Swap("outerHTML"),
 		Img(
-			Class("w-6 h-6 dark:invert dark:opacity-80"),
+			Class("w-6 h-6 shrink-0 dark:invert dark:opacity-80"),
 			Src("/images/"+GetViewName(target)+".svg"),
-			Alt(GetViewName(target)+" view"),
+			Alt(""),
 		),
 	)
 }
 
 func viewToggles(view int) g.Node {
 	return Div(
-		Class("flex items-center gap-2"),
+		Class("flex items-center shrink-0 rounded-full "+
+			"bg-zinc-100 dark:bg-zinc-800 p-0.5"),
 		viewToggle(view, ViewGrid),
 		viewToggle(view, ViewList),
 	)

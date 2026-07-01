@@ -25,6 +25,7 @@ func SearchLocationOOB(f SearchFilters) g.Node {
 func searchLocationDiv(f SearchFilters, oob bool) g.Node {
 	attrs := []g.Node{
 		ID("search-location"),
+		Class("min-w-0"),
 		searchLocationHiddenFields(f),
 		locationSummaryLink(f),
 	}
@@ -57,7 +58,7 @@ func LocationSummaryText(f SearchFilters) string {
 func locationSummaryLink(f SearchFilters) g.Node {
 	return Button(
 		Type("button"),
-		Class("text-blue-600 dark:text-blue-400 hover:underline cursor-pointer bg-transparent border-0 p-0 text-left"),
+		Class("text-blue-600 dark:text-blue-400 hover:underline cursor-pointer bg-transparent border-0 p-0 text-left min-w-0"),
 		hx.Get("/api/search-location-modal"),
 		hx.Target("body"),
 		hx.Swap("beforeend"),

@@ -5,6 +5,7 @@ import (
 	"net/url"
 
 	"github.com/rocky-ads/site/internal/facet"
+	"github.com/rocky-ads/site/internal/local"
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
@@ -24,7 +25,7 @@ func SearchContainer(userID, view int, q string, filtersExpanded,
 		ID("search-container"),
 		Div(
 			Class("flex flex-col gap-4"),
-			categorySearchRow(category, "/", searchVisible),
+			categorySearchRow(userID, category, "/", searchVisible),
 			SearchWidget(userID, view, q, filtersExpanded, searchVisible, category, filterFacets, filters, results),
 		),
 	)
@@ -114,18 +115,37 @@ func categoryButton(category CategoryOption, returnParam string) g.Node {
 	)
 }
 
-func categorySearchRow(category CategoryOption, returnParam string,
+func categorySearchRow(userID int, category CategoryOption, returnParam string,
 	searchVisible bool) g.Node {
 	return Div(
 		Class("flex items-center gap-2 justify-between"),
 		categoryButton(category, returnParam),
-		searchToggle(searchVisible, false),
+		Div(
+			Class("flex items-center gap-2 shrink-0"),
+			g.Iff(local.IsLoggedIn(userID), func() g.Node { return newAdLink() }),
+			searchToggle(searchVisible, false),
+		),
+	)
+}
+
+func newAdLink() g.Node {
+	const label = "New ad"
+	return A(
+		Href("/auth/ad/new"),
+		Class("flex-shrink-0 cursor-pointer"),
+		g.Attr("aria-label", label),
+		g.Attr("title", label),
+		Img(
+			Class("w-6 h-6 dark:invert dark:opacity-80"),
+			Src("/images/post_add.svg"),
+			Alt(label),
+		),
 	)
 }
 
 func searchToggle(searchVisible, oob bool) g.Node {
 	label := "Show search"
-	class := "p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
+	class := "flex-shrink-0 cursor-pointer"
 	if searchVisible {
 		class += " hidden"
 	}
@@ -140,7 +160,7 @@ func searchToggle(searchVisible, oob bool) g.Node {
 		hx.Include("#search-widget"),
 		hx.Swap("none"),
 		Img(
-			Class("w-8 h-8 dark:invert dark:opacity-80"),
+			Class("w-6 h-6 dark:invert dark:opacity-80"),
 			Src("/images/search.svg"),
 			Alt(label),
 		),
