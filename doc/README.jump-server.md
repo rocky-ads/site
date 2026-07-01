@@ -23,6 +23,22 @@ rebuild_db
 
 `rebuild_db` recreates the schema and imports seed data. It sets `image_count` on ads but does **not** upload image files.
 
+### Backup and restore non-test ads
+
+To preserve production ads across a database rebuild:
+
+```bash
+backup_ads backup -out /workspace/backups/prod
+rebuild_db
+backup_ads restore -from /workspace/backups/prod
+```
+
+`backup_ads` exports ads not owned by the seeded `test` user, along with dependent users, locations, facets, bookmarks, clicks, conversations, messages, and MinIO images. Archive format v2 uses creation-order refs instead of database IDs; restored ads are appended with new IDs. Embeddings are excluded and recomputed by the server after restore.
+
+`restore` requires `USER_ENCRYPTION_KEY` to re-encrypt user data under new IDs. If the backup came from an environment with a different key, set `BACKUP_USER_ENCRYPTION_KEY` to the source key for decrypt; encrypt always uses `USER_ENCRYPTION_KEY`.
+
+Backups are persisted under `./backups` on the host via the docker-compose volume mount.
+
 ## Ad images
 
 Images are stored in MinIO (required). After seeding the database, populate images from your dev machine with `go run ./cmd/gen_images` (requires `FAL_API_KEY`) or upload existing local files with `migrate_images` on the jump server (see below).
@@ -59,6 +75,7 @@ See the [MinIO Client documentation](https://docs.min.io/docs/minio-client-quick
 | Binary | Purpose |
 |--------|---------|
 | `rebuild_db` | Drop/recreate schema and import seed data |
+| `backup_ads` | Backup/restore non-test ads (DB rows + MinIO images) |
 | `migrate_images` | One-time upload of local ad image files to MinIO |
 | `quote_server` | Quote-of-the-day page on port 10000 |
 | `mc` | MinIO command-line client |

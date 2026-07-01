@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/minio/minio-go/v7"
@@ -19,8 +21,26 @@ type MinioStore struct {
 	bucket string
 }
 
+var imageFilePattern = regexp.MustCompile(`^(\d+)-(\d+w)\.webp$`)
+
 func objectKey(adID, index int, suffix string) string {
 	return fmt.Sprintf("%d/%d-%s.webp", adID, index, suffix)
+}
+
+func parseImageObjectKey(key string) (index int, suffix string, ok bool) {
+	parts := strings.Split(key, "/")
+	if len(parts) != 2 {
+		return 0, "", false
+	}
+	matches := imageFilePattern.FindStringSubmatch(parts[1])
+	if len(matches) != 3 {
+		return 0, "", false
+	}
+	index, err := strconv.Atoi(matches[1])
+	if err != nil {
+		return 0, "", false
+	}
+	return index, matches[2], true
 }
 
 func newMinioClient() (*minio.Client, error) {
@@ -115,6 +135,27 @@ func (s *MinioStore) Get(adID, index int, suffix string) ([]byte, error) {
 		return nil, fmt.Errorf("read object from MinIO: %w", err)
 	}
 	return data, nil
+}
+
+func (s *MinioStore) ListAd(adID int) ([]ImageRef, error) {
+	prefix := fmt.Sprintf("%d/", adID)
+	ctx := context.Background()
+
+	var refs []ImageRef
+	for obj := range s.client.ListObjects(ctx, s.bucket, minio.ListObjectsOptions{
+		Prefix:    prefix,
+		Recursive: true,
+	}) {
+		if obj.Err != nil {
+			return nil, fmt.Errorf("list ad images: %w", obj.Err)
+		}
+		index, suffix, ok := parseImageObjectKey(obj.Key)
+		if !ok {
+			continue
+		}
+		refs = append(refs, ImageRef{Index: index, Suffix: suffix})
+	}
+	return refs, nil
 }
 
 func (s *MinioStore) DeleteAd(adID int) error {

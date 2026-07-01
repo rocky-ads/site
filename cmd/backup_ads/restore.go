@@ -1,0 +1,422 @@
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+
+	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/imagestore"
+	"github.com/rocky-ads/site/internal/logger"
+)
+
+var restoreImagePattern = regexp.MustCompile(`^(\d+)-(\d+w)\.webp$`)
+
+func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) error {
+	var manifest Manifest
+	if err := readJSON(filepath.Join(fromDir, fileManifest), &manifest); err != nil {
+		return err
+	}
+	if manifest.Version != archiveVersion {
+		return fmt.Errorf(
+			"unsupported archive version %d (expected %d)",
+			manifest.Version, archiveVersion,
+		)
+	}
+
+	var users []UserRow
+	if err := readJSON(filepath.Join(fromDir, fileUsers), &users); err != nil {
+		return err
+	}
+	var locations []LocationRow
+	if err := readJSON(filepath.Join(fromDir, fileLocations), &locations); err != nil {
+		return err
+	}
+	var ads []AdRow
+	if err := readJSON(filepath.Join(fromDir, fileAds), &ads); err != nil {
+		return err
+	}
+	var facets []AdFacetRow
+	if err := readJSON(filepath.Join(fromDir, fileAdFacets), &facets); err != nil {
+		return err
+	}
+	var bookmarks []BookmarkRow
+	if err := readJSON(filepath.Join(fromDir, fileBookmarks), &bookmarks); err != nil {
+		return err
+	}
+	var clicks []UserAdClickRow
+	if err := readJSON(filepath.Join(fromDir, fileUserAdClicks), &clicks); err != nil {
+		return err
+	}
+	var imageClicks []UserAdImageClickRow
+	if err := readJSON(filepath.Join(fromDir, fileUserAdImageClicks), &imageClicks); err != nil {
+		return err
+	}
+	var conversations []ConversationRow
+	if err := readJSON(filepath.Join(fromDir, fileConversations), &conversations); err != nil {
+		return err
+	}
+	var messages []MessageRow
+	if err := readJSON(filepath.Join(fromDir, fileMessages), &messages); err != nil {
+		return err
+	}
+	var opinions []EggOpinionRow
+	if err := readJSON(filepath.Join(fromDir, fileEggOpinions), &opinions); err != nil {
+		return err
+	}
+
+	if dryRun {
+		logger.Info("Dry run restore",
+			"users", len(users), "locations", len(locations),
+			"ads", len(ads), "conversations", len(conversations),
+			"images", manifest.Counts.Images)
+		return nil
+	}
+
+	sort.Slice(ads, func(i, j int) bool {
+		return ads[i].Ref < ads[j].Ref
+	})
+
+	userHashToID := make(map[string]int, len(users))
+	for _, u := range users {
+		id, err := resolveUserID(u)
+		if err != nil {
+			return err
+		}
+		userHashToID[u.NameHash] = id
+	}
+
+	locationRawToID := make(map[string]int, len(locations))
+	for _, loc := range locations {
+		id, err := resolveLocationID(loc)
+		if err != nil {
+			return err
+		}
+		locationRawToID[loc.RawText] = id
+	}
+
+	adRefToID := make(map[int]int, len(ads))
+	for _, a := range ads {
+		ownerID, ok := userHashToID[a.OwnerHash]
+		if !ok {
+			return fmt.Errorf("unknown owner hash for ad ref %d", a.Ref)
+		}
+		var locationID any
+		if a.LocationRaw != nil {
+			locID, ok := locationRawToID[*a.LocationRaw]
+			if !ok {
+				return fmt.Errorf(
+					"unknown location %q for ad ref %d", *a.LocationRaw, a.Ref,
+				)
+			}
+			locationID = locID
+		}
+		var newID int
+		err := db.QueryRow(`
+			INSERT INTO ads (
+				category_id, title, description, created_at, deleted_at,
+				user_id, image_count, location_id, tags
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			RETURNING id`,
+			a.CategoryID, a.Title, a.Description, a.CreatedAt, a.DeletedAt,
+			ownerID, a.ImageCount, locationID, a.Tags,
+		).Scan(&newID)
+		if err != nil {
+			return fmt.Errorf("insert ad ref %d: %w", a.Ref, err)
+		}
+		adRefToID[a.Ref] = newID
+	}
+
+	for _, f := range facets {
+		adID, ok := adRefToID[f.AdRef]
+		if !ok {
+			return fmt.Errorf("unknown ad ref %d for facet", f.AdRef)
+		}
+		_, err := db.Exec(`
+			INSERT INTO ad_facets (ad_id, "key", num, text)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (ad_id, "key") DO NOTHING`,
+			adID, f.Key, f.Num, f.Text,
+		)
+		if err != nil {
+			return fmt.Errorf("insert facet ad ref %d: %w", f.AdRef, err)
+		}
+	}
+
+	for _, b := range bookmarks {
+		userID, ok := userHashToID[b.UserHash]
+		if !ok {
+			return fmt.Errorf("unknown user hash for bookmark")
+		}
+		adID, ok := adRefToID[b.AdRef]
+		if !ok {
+			return fmt.Errorf("unknown ad ref for bookmark")
+		}
+		_, err := db.Exec(`
+			INSERT INTO bookmarks (user_id, ad_id, bookmarked_at)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (user_id, ad_id) DO NOTHING`,
+			userID, adID, b.BookmarkedAt,
+		)
+		if err != nil {
+			return fmt.Errorf("insert bookmark: %w", err)
+		}
+	}
+
+	for _, c := range clicks {
+		userID, ok := userHashToID[c.UserHash]
+		if !ok {
+			return fmt.Errorf("unknown user hash for click")
+		}
+		adID, ok := adRefToID[c.AdRef]
+		if !ok {
+			return fmt.Errorf("unknown ad ref for click")
+		}
+		_, err := db.Exec(`
+			INSERT INTO user_ad_clicks (
+				ad_id, user_id, click_count, last_clicked_at
+			) VALUES ($1, $2, $3, $4)
+			ON CONFLICT (ad_id, user_id) DO NOTHING`,
+			adID, userID, c.ClickCount, c.LastClickedAt,
+		)
+		if err != nil {
+			return fmt.Errorf("insert click: %w", err)
+		}
+	}
+
+	for _, c := range imageClicks {
+		userID, ok := userHashToID[c.UserHash]
+		if !ok {
+			return fmt.Errorf("unknown user hash for image click")
+		}
+		adID, ok := adRefToID[c.AdRef]
+		if !ok {
+			return fmt.Errorf("unknown ad ref for image click")
+		}
+		_, err := db.Exec(`
+			INSERT INTO user_ad_image_clicks (
+				ad_id, user_id, image_index, click_count, last_clicked_at
+			) VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT (ad_id, user_id, image_index) DO NOTHING`,
+			adID, userID, c.ImageIndex, c.ClickCount, c.LastClickedAt,
+		)
+		if err != nil {
+			return fmt.Errorf("insert image click: %w", err)
+		}
+	}
+
+	sort.Slice(conversations, func(i, j int) bool {
+		return conversations[i].Ref < conversations[j].Ref
+	})
+
+	convRefToID := make(map[int]int, len(conversations))
+	for _, c := range conversations {
+		adID, ok := adRefToID[c.AdRef]
+		if !ok {
+			return fmt.Errorf("unknown ad ref for conversation %d", c.Ref)
+		}
+		ownerID, ok := userHashToID[c.OwnerHash]
+		if !ok {
+			return fmt.Errorf("unknown owner for conversation %d", c.Ref)
+		}
+		inquirerID, ok := userHashToID[c.InquirerHash]
+		if !ok {
+			return fmt.Errorf("unknown inquirer for conversation %d", c.Ref)
+		}
+		var eggThrowerID any
+		if c.EggThrowerHash != nil {
+			id, ok := userHashToID[*c.EggThrowerHash]
+			if !ok {
+				return fmt.Errorf(
+					"unknown egg thrower for conversation %d", c.Ref,
+				)
+			}
+			eggThrowerID = id
+		}
+		var newID int
+		err := db.QueryRow(`
+			INSERT INTO conversations (
+				ad_id, owner_id, inquirer_id,
+				owner_has_unread, inquirer_has_unread,
+				egg_thrower_id, egg_thrown_at
+			) VALUES ($1, $2, $3, $4, $5, $6, $7)
+			RETURNING id`,
+			adID, ownerID, inquirerID,
+			c.OwnerHasUnread, c.InquirerHasUnread,
+			eggThrowerID, c.EggThrownAt,
+		).Scan(&newID)
+		if err != nil {
+			return fmt.Errorf("insert conversation ref %d: %w", c.Ref, err)
+		}
+		convRefToID[c.Ref] = newID
+	}
+
+	for _, m := range messages {
+		convID, ok := convRefToID[m.ConversationRef]
+		if !ok {
+			return fmt.Errorf(
+				"unknown conversation ref %d for message", m.ConversationRef,
+			)
+		}
+		senderID, ok := userHashToID[m.SenderHash]
+		if !ok {
+			return fmt.Errorf("unknown sender for message")
+		}
+		_, err := db.Exec(`
+			INSERT INTO messages (
+				conversation_id, sender_id, content, created_at
+			) VALUES ($1, $2, $3, $4)`,
+			convID, senderID, m.Content, m.CreatedAt,
+		)
+		if err != nil {
+			return fmt.Errorf("insert message: %w", err)
+		}
+	}
+
+	for _, o := range opinions {
+		convID, ok := convRefToID[o.ConversationRef]
+		if !ok {
+			return fmt.Errorf(
+				"unknown conversation ref %d for opinion", o.ConversationRef,
+			)
+		}
+		_, err := db.Exec(`
+			INSERT INTO egg_opinions (
+				conversation_id, generated_at, summary, assessment,
+				assessment_detail, resolution, reasoning
+			) VALUES ($1, $2, $3, $4, $5, $6, $7)
+			ON CONFLICT (conversation_id) DO NOTHING`,
+			convID, o.GeneratedAt, o.Summary, o.Assessment,
+			o.AssessmentDetail, o.Resolution, o.Reasoning,
+		)
+		if err != nil {
+			return fmt.Errorf("insert egg opinion: %w", err)
+		}
+	}
+
+	if err := syncIdentitySequences(); err != nil {
+		return err
+	}
+
+	imageDir := filepath.Join(fromDir, dirImages)
+	uploaded := 0
+	if _, err := os.Stat(imageDir); err == nil {
+		err = filepath.WalkDir(imageDir, func(path string, d os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if d.IsDir() {
+				return nil
+			}
+			rel, err := filepath.Rel(imageDir, path)
+			if err != nil {
+				return err
+			}
+			adRef, index, suffix, ok := parseRestoreImagePath(filepath.ToSlash(rel))
+			if !ok {
+				logger.Warn("Skipping unrecognized image", "path", rel)
+				return nil
+			}
+			adID, ok := adRefToID[adRef]
+			if !ok {
+				return fmt.Errorf("unknown ad ref %d for image %s", adRef, rel)
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return fmt.Errorf("read image %s: %w", path, err)
+			}
+			if err := store.Put(adID, index, suffix, data); err != nil {
+				return fmt.Errorf("upload image %s: %w", rel, err)
+			}
+			uploaded++
+			if verbose {
+				logger.Info("Restored image",
+					"ad_id", adID, "ad_ref", adRef,
+					"index", index, "size", suffix)
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	logger.Info("Restore complete",
+		"dir", fromDir, "ads", len(ads), "images", uploaded)
+	return nil
+}
+
+func resolveLocationID(loc LocationRow) (int, error) {
+	var id int
+	err := db.QueryRow(
+		`SELECT id FROM locations WHERE raw_text = $1`, loc.RawText,
+	).Scan(&id)
+	if err == nil {
+		return id, nil
+	}
+	if err != sql.ErrNoRows {
+		return 0, fmt.Errorf("lookup location %q: %w", loc.RawText, err)
+	}
+	err = db.QueryRow(`
+		INSERT INTO locations (
+			raw_text, city, admin_area, country, latitude, longitude
+		) VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id`,
+		loc.RawText, loc.City, loc.AdminArea,
+		loc.Country, loc.Latitude, loc.Longitude,
+	).Scan(&id)
+	if err != nil {
+		return 0, fmt.Errorf("insert location %q: %w", loc.RawText, err)
+	}
+	return id, nil
+}
+
+func syncIdentitySequences() error {
+	tables := []string{
+		"users", "locations", "ads", "conversations", "messages",
+	}
+	for _, table := range tables {
+		var maxID int
+		err := db.QueryRow(fmt.Sprintf(
+			`SELECT COALESCE(MAX(id), 0) FROM %s`, table,
+		)).Scan(&maxID)
+		if err != nil {
+			return fmt.Errorf("max id for %s: %w", table, err)
+		}
+		if maxID == 0 {
+			continue
+		}
+		_, err = db.Exec(fmt.Sprintf(
+			`SELECT setval(pg_get_serial_sequence('%s', 'id'), $1)`, table,
+		), maxID)
+		if err != nil {
+			return fmt.Errorf("setval %s: %w", table, err)
+		}
+	}
+	return nil
+}
+
+func parseRestoreImagePath(rel string) (adRef, index int, suffix string, ok bool) {
+	parts := strings.Split(rel, "/")
+	if len(parts) != 2 {
+		return 0, 0, "", false
+	}
+	adRef, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, "", false
+	}
+	matches := restoreImagePattern.FindStringSubmatch(parts[1])
+	if len(matches) != 3 {
+		return 0, 0, "", false
+	}
+	index, err = strconv.Atoi(matches[1])
+	if err != nil {
+		return 0, 0, "", false
+	}
+	return adRef, index, matches[2], true
+}

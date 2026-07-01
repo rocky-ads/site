@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 // LocalStore writes ad images under baseDir/{adID}/{index}-{suffix}.webp.
@@ -34,6 +35,34 @@ func (s *LocalStore) Get(adID, index int, suffix string) ([]byte, error) {
 		return nil, fmt.Errorf("read image: %w", err)
 	}
 	return data, nil
+}
+
+func (s *LocalStore) ListAd(adID int) ([]ImageRef, error) {
+	dir := filepath.Join(s.baseDir, fmt.Sprintf("%d", adID))
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("list ad images: %w", err)
+	}
+
+	var refs []ImageRef
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		matches := imageFilePattern.FindStringSubmatch(entry.Name())
+		if len(matches) != 3 {
+			continue
+		}
+		index, err := strconv.Atoi(matches[1])
+		if err != nil {
+			continue
+		}
+		refs = append(refs, ImageRef{Index: index, Suffix: matches[2]})
+	}
+	return refs, nil
 }
 
 func (s *LocalStore) DeleteAd(adID int) error {
