@@ -35,4 +35,4 @@ MINIO_ROOT_PASSWORD=minioadmin
 MINIO_BUCKET_NAME=rockyads
 ```
 
-After `rebuild_db`, populate images with `go run ./cmd/gen_images` or `go run ./cmd/migrate_images`. See [doc/README.jump-server.md](doc/README.jump-server.md).
+After `seed_db`, populate images with `go run ./cmd/gen_images` or `go run ./cmd/migrate_images`. See [doc/README.jump-server.md](doc/README.jump-server.md).

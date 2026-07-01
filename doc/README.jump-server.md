@@ -18,22 +18,22 @@ docker compose up -d
 
 ```bash
 export DATABASE_URL="postgres://postgres:postgres@postgres:5432/rockyads?sslmode=disable"
-rebuild_db
+seed_db
 ```
 
-`rebuild_db` recreates the schema and imports seed data. It sets `image_count` on ads but does **not** upload image files.
+`seed_db` recreates the schema and imports seed data. It sets `image_count` on ads but does **not** upload image files.
 
 ### Backup and restore non-test ads
 
 To preserve production ads across a database rebuild:
 
 ```bash
-backup_ads backup -out /workspace/backups/prod
-rebuild_db
-backup_ads restore -from /workspace/backups/prod
+backup_db backup -out /workspace/backups/prod
+seed_db
+backup_db restore -from /workspace/backups/prod
 ```
 
-`backup_ads` exports ads not owned by the seeded `test` user, along with dependent users, locations, facets, bookmarks, clicks, conversations, messages, and MinIO images. Archive format v2 uses creation-order refs instead of database IDs; restored ads are appended with new IDs. Embeddings are excluded and recomputed by the server after restore.
+`backup_db` exports ads not owned by the seeded `test` user, along with dependent users, locations, facets, bookmarks, clicks, conversations, messages, and MinIO images. Archive format v2 uses creation-order refs instead of database IDs; restored ads are appended with new IDs. Embeddings are excluded and recomputed by the server after restore.
 
 `restore` requires `USER_ENCRYPTION_KEY` to re-encrypt user data under new IDs. If the backup came from an environment with a different key, set `BACKUP_USER_ENCRYPTION_KEY` to the source key for decrypt; encrypt always uses `USER_ENCRYPTION_KEY`.
 
@@ -74,8 +74,8 @@ See the [MinIO Client documentation](https://docs.min.io/docs/minio-client-quick
 
 | Binary | Purpose |
 |--------|---------|
-| `rebuild_db` | Drop/recreate schema and import seed data |
-| `backup_ads` | Backup/restore non-test ads (DB rows + MinIO images) |
+| `seed_db` | Drop/recreate schema and import seed data |
+| `backup_db` | Backup/restore non-test ads (DB rows + MinIO images) |
 | `migrate_images` | One-time upload of local ad image files to MinIO |
 | `quote_server` | Quote-of-the-day page on port 10000 |
 | `mc` | MinIO command-line client |

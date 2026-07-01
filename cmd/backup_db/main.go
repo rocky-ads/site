@@ -80,7 +80,7 @@ func runRestoreCmd(args []string) {
 
 func printUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  backup_ads backup  -out <dir> [-dry-run] [-verbose]
-  backup_ads restore -from <dir> [-dry-run] [-verbose]
+  backup_db backup  -out <dir> [-dry-run] [-verbose]
+  backup_db restore -from <dir> [-dry-run] [-verbose]
 `)
 }

@@ -12,10 +12,10 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build rebuild_db binary (statically linked)
+# Build seed_db binary (statically linked)
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -o /build/rebuild_db \
-    ./cmd/rebuild_db
+    -o /build/seed_db \
+    ./cmd/seed_db
 
 # Build quote_server binary (statically linked)
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
@@ -27,10 +27,10 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o /build/migrate_images \
     ./cmd/migrate_images
 
-# Build backup_ads binary (statically linked)
+# Build backup_db binary (statically linked)
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -o /build/backup_ads \
-    ./cmd/backup_ads
+    -o /build/backup_db \
+    ./cmd/backup_db
 
 # Stage 2: Final image
 FROM ubuntu:22.04
@@ -63,23 +63,23 @@ RUN wget -q https://dl.min.io/client/mc/release/linux-amd64/mc -O /tmp/mc && \
     mc --version
 
 # Copy the pre-built binaries
-COPY --from=go-builder /build/rebuild_db /usr/local/bin/rebuild_db
+COPY --from=go-builder /build/seed_db /usr/local/bin/seed_db
 COPY --from=go-builder /build/quote_server /usr/local/bin/quote_server
 COPY --from=go-builder /build/migrate_images /usr/local/bin/migrate_images
-COPY --from=go-builder /build/backup_ads /usr/local/bin/backup_ads
+COPY --from=go-builder /build/backup_db /usr/local/bin/backup_db
 
 # Make them executable
-RUN chmod +x /usr/local/bin/rebuild_db && \
+RUN chmod +x /usr/local/bin/seed_db && \
     chmod +x /usr/local/bin/quote_server && \
     chmod +x /usr/local/bin/migrate_images && \
-    chmod +x /usr/local/bin/backup_ads
+    chmod +x /usr/local/bin/backup_db
 
 # Create workspace directory
 RUN mkdir -p /workspace && chmod 777 /workspace
 
-# Copy rebuild_db seed data and schema (paths expected by rebuild_db at runtime)
-RUN mkdir -p /workspace/cmd/rebuild_db/seed /workspace/internal/db
-COPY --from=go-builder /build/cmd/rebuild_db/seed/*.json /workspace/cmd/rebuild_db/seed/
+# Copy seed_db seed data and schema (paths expected by seed_db at runtime)
+RUN mkdir -p /workspace/cmd/seed_db/seed /workspace/internal/db
+COPY --from=go-builder /build/cmd/seed_db/seed/*.json /workspace/cmd/seed_db/seed/
 COPY --from=go-builder /build/internal/db/schema.sql /workspace/internal/db/schema.sql
 
 WORKDIR /workspace

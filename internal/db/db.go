@@ -81,7 +81,7 @@ func Ping() error {
 	return db.Ping()
 }
 
-// CheckSchema reports whether rebuild_db (or equivalent) has been applied.
+// CheckSchema reports whether seed_db (or equivalent) has been applied.
 func CheckSchema() error {
 	var exists bool
 	err := QueryRow(`
@@ -93,7 +93,7 @@ func CheckSchema() error {
 		return fmt.Errorf("checking database schema: %w", err)
 	}
 	if !exists {
-		return fmt.Errorf("database not initialized — run: go run ./cmd/rebuild_db")
+		return fmt.Errorf("database not initialized — run: go run ./cmd/seed_db")
 	}
 	return nil
 }

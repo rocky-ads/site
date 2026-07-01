@@ -125,7 +125,7 @@ type Ad struct {
 
 // LoadUsers loads users from user.json into the users table
 func LoadUsers() error {
-	data, err := os.ReadFile("cmd/rebuild_db/seed/user.json")
+	data, err := os.ReadFile("cmd/seed_db/seed/user.json")
 	if err != nil {
 		return err
 	}
@@ -214,7 +214,7 @@ func LoadUsers() error {
 
 // LoadCategories loads ad-category.json into categories
 func LoadCategories() error {
-	data, err := os.ReadFile("cmd/rebuild_db/seed/ad-category.json")
+	data, err := os.ReadFile("cmd/seed_db/seed/ad-category.json")
 	if err != nil {
 		return err
 	}
@@ -365,7 +365,7 @@ func convertAdJSON(aj adJSON) Ad {
 
 func loadAdsFromFile(categoryID int, filename string, categoryFacets []string,
 	usedIDs map[int]string) error {
-	data, err := os.ReadFile("cmd/rebuild_db/seed/" + filename)
+	data, err := os.ReadFile("cmd/seed_db/seed/" + filename)
 	if err != nil {
 		return err
 	}

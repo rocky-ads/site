@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/rocky-ads/site/cmd/rebuild_db/seed"
+	"github.com/rocky-ads/site/cmd/seed_db/seed"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/cookie"

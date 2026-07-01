@@ -126,7 +126,7 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
 
 ### Testing
 - Go standard testing framework (`go test`)
-- Test database rebuild tool (`cmd/rebuild_db`)
+- Test database rebuild tool (`cmd/seed_db`)
 - Test data generation support
 
 ### Build Tools
@@ -187,7 +187,7 @@ Request flow: **handler → domain → handler maps to UI inputs → `ui/` rende
 ## Configuration
 
 Configuration is managed through environment variables:
-- **Database connection** — set `DATABASE_URL` to a PostgreSQL DSN (e.g. `postgres://localhost:5432/rockyads?sslmode=disable` for local dev). For local Postgres via Docker: `docker compose up -d postgres`, then use `postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable`. Use `./rebuild_db` to reset schema and seed data. Integration tests live in `cmd/server` (`integration_*.go`) and share one seeded database via `TestMain`.
+- **Database connection** — set `DATABASE_URL` to a PostgreSQL DSN (e.g. `postgres://localhost:5432/rockyads?sslmode=disable` for local dev). For local Postgres via Docker: `docker compose up -d postgres`, then use `postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable`. Use `./seed_db` to reset schema and seed data. Integration tests live in `cmd/server` (`integration_*.go`) and share one seeded database via `TestMain`.
 - MinIO credentials
 - API keys (Gemini, Grok, Twilio)
 - JWT secrets

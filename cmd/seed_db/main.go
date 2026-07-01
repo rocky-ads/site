@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/rocky-ads/site/cmd/rebuild_db/seed"
+	"github.com/rocky-ads/site/cmd/seed_db/seed"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/logger"
