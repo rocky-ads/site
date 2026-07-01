@@ -26,6 +26,12 @@ func TestMain(m *testing.M) {
 	if err := chdirModuleRoot(); err != nil {
 		panic(err)
 	}
+	testURL := testdb.PackageDatabaseURL("backup_db")
+	if err := testdb.EnsureDatabase(testURL); err != nil {
+		panic(err)
+	}
+	os.Setenv("DATABASE_URL", testURL)
+
 	os.Setenv("USER_ENCRYPTION_KEY", testUserEncryptionKey)
 	if key, err := base64.StdEncoding.DecodeString(testUserEncryptionKey); err == nil {
 		reflect.ValueOf(&config.UserEncryptionKey).Elem().Set(reflect.ValueOf(key))

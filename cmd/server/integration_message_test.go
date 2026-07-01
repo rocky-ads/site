@@ -18,8 +18,8 @@ func TestIntegrationOpenConversationReadMarking(t *testing.T) {
 
 	var convID int
 	err = db.QueryRow(`INSERT INTO conversations (ad_id, owner_id, inquirer_id, inquirer_has_unread, egg_thrower_id, egg_thrown_at)
-		VALUES ($1, $2, 3, 1, 3, CURRENT_TIMESTAMP) RETURNING id`,
-		adID, integrationTestUserID).Scan(&convID)
+		VALUES ($1, $2, $3, 1, $3, CURRENT_TIMESTAMP) RETURNING id`,
+		adID, integrationTestUserID, integrationInquirerUserID).Scan(&convID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestIntegrationOpenConversationReadMarking(t *testing.T) {
 		); err != nil {
 			t.Fatal(err)
 		}
-		_, marked, err := message.OpenConversation(convID, 3)
+		_, marked, err := message.OpenConversation(convID, integrationInquirerUserID)
 		if err != nil {
 			t.Fatal(err)
 		}
