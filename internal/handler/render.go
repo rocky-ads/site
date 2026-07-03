@@ -10,6 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
+	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/facet"
@@ -46,50 +47,62 @@ func renderPage(c *fiber.Ctx, title string, body []gomponents.Node) error {
 // searchFromRequest runs search for the current request page and renders ad nodes.
 func searchFromRequest(c *fiber.Ctx,
 	state cookie.SearchState) (view, page int, results []g.Node, err error) {
-	categoryID := cookie.GetCategoryID(c)
-	userID := local.GetUserID(c)
 	view = ui.ValidateView(cookie.GetView(c))
+	page, results, err = searchAndRender(c, state, cookie.GetCategoryID(c), view)
+	return view, page, results, err
+}
+
+// searchAndRender runs search for the current page and returns rendered ad nodes.
+func searchAndRender(c *fiber.Ctx, state cookie.SearchState, categoryID,
+	view int) (page int, results []g.Node, err error) {
+
+	userID := local.GetUserID(c)
 	tz := cookie.GetTimezone(c)
 	csrfToken := local.GetCSRFToken(c)
 	distanceUnit := cookie.GetDistanceUnit(c)
 	page = c.QueryInt("page", 1)
+
 	p := parseSearchParams(state, page, categoryID, userID, distanceUnit, tz)
-	results, err = searchAndRenderAds(
-		p, userID, view, tz, csrfToken,
-		searchLocationDisplay(state.Location), state.Within, distanceUnit,
+	ads, inAreaCount, err := searchForAds(p, userID, tz)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	location := searchLocationDisplay(state.Location)
+	results = renderSearchResults(
+		ads, inAreaCount, page, p.HasGeo,
+		userID, view, tz, csrfToken,
+		location, state.Within, distanceUnit,
 	)
-	return view, page, results, err
+
+	return page, results, nil
 }
 
-// searchAdsForUI runs search and returns presentation-ready ad cards in result order.
-func searchAdsForUI(p search.Params,
-	userID int, tz *time.Location) ([]ui.AdCard, search.Results, error) {
+// searchForAds runs vector search and loads matching ads in result order.
+func searchForAds(p search.Params, userID int,
+	tz *time.Location) ([]ad.Ad, int, error) {
 	result, err := search.Search(p)
 	if err != nil {
-		return nil, search.Results{}, fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		return nil, 0,
+			fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-
 	ads, err := ad.GetAds(userID, result.IDs, tz)
 	if err != nil {
-		return nil, search.Results{}, fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		return nil, 0,
+			fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-
-	return adCardsFrom(ads, userID, tz), result, nil
+	return ads, result.InAreaCount, nil
 }
 
-// searchAndRenderAds searches for ads and renders them into gomponents nodes.
-func searchAndRenderAds(p search.Params, userID, view int, tz *time.Location,
-	csrfToken string, location string, within int, distanceUnit string) ([]g.Node, error) {
-	cards, result, err := searchAdsForUI(p, userID, tz)
-	if err != nil {
-		return nil, err
-	}
-
-	page := (p.Offset / p.Limit) + 1
+// renderSearchResults renders search result ads into gomponents nodes.
+func renderSearchResults(ads []ad.Ad, inAreaCount, page int, hasGeo bool,
+	userID, view int, tz *time.Location, csrfToken,
+	location string, within int, distanceUnit string) []g.Node {
+	cards := adCardsFrom(ads, userID, tz)
 	cardNodes := ui.AdNodes(cards, userID, view, page, csrfToken, true)
 
-	if !p.HasGeo {
-		return cardNodes, nil
+	if !hasGeo {
+		return cardNodes
 	}
 
 	displayWithin := within
@@ -97,8 +110,7 @@ func searchAndRenderAds(p search.Params, userID, view int, tz *time.Location,
 		displayWithin = 25
 	}
 
-	offset := p.Offset
-	inAreaCount := result.InAreaCount
+	offset := (page - 1) * config.SearchPageSize
 
 	if offset == 0 && inAreaCount == 0 {
 		nodes := []g.Node{ui.NoInAreaMatchesMessage(displayWithin, distanceUnit, location)}
@@ -106,7 +118,7 @@ func searchAndRenderAds(p search.Params, userID, view int, tz *time.Location,
 			nodes = append(nodes, ui.OutsideAreaHeading())
 			nodes = append(nodes, cardNodes...)
 		}
-		return nodes, nil
+		return nodes
 	}
 
 	headingAt := -1
@@ -117,14 +129,14 @@ func searchAndRenderAds(p search.Params, userID, view int, tz *time.Location,
 	}
 
 	if headingAt < 0 || headingAt >= len(cardNodes) {
-		return cardNodes, nil
+		return cardNodes
 	}
 
 	nodes := make([]g.Node, 0, len(cardNodes)+1)
 	nodes = append(nodes, cardNodes[:headingAt]...)
 	nodes = append(nodes, ui.OutsideAreaHeading())
 	nodes = append(nodes, cardNodes[headingAt:]...)
-	return nodes, nil
+	return nodes
 }
 
 func adCardFrom(a ad.Ad, viewerUserID int, tz *time.Location) ui.AdCard {

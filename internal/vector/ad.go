@@ -55,10 +55,7 @@ func BuildAdEmbeddings(inputs []ad.EmbeddingInput) error {
 		adIDs[i] = in.ID
 		metas[i] = buildAdEmbeddingMetadata(in)
 	}
-	if err := UpsertAdEmbeddings(adIDs, embeddings, metas); err != nil {
-		return err
-	}
-	return nil
+	return UpsertAdEmbeddings(adIDs, embeddings, metas)
 }
 
 func buildAdEmbeddingPrompt(in ad.EmbeddingInput) string {

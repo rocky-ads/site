@@ -23,10 +23,11 @@ func searchStateToFilters(state cookie.SearchState,
 	if distanceUnit == location.UnitKm {
 		opts = search.WithinKmOptions
 	}
+	locationDisplay := searchLocationDisplay(state.Location)
 	return uiads.SearchFilters{
 		Facets:          state.Facets,
 		Location:        state.Location,
-		LocationDisplay: searchLocationDisplay(state.Location),
+		LocationDisplay: locationDisplay,
 		Within:          state.Within,
 		WithinUnit:      distanceUnit,
 		WithinOptions:   opts,
