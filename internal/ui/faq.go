@@ -12,11 +12,33 @@ type faqSectionData struct {
 }
 
 var faqOrder = []string{
+	"eggs",
 	"phone-number",
 	"sms-notifications",
 }
 
 var faqSections = map[string]faqSectionData{
+	"eggs": {
+		title: "What are eggs for?",
+		body: func() []g.Node {
+			return []g.Node{
+				faqParagraph(g.Textf(
+					"When you join %s, you receive 3 eggs.",
+					config.ServerName,
+				)),
+				faqParagraph(g.Text(
+					"Throw an egg on an ad that violates our policies " +
+						"or has problems. That starts a conversation " +
+						"with the ad owner so you can work together to " +
+						"resolve the issue.",
+				)),
+				faqParagraph(g.Text(
+					"Once the issue is resolved, the seller can return " +
+						"your egg. Eggs are limited — use them wisely.",
+				)),
+			}
+		},
+	},
 	"phone-number": {
 		title: "Why do you need my phone number?",
 		body: func() []g.Node {

@@ -132,21 +132,34 @@ func passwordInput2() g.Node {
 }
 
 func terms() g.Node {
-	return Div(
-		Class("flex items-center gap-2"),
-		checkbox("terms", "accepted", "I accept the ", false, false, Required()),
-		A(
-			Href("/terms"),
-			Class("text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline"),
-			g.Text("Terms of Service"),
+	linkClass := "text-blue-600 dark:text-blue-400 " +
+		"hover:text-blue-800 dark:hover:text-blue-300 underline"
+	return Label(
+		Class("flex items-start gap-2"),
+		For("terms-accepted"),
+		Input(
+			Type("checkbox"),
+			Name("terms"),
+			Value("accepted"),
+			ID("terms-accepted"),
+			Class("mt-1 shrink-0"),
+			Required(),
 		),
-		g.Text(" & "),
-		A(
-			Href("/privacy"),
-			Class("text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline"),
-			g.Text("Privacy Policy"),
+		Span(
+			g.Text("I accept the "),
+			A(
+				Href("/terms"),
+				Class(linkClass),
+				g.Text("Terms of Service"),
+			),
+			g.Text(" & "),
+			A(
+				Href("/privacy"),
+				Class(linkClass),
+				g.Text("Privacy Policy"),
+			),
+			g.Text("."),
 		),
-		g.Text("."),
 	)
 }
 
