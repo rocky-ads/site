@@ -19,11 +19,7 @@ func CategorySelectHandler(c *fiber.Ctx) error {
 
 	options := make([]ui.CategoryOption, len(categories))
 	for i, cat := range categories {
-		options[i] = ui.CategoryOption{
-			ID:        cat.ID,
-			Name:      cat.Name,
-			ImageFile: cat.ImageFile,
-		}
+		options[i] = categoryOption(cat)
 	}
 
 	return render(c, ui.CategorySelectModal(categoryID, returnParam, options))

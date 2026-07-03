@@ -61,6 +61,13 @@ func filterableFacets(cat ad.Category) []facet.Def {
 	return out
 }
 
+func filterFacetsForExpanded(cat ad.Category, expanded bool) []facet.Def {
+	if !expanded {
+		return nil
+	}
+	return filterableFacets(cat)
+}
+
 func parseSearchParams(state cookie.SearchState, page, categoryID, userID int,
 	distanceUnit string, tz *time.Location) search.Params {
 	limit := config.SearchPageSize

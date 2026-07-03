@@ -4,7 +4,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cookie"
-	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/param"
 	"github.com/rocky-ads/site/internal/ui"
 	g "maragu.dev/gomponents"
@@ -39,14 +38,13 @@ func renderFilterPanelResponse(c *fiber.Ctx, state cookie.SearchState) error {
 
 	distanceUnit := cookie.GetDistanceUnit(c)
 	category := ad.GetCategory(cookie.GetCategoryID(c))
-	var filterFacets []facet.Def
-	if state.Expanded {
-		filterFacets = filterableFacets(category)
-	}
+	visible := searchVisible(state)
+	filterFacets := filterFacetsForExpanded(category, state.Expanded)
+	filters := searchStateToFilters(state, distanceUnit)
 
 	return render(c, g.Group([]g.Node{
-		ui.SearchAreaOOB(state.Q, state.Expanded, filterFacets, searchStateToFilters(state, distanceUnit), searchVisible(state)),
-		ui.SearchToggleOOB(searchVisible(state)),
+		ui.SearchAreaOOB(state.Q, state.Expanded, filterFacets, filters, visible),
+		ui.SearchToggleOOB(visible),
 		ui.SearchResultsOOB(view, results),
 	}))
 }
@@ -74,7 +72,6 @@ func ToggleSearchHandler(c *fiber.Ctx) error {
 
 func SearchPageHandler(c *fiber.Ctx) error {
 	state := saveSearchStateFromRequest(c, nil, true)
-	cookie.SetSearchState(c, state)
 	view, page, results, err := searchFromRequest(c, state)
 	if err != nil {
 		return err
