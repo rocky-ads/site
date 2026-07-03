@@ -86,14 +86,14 @@ func aggregateRecentAdEmbeddings(categoryID int) ([]float32, error) {
 		return emb, nil
 	}
 	if categoryID <= 0 {
-		return nil, fmt.Errorf("no embedded ads available")
+		return nil, ErrNoEmbeddedAds
 	}
 	emb, err = averageRecentAdEmbeddings(0)
 	if err != nil {
 		return nil, err
 	}
 	if emb == nil {
-		return nil, fmt.Errorf("no embedded ads available")
+		return nil, ErrNoEmbeddedAds
 	}
 	logger.Debug("site embedding from recent ads",
 		"categoryID", categoryID, "source", "site-wide")
@@ -106,7 +106,7 @@ func averageRecentAdEmbeddings(categoryID int) ([]float32, error) {
 		return nil, err
 	}
 	if len(ids) == 0 {
-		return nil, fmt.Errorf("no embedded ads")
+		return nil, ErrNoEmbeddedAds
 	}
 	embeddings, err := GetAdEmbeddings(ids)
 	if err != nil {
@@ -122,7 +122,7 @@ func averageRecentAdEmbeddings(categoryID int) ([]float32, error) {
 		weights = append(weights, 1)
 	}
 	if len(vectors) == 0 {
-		return nil, fmt.Errorf("no embedded ads")
+		return nil, ErrNoEmbeddedAds
 	}
 	return AggregateEmbeddings(vectors, weights), nil
 }

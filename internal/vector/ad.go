@@ -14,8 +14,24 @@ import (
 
 var (
 	ErrNoUserActivity = errors.New("no user activity to aggregate")
+	ErrNoEmbeddedAds  = errors.New("no embedded ads")
 	adQueue           = make(chan int, config.VectorProcessingQueueSize)
 )
+
+// IsEmbeddingUnavailable reports whether search should degrade gracefully
+// instead of returning HTTP 500 (backfill in progress, rate limits, etc.).
+func IsEmbeddingUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, ErrNoEmbeddedAds) {
+		return true
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "429") ||
+		strings.Contains(msg, "RESOURCE_EXHAUSTED") ||
+		strings.Contains(msg, "Gemini embedding API")
+}
 
 func BuildAdEmbedding(input ad.EmbeddingInput) error {
 	return BuildAdEmbeddings([]ad.EmbeddingInput{input})
@@ -39,7 +55,10 @@ func BuildAdEmbeddings(inputs []ad.EmbeddingInput) error {
 		adIDs[i] = in.ID
 		metas[i] = buildAdEmbeddingMetadata(in)
 	}
-	return UpsertAdEmbeddings(adIDs, embeddings, metas)
+	if err := UpsertAdEmbeddings(adIDs, embeddings, metas); err != nil {
+		return err
+	}
+	return nil
 }
 
 func buildAdEmbeddingPrompt(in ad.EmbeddingInput) string {
@@ -155,18 +174,62 @@ func QueueAd(adID int) {
 
 func ProcessAdsWithoutVectors() {
 	go func() {
-		if err := BackfillAllAdsSync(); err != nil {
-			logger.Error("backfill ad embeddings", "error", err)
+		delay := 5 * time.Second
+		for {
+			remaining, err := BackfillAllAdsSync()
+			if remaining == 0 {
+				return
+			}
+			if err != nil {
+				logger.Error("backfill ad embeddings",
+					"error", err, "remaining", remaining)
+			}
+			time.Sleep(delay)
+			if delay < time.Minute {
+				delay *= 2
+			}
 		}
 	}()
 }
 
-func BackfillAllAdsSync() error {
+func isRateLimitError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "429") ||
+		strings.Contains(msg, "RESOURCE_EXHAUSTED")
+}
+
+func buildAdEmbeddingsWithRetry(inputs []ad.EmbeddingInput) error {
+	delay := 2 * time.Second
+	for attempt := 1; attempt <= 5; attempt++ {
+		err := BuildAdEmbeddings(inputs)
+		if err == nil {
+			return nil
+		}
+		if !isRateLimitError(err) || attempt == 5 {
+			return err
+		}
+		logger.Warn("embedding rate limited, retrying",
+			"attempt", attempt, "delay", delay, "batch", len(inputs))
+		time.Sleep(delay)
+		delay *= 2
+	}
+	return nil
+}
+
+func BackfillAllAdsSync() (remaining int, err error) {
 	ids, err := ad.GetAdsWithoutVectors()
 	if err != nil {
-		return err
+		return 0, err
 	}
-	const chunkSize = 50
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	logger.Info("backfilling ad embeddings", "count", len(ids))
+	const chunkSize = 10
+	var failed bool
 	for i := 0; i < len(ids); i += chunkSize {
 		end := i + chunkSize
 		if end > len(ids) {
@@ -174,15 +237,25 @@ func BackfillAllAdsSync() error {
 		}
 		var inputs []ad.EmbeddingInput
 		for _, id := range ids[i:end] {
-			in, err := ad.GetForEmbedding(id)
-			if err != nil {
-				return err
+			in, loadErr := ad.GetForEmbedding(id)
+			if loadErr != nil {
+				return len(ids) - i, loadErr
 			}
 			inputs = append(inputs, in)
 		}
-		if err := BuildAdEmbeddings(inputs); err != nil {
-			return err
+		if chunkErr := buildAdEmbeddingsWithRetry(inputs); chunkErr != nil {
+			logger.Error("backfill chunk failed",
+				"error", chunkErr, "offset", i, "size", len(inputs))
+			failed = true
 		}
+		time.Sleep(config.VectorProcessingSleepInterval)
 	}
-	return nil
+	remainingIDs, countErr := ad.GetAdsWithoutVectors()
+	if countErr != nil {
+		return 0, countErr
+	}
+	if failed && len(remainingIDs) > 0 {
+		return len(remainingIDs), fmt.Errorf("backfill incomplete")
+	}
+	return len(remainingIDs), nil
 }

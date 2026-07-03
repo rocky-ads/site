@@ -91,7 +91,7 @@ func (g geminiEmbedder) embedTexts(texts []string, taskType string) ([][]float32
 		if emb == nil {
 			return nil, fmt.Errorf("nil embedding at index %d", i)
 		}
-		out[i] = emb.Values
+		out[i] = cloneEmbedding(emb.Values)
 	}
 	return out, nil
 }

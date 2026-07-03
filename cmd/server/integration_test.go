@@ -126,7 +126,7 @@ func TestMain(m *testing.M) {
 		db.Close()
 		panic(fmt.Sprintf("Failed to init embedding caches: %v", err))
 	}
-	if err := vector.BackfillAllAdsSync(); err != nil {
+	if _, err := vector.BackfillAllAdsSync(); err != nil {
 		db.Close()
 		panic(fmt.Sprintf("Failed to backfill ad embeddings: %v", err))
 	}

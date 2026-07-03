@@ -6,6 +6,7 @@ import (
 
 	"github.com/rocky-ads/site/internal/facet"
 	g "maragu.dev/gomponents"
+	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
 )
 
@@ -17,6 +18,14 @@ func SearchFiltersPanel(facets []facet.Def, f SearchFilters) g.Node {
 	}
 	return Div(
 		Class("grid grid-cols-2 gap-4"),
+		ID("search-filters"),
+		hx.Get("/api/search/"),
+		hx.Target("#search-results"),
+		hx.Swap("outerHTML"),
+		hx.Include("#search-widget"),
+		hx.Trigger("input from:input delay:500ms, "+
+			"change from:input delay:300ms, "+
+			"change from:select delay:300ms"),
 		g.Group(nodes),
 	)
 }

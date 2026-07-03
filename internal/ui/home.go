@@ -257,7 +257,7 @@ func SearchWidget(userID, view int, q string, filtersExpanded,
 		hx.Target("#search-results"),
 		hx.Swap("outerHTML"),
 		hx.Include("#search-widget"),
-		hx.Trigger("search, keydown[key=='Tab'] from:#searchBox, change from:(#search-area input) delay:300ms, change from:(#search-area select) delay:300ms"),
+		hx.Trigger("search, keydown[key=='Tab'] from:#searchBox"),
 		SearchArea(q, filtersExpanded, filterFacets, filters, searchVisible),
 		SearchView(view, filters, results),
 	}

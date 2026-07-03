@@ -106,6 +106,15 @@ func hashEmbed(text string) []float32 {
 	return vec
 }
 
+func cloneEmbedding(v []float32) []float32 {
+	if len(v) == 0 {
+		return nil
+	}
+	cp := make([]float32, len(v))
+	copy(cp, v)
+	return cp
+}
+
 func normalizeVector(vec []float32) {
 	var sum float64
 	for _, v := range vec {

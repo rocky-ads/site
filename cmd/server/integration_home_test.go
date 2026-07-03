@@ -478,6 +478,13 @@ func TestHideFiltersHandler(t *testing.T) {
 	if !strings.Contains(body, `title="Collapse filters"`) {
 		t.Error("show-filters should swap toggle to collapse (^)")
 	}
+	if !strings.Contains(body, `id="search-filters"`) {
+		t.Error("show-filters should render filter panel with search triggers")
+	}
+	if !strings.Contains(body, `hx-get="/api/search/"`) ||
+		!strings.Contains(body, "change from:input") {
+		t.Error("show-filters filter panel should trigger /api/search on input change")
+	}
 
 	hideURL := baseURL + "/api/hide-filters?q=Honda&price_min=10000"
 	resp, body = getRequestWithCookies(t, client, hideURL)

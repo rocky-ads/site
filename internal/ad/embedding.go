@@ -128,7 +128,7 @@ func GetAdsWithoutVectors() ([]int, error) {
 	err := db.QueryJSON(&ids, `
 		SELECT COALESCE(json_agg(id), '[]'::json)
 		FROM ads
-		WHERE embedding IS NULL AND deleted_at IS NULL`)
+		WHERE deleted_at IS NULL AND embedding IS NULL`)
 	return ids, err
 }
 

@@ -23,6 +23,11 @@ func Search(p Params) (Results, error) {
 
 	embedding, err := vector.ResolveSearchEmbedding(p.UserID, p.CategoryID, p.Q)
 	if err != nil {
+		if vector.IsEmbeddingUnavailable(err) {
+			logger.Info("search embedding unavailable",
+				"error", err, "q", p.Q)
+			return Results{}, nil
+		}
 		logger.Debug("search embedding error", "error", err)
 		return Results{}, fmt.Errorf("search embedding: %w", err)
 	}
