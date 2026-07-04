@@ -34,12 +34,23 @@ type ollamaEmbedResponse struct {
 }
 
 func InitOllamaClient() error {
+	baseURL := normalizeOllamaBaseURL(config.OllamaURL)
 	SetEmbedder(ollamaEmbedder{
-		baseURL: strings.TrimRight(config.OllamaURL, "/"),
+		baseURL: baseURL,
 		model:   config.OllamaEmbeddingModel,
 		client:  &http.Client{Timeout: ollamaEmbedTimeout},
 	})
 	return nil
+}
+
+// normalizeOllamaBaseURL accepts full URLs (http://localhost:11434) or
+// host:port values from Render private networking (ollama-a1b2:11434).
+func normalizeOllamaBaseURL(url string) string {
+	base := strings.TrimRight(url, "/")
+	if base != "" && !strings.Contains(base, "://") {
+		base = "http://" + base
+	}
+	return base
 }
 
 func (o ollamaEmbedder) EmbedText(text string) ([]float32, error) {

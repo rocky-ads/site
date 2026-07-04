@@ -40,6 +40,19 @@ projects:
         mountPath: /data
         sizeGB: 10
       autoDeployTrigger: commit
+    - type: pserv
+      name: ollama
+      runtime: image
+      image:
+        url: docker.io/rockyads/ollama:latest
+      plan: starter
+      envVars:
+      - key: OLLAMA_HOST
+        value: 0.0.0.0:11434
+      - key: OLLAMA_KEEP_ALIVE
+        value: 30m
+      region: oregon
+      autoDeployTrigger: commit
     - type: web
       name: jump-server
       runtime: image

@@ -1,0 +1,22 @@
+# Ollama embedding server with nomic-embed-text baked in at build time.
+# Used by Render private service and local docker compose.
+
+FROM ollama/ollama:latest
+
+# Pull the embedding model during image build so deploys start warm.
+RUN /bin/ollama serve & \
+    pid=$!; \
+    for i in $(seq 1 60); do \
+      /bin/ollama list >/dev/null 2>&1 && break; \
+      sleep 1; \
+    done; \
+    /bin/ollama pull nomic-embed-text; \
+    kill $pid; \
+    wait $pid 2>/dev/null || true
+
+ENV OLLAMA_HOST=0.0.0.0:11434
+
+EXPOSE 11434
+
+# Base image ENTRYPOINT is /bin/ollama.
+CMD ["serve"]
