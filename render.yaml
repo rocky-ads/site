@@ -1,0 +1,68 @@
+# Exported from Render on 2026-07-04T19:07:20Z
+version: "1"
+projects:
+- name: Rocky Ads
+  environments:
+  - name: Production
+    networking:
+      isolation: enabled
+    services:
+    - type: web
+      name: site
+      runtime: image
+      image:
+        url: docker.io/rockyads/site:latest
+      plan: starter
+      envVars:
+      - fromGroup: BASE
+      - fromGroup: JWT
+      - fromGroup: TWILIO
+      - fromGroup: MINIO
+      - fromGroup: LLM APIs
+      region: oregon
+      healthCheckPath: /health
+      domains:
+      - rockyads.com
+      - www.rockyads.com
+      autoDeployTrigger: commit
+    - type: pserv
+      name: minio
+      runtime: image
+      image:
+        url: docker.io/minio/minio:latest
+      plan: starter
+      envVars:
+      - fromGroup: MINIO
+      region: oregon
+      dockerCommand: minio server /data --console-address :9001
+      disk:
+        name: disk
+        mountPath: /data
+        sizeGB: 10
+      autoDeployTrigger: commit
+    - type: web
+      name: jump-server
+      runtime: image
+      image:
+        url: docker.io/rockyads/jump-server:latest
+      plan: starter
+      envVars:
+      - fromGroup: BASE
+      - fromGroup: MINIO
+      region: oregon
+      disk:
+        name: disk
+        mountPath: /data
+        sizeGB: 2
+      autoDeployTrigger: commit
+    databases:
+    - name: rockyads-db
+      databaseName: rockyads_db
+      user: rockyads_db_user
+      plan: basic-1gb
+      region: oregon
+      ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
+      postgresMajorVersion: "18"
+      diskSizeGB: 5
