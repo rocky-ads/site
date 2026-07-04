@@ -43,6 +43,14 @@ const (
 	GeminiEmbeddingModel      = "gemini-embedding-001"
 	GeminiEmbeddingDimensions = 768
 
+	// Ollama embedding configuration
+	OllamaEmbeddingModel      = "nomic-embed-text"
+	OllamaEmbeddingDimensions = 768
+
+	// Embedder backend identifiers (see EMBEDDER env var)
+	EmbedderOllama = "ollama"
+	EmbedderGemini = "gemini"
+
 	// Ad configuration
 	MaxImagesPerAd         = 20
 	MaxEggCount            = 2 // Maximum egg count to allow in search results
@@ -82,8 +90,11 @@ var (
 	MinIOBucketName   = getEnvWithDefault("MINIO_BUCKET_NAME", "")
 
 	// AI/ML API configuration
+	// Embedder selects the embedding backend: "ollama" (default, local) or "gemini".
+	Embedder     = getEnvWithDefault("EMBEDDER", EmbedderOllama)
 	GeminiAPIKey = getEnvWithDefault("GEMINI_API_KEY", "")
 	GrokAPIKey   = getEnvWithDefault("GROK_API_KEY", "")
+	OllamaURL    = getEnvWithDefault("OLLAMA_URL", "http://localhost:11434")
 
 	// SMS/Twilio configuration
 	TwilioAccountSID = getEnvWithDefault("TWILIO_ACCOUNT_SID", "")

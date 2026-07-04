@@ -60,6 +60,30 @@ services:
     volumes:
       - ./backups:/workspace/backups
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: rockyads-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - rockyads_ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama pull nomic-embed-text"]
+    restart: "no"
+
 volumes:
   rockyads_pgdata:
   rockyads_minio_data:
+  rockyads_ollama:

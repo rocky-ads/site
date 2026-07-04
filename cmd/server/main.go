@@ -177,8 +177,8 @@ func main() {
 	if err := vector.InitEmbeddingCaches(); err != nil {
 		logger.Fatal("Failed to initialize embedding caches", "error", err)
 	}
-	if err := vector.InitGeminiClient(); err != nil {
-		logger.Fatal("Failed to initialize Gemini client", "error", err)
+	if err := vector.InitEmbedder(); err != nil {
+		logger.Fatal("Failed to initialize embedder", "error", err)
 	}
 	vector.StartBackgroundProcessor()
 	vector.ProcessAdsWithoutVectors()

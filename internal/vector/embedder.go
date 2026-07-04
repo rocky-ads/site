@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/rocky-ads/site/internal/config"
+	"github.com/rocky-ads/site/internal/logger"
 )
 
 type Embedder interface {
@@ -20,6 +21,39 @@ var activeEmbedder Embedder
 
 func SetEmbedder(e Embedder) {
 	activeEmbedder = e
+}
+
+// EmbedderInfo returns the active embedding backend's provider identifier and
+// model name (as selected by the EMBEDDER env var).
+func EmbedderInfo() (provider, model string) {
+	switch config.Embedder {
+	case config.EmbedderGemini:
+		return config.EmbedderGemini, config.GeminiEmbeddingModel
+	case config.EmbedderOllama:
+		return config.EmbedderOllama, config.OllamaEmbeddingModel
+	default:
+		return config.Embedder, ""
+	}
+}
+
+// InitEmbedder initializes the embedding backend selected by config.Embedder
+// (the EMBEDDER env var): "ollama" (default, local) or "gemini".
+func InitEmbedder() error {
+	switch config.Embedder {
+	case config.EmbedderGemini:
+		if err := InitGeminiClient(); err != nil {
+			return err
+		}
+	case config.EmbedderOllama:
+		if err := InitOllamaClient(); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("invalid EMBEDDER value %q (valid: %q, %q)",
+			config.Embedder, config.EmbedderOllama, config.EmbedderGemini)
+	}
+	logger.Info("Embedder initialized", "provider", config.Embedder)
+	return nil
 }
 
 func embedText(text string) ([]float32, error) {

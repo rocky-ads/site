@@ -80,14 +80,17 @@ func embeddingAdminData(userID, categoryID int) (ui.EmbeddingAdminData, error) {
 		return ui.EmbeddingAdminData{}, err
 	}
 	cacheStats := vector.GetEmbeddingCacheStats()
+	provider, model := vector.EmbedderInfo()
 	return ui.EmbeddingAdminData{
-		EmbeddedCount:  stats.Embedded,
-		MissingCount:   stats.Missing,
-		QueueDepth:     vector.QueueDepth(),
-		CategoryID:     categoryID,
-		Categories:     categoryOptions(categories),
-		UserActivities: embeddingActivityRows(userActs),
-		SiteActivities: embeddingActivityRows(siteActs),
+		EmbedderProvider: provider,
+		EmbedderModel:    model,
+		EmbeddedCount:    stats.Embedded,
+		MissingCount:     stats.Missing,
+		QueueDepth:       vector.QueueDepth(),
+		CategoryID:       categoryID,
+		Categories:       categoryOptions(categories),
+		UserActivities:   embeddingActivityRows(userActs),
+		SiteActivities:   embeddingActivityRows(siteActs),
 		Caches: []ui.EmbeddingCachePanel{
 			cachePanelFromStats("Query", cacheStats["query"]),
 			cachePanelFromStats("User", cacheStats["user"]),

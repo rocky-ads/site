@@ -19,10 +19,34 @@ func EmbeddingsTab(d EmbeddingAdminData) g.Node {
 		hx.Swap("outerHTML"),
 		hx.Trigger("every 10s"),
 		embeddingSummaryCards(d),
+		embeddingProviderRow(d),
 		embeddingActions(),
 		embeddingCacheSection(d.Caches),
 		embeddingActivitiesSection(d),
 		embeddingMissingSection(d.MissingAds),
+	)
+}
+
+func embeddingProviderRow(d EmbeddingAdminData) g.Node {
+	name := d.EmbedderProvider
+	if name == "" {
+		name = "unknown"
+	}
+	if d.EmbedderModel != "" {
+		name += " · " + d.EmbedderModel
+	}
+	return Div(
+		Class("flex items-center gap-2"),
+		Span(
+			Class("text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400"),
+			g.Text("Embedder"),
+		),
+		Span(
+			Class("inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium "+
+				"bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 "+
+				"border border-indigo-200 dark:border-indigo-800"),
+			g.Text(name),
+		),
 	)
 }
 

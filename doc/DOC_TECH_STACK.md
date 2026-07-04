@@ -99,10 +99,14 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
   - Account SID and Auth Token authentication
 
 ### AI/ML Services
-- **Google Gemini API** - Embedding generation
-  - Model: `gemini-embedding-001`
-  - Dimensions: 768
-  - Used for ad and query vector search
+- **Embedding generation** - Backend selected at startup by the `EMBEDDER` env var (default `ollama`). Both backends produce 768-dim vectors used for ad and query vector search.
+  - **`ollama`** (default, local) - `nomic-embed-text` served by Ollama
+    - Endpoint: `http://localhost:11434` (configurable via `OLLAMA_URL`)
+    - Runs locally via the `ollama` Docker Compose service; no external API key required
+    - Uses `search_query:` / `search_document:` prefixes for asymmetric retrieval
+  - **`gemini`** - Google Gemini API `gemini-embedding-001`
+    - Requires `GEMINI_API_KEY`
+    - Uses `RETRIEVAL_QUERY` / `RETRIEVAL_DOCUMENT` task types for asymmetric retrieval
 - **Grok API (x.ai)** - Chat completions
   - Model: `grok-3-mini`
   - Endpoint: `https://api.x.ai/v1/chat/completions`
@@ -189,7 +193,8 @@ Request flow: **handler → domain → handler maps to UI inputs → `ui/` rende
 Configuration is managed through environment variables:
 - **Database connection** — set `DATABASE_URL` to a PostgreSQL DSN (e.g. `postgres://localhost:5432/rockyads?sslmode=disable` for local dev). For local Postgres via Docker: `docker compose up -d postgres`, then use `postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable`. Use `./seed_db` to reset schema and seed data. Integration tests live in `cmd/server` (`integration_*.go`) and share one seeded database via `TestMain`.
 - MinIO credentials
-- API keys (Gemini, Grok, Twilio)
+- API keys (Grok, Twilio; Gemini only when `EMBEDDER=gemini`)
+- Embedder selection (`EMBEDDER`, default `ollama`; set to `gemini` to use the Gemini API) and Ollama server URL (`OLLAMA_URL`, default `http://localhost:11434`)
 - JWT secrets
 - Encryption keys (base64-encoded)
 - Server port and logging settings
