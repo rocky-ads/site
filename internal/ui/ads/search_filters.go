@@ -23,9 +23,10 @@ func SearchFiltersPanel(facets []facet.Def, f SearchFilters) g.Node {
 		hx.Target("#search-results"),
 		hx.Swap("outerHTML"),
 		hx.Include("#search-widget"),
-		hx.Trigger("input from:input delay:500ms, "+
-			"change from:input delay:300ms, "+
-			"change from:select delay:300ms"),
+		// Scope to descendant filter controls via event bubbling. Avoid the
+		// document-wide "from:input" selector so typing in the search box does
+		// not trigger a search here (it searches on enter/blur instead).
+		hx.Trigger("input delay:500ms, change delay:300ms"),
 		g.Group(nodes),
 	)
 }

@@ -482,7 +482,7 @@ func TestHideFiltersHandler(t *testing.T) {
 		t.Error("show-filters should render filter panel with search triggers")
 	}
 	if !strings.Contains(body, `hx-get="/api/search/"`) ||
-		!strings.Contains(body, "change from:input") {
+		!strings.Contains(body, "change delay:300ms") {
 		t.Error("show-filters filter panel should trigger /api/search on input change")
 	}
 

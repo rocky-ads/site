@@ -55,7 +55,10 @@ func SearchLocationModal(f uiads.SearchFilters) g.Node {
 								Type("button"),
 								Class("py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700"),
 								hx.Get("/api/search-location/save"),
-								hx.Include("#search-location-form, #searchBox"),
+								// Include the active filter facets so saving a
+								// location preserves them; the save handler
+								// re-parses facets from the request when expanded.
+								hx.Include("#search-location-form, #searchBox, #search-filters"),
 								hx.Swap("none"),
 								g.Text("Save"),
 							),
