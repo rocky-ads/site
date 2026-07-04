@@ -18,7 +18,7 @@ projects:
       - fromGroup: JWT
       - fromGroup: TWILIO
       - fromGroup: MINIO
-      - fromGroup: LLM APIs
+      - fromGroup: LLMs
       region: oregon
       healthCheckPath: /health
       domains:
