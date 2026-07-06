@@ -41,7 +41,12 @@ func renderPage(c *fiber.Ctx, title string, body []gomponents.Node) error {
 	// Close existing SSE connections before rendering new page
 	closeSSE(userID)
 
-	return render(c, ui.Page(userID, hasUnread, userName, title, c.Path(), csrfToken, body))
+	showIntroBanner := !local.IsLoggedIn(userID) &&
+		!cookie.IsIntroBannerDismissed(c) &&
+		c.Path() != "/about"
+
+	return render(c, ui.Page(userID, hasUnread, userName, title,
+		c.Path(), csrfToken, showIntroBanner, body))
 }
 
 // searchFromRequest runs search for the current request page and renders ad nodes.

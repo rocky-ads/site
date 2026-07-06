@@ -132,9 +132,51 @@ func swapOOBmessages() g.Node {
 	)
 }
 
-func navigation(userID int, userName, currentPath string, hasUnread bool) g.Node {
+func RemoveIntroBanner() g.Node {
+	return Div(
+		ID("intro-banner"),
+		hx.SwapOOB("delete"),
+	)
+}
+
+func introBanner() g.Node {
+	return Div(
+		ID("intro-banner"),
+		Class("relative -mx-4 px-4 h-10 flex items-center "+
+			"justify-center bg-amber-100 dark:bg-amber-950/50 "+
+			"border-b border-amber-200 dark:border-amber-800 "+
+			"text-zinc-700 dark:text-amber-100"),
+		A(
+			Href("/about"),
+			Class("font-medium text-blue-700 dark:text-blue-400 "+
+				"hover:underline"),
+			hx.Get("/api/intro-banner/dismiss?redirect=/about"),
+			hx.Swap("none"),
+			g.Text("What am I looking at?"),
+		),
+		Button(
+			Type("button"),
+			g.Attr("aria-label", "Close"),
+			Class("absolute right-4 top-1/2 -translate-y-1/2 "+
+				"w-8 h-8 flex items-center justify-center "+
+				"rounded-full hover:bg-amber-200/60 "+
+				"dark:hover:bg-amber-900/50 cursor-pointer "+
+				"text-xl leading-none"),
+			hx.Get("/api/intro-banner/dismiss"),
+			hx.Swap("none"),
+			g.Text("×"),
+		),
+	)
+}
+
+func navigation(userID int, userName, currentPath string,
+	hasUnread bool) g.Node {
 	return Nav(
-		Class("sticky top-0 z-10 bg-white/75 dark:bg-zinc-900/75 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between mb-4 py-4 -mx-4 px-4"),
+		ID("main-nav"),
+		Class("sticky top-0 z-10 "+
+			"bg-white/75 dark:bg-zinc-900/75 backdrop-blur-xl "+
+			"border-b border-zinc-200 dark:border-zinc-700 "+
+			"flex items-center justify-between mb-4 py-4 -mx-4 px-4"),
 		A(
 			Href("/"),
 			Class("flex items-center gap-2 shrink-0 whitespace-nowrap"),
@@ -155,7 +197,7 @@ func navigation(userID int, userName, currentPath string, hasUnread bool) g.Node
 }
 
 func Page(userID int, hasUnread bool, userName, title, currentPath,
-	csrfToken string, body []g.Node) g.Node {
+	csrfToken string, showIntroBanner bool, body []g.Node) g.Node {
 	var headNodes []g.Node
 
 	// SEO meta tags for homepage
@@ -203,17 +245,22 @@ func Page(userID int, hasUnread bool, userName, title, currentPath,
 	// Properly escape the CSRF token for JSON
 	headersJSON := fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)
 
+	contentClass := "w-full md:max-w-3xl md:mx-auto pb-8 px-6 " +
+		"text-zinc-900 dark:text-zinc-200 bg-white dark:bg-zinc-900"
+
 	bodyNodes := []g.Node{
 		Class("min-h-screen bg-white dark:bg-zinc-900"),
 		Div(
+			ID("page-content"),
 			g.If(local.IsLoggedIn(userID), hx.Ext("sse")),
 			g.If(local.IsLoggedIn(userID), g.Attr("sse-connect", "/auth/sse")),
 			g.If(local.IsLoggedIn(userID), g.Attr("sse-close", "close")),
 			g.If(local.IsLoggedIn(userID), swapOOBmessages()),
 			Div(
-				Class("w-full md:max-w-3xl md:mx-auto pb-8 px-6 text-zinc-900 dark:text-zinc-200 bg-white dark:bg-zinc-900"),
+				Class(contentClass),
 				hx.Headers(headersJSON),
 				hx.Indicator("#indicator"),
+				g.If(showIntroBanner, introBanner()),
 				navigation(userID, userName, currentPath, hasUnread),
 				g.Group(body),
 			),
