@@ -145,7 +145,7 @@ func navigation(userID int, userName, currentPath string, hasUnread bool) g.Node
 			Img(
 				Src("/images/rock.svg"),
 				Alt(""),
-				Class("w-6 h-6 flex-shrink-0"),
+				Class("w-9 h-9 flex-shrink-0"),
 			),
 			Span(Class("text-xl font-bold"), g.Text(config.ServerName)),
 		),
