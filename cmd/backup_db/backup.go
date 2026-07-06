@@ -82,16 +82,12 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 			FROM ad_facets WHERE ad_id IN (%s)`, clause), args...); err != nil {
 			return fmt.Errorf("query ad_facets: %w", err)
 		}
-		throwerCol, thrownAtCol, err := conversationThrowerColumns()
-		if err != nil {
-			return err
-		}
 		if err := db.Select(&convDB, fmt.Sprintf(`
 			SELECT id, ad_id, owner_id, inquirer_id,
 			       owner_has_unread, inquirer_has_unread,
-			       %s AS rock_thrower_id, %s AS rock_thrown_at
+			       rock_thrower_id, rock_thrown_at
 			FROM conversations WHERE ad_id IN (%s)
-			ORDER BY id`, throwerCol, thrownAtCol, clause), args...); err != nil {
+			ORDER BY id`, clause), args...); err != nil {
 			return fmt.Errorf("query conversations: %w", err)
 		}
 	}
@@ -128,15 +124,11 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 			ORDER BY created_at, id`, clause), args...); err != nil {
 			return fmt.Errorf("query messages: %w", err)
 		}
-		opinionsTable, err := opinionsTableName()
-		if err != nil {
-			return err
-		}
 		if err := db.Select(&opinionDB, fmt.Sprintf(`
 			SELECT conversation_id, generated_at, summary, assessment,
 			       assessment_detail, resolution, reasoning
-			FROM %s WHERE conversation_id IN (%s)`, opinionsTable, clause), args...); err != nil {
-			return fmt.Errorf("query %s: %w", opinionsTable, err)
+			FROM rock_opinions WHERE conversation_id IN (%s)`, clause), args...); err != nil {
+			return fmt.Errorf("query rock_opinions: %w", err)
 		}
 		for _, m := range msgDB {
 			userIDs = append(userIDs, m.SenderID)
@@ -413,16 +405,4 @@ func readJSON(path string, v any) error {
 		return fmt.Errorf("parse %s: %w", path, err)
 	}
 	return nil
-}
-
-func readOpinionsJSON(dir string, v any) error {
-	rockPath := filepath.Join(dir, fileRockOpinions)
-	if _, err := os.Stat(rockPath); err == nil {
-		return readJSON(rockPath, v)
-	}
-	eggPath := filepath.Join(dir, fileEggOpinions)
-	if _, err := os.Stat(eggPath); err == nil {
-		return readJSON(eggPath, v)
-	}
-	return fmt.Errorf("read opinions: neither %s nor %s found", fileRockOpinions, fileEggOpinions)
 }
