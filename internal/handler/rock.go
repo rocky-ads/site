@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"fmt"
+
 	"github.com/gofiber/fiber/v2"
+	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/logger"
@@ -32,7 +35,10 @@ func ThrowRockHandler(c *fiber.Ctx) error {
 	err = rock.ThrowRock(currentUserID, conversationID)
 	if err != nil {
 		if err == rock.ErrMaxRocksReached {
-			return fiber.NewError(fiber.StatusBadRequest, "You have reached the maximum of 3 outstanding rocks")
+			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf(
+				"You have reached the maximum of %d outstanding rocks",
+				config.MaxOutstandingRocks,
+			))
 		}
 		if err == rock.ErrRockAlreadyThrown {
 			return fiber.NewError(fiber.StatusBadRequest, "An rock has already been thrown at this conversation")

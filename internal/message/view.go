@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/rocky-ads/site/internal/ad"
+	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/rock"
 	"github.com/rocky-ads/site/internal/user"
 )
@@ -153,7 +154,7 @@ func rockThrowPermissions(conversationID, userID int,
 		return hasThrown, false
 	}
 	userRockCount, err := rock.GetUserRockCount(userID)
-	if err != nil || userRockCount >= 3 {
+	if err != nil || userRockCount >= config.MaxOutstandingRocks {
 		return hasThrown, false
 	}
 	return hasThrown, true

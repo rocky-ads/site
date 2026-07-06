@@ -6,6 +6,23 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
+func welcomeRocks(count int) g.Node {
+	var rocks []g.Node
+	for range count {
+		rocks = append(rocks,
+			Img(
+				Src("/images/rock.svg"),
+				Alt("Rock"),
+				Class("w-full max-w-[80px]"),
+			),
+		)
+	}
+	return Div(
+		Class("flex items-end justify-center gap-3"),
+		g.Group(rocks),
+	)
+}
+
 func WelcomePage(rockCount int) []g.Node {
 	return []g.Node{
 		Div(
@@ -15,11 +32,6 @@ func WelcomePage(rockCount int) []g.Node {
 				"rounded-xl p-5 md:p-8 shadow-lg"),
 			Div(
 				Class("flex flex-col items-center text-center space-y-4"),
-				Img(
-					Src("/images/rock.svg"),
-					Alt("Rock"),
-					Class("w-full max-w-[160px] rounded-lg"),
-				),
 				Div(
 					Class("space-y-2"),
 					H1(
@@ -29,13 +41,13 @@ func WelcomePage(rockCount int) []g.Node {
 					),
 					P(
 						Class("text-base text-zinc-700 dark:text-zinc-300"),
-						g.Textf("Here are your %d rocks.", rockCount),
+						g.Textf("Here are your %d rocks", rockCount),
 					),
-					P(
-						Class("text-base text-zinc-600 dark:text-zinc-400 "+
-							"leading-snug"),
-						faqLink("/faq/rocks", "What are the rocks for?"),
-					),
+				),
+				welcomeRocks(rockCount),
+				P(
+					Class("text-base text-zinc-600 dark:text-zinc-400 leading-snug"),
+					faqLink("/faq/rocks", "What are the rocks for?"),
 				),
 				standardButton(buttonProps{
 					Href:  "/",

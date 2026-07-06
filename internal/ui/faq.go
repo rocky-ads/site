@@ -23,8 +23,8 @@ var faqSections = map[string]faqSectionData{
 		body: func() []g.Node {
 			return []g.Node{
 				faqParagraph(g.Textf(
-					"When you join %s, you receive 3 rocks.",
-					config.ServerName,
+					"When you join %s, you receive %d rocks.",
+					config.ServerName, config.MaxOutstandingRocks,
 				)),
 				faqParagraph(g.Text(
 					"Throw a rock on an ad that violates our policies " +

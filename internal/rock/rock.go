@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
 )
 
@@ -32,7 +33,7 @@ func ThrowRock(userID, conversationID int) error {
 	if err != nil {
 		return fmt.Errorf("failed to check rock count: %w", err)
 	}
-	if count >= 3 {
+	if count >= config.MaxOutstandingRocks {
 		return ErrMaxRocksReached
 	}
 
