@@ -8,10 +8,10 @@ import (
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/currency"
-	"github.com/rocky-ads/site/internal/egg"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/message"
 	"github.com/rocky-ads/site/internal/param"
+	"github.com/rocky-ads/site/internal/rock"
 	"github.com/rocky-ads/site/internal/ui"
 	"github.com/rocky-ads/site/internal/user"
 	"github.com/rocky-ads/site/internal/vector"
@@ -113,7 +113,7 @@ func adTagDisplays(a ad.Ad) []string {
 	return out
 }
 
-func AdEggConversationHandler(c *fiber.Ctx) error {
+func AdRockConversationHandler(c *fiber.Ctx) error {
 	adID, err := c.ParamsInt("id")
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
@@ -121,7 +121,7 @@ func AdEggConversationHandler(c *fiber.Ctx) error {
 
 	ordinal, err := c.ParamsInt("ordinal")
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid egg ordinal")
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid rock ordinal")
 	}
 
 	currentUserID := local.GetUserID(c)
@@ -129,9 +129,9 @@ func AdEggConversationHandler(c *fiber.Ctx) error {
 	csrfToken := local.GetCSRFToken(c)
 
 	// Get conversation ID by ordinal
-	conversationID, err := egg.GetPublicConversationIDByOrdinal(adID, ordinal)
+	conversationID, err := rock.GetPublicConversationIDByOrdinal(adID, ordinal)
 	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, "Egg conversation not found")
+		return fiber.NewError(fiber.StatusNotFound, "Rock conversation not found")
 	}
 
 	conv, _, err := message.OpenConversation(conversationID, currentUserID)
@@ -145,7 +145,7 @@ func AdEggConversationHandler(c *fiber.Ctx) error {
 	if message.IsParticipant(conv, currentUserID) {
 		return renderConversationModal(c, conv, currentUserID, tz, csrfToken)
 	}
-	return renderEggOpinionModal(c, conv, currentUserID, tz)
+	return renderRockOpinionModal(c, conv, currentUserID, tz)
 }
 
 func AdShareHandler(c *fiber.Ctx) error {

@@ -61,7 +61,7 @@ func BuildAdEmbeddings(inputs []ad.EmbeddingInput) error {
 func buildAdEmbeddingPrompt(in ad.EmbeddingInput) string {
 	var parts []string
 	parts = append(parts, `Encode the following ad for semantic search.
-Focus on title, description, tags, location, price, egg disputes, and field values.
+Focus on title, description, tags, location, price, rock disputes, and field values.
 
 Title: `+in.Title)
 	parts = append(parts, "Description: "+in.Description)
@@ -86,19 +86,19 @@ Title: `+in.Title)
 			"Price: %s", currency.Format(amount, code),
 		))
 	}
-	parts = append(parts, eggContext(in.EggCount))
+	parts = append(parts, rockContext(in.RockCount))
 	return strings.Join(parts, "\n")
 }
 
-func eggContext(count int) string {
+func rockContext(count int) string {
 	switch count {
 	case 0:
-		return "This ad has no reported disputes (0 eggs thrown)."
+		return "This ad has no reported disputes (0 rocks thrown)."
 	case 1:
-		return "This ad has 1 reported dispute (1 egg thrown)."
+		return "This ad has 1 reported dispute (1 rock thrown)."
 	default:
 		return fmt.Sprintf(
-			"This ad has %d reported disputes (%d eggs thrown).",
+			"This ad has %d reported disputes (%d rocks thrown).",
 			count, count,
 		)
 	}
@@ -107,7 +107,7 @@ func eggContext(count int) string {
 func buildAdEmbeddingMetadata(in ad.EmbeddingInput) map[string]any {
 	meta := map[string]any{
 		"category_id": in.CategoryID,
-		"egg_count":   in.EggCount,
+		"rock_count":  in.RockCount,
 	}
 	if amount, _, ok := in.PriceValue(); ok {
 		meta["price"] = amount

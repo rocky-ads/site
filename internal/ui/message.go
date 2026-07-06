@@ -65,8 +65,8 @@ func MessageItem(d MessageItemData, attrs ...g.Node) g.Node {
 	)
 }
 
-// EggThrownMessage renders a message-like item showing when an egg was thrown
-func EggThrownMessage(d EggEventData) g.Node {
+// RockThrownMessage renders a message-like item showing when a rock was thrown
+func RockThrownMessage(d RockEventData) g.Node {
 	isSent := d.ThrowerID == d.CurrentUserID
 
 	var bubbleClass string
@@ -89,11 +89,11 @@ func EggThrownMessage(d EggEventData) g.Node {
 			Div(
 				Class("px-4 py-2 "+bubbleClass+" flex items-center gap-2"),
 				Img(
-					Src("/images/broken-egg.svg"),
-					Alt("Egg thrown"),
+					Src("/images/rock.svg"),
+					Alt("Rock thrown"),
 					Class("w-5 h-5 flex-shrink-0"),
 				),
-				g.Text("Egg thrown"),
+				g.Text("Rock thrown"),
 			),
 			Div(
 				Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1 px-1"),
@@ -103,11 +103,11 @@ func EggThrownMessage(d EggEventData) g.Node {
 	)
 }
 
-// MessageTimeline renders chat messages with an optional egg event inserted
-// chronologically. Message and egg timestamps must already be in the viewer's
+// MessageTimeline renders chat messages with an optional rock event inserted
+// chronologically. Message and rock timestamps must already be in the viewer's
 // timezone.
-func MessageTimeline(messages []MessageItemData, egg *EggEventData) []g.Node {
-	if egg == nil {
+func MessageTimeline(messages []MessageItemData, rock *RockEventData) []g.Node {
+	if rock == nil {
 		nodes := make([]g.Node, len(messages))
 		for i, m := range messages {
 			nodes[i] = MessageItem(m)
@@ -118,14 +118,14 @@ func MessageTimeline(messages []MessageItemData, egg *EggEventData) []g.Node {
 	var nodes []g.Node
 	inserted := false
 	for _, m := range messages {
-		if !inserted && m.CreatedAt.After(egg.ThrownAt) {
-			nodes = append(nodes, EggThrownMessage(*egg))
+		if !inserted && m.CreatedAt.After(rock.ThrownAt) {
+			nodes = append(nodes, RockThrownMessage(*rock))
 			inserted = true
 		}
 		nodes = append(nodes, MessageItem(m))
 	}
 	if !inserted {
-		nodes = append(nodes, EggThrownMessage(*egg))
+		nodes = append(nodes, RockThrownMessage(*rock))
 	}
 	return nodes
 }
@@ -163,7 +163,7 @@ func ConversationContentInput(conversationID int, attrs ...g.Node) g.Node {
 }
 
 func ConversationForm(conversationID, adID int, csrfToken string, canPost bool,
-	hasThrownEgg, canThrowEgg bool, hasPublicEgg bool, messageCount int) g.Node {
+	hasThrownRock, canThrowRock bool, hasPublicRock bool, messageCount int) g.Node {
 	modalName := fmt.Sprintf("conversation-%d", conversationID)
 	attrs := []g.Node{
 		ID(fmt.Sprintf("%s-form", modalName)),
@@ -210,32 +210,32 @@ func ConversationForm(conversationID, adID int, csrfToken string, canPost bool,
 				),
 			),
 		),
-		// Egg throw link below the input (only shown if conversation has messages)
+		// Rock throw link below the input (only shown if conversation has messages)
 		g.If(messageCount > 0,
 			Div(
-				ID(fmt.Sprintf("%s-egg-link-container", modalName)),
+				ID(fmt.Sprintf("%s-rock-link-container", modalName)),
 				Class("mt-2"),
-				EggThrowLink(conversationID, hasThrownEgg, canThrowEgg, csrfToken),
+				RockThrowLink(conversationID, hasThrownRock, canThrowRock, csrfToken),
 			),
 		),
 		g.If(messageCount == 0,
 			Div(
-				ID(fmt.Sprintf("%s-egg-link-container", modalName)),
+				ID(fmt.Sprintf("%s-rock-link-container", modalName)),
 				Class("mt-2"),
 			),
 		),
-		g.If(canPost && hasPublicEgg,
+		g.If(canPost && hasPublicRock,
 			Div(
 				Class("mt-2"),
-				EggOpinionLink(conversationID),
-				EggOpinionIndicator(),
+				RockOpinionLink(conversationID),
+				RockOpinionIndicator(),
 			),
 		),
 	)
 }
 
 // ConversationModalSwapOOB returns just the modal div (without backdrop) with hx-swap-oob="outerHTML" for updating via SSE or OOB swaps
-// This is used to update the modal when messages are sent or eggs are thrown
+// This is used to update the modal when messages are sent or rocks are thrown
 func ConversationModalSwapOOB(d ConversationModalData) g.Node {
 	modalName := fmt.Sprintf("conversation-%d", d.ConversationID)
 	modalID := modalName + "-modal"
@@ -243,9 +243,9 @@ func ConversationModalSwapOOB(d ConversationModalData) g.Node {
 		modalID = d.TargetModalID
 	}
 
-	var eggUserID int
-	if d.EggThrowerID != nil {
-		eggUserID = *d.EggThrowerID
+	var rockUserID int
+	if d.RockThrowerID != nil {
+		rockUserID = *d.RockThrowerID
 	}
 
 	// Return just the modal div (not the backdrop) with OOB swap
@@ -268,11 +268,11 @@ func ConversationModalSwapOOB(d ConversationModalData) g.Node {
 					Div(
 						Class("text-sm text-zinc-600 dark:text-zinc-400"),
 						Span(Class("font-semibold"), g.Text("From: ")),
-						UserEggIcons(d.InquirerID, d.InquirerEggCount),
+						UserRockIcons(d.InquirerID, d.InquirerRockCount),
 						UserNameLink(d.InquirerID, d.InquirerName),
 						g.Text(", "),
 						Span(Class("font-semibold"), g.Text("To: ")),
-						UserEggIcons(d.OwnerID, d.OwnerEggCount),
+						UserRockIcons(d.OwnerID, d.OwnerRockCount),
 						UserNameLink(d.OwnerID, d.OwnerName),
 						g.Text(" (ad owner)"),
 						g.If(!d.CanPost && (d.OwnerID != d.CurrentUserID && d.InquirerID != d.CurrentUserID),
@@ -282,20 +282,20 @@ func ConversationModalSwapOOB(d ConversationModalData) g.Node {
 							),
 						),
 					),
-					g.If(!d.CanPost && d.EggThrowerID != nil,
+					g.If(!d.CanPost && d.RockThrowerID != nil,
 						Div(
 							Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1"),
-							g.Text("Egg thrown by: "),
-							g.If(eggUserID == d.CurrentUserID,
+							g.Text("Rock thrown by: "),
+							g.If(rockUserID == d.CurrentUserID,
 								Span(Class("text-blue-600 dark:text-blue-400 font-medium"),
-									g.If(eggUserID == d.OwnerID, UserNameLink(d.OwnerID, d.OwnerName)),
-									g.If(eggUserID == d.InquirerID, UserNameLink(d.InquirerID, d.InquirerName)),
+									g.If(rockUserID == d.OwnerID, UserNameLink(d.OwnerID, d.OwnerName)),
+									g.If(rockUserID == d.InquirerID, UserNameLink(d.InquirerID, d.InquirerName)),
 								),
 							),
-							g.If(eggUserID != d.CurrentUserID,
+							g.If(rockUserID != d.CurrentUserID,
 								Span(Class("text-zinc-700 dark:text-zinc-300 font-medium"),
-									g.If(eggUserID == d.OwnerID, UserNameLink(d.OwnerID, d.OwnerName)),
-									g.If(eggUserID == d.InquirerID, UserNameLink(d.InquirerID, d.InquirerName)),
+									g.If(rockUserID == d.OwnerID, UserNameLink(d.OwnerID, d.OwnerName)),
+									g.If(rockUserID == d.InquirerID, UserNameLink(d.InquirerID, d.InquirerName)),
 								),
 							),
 						),
@@ -340,19 +340,19 @@ func ConversationModalSwapOOB(d ConversationModalData) g.Node {
 			),
 			ConversationForm(
 				d.ConversationID, d.AdID, d.CSRFToken,
-				d.CanPost, d.HasThrownEgg, d.CanThrowEgg,
-				d.EggThrowerID != nil, len(d.MessageNodes),
+				d.CanPost, d.HasThrownRock, d.CanThrowRock,
+				d.RockThrowerID != nil, len(d.MessageNodes),
 			),
 		),
 	)
 }
 
-func ConversationModalWithEgg(d ConversationModalData) g.Node {
+func ConversationModalWithRock(d ConversationModalData) g.Node {
 	modalName := fmt.Sprintf("conversation-%d", d.ConversationID)
 
-	var eggUserID int
-	if d.EggThrowerID != nil {
-		eggUserID = *d.EggThrowerID
+	var rockUserID int
+	if d.RockThrowerID != nil {
+		rockUserID = *d.RockThrowerID
 	}
 
 	return g.Group([]g.Node{
@@ -375,11 +375,11 @@ func ConversationModalWithEgg(d ConversationModalData) g.Node {
 						Div(
 							Class("text-sm text-zinc-600 dark:text-zinc-400"),
 							Span(Class("font-semibold"), g.Text("From: ")),
-							UserEggIcons(d.InquirerID, d.InquirerEggCount),
+							UserRockIcons(d.InquirerID, d.InquirerRockCount),
 							UserNameLink(d.InquirerID, d.InquirerName),
 							g.Text(", "),
 							Span(Class("font-semibold"), g.Text("To: ")),
-							UserEggIcons(d.OwnerID, d.OwnerEggCount),
+							UserRockIcons(d.OwnerID, d.OwnerRockCount),
 							UserNameLink(d.OwnerID, d.OwnerName),
 							g.Text(" (ad owner)"),
 							g.If(!d.CanPost && (d.OwnerID != d.CurrentUserID && d.InquirerID != d.CurrentUserID),
@@ -389,20 +389,20 @@ func ConversationModalWithEgg(d ConversationModalData) g.Node {
 								),
 							),
 						),
-						g.If(!d.CanPost && d.EggThrowerID != nil,
+						g.If(!d.CanPost && d.RockThrowerID != nil,
 							Div(
 								Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1"),
-								g.Text("Egg thrown by: "),
-								g.If(eggUserID == d.CurrentUserID,
+								g.Text("Rock thrown by: "),
+								g.If(rockUserID == d.CurrentUserID,
 									Span(Class("text-blue-600 dark:text-blue-400 font-medium"),
-										g.If(eggUserID == d.OwnerID, UserNameLink(d.OwnerID, d.OwnerName)),
-										g.If(eggUserID == d.InquirerID, UserNameLink(d.InquirerID, d.InquirerName)),
+										g.If(rockUserID == d.OwnerID, UserNameLink(d.OwnerID, d.OwnerName)),
+										g.If(rockUserID == d.InquirerID, UserNameLink(d.InquirerID, d.InquirerName)),
 									),
 								),
-								g.If(eggUserID != d.CurrentUserID,
+								g.If(rockUserID != d.CurrentUserID,
 									Span(Class("text-zinc-700 dark:text-zinc-300 font-medium"),
-										g.If(eggUserID == d.OwnerID, UserNameLink(d.OwnerID, d.OwnerName)),
-										g.If(eggUserID == d.InquirerID, UserNameLink(d.InquirerID, d.InquirerName)),
+										g.If(rockUserID == d.OwnerID, UserNameLink(d.OwnerID, d.OwnerName)),
+										g.If(rockUserID == d.InquirerID, UserNameLink(d.InquirerID, d.InquirerName)),
 									),
 								),
 							),
@@ -447,8 +447,8 @@ func ConversationModalWithEgg(d ConversationModalData) g.Node {
 				),
 				ConversationForm(
 					d.ConversationID, d.AdID, d.CSRFToken,
-					d.CanPost, d.HasThrownEgg, d.CanThrowEgg,
-					d.EggThrowerID != nil, len(d.MessageNodes),
+					d.CanPost, d.HasThrownRock, d.CanThrowRock,
+					d.RockThrowerID != nil, len(d.MessageNodes),
 				),
 			),
 		),
@@ -474,7 +474,7 @@ func ConversationListItem(d ConversationListItemData) g.Node {
 		hx.Get(fmt.Sprintf("/auth/conversation/%d", d.ConversationID)),
 		hx.Target("body"),
 		hx.Swap("beforeend"),
-		hx.Trigger("click[!closest(.egg-icon-container)]"),
+		hx.Trigger("click[!closest(.rock-icon-container)]"),
 		Div(
 			Class("p-4"),
 			Div(
@@ -486,7 +486,7 @@ func ConversationListItem(d ConversationListItemData) g.Node {
 							Class("bg-green-500 rounded-full w-2 h-2 flex-shrink-0"),
 						),
 					),
-					g.If(d.EggCount > 0, EggIcons(d.AdID, d.EggCount)),
+					g.If(d.RockCount > 0, RockIcons(d.AdID, d.RockCount)),
 					Span(
 						Class("text-lg font-semibold text-zinc-900 dark:text-zinc-200"),
 						g.Text(d.AdTitle),
@@ -504,13 +504,13 @@ func ConversationListItem(d ConversationListItemData) g.Node {
 					g.If(d.InquirerID == d.CurrentUserID,
 						g.Group([]g.Node{
 							g.Text("To: "),
-							UserNameLink(d.OwnerID, d.OtherUserName, UserEggIcons(d.OwnerID, d.OtherUserEggCount)),
+							UserNameLink(d.OwnerID, d.OtherUserName, UserRockIcons(d.OwnerID, d.OtherUserRockCount)),
 						}),
 					),
 					g.If(d.OwnerID == d.CurrentUserID,
 						g.Group([]g.Node{
 							g.Text("From: "),
-							UserNameLink(d.InquirerID, d.OtherUserName, UserEggIcons(d.InquirerID, d.OtherUserEggCount)),
+							UserNameLink(d.InquirerID, d.OtherUserName, UserRockIcons(d.InquirerID, d.OtherUserRockCount)),
 						}),
 					),
 				),

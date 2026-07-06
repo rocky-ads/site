@@ -20,7 +20,7 @@ type EmbeddingInput struct {
 	Latitude    float64
 	Longitude   float64
 	HasLocation bool
-	EggCount    int
+	RockCount   int
 	Facets      map[string]facet.Value
 	FacetDefs   []facet.Def
 }
@@ -54,9 +54,9 @@ func GetForEmbedding(adID int) (EmbeddingInput, error) {
 				SELECT COUNT(*)
 				FROM conversations c
 				WHERE c.ad_id = a.id
-				  AND c.egg_thrower_id IS NOT NULL
-				  AND c.egg_thrower_id = c.inquirer_id
-			), 0) AS egg_count
+				  AND c.rock_thrower_id IS NOT NULL
+				  AND c.rock_thrower_id = c.inquirer_id
+			), 0) AS rock_count
 		FROM ads a
 		LEFT JOIN locations l ON a.location_id = l.id
 		WHERE a.id = $1 AND a.deleted_at IS NULL`
@@ -72,7 +72,7 @@ func GetForEmbedding(adID int) (EmbeddingInput, error) {
 		Latitude    float64 `db:"latitude"`
 		Longitude   float64 `db:"longitude"`
 		HasLocation int     `db:"has_location"`
-		EggCount    int     `db:"egg_count"`
+		RockCount   int     `db:"rock_count"`
 	}
 	if err := db.QueryRow(query, adID).Scan(
 		&row.ID,
@@ -86,7 +86,7 @@ func GetForEmbedding(adID int) (EmbeddingInput, error) {
 		&row.Latitude,
 		&row.Longitude,
 		&row.HasLocation,
-		&row.EggCount,
+		&row.RockCount,
 	); err != nil {
 		return EmbeddingInput{}, fmt.Errorf("embedding ad %d: %w", adID, err)
 	}
@@ -117,7 +117,7 @@ func GetForEmbedding(adID int) (EmbeddingInput, error) {
 		Latitude:    row.Latitude,
 		Longitude:   row.Longitude,
 		HasLocation: row.HasLocation != 0,
-		EggCount:    row.EggCount,
+		RockCount:   row.RockCount,
 		Facets:      facets,
 		FacetDefs:   category.Facets(),
 	}, nil

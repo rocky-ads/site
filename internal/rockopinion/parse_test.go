@@ -1,4 +1,4 @@
-package eggopinion
+package rockopinion
 
 import "testing"
 

@@ -7,11 +7,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cookie"
-	"github.com/rocky-ads/site/internal/egg"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/message"
 	"github.com/rocky-ads/site/internal/password"
+	"github.com/rocky-ads/site/internal/rock"
 	"github.com/rocky-ads/site/internal/ui"
 	"github.com/rocky-ads/site/internal/user"
 )
@@ -21,37 +21,37 @@ const (
 	memberSinceLayoutSummary = "Jan 2006"
 )
 
-func userProfileData(u user.User, activeAdCount, userEggCount int,
+func userProfileData(u user.User, activeAdCount, userRockCount int,
 	tz *time.Location, memberSinceLayout string) ui.UserProfileData {
 	return ui.UserProfileData{
 		Name:          u.Name,
 		MemberSince:   u.CreatedAt.In(tz).Format(memberSinceLayout),
 		ActiveAdCount: activeAdCount,
-		UserEggCount:  userEggCount,
+		UserRockCount: userRockCount,
 	}
 }
 
 func loadUserMenuContext(userID int, tz *time.Location) (name, memberSince string,
-	isAdmin, hasUnread bool, eggCount, userEggCount int, err error) {
+	isAdmin, hasUnread bool, rockCount, userRockCount int, err error) {
 	u, err := user.GetByID(userID)
 	if err != nil {
 		return "", "", false, false, 0, 0, err
 	}
 	hasUnread, _ = message.GetHasUnread(userID)
-	eggCount, _ = egg.GetUserEggCount(userID)
-	userEggCount, _ = egg.GetEggCountForUser(userID)
+	rockCount, _ = rock.GetUserRockCount(userID)
+	userRockCount, _ = rock.GetRockCountForUser(userID)
 	memberSince = u.CreatedAt.In(tz).Format(memberSinceLayoutSummary)
-	return u.Name, memberSince, u.IsAdmin, hasUnread, eggCount, userEggCount, nil
+	return u.Name, memberSince, u.IsAdmin, hasUnread, rockCount, userRockCount, nil
 }
 
 func UserMenuHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
 	tz := cookie.GetTimezone(c)
-	name, memberSince, isAdmin, hasUnread, eggCount, userEggCount, err := loadUserMenuContext(userID, tz)
+	name, memberSince, isAdmin, hasUnread, rockCount, userRockCount, err := loadUserMenuContext(userID, tz)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to load user menu")
 	}
-	return render(c, ui.UserMenu(name, memberSince, userID, isAdmin, hasUnread, eggCount, userEggCount))
+	return render(c, ui.UserMenu(name, memberSince, userID, isAdmin, hasUnread, rockCount, userRockCount))
 }
 
 func UserMyAdsHandler(c *fiber.Ctx) error {
@@ -193,9 +193,9 @@ func UserProfileHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "User not found")
 	}
 	activeAdCount, _ := ad.CountActiveAdsByUser(id)
-	userEggCount, _ := egg.GetEggCountForUser(id)
+	userRockCount, _ := rock.GetRockCountForUser(id)
 	tz := cookie.GetTimezone(c)
-	d := userProfileData(u, activeAdCount, userEggCount, tz, memberSinceLayoutPage)
+	d := userProfileData(u, activeAdCount, userRockCount, tz, memberSinceLayoutPage)
 	return renderPage(c, u.Name, ui.UserProfilePage(d))
 }
 
@@ -209,13 +209,13 @@ func UserSummaryHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "User not found")
 	}
 	activeAdCount, _ := ad.CountActiveAdsByUser(id)
-	userEggCount, _ := egg.GetEggCountForUser(id)
+	userRockCount, _ := rock.GetRockCountForUser(id)
 	tz := cookie.GetTimezone(c)
-	d := userProfileData(u, activeAdCount, userEggCount, tz, memberSinceLayoutSummary)
+	d := userProfileData(u, activeAdCount, userRockCount, tz, memberSinceLayoutSummary)
 	return render(c, ui.UserSummaryFragment(d))
 }
 
-func UserEggConversationHandler(c *fiber.Ctx) error {
+func UserRockConversationHandler(c *fiber.Ctx) error {
 	userID, err := c.ParamsInt("id")
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid user ID")
@@ -223,7 +223,7 @@ func UserEggConversationHandler(c *fiber.Ctx) error {
 
 	ordinal, err := c.ParamsInt("ordinal")
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid egg ordinal")
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid rock ordinal")
 	}
 
 	currentUserID := local.GetUserID(c)
@@ -231,9 +231,9 @@ func UserEggConversationHandler(c *fiber.Ctx) error {
 	csrfToken := local.GetCSRFToken(c)
 
 	// Get conversation ID by ordinal
-	conversationID, err := egg.GetConversationIDForUserEggByOrdinal(userID, ordinal)
+	conversationID, err := rock.GetConversationIDForUserRockByOrdinal(userID, ordinal)
 	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, "Egg conversation not found")
+		return fiber.NewError(fiber.StatusNotFound, "Rock conversation not found")
 	}
 
 	conv, _, err := message.OpenConversation(conversationID, currentUserID)
@@ -247,5 +247,5 @@ func UserEggConversationHandler(c *fiber.Ctx) error {
 	if message.IsParticipant(conv, currentUserID) {
 		return renderConversationModal(c, conv, currentUserID, tz, csrfToken)
 	}
-	return renderEggOpinionModal(c, conv, currentUserID, tz)
+	return renderRockOpinionModal(c, conv, currentUserID, tz)
 }

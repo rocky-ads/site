@@ -20,8 +20,8 @@ func menuIcon(iconSrc, alt string) g.Node {
 	)
 }
 
-func menuHeader(userID int, userName, memberSince string, eggCount int,
-	userEggIcons g.Node) g.Node {
+func menuHeader(userID int, userName, memberSince string, rockCount int,
+	userRockIcons g.Node) g.Node {
 	return Div(
 		Class("px-4 py-3 border-b border-zinc-100 text-center"),
 		Div(
@@ -32,9 +32,9 @@ func menuHeader(userID int, userName, memberSince string, eggCount int,
 			Class("flex items-center justify-center gap-2 mb-1"),
 			Div(
 				Class("text-sm font-medium text-zinc-900 flex items-center gap-1"),
-				UserNameLink(userID, userName, userEggIcons),
+				UserNameLink(userID, userName, userRockIcons),
 			),
-			EggCountBadge(eggCount),
+			RockCountBadge(rockCount),
 		),
 		Div(
 			Class("text-[10px] text-zinc-500"),
@@ -76,10 +76,10 @@ func userProfileStats(d UserProfileData, memberSinceClass,
 			g.Text(fmt.Sprintf("%d active ad(s)", d.ActiveAdCount)),
 		),
 	}
-	if d.UserEggCount > 0 {
+	if d.UserRockCount > 0 {
 		nodes = append(nodes,
 			Div(Class(statClass),
-				g.Text(fmt.Sprintf("%d rock(s)", d.UserEggCount)),
+				g.Text(fmt.Sprintf("%d rock(s)", d.UserRockCount)),
 			),
 		)
 	}
@@ -118,7 +118,7 @@ func UserProfilePage(d UserProfileData) []g.Node {
 }
 
 func UserMenu(userName, memberSince string, userID int, isAdmin bool,
-	hasUnread bool, eggCount int, userEggCount int) g.Node {
+	hasUnread bool, rockCount int, userRockCount int) g.Node {
 	var menuItems []g.Node
 
 	if isAdmin {
@@ -181,7 +181,7 @@ func UserMenu(userName, memberSince string, userID int, isAdmin bool,
 				Class("w-full md:max-w-3xl md:mx-auto px-6 flex justify-end"),
 				Div(
 					Class("pointer-events-auto bg-white rounded-lg shadow-lg border border-zinc-200 w-40"),
-					menuHeader(userID, userName, memberSince, eggCount, UserEggIcons(userID, userEggCount)),
+					menuHeader(userID, userName, memberSince, rockCount, UserRockIcons(userID, userRockCount)),
 					Div(
 						Class("py-1"),
 						g.Group(menuItems),

@@ -77,7 +77,7 @@ func setupApp() *fiber.App {
 	auth.Post("/ad/:id/restore", handler.RestoreAdHandler)
 	auth.Get("/ad/:id/new-conversation", handler.MessageModalHandler)
 	auth.Post("/ad/:id/send", handler.SendMessageHandler)
-	auth.Get("/ad/:id/egg/:ordinal", handler.AdEggConversationHandler)
+	auth.Get("/ad/:id/rock/:ordinal", handler.AdRockConversationHandler)
 
 	auth.Get("/user/menu", handler.UserMenuHandler)
 	auth.Get("/user/myads", handler.UserMyAdsHandler)
@@ -89,14 +89,14 @@ func setupApp() *fiber.App {
 	auth.Post("/user/settings/delete", handler.DeleteAccountHandler)
 	auth.Get("/user/:id", handler.UserProfileHandler)
 	auth.Get("/user/:id/summary", handler.UserSummaryHandler)
-	auth.Get("/user/:id/egg/:ordinal", handler.UserEggConversationHandler)
+	auth.Get("/user/:id/rock/:ordinal", handler.UserRockConversationHandler)
 	auth.Get("/welcome", handler.WelcomeHandler)
 
 	auth.Get("/conversation/:id", handler.ConversationModalHandler)
-	auth.Get("/conversation/:id/egg-opinion", handler.EggOpinionHandler)
+	auth.Get("/conversation/:id/rock-opinion", handler.RockOpinionHandler)
 	auth.Post("/conversation/:id/send", handler.SendConversationMessageHandler)
-	auth.Post("/conversation/:id/egg/throw", handler.ThrowEggHandler)
-	auth.Delete("/conversation/:id/egg/unthrow", handler.UnthrowEggHandler)
+	auth.Post("/conversation/:id/rock/throw", handler.ThrowRockHandler)
+	auth.Delete("/conversation/:id/rock/unthrow", handler.UnthrowRockHandler)
 
 	auth.Post("/bookmark/:id", handler.BookmarkHandler)
 	auth.Delete("/bookmark/:id", handler.BookmarkHandler)

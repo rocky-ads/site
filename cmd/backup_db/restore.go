@@ -65,8 +65,8 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 	if err := readJSON(filepath.Join(fromDir, fileMessages), &messages); err != nil {
 		return err
 	}
-	var opinions []EggOpinionRow
-	if err := readJSON(filepath.Join(fromDir, fileEggOpinions), &opinions); err != nil {
+	var opinions []RockOpinionRow
+	if err := readJSON(filepath.Join(fromDir, fileRockOpinions), &opinions); err != nil {
 		return err
 	}
 
@@ -228,27 +228,27 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 		if !ok {
 			return fmt.Errorf("unknown inquirer for conversation %d", c.Ref)
 		}
-		var eggThrowerID any
-		if c.EggThrowerHash != nil {
-			id, ok := userHashToID[*c.EggThrowerHash]
+		var rockThrowerID any
+		if c.RockThrowerHash != nil {
+			id, ok := userHashToID[*c.RockThrowerHash]
 			if !ok {
 				return fmt.Errorf(
-					"unknown egg thrower for conversation %d", c.Ref,
+					"unknown rock thrower for conversation %d", c.Ref,
 				)
 			}
-			eggThrowerID = id
+			rockThrowerID = id
 		}
 		var newID int
 		err := db.QueryRow(`
 			INSERT INTO conversations (
 				ad_id, owner_id, inquirer_id,
 				owner_has_unread, inquirer_has_unread,
-				egg_thrower_id, egg_thrown_at
+				rock_thrower_id, rock_thrown_at
 			) VALUES ($1, $2, $3, $4, $5, $6, $7)
 			RETURNING id`,
 			adID, ownerID, inquirerID,
 			c.OwnerHasUnread, c.InquirerHasUnread,
-			eggThrowerID, c.EggThrownAt,
+			rockThrowerID, c.RockThrownAt,
 		).Scan(&newID)
 		if err != nil {
 			return fmt.Errorf("insert conversation ref %d: %w", c.Ref, err)
@@ -286,7 +286,7 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 			)
 		}
 		_, err := db.Exec(`
-			INSERT INTO egg_opinions (
+			INSERT INTO rock_opinions (
 				conversation_id, generated_at, summary, assessment,
 				assessment_detail, resolution, reasoning
 			) VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -295,7 +295,7 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 			o.AssessmentDetail, o.Resolution, o.Reasoning,
 		)
 		if err != nil {
-			return fmt.Errorf("insert egg opinion: %w", err)
+			return fmt.Errorf("insert rock opinion: %w", err)
 		}
 	}
 
