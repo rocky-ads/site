@@ -22,7 +22,7 @@ import (
 
 // RegistrationRateLimiter is a strict rate limiter for registration (per IP)
 var RegistrationRateLimiter = limiter.New(limiter.Config{
-	Max:        config.RegistrationRateLimitMax,
+	Max:        config.EffectiveRegistrationRateLimitMax(),
 	Expiration: config.RegistrationRateLimitExp,
 	KeyGenerator: func(c *fiber.Ctx) string {
 		// Rate limit per IP address
@@ -71,15 +71,24 @@ func validatePhone(phone string) (string, error) {
 		}
 	}
 
-	// Parse alone doesn't guarantee validity - must also validate
+	// Format in E.164 (e.g., +15551234567)
+	e164 := phonenumbers.Format(num, phonenumbers.E164)
+
+	// +1555010xxxx are fictional test numbers; libphonenumber rejects them but
+	// the agent harness registers them when ALLOW_TEST_REGISTRATION is on.
+	if allowTestRegistration(e164) {
+		return e164, nil
+	}
+
 	if !phonenumbers.IsValidNumber(num) {
 		return "", fmt.Errorf("invalid phone number")
 	}
 
-	// Format in E.164 (e.g., +15551234567)
-	e164 := phonenumbers.Format(num, phonenumbers.E164)
-
 	return e164, nil
+}
+
+func allowTestRegistration(phoneE64 string) bool {
+	return config.AllowTestRegistration && user.IsTestPhoneE64(phoneE64)
 }
 
 func screenUsername(username string) (string, error) {
@@ -126,6 +135,11 @@ func RegisterStep1Handler(c *fiber.Ctx) error {
 		return showError(c, err.Error())
 	}
 
+	if user.IsTestPhoneE64(phoneE64) && !config.AllowTestRegistration {
+		return showError(c,
+			"Unable to complete registration with these credentials. Please try different information.")
+	}
+
 	// Validate required checkbox
 	offers := c.FormValue("offers")
 	if offers != "true" {
@@ -152,6 +166,10 @@ func RegisterStep1Handler(c *fiber.Ctx) error {
 	}
 	if resp != "OK" {
 		return showError(c, resp)
+	}
+
+	if allowTestRegistration(phoneE64) {
+		return render(c, ui.RegisterPassword(username, phoneE64))
 	}
 
 	code, err := phoneverification.GenerateCode()
@@ -204,6 +222,10 @@ func RegisterStep2Handler(c *fiber.Ctx) error {
 
 	if code == "" {
 		return showError(c, "Please enter the verification code")
+	}
+
+	if allowTestRegistration(phoneE64) {
+		return render(c, ui.RegisterPassword(username, phoneE64))
 	}
 
 	valid, err := phoneverification.ValidateCode(phoneE64, code)

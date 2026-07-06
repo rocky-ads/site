@@ -132,6 +132,16 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
 - Go standard testing framework (`go test`)
 - Test database rebuild tool (`cmd/seed_db`)
 - Test data generation support
+- **Test agents** (`cmd/test_agents`) — Grok-driven agents that drive the site in headless Chromium via [go-rod](https://github.com/go-rod/rod). Each agent has its own browser context (cookies, HTMX, SSE). Run separately from the site:
+  ```bash
+  # Terminal 1: site with test registration enabled
+  ALLOW_TEST_REGISTRATION=true LOCAL_DEVELOPMENT=true go run ./cmd/server
+
+  # Terminal 2: agent control plane (agents start stopped; use web UI)
+  SITE_URL=http://localhost:10000 GROK_API_KEY=... go run ./cmd/test_agents
+  ```
+  Control UI defaults to `http://localhost:10002`. Requires `SITE_URL` and a Chromium install (rod downloads on first run). Agent credentials persist under `./.test-agents-state/`.
+- **`ALLOW_TEST_REGISTRATION`** — when `true`, users with test phones (`+1555010xxxx`) skip SMS verification at signup; Twilio init is relaxed; registration rate limit is raised. Notification SMS for test phones is already skipped by the SMS worker.
 
 ### Build Tools
 - Go modules (`go.mod` / `go.sum`)
