@@ -66,7 +66,7 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 		return err
 	}
 	var opinions []RockOpinionRow
-	if err := readJSON(filepath.Join(fromDir, fileRockOpinions), &opinions); err != nil {
+	if err := readOpinionsJSON(fromDir, &opinions); err != nil {
 		return err
 	}
 
@@ -229,8 +229,8 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 			return fmt.Errorf("unknown inquirer for conversation %d", c.Ref)
 		}
 		var rockThrowerID any
-		if c.RockThrowerHash != nil {
-			id, ok := userHashToID[*c.RockThrowerHash]
+		if h := c.throwerHash(); h != nil {
+			id, ok := userHashToID[*h]
 			if !ok {
 				return fmt.Errorf(
 					"unknown rock thrower for conversation %d", c.Ref,
@@ -248,7 +248,7 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 			RETURNING id`,
 			adID, ownerID, inquirerID,
 			c.OwnerHasUnread, c.InquirerHasUnread,
-			rockThrowerID, c.RockThrownAt,
+			rockThrowerID, c.thrownAt(),
 		).Scan(&newID)
 		if err != nil {
 			return fmt.Errorf("insert conversation ref %d: %w", c.Ref, err)

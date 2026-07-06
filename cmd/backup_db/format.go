@@ -20,6 +20,7 @@ const (
 	fileConversations     = "conversations.json"
 	fileMessages          = "messages.json"
 	fileRockOpinions      = "rock_opinions.json"
+	fileEggOpinions       = "egg_opinions.json" // legacy archives
 	dirImages             = "images"
 )
 
@@ -227,7 +228,23 @@ type ConversationRow struct {
 	OwnerHasUnread    int        `json:"owner_has_unread" db:"owner_has_unread"`
 	InquirerHasUnread int        `json:"inquirer_has_unread" db:"inquirer_has_unread"`
 	RockThrowerHash   *string    `json:"rock_thrower_hash,omitempty"`
+	EggThrowerHash    *string    `json:"egg_thrower_hash,omitempty"` // legacy archives
 	RockThrownAt      *time.Time `json:"rock_thrown_at,omitempty" db:"rock_thrown_at"`
+	EggThrownAt       *time.Time `json:"egg_thrown_at,omitempty"` // legacy archives
+}
+
+func (c ConversationRow) throwerHash() *string {
+	if c.RockThrowerHash != nil {
+		return c.RockThrowerHash
+	}
+	return c.EggThrowerHash
+}
+
+func (c ConversationRow) thrownAt() *time.Time {
+	if c.RockThrownAt != nil {
+		return c.RockThrownAt
+	}
+	return c.EggThrownAt
 }
 
 type conversationDBRow struct {
