@@ -143,12 +143,12 @@ func introBanner() g.Node {
 	return Div(
 		ID("intro-banner"),
 		Class("relative -mx-4 px-4 h-10 flex items-center "+
-			"justify-center bg-amber-100 dark:bg-amber-950/50 "+
-			"border-b border-amber-200 dark:border-amber-800 "+
-			"text-zinc-700 dark:text-amber-100"),
+			"justify-center bg-amber-100 "+
+			"border-b border-amber-200 "+
+			"text-zinc-700"),
 		A(
 			Href("/about"),
-			Class("font-medium text-blue-700 dark:text-blue-400 "+
+			Class("font-medium text-zinc-900 "+
 				"hover:underline"),
 			hx.Get("/api/intro-banner/dismiss?redirect=/about"),
 			hx.Swap("none"),
