@@ -3,14 +3,14 @@ package handler
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/cookie"
-	"github.com/rocky-ads/site/internal/egg"
-	"github.com/rocky-ads/site/internal/eggopinion"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/message"
+	"github.com/rocky-ads/site/internal/rock"
+	"github.com/rocky-ads/site/internal/rockopinion"
 )
 
-func ThrowEggHandler(c *fiber.Ctx) error {
+func ThrowRockHandler(c *fiber.Ctx) error {
 	conversationID, err := c.ParamsInt("id")
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid conversation ID")
@@ -26,19 +26,19 @@ func ThrowEggHandler(c *fiber.Ctx) error {
 	}
 
 	if conv.OwnerID != currentUserID && conv.InquirerID != currentUserID {
-		return fiber.NewError(fiber.StatusForbidden, "Only conversation participants can throw eggs")
+		return fiber.NewError(fiber.StatusForbidden, "Only conversation participants can throw rocks")
 	}
 
-	err = egg.ThrowEgg(currentUserID, conversationID)
+	err = rock.ThrowRock(currentUserID, conversationID)
 	if err != nil {
-		if err == egg.ErrMaxEggsReached {
-			return fiber.NewError(fiber.StatusBadRequest, "You have reached the maximum of 3 outstanding eggs")
+		if err == rock.ErrMaxRocksReached {
+			return fiber.NewError(fiber.StatusBadRequest, "You have reached the maximum of 3 outstanding rocks")
 		}
-		if err == egg.ErrEggAlreadyThrown {
-			return fiber.NewError(fiber.StatusBadRequest, "An egg has already been thrown at this conversation")
+		if err == rock.ErrRockAlreadyThrown {
+			return fiber.NewError(fiber.StatusBadRequest, "An rock has already been thrown at this conversation")
 		}
-		logger.Error("Failed to throw egg", "error", err, "conversationID", conversationID, "userID", currentUserID)
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to throw egg")
+		logger.Error("Failed to throw rock", "error", err, "conversationID", conversationID, "userID", currentUserID)
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to throw rock")
 	}
 
 	conv, err = message.GetConversationByID(conversationID)
@@ -49,7 +49,7 @@ func ThrowEggHandler(c *fiber.Ctx) error {
 	return renderConversationModalSwapOOB(c, conv, currentUserID, tz, csrfToken)
 }
 
-func UnthrowEggHandler(c *fiber.Ctx) error {
+func UnthrowRockHandler(c *fiber.Ctx) error {
 	conversationID, err := c.ParamsInt("id")
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid conversation ID")
@@ -65,19 +65,19 @@ func UnthrowEggHandler(c *fiber.Ctx) error {
 	}
 
 	if conv.OwnerID != currentUserID && conv.InquirerID != currentUserID {
-		return fiber.NewError(fiber.StatusForbidden, "Only conversation participants can remove eggs")
+		return fiber.NewError(fiber.StatusForbidden, "Only conversation participants can remove rocks")
 	}
 
-	err = egg.UnthrowEgg(currentUserID, conversationID)
+	err = rock.UnthrowRock(currentUserID, conversationID)
 	if err != nil {
-		if err == egg.ErrEggNotFound {
-			return fiber.NewError(fiber.StatusNotFound, "Egg not found")
+		if err == rock.ErrRockNotFound {
+			return fiber.NewError(fiber.StatusNotFound, "Rock not found")
 		}
-		logger.Error("Failed to unthrow egg", "error", err, "conversationID", conversationID, "userID", currentUserID)
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to remove egg")
+		logger.Error("Failed to unthrow rock", "error", err, "conversationID", conversationID, "userID", currentUserID)
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to remove rock")
 	}
-	if err := eggopinion.Invalidate(conversationID); err != nil {
-		logger.Error("Failed to invalidate egg opinion",
+	if err := rockopinion.Invalidate(conversationID); err != nil {
+		logger.Error("Failed to invalidate rock opinion",
 			"error", err, "conversationID", conversationID)
 	}
 

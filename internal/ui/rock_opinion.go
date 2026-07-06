@@ -9,8 +9,8 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-// EggOpinionModalData holds presentation fields for a dispute assessment modal.
-type EggOpinionModalData struct {
+// RockOpinionModalData holds presentation fields for a dispute assessment modal.
+type RockOpinionModalData struct {
 	ConversationID   int
 	AdID             int
 	AdTitle          string
@@ -19,7 +19,7 @@ type EggOpinionModalData struct {
 	OwnerName        string
 	InquirerName     string
 	CurrentUserID    int
-	EggThrowerID     int
+	RockThrowerID    int
 	Unavailable      bool
 	Summary          string
 	AssessmentScore  int
@@ -121,11 +121,11 @@ func opinionSection(title, body string) g.Node {
 	)
 }
 
-// EggOpinionModal renders the cached or generated dispute assessment.
-func EggOpinionModal(d EggOpinionModalData) g.Node {
-	modalName := fmt.Sprintf("egg-opinion-%d", d.ConversationID)
+// RockOpinionModal renders the cached or generated dispute assessment.
+func RockOpinionModal(d RockOpinionModalData) g.Node {
+	modalName := fmt.Sprintf("rock-opinion-%d", d.ConversationID)
 
-	var eggUserID = d.EggThrowerID
+	var rockUserID = d.RockThrowerID
 
 	return g.Group([]g.Node{
 		modalBackdrop(modalName),
@@ -150,11 +150,11 @@ func EggOpinionModal(d EggOpinionModalData) g.Node {
 						),
 						Div(
 							Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1"),
-							g.Text("Egg thrown by: "),
+							g.Text("Rock thrown by: "),
 							Span(Class("text-zinc-700 dark:text-zinc-300 font-medium"),
-								g.If(eggUserID == d.OwnerID,
+								g.If(rockUserID == d.OwnerID,
 									UserNameLink(d.OwnerID, d.OwnerName)),
-								g.If(eggUserID == d.InquirerID,
+								g.If(rockUserID == d.InquirerID,
 									UserNameLink(d.InquirerID, d.InquirerName)),
 							),
 						),
@@ -215,23 +215,23 @@ func adFactItems(facts []string) []g.Node {
 	return items
 }
 
-// EggOpinionLink renders a link for participants to view the assessment.
-func EggOpinionLink(conversationID int) g.Node {
+// RockOpinionLink renders a link for participants to view the assessment.
+func RockOpinionLink(conversationID int) g.Node {
 	return A(
 		Href("#"),
 		Class("text-orange-600 dark:text-orange-400 hover:underline text-sm"),
-		hx.Get(fmt.Sprintf("/auth/conversation/%d/egg-opinion", conversationID)),
+		hx.Get(fmt.Sprintf("/auth/conversation/%d/rock-opinion", conversationID)),
 		hx.Target("body"),
 		hx.Swap("beforeend"),
-		hx.Indicator("#egg-opinion-indicator"),
+		hx.Indicator("#rock-opinion-indicator"),
 		g.Text("View dispute assessment"),
 	)
 }
 
-// EggOpinionIndicator is shown while an assessment is being generated.
-func EggOpinionIndicator() g.Node {
+// RockOpinionIndicator is shown while an assessment is being generated.
+func RockOpinionIndicator() g.Node {
 	return Span(
-		ID("egg-opinion-indicator"),
+		ID("rock-opinion-indicator"),
 		Class("htmx-indicator text-sm text-zinc-500 dark:text-zinc-400 ml-2"),
 		g.Text("Generating assessment…"),
 	)

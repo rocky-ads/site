@@ -58,7 +58,7 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 	var facetDB []adFacetDBRow
 	var convDB []conversationDBRow
 	var msgDB []messageDBRow
-	var opinionDB []eggOpinionDBRow
+	var opinionDB []rockOpinionDBRow
 
 	if len(adRefs) > 0 {
 		clause, args := intInClause(adRefs)
@@ -85,7 +85,7 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 		if err := db.Select(&convDB, fmt.Sprintf(`
 			SELECT id, ad_id, owner_id, inquirer_id,
 			       owner_has_unread, inquirer_has_unread,
-			       egg_thrower_id, egg_thrown_at
+			       rock_thrower_id, rock_thrown_at
 			FROM conversations WHERE ad_id IN (%s)
 			ORDER BY id`, clause), args...); err != nil {
 			return fmt.Errorf("query conversations: %w", err)
@@ -96,8 +96,8 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 	for i, c := range convDB {
 		convIDToRef[c.ID] = i
 		userIDs = append(userIDs, c.OwnerID, c.InquirerID)
-		if c.EggThrowerID != nil {
-			userIDs = append(userIDs, *c.EggThrowerID)
+		if c.RockThrowerID != nil {
+			userIDs = append(userIDs, *c.RockThrowerID)
 		}
 	}
 	for _, b := range bookmarkDB {
@@ -127,8 +127,8 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 		if err := db.Select(&opinionDB, fmt.Sprintf(`
 			SELECT conversation_id, generated_at, summary, assessment,
 			       assessment_detail, resolution, reasoning
-			FROM egg_opinions WHERE conversation_id IN (%s)`, clause), args...); err != nil {
-			return fmt.Errorf("query egg_opinions: %w", err)
+			FROM rock_opinions WHERE conversation_id IN (%s)`, clause), args...); err != nil {
+			return fmt.Errorf("query rock_opinions: %w", err)
 		}
 		for _, m := range msgDB {
 			userIDs = append(userIDs, m.SenderID)
@@ -250,11 +250,11 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 			InquirerHash:      userIDToHash[c.InquirerID],
 			OwnerHasUnread:    c.OwnerHasUnread,
 			InquirerHasUnread: c.InquirerHasUnread,
-			EggThrownAt:       c.EggThrownAt,
+			RockThrownAt:      c.RockThrownAt,
 		}
-		if c.EggThrowerID != nil {
-			h := userIDToHash[*c.EggThrowerID]
-			row.EggThrowerHash = &h
+		if c.RockThrowerID != nil {
+			h := userIDToHash[*c.RockThrowerID]
+			row.RockThrowerHash = &h
 		}
 		conversations[i] = row
 	}
@@ -269,9 +269,9 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 		}
 	}
 
-	opinions := make([]EggOpinionRow, len(opinionDB))
+	opinions := make([]RockOpinionRow, len(opinionDB))
 	for i, o := range opinionDB {
-		opinions[i] = EggOpinionRow{
+		opinions[i] = RockOpinionRow{
 			ConversationRef:  convIDToRef[o.ConversationID],
 			GeneratedAt:      o.GeneratedAt,
 			Summary:          o.Summary,
@@ -353,7 +353,7 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 			UserAdImageClicks: len(imageClicks),
 			Conversations:     len(conversations),
 			Messages:          len(messages),
-			EggOpinions:       len(opinions),
+			RockOpinions:      len(opinions),
 			Images:            imageCount,
 		},
 	}
@@ -372,7 +372,7 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 		{fileUserAdImageClicks, imageClicks},
 		{fileConversations, conversations},
 		{fileMessages, messages},
-		{fileEggOpinions, opinions},
+		{fileRockOpinions, opinions},
 	}
 	for _, f := range files {
 		if err := writeJSON(filepath.Join(outDir, f.name), f.data); err != nil {

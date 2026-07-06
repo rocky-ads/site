@@ -11,7 +11,7 @@ type UserProfileData struct {
 	Name          string
 	MemberSince   string
 	ActiveAdCount int
-	UserEggCount  int
+	UserRockCount int
 }
 
 // UserRowData holds presentation fields for an admin user table row.
@@ -70,23 +70,23 @@ type AdCard struct {
 
 // ConversationModalData holds presentation fields for a conversation modal.
 type ConversationModalData struct {
-	ConversationID   int
-	AdID             int
-	OwnerID          int
-	InquirerID       int
-	CurrentUserID    int
-	InquirerEggCount int
-	OwnerEggCount    int
-	AdTitle          string
-	OwnerName        string
-	InquirerName     string
-	CSRFToken        string
-	CanPost          bool
-	HasThrownEgg     bool
-	CanThrowEgg      bool
-	MessageNodes     []g.Node
-	EggThrowerID     *int
-	TargetModalID    string
+	ConversationID    int
+	AdID              int
+	OwnerID           int
+	InquirerID        int
+	CurrentUserID     int
+	InquirerRockCount int
+	OwnerRockCount    int
+	AdTitle           string
+	OwnerName         string
+	InquirerName      string
+	CSRFToken         string
+	CanPost           bool
+	HasThrownRock     bool
+	CanThrowRock      bool
+	MessageNodes      []g.Node
+	RockThrowerID     *int
+	TargetModalID     string
 }
 
 // ConversationListItemData holds presentation fields for a messages list row.
@@ -103,8 +103,8 @@ type ConversationListItemData struct {
 	LastMessageAt      *time.Time
 	UpdatedAt          time.Time
 	HasUnread          bool
-	EggCount           int
-	OtherUserEggCount  int
+	RockCount          int
+	OtherUserRockCount int
 }
 
 // CategoryOption holds presentation fields for a category picker item.
@@ -133,9 +133,9 @@ type MessageItemData struct {
 	CreatedAt     time.Time
 }
 
-// EggEventData holds presentation fields for an egg-thrown timeline entry.
+// RockEventData holds presentation fields for a rock-thrown timeline entry.
 // ThrownAt is in the viewer's timezone.
-type EggEventData struct {
+type RockEventData struct {
 	ThrowerID     int
 	CurrentUserID int
 	ThrownAt      time.Time

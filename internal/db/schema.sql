@@ -134,14 +134,14 @@ CREATE TABLE conversations (
     inquirer_id INTEGER NOT NULL REFERENCES users(id),
     owner_has_unread INTEGER NOT NULL DEFAULT 0,
     inquirer_has_unread INTEGER NOT NULL DEFAULT 0,
-    egg_thrower_id INTEGER REFERENCES users(id), -- NULL = no egg (private), NOT NULL = public, owner_id = bound to inquirer, inquirer_id = bound to ad
-    egg_thrown_at TIMESTAMP, -- Only valid if egg_thrower_id IS NOT NULL
+    rock_thrower_id INTEGER REFERENCES users(id), -- NULL = no rock (private), NOT NULL = public, owner_id = bound to inquirer, inquirer_id = bound to ad
+    rock_thrown_at TIMESTAMP, -- Only valid if rock_thrower_id IS NOT NULL
     UNIQUE(ad_id, inquirer_id)
 );
 CREATE INDEX idx_conversations_owner ON conversations(owner_id);
 CREATE INDEX idx_conversations_inquirer ON conversations(inquirer_id);
 CREATE INDEX idx_conversations_ad ON conversations(ad_id);
-CREATE INDEX idx_conversations_egg_thrower ON conversations(egg_thrower_id);
+CREATE INDEX idx_conversations_rock_thrower ON conversations(rock_thrower_id);
 
 -- Messages table
 CREATE TABLE messages (
@@ -154,8 +154,8 @@ CREATE TABLE messages (
 CREATE INDEX idx_messages_conversation ON messages(conversation_id);
 CREATE INDEX idx_messages_created_at ON messages(created_at);
 
--- Cached LLM arbitrator opinions for public egg conversations
-CREATE TABLE egg_opinions (
+-- Cached LLM arbitrator opinions for public rock conversations
+CREATE TABLE rock_opinions (
     conversation_id INTEGER PRIMARY KEY REFERENCES conversations(id),
     generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     summary TEXT NOT NULL,

@@ -153,7 +153,7 @@ func priceSpan(priceDisplay string, hasPrice bool) g.Node {
 
 func AdGridNode(userID, adID, imageCount, nextPage int, priceDisplay, title,
 	location, facetLabel, csrfToken string, hasPrice bool, createdAt time.Time,
-	active, bookmarked, isLast bool, eggCount int) g.Node {
+	active, bookmarked, isLast bool, rockCount int) g.Node {
 	class := "flex flex-col cursor-pointer gap-1 py-3"
 	if !active {
 		class += " bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg"
@@ -171,7 +171,7 @@ func AdGridNode(userID, adID, imageCount, nextPage int, priceDisplay, title,
 		Div(
 			Class("flex items-center gap-2 min-w-0"),
 			g.If(local.IsLoggedIn(userID) && bookmarked, BookmarkButton(adID, bookmarked, csrfToken)),
-			g.If(eggCount > 0, EggIcons(adID, eggCount)),
+			g.If(rockCount > 0, RockIcons(adID, rockCount)),
 			adCardTitle(title, facetLabel),
 		),
 	)
@@ -188,7 +188,7 @@ func AdGridNode(userID, adID, imageCount, nextPage int, priceDisplay, title,
 
 func AdListNode(userID, adID int, priceDisplay, title, location,
 	facetLabel string, hasPrice bool, createdAt time.Time, active, bookmarked bool,
-	csrfToken string, isLast bool, nextPage int, eggCount int) g.Node {
+	csrfToken string, isLast bool, nextPage int, rockCount int) g.Node {
 	class := "flex flex-wrap items-center justify-between py-2 cursor-pointer"
 	if active {
 		class += " hover:bg-zinc-50 dark:hover:bg-zinc-800"
@@ -202,7 +202,7 @@ func AdListNode(userID, adID int, priceDisplay, title, location,
 		Div(
 			Class("flex items-center gap-2 min-w-0"),
 			g.If(local.IsLoggedIn(userID) && bookmarked, BookmarkButton(adID, bookmarked, csrfToken)),
-			g.If(eggCount > 0, EggIcons(adID, eggCount)),
+			g.If(rockCount > 0, RockIcons(adID, rockCount)),
 			adCardTitle(title, facetLabel),
 		),
 		Div(
@@ -435,7 +435,7 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 					Class("flex items-center justify-between min-w-0"),
 					Div(
 						Class("flex items-center gap-2 min-w-0"),
-						g.If(d.RockCount > 0, EggIcons(d.ID, d.RockCount)),
+						g.If(d.RockCount > 0, RockIcons(d.ID, d.RockCount)),
 						adCardTitle(d.Title, d.FacetLabel),
 					),
 					adButtons(d.ID, userID, d.OwnerID, d.Bookmarked, d.Active, d.Reachable, csrfToken),

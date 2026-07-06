@@ -19,7 +19,7 @@ const (
 	fileUserAdImageClicks = "user_ad_image_clicks.json"
 	fileConversations     = "conversations.json"
 	fileMessages          = "messages.json"
-	fileEggOpinions       = "egg_opinions.json"
+	fileRockOpinions      = "rock_opinions.json"
 	dirImages             = "images"
 )
 
@@ -39,7 +39,7 @@ type Counts struct {
 	UserAdImageClicks int `json:"user_ad_image_clicks"`
 	Conversations     int `json:"conversations"`
 	Messages          int `json:"messages"`
-	EggOpinions       int `json:"egg_opinions"`
+	RockOpinions      int `json:"rock_opinions"`
 	Images            int `json:"images"`
 }
 
@@ -226,8 +226,8 @@ type ConversationRow struct {
 	InquirerHash      string     `json:"inquirer_hash"`
 	OwnerHasUnread    int        `json:"owner_has_unread" db:"owner_has_unread"`
 	InquirerHasUnread int        `json:"inquirer_has_unread" db:"inquirer_has_unread"`
-	EggThrowerHash    *string    `json:"egg_thrower_hash,omitempty"`
-	EggThrownAt       *time.Time `json:"egg_thrown_at,omitempty" db:"egg_thrown_at"`
+	RockThrowerHash   *string    `json:"rock_thrower_hash,omitempty"`
+	RockThrownAt      *time.Time `json:"rock_thrown_at,omitempty" db:"rock_thrown_at"`
 }
 
 type conversationDBRow struct {
@@ -237,8 +237,8 @@ type conversationDBRow struct {
 	InquirerID        int        `db:"inquirer_id"`
 	OwnerHasUnread    int        `db:"owner_has_unread"`
 	InquirerHasUnread int        `db:"inquirer_has_unread"`
-	EggThrowerID      *int       `db:"egg_thrower_id"`
-	EggThrownAt       *time.Time `db:"egg_thrown_at"`
+	RockThrowerID     *int       `db:"rock_thrower_id"`
+	RockThrownAt      *time.Time `db:"rock_thrown_at"`
 }
 
 type MessageRow struct {
@@ -256,7 +256,7 @@ type messageDBRow struct {
 	CreatedAt      time.Time `db:"created_at"`
 }
 
-type EggOpinionRow struct {
+type RockOpinionRow struct {
 	ConversationRef  int       `json:"conversation_ref"`
 	GeneratedAt      time.Time `json:"generated_at" db:"generated_at"`
 	Summary          string    `json:"summary" db:"summary"`
@@ -266,7 +266,7 @@ type EggOpinionRow struct {
 	Reasoning        string    `json:"reasoning" db:"reasoning"`
 }
 
-type eggOpinionDBRow struct {
+type rockOpinionDBRow struct {
 	ConversationID   int       `db:"conversation_id"`
 	GeneratedAt      time.Time `db:"generated_at"`
 	Summary          string    `db:"summary"`

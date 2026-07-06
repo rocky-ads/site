@@ -1,6 +1,6 @@
-package eggopinion
+package rockopinion
 
-const eggOpinionConvID = "egg-opinion"
+const rockOpinionConvID = "rock-opinion"
 
 const opinionSystemPrompt = `You are a neutral third-party arbitrator for ` +
 	`classified-ad disputes on Rocky Ads. A dispute begins when one party ` +

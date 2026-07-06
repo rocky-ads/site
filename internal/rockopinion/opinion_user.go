@@ -1,4 +1,4 @@
-package eggopinion
+package rockopinion
 
 import (
 	"fmt"
@@ -10,17 +10,17 @@ import (
 )
 
 type promptInput struct {
-	AdTitle      string
-	AdOriginal   string
-	AdHistory    []ad.HistoryEntryDisplay
-	FormalFacets []string
-	Tags         []string
-	Messages     []message.Message
-	OwnerID      int
-	InquirerID   int
-	EggThrowerID int
-	EggThrownAt  time.Time
-	Tz           *time.Location
+	AdTitle       string
+	AdOriginal    string
+	AdHistory     []ad.HistoryEntryDisplay
+	FormalFacets  []string
+	Tags          []string
+	Messages      []message.Message
+	OwnerID       int
+	InquirerID    int
+	RockThrowerID int
+	RockThrownAt  time.Time
+	Tz            *time.Location
 }
 
 func buildUserPrompt(in promptInput) string {
@@ -50,12 +50,12 @@ func buildUserPrompt(in promptInput) string {
 		}
 	}
 
-	complaintAt := in.EggThrownAt
+	complaintAt := in.RockThrownAt
 	if in.Tz != nil {
 		complaintAt = complaintAt.In(in.Tz)
 	}
 	b.WriteString("\nDispute metadata:\n")
-	if in.EggThrowerID == in.InquirerID {
+	if in.RockThrowerID == in.InquirerID {
 		b.WriteString(
 			"The inquirer filed a complaint about the ad with the owner.\n",
 		)

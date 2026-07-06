@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/rocky-ads/site/internal/ad"
-	"github.com/rocky-ads/site/internal/egg"
+	"github.com/rocky-ads/site/internal/rock"
 	"github.com/rocky-ads/site/internal/user"
 )
 
@@ -17,20 +17,20 @@ var (
 
 // ConversationModalView holds data needed to render a conversation modal.
 type ConversationModalView struct {
-	Conversation     Conversation
-	AdTitle          string
-	OwnerName        string
-	InquirerName     string
-	Messages         []Message
-	InquirerEggCount int
-	OwnerEggCount    int
-	CanPost          bool
-	HasThrownEgg     bool
-	CanThrowEgg      bool
+	Conversation      Conversation
+	AdTitle           string
+	OwnerName         string
+	InquirerName      string
+	Messages          []Message
+	InquirerRockCount int
+	OwnerRockCount    int
+	CanPost           bool
+	HasThrownRock     bool
+	CanThrowRock      bool
 }
 
 func CanViewConversation(conv Conversation, userID int) bool {
-	return conv.EggThrowerID != nil ||
+	return conv.RockThrowerID != nil ||
 		conv.OwnerID == userID ||
 		conv.InquirerID == userID
 }
@@ -98,13 +98,13 @@ func BuildConversationModal(conv Conversation, currentUserID int,
 	}
 
 	view := ConversationModalView{
-		Conversation:     conv,
-		AdTitle:          a.Title,
-		OwnerName:        ownerName,
-		InquirerName:     inquirerName,
-		InquirerEggCount: eggCountForUser(conv.InquirerID),
-		OwnerEggCount:    eggCountForUser(conv.OwnerID),
-		Messages:         []Message{},
+		Conversation:      conv,
+		AdTitle:           a.Title,
+		OwnerName:         ownerName,
+		InquirerName:      inquirerName,
+		InquirerRockCount: rockCountForUser(conv.InquirerID),
+		OwnerRockCount:    rockCountForUser(conv.OwnerID),
+		Messages:          []Message{},
 	}
 
 	if conv.ID == 0 {
@@ -124,36 +124,36 @@ func BuildConversationModal(conv Conversation, currentUserID int,
 	}
 	view.CanPost = canPost
 
-	hasThrown, canThrow := eggThrowPermissions(conv.ID, currentUserID, canPost)
-	view.HasThrownEgg = hasThrown
-	view.CanThrowEgg = canThrow
+	hasThrown, canThrow := rockThrowPermissions(conv.ID, currentUserID, canPost)
+	view.HasThrownRock = hasThrown
+	view.CanThrowRock = canThrow
 
 	return view, nil
 }
 
-func eggCountForUser(userID int) int {
-	count, err := egg.GetEggCountForUser(userID)
+func rockCountForUser(userID int) int {
+	count, err := rock.GetRockCountForUser(userID)
 	if err != nil {
 		return 0
 	}
 	return count
 }
 
-func eggThrowPermissions(conversationID, userID int,
+func rockThrowPermissions(conversationID, userID int,
 	canPost bool) (hasThrown, canThrow bool) {
-	hasThrown, err := egg.HasUserThrownEgg(userID, conversationID)
+	hasThrown, err := rock.HasUserThrownRock(userID, conversationID)
 	if err != nil {
 		hasThrown = false
 	}
 	if !canPost {
 		return hasThrown, false
 	}
-	eggCount, err := egg.GetEggCountForConversation(conversationID)
-	if err != nil || eggCount > 0 {
+	rockCount, err := rock.GetRockCountForConversation(conversationID)
+	if err != nil || rockCount > 0 {
 		return hasThrown, false
 	}
-	userEggCount, err := egg.GetUserEggCount(userID)
-	if err != nil || userEggCount >= 3 {
+	userRockCount, err := rock.GetUserRockCount(userID)
+	if err != nil || userRockCount >= 3 {
 		return hasThrown, false
 	}
 	return hasThrown, true

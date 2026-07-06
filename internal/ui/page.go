@@ -142,6 +142,11 @@ func navigation(userID int, userName, currentPath string, hasUnread bool) g.Node
 		A(
 			Href("/"),
 			Class("flex items-center gap-2"),
+			Img(
+				Src("/images/rock.svg"),
+				Alt(""),
+				Class("w-6 h-6 flex-shrink-0"),
+			),
 			Span(Class("text-xl font-bold"), g.Text(config.ServerName)),
 		),
 		indicator(),
@@ -159,19 +164,12 @@ func Page(userID int, hasUnread bool, userName, title, currentPath,
 		headNodes = append(headNodes, g.Group(seoMetaTags()))
 	}
 
-	// Favicons
+	// Favicon
 	headNodes = append(headNodes,
 		Link(
 			Rel("icon"),
-			Type("image/png"),
-			Href("/images/favicon-32x32.png"),
-			g.Attr("sizes", "32x32"),
-		),
-		Link(
-			Rel("icon"),
-			Type("image/png"),
-			Href("/images/favicon-16x16.png"),
-			g.Attr("sizes", "16x16"),
+			Type("image/svg+xml"),
+			Href("/images/rock.svg"),
 		),
 	)
 

@@ -13,8 +13,8 @@ import (
 func buildVectorMetadataWhere(p Params, pa *pgArgs) string {
 	clause := `(vector_metadata->>'category_id')::int = ` +
 		pa.add(p.CategoryID)
-	clause += ` AND COALESCE((vector_metadata->>'egg_count')::int, 0) <= ` +
-		pa.add(config.MaxEggCount)
+	clause += ` AND COALESCE((vector_metadata->>'rock_count')::int, 0) <= ` +
+		pa.add(config.MaxRockCount)
 
 	if !p.Expanded {
 		return clause

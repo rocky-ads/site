@@ -6,11 +6,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cookie"
-	"github.com/rocky-ads/site/internal/eggopinion"
 	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/param"
+	"github.com/rocky-ads/site/internal/rockopinion"
 	"github.com/rocky-ads/site/internal/ui"
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
 	"github.com/rocky-ads/site/internal/vector"
@@ -103,8 +103,8 @@ func UpdateAdHandler(c *fiber.Ctx) error {
 			adImageStore, adID, a.ImageCount+1, imageFiles,
 		)
 	}
-	if err := eggopinion.InvalidateForAd(adID); err != nil {
-		logger.Error("Failed to invalidate egg opinions",
+	if err := rockopinion.InvalidateForAd(adID); err != nil {
+		logger.Error("Failed to invalidate rock opinions",
 			"error", err, "adID", adID)
 	}
 	vector.QueueAd(adID)

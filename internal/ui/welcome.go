@@ -6,7 +6,7 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-func WelcomePage(eggCount int) []g.Node {
+func WelcomePage(rockCount int) []g.Node {
 	return []g.Node{
 		Div(
 			Class("bg-gradient-to-br from-blue-50 to-indigo-50 "+
@@ -16,8 +16,8 @@ func WelcomePage(eggCount int) []g.Node {
 			Div(
 				Class("flex flex-col items-center text-center space-y-4"),
 				Img(
-					Src("/images/three-eggs.png"),
-					Alt("Three stacked eggs"),
+					Src("/images/rock.svg"),
+					Alt("Rock"),
 					Class("w-full max-w-[160px] rounded-lg"),
 				),
 				Div(
@@ -29,12 +29,12 @@ func WelcomePage(eggCount int) []g.Node {
 					),
 					P(
 						Class("text-base text-zinc-700 dark:text-zinc-300"),
-						g.Textf("Here are your %d eggs.", eggCount),
+						g.Textf("Here are your %d rocks.", rockCount),
 					),
 					P(
 						Class("text-base text-zinc-600 dark:text-zinc-400 "+
 							"leading-snug"),
-						faqLink("/faq/eggs", "What are the eggs for?"),
+						faqLink("/faq/rocks", "What are the rocks for?"),
 					),
 				),
 				standardButton(buttonProps{

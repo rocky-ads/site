@@ -1,4 +1,4 @@
-package eggopinion
+package rockopinion
 
 import (
 	"database/sql"
@@ -14,7 +14,7 @@ import (
 	"github.com/rocky-ads/site/internal/user"
 )
 
-var ErrUnavailable = errors.New("egg opinion unavailable")
+var ErrUnavailable = errors.New("rock opinion unavailable")
 
 // Opinion is a cached or freshly generated dispute assessment.
 type Opinion struct {
@@ -30,8 +30,8 @@ type Opinion struct {
 // GetOrGenerate returns a cached opinion or generates and stores one.
 func GetOrGenerate(conv message.Conversation,
 	tz *time.Location) (Opinion, error) {
-	if conv.EggThrowerID == nil {
-		return Opinion{}, fmt.Errorf("conversation has no egg")
+	if conv.RockThrowerID == nil {
+		return Opinion{}, fmt.Errorf("conversation has no rock")
 	}
 
 	cached, err := loadOpinion(conv.ID)
@@ -57,7 +57,7 @@ func loadOpinion(conversationID int) (Opinion, error) {
 	err := db.QueryRow(`
 		SELECT conversation_id, generated_at, summary, assessment,
 			assessment_detail, resolution, reasoning
-		FROM egg_opinions
+		FROM rock_opinions
 		WHERE conversation_id = $1
 	`, conversationID).Scan(
 		&op.ConversationID,
@@ -76,14 +76,14 @@ func loadOpinion(conversationID int) (Opinion, error) {
 
 func storeOpinion(op Opinion) error {
 	_, err := db.Exec(`
-		INSERT INTO egg_opinions (
+		INSERT INTO rock_opinions (
 			conversation_id, generated_at, summary, assessment,
 			assessment_detail, resolution, reasoning
 		) VALUES ($1, CURRENT_TIMESTAMP, $2, $3, $4, $5, $6)
 	`, op.ConversationID, op.Summary, op.Assessment,
 		op.AssessmentDetail, op.Resolution, op.Reasoning)
 	if err != nil {
-		return fmt.Errorf("store egg opinion: %w", err)
+		return fmt.Errorf("store rock opinion: %w", err)
 	}
 	return nil
 }
@@ -91,11 +91,11 @@ func storeOpinion(op Opinion) error {
 // Invalidate removes the cached opinion for one conversation.
 func Invalidate(conversationID int) error {
 	_, err := db.Exec(
-		`DELETE FROM egg_opinions WHERE conversation_id = $1`,
+		`DELETE FROM rock_opinions WHERE conversation_id = $1`,
 		conversationID,
 	)
 	if err != nil {
-		return fmt.Errorf("invalidate egg opinion: %w", err)
+		return fmt.Errorf("invalidate rock opinion: %w", err)
 	}
 	return nil
 }
@@ -103,13 +103,13 @@ func Invalidate(conversationID int) error {
 // InvalidateForAd removes cached opinions for all conversations on an ad.
 func InvalidateForAd(adID int) error {
 	_, err := db.Exec(`
-		DELETE FROM egg_opinions
+		DELETE FROM rock_opinions
 		WHERE conversation_id IN (
 			SELECT id FROM conversations WHERE ad_id = $1
 		)
 	`, adID)
 	if err != nil {
-		return fmt.Errorf("invalidate egg opinions for ad: %w", err)
+		return fmt.Errorf("invalidate rock opinions for ad: %w", err)
 	}
 	return nil
 }
@@ -154,36 +154,36 @@ func generate(conv message.Conversation, tz *time.Location) (Opinion, error) {
 	}
 
 	thrownAt := time.Now()
-	if conv.EggThrownAt != nil {
-		thrownAt = *conv.EggThrownAt
+	if conv.RockThrownAt != nil {
+		thrownAt = *conv.RockThrownAt
 	}
 
 	userPrompt := buildUserPrompt(promptInput{
-		AdTitle:      a.Title,
-		AdOriginal:   desc.Original,
-		AdHistory:    desc.History,
-		FormalFacets: ad.FormalFacetLines(category, a.Facets),
-		Tags:         tags,
-		Messages:     redacted,
-		OwnerID:      conv.OwnerID,
-		InquirerID:   conv.InquirerID,
-		EggThrowerID: *conv.EggThrowerID,
-		EggThrownAt:  thrownAt,
-		Tz:           tz,
+		AdTitle:       a.Title,
+		AdOriginal:    desc.Original,
+		AdHistory:     desc.History,
+		FormalFacets:  ad.FormalFacetLines(category, a.Facets),
+		Tags:          tags,
+		Messages:      redacted,
+		OwnerID:       conv.OwnerID,
+		InquirerID:    conv.InquirerID,
+		RockThrowerID: *conv.RockThrowerID,
+		RockThrownAt:  thrownAt,
+		Tz:            tz,
 	})
 
 	resp, err := grok.CallGrokConv(
-		opinionSystemPrompt, userPrompt, eggOpinionConvID,
+		opinionSystemPrompt, userPrompt, rockOpinionConvID,
 	)
 	if err != nil {
-		logger.Warn("egg opinion: grok call failed",
+		logger.Warn("rock opinion: grok call failed",
 			"error", err, "conversationID", conv.ID)
 		return Opinion{}, ErrUnavailable
 	}
 
 	op, err := parseOpinionResponse(resp)
 	if err != nil {
-		logger.Warn("egg opinion: parse failed",
+		logger.Warn("rock opinion: parse failed",
 			"error", err, "conversationID", conv.ID)
 		return Opinion{}, ErrUnavailable
 	}

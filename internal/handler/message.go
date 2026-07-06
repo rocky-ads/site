@@ -7,12 +7,12 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/cookie"
-	"github.com/rocky-ads/site/internal/egg"
-	"github.com/rocky-ads/site/internal/eggopinion"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/message"
 	"github.com/rocky-ads/site/internal/param"
+	"github.com/rocky-ads/site/internal/rock"
+	"github.com/rocky-ads/site/internal/rockopinion"
 	"github.com/rocky-ads/site/internal/service/sms"
 	"github.com/rocky-ads/site/internal/ui"
 	g "maragu.dev/gomponents"
@@ -26,27 +26,27 @@ const (
 )
 
 func conversationModalData(conv message.Conversation, currentUserID,
-	inquirerEggCount, ownerEggCount int, adTitle, ownerName, inquirerName,
-	csrfToken string, canPost, hasThrownEgg, canThrowEgg bool,
+	inquirerRockCount, ownerRockCount int, adTitle, ownerName, inquirerName,
+	csrfToken string, canPost, hasThrownRock, canThrowRock bool,
 	messageNodes []g.Node, targetModalID string) ui.ConversationModalData {
 	return ui.ConversationModalData{
-		ConversationID:   conv.ID,
-		AdID:             conv.AdID,
-		OwnerID:          conv.OwnerID,
-		InquirerID:       conv.InquirerID,
-		CurrentUserID:    currentUserID,
-		InquirerEggCount: inquirerEggCount,
-		OwnerEggCount:    ownerEggCount,
-		AdTitle:          adTitle,
-		OwnerName:        ownerName,
-		InquirerName:     inquirerName,
-		CSRFToken:        csrfToken,
-		CanPost:          canPost,
-		HasThrownEgg:     hasThrownEgg,
-		CanThrowEgg:      canThrowEgg,
-		MessageNodes:     messageNodes,
-		EggThrowerID:     conv.EggThrowerID,
-		TargetModalID:    targetModalID,
+		ConversationID:    conv.ID,
+		AdID:              conv.AdID,
+		OwnerID:           conv.OwnerID,
+		InquirerID:        conv.InquirerID,
+		CurrentUserID:     currentUserID,
+		InquirerRockCount: inquirerRockCount,
+		OwnerRockCount:    ownerRockCount,
+		AdTitle:           adTitle,
+		OwnerName:         ownerName,
+		InquirerName:      inquirerName,
+		CSRFToken:         csrfToken,
+		CanPost:           canPost,
+		HasThrownRock:     hasThrownRock,
+		CanThrowRock:      canThrowRock,
+		MessageNodes:      messageNodes,
+		RockThrowerID:     conv.RockThrowerID,
+		TargetModalID:     targetModalID,
 	}
 }
 
@@ -60,9 +60,9 @@ func messageItemData(msg message.Message, currentUserID int,
 	}
 }
 
-func eggEventData(throwerID, currentUserID, ownerID, inquirerID int,
-	thrownAt time.Time, tz *time.Location) ui.EggEventData {
-	return ui.EggEventData{
+func rockEventData(throwerID, currentUserID, ownerID, inquirerID int,
+	thrownAt time.Time, tz *time.Location) ui.RockEventData {
+	return ui.RockEventData{
 		ThrowerID:     throwerID,
 		CurrentUserID: currentUserID,
 		ThrownAt:      thrownAt.In(tz),
@@ -73,8 +73,8 @@ func eggEventData(throwerID, currentUserID, ownerID, inquirerID int,
 
 func conversationListItemData(conversationID, adID, ownerID, inquirerID,
 	currentUserID int, adTitle, lastMessageContent, otherUserName string,
-	lastMessageAt *time.Time, updatedAt time.Time, hasUnread bool, eggCount,
-	otherUserEggCount int, tz *time.Location) ui.ConversationListItemData {
+	lastMessageAt *time.Time, updatedAt time.Time, hasUnread bool, rockCount,
+	otherUserRockCount int, tz *time.Location) ui.ConversationListItemData {
 	d := ui.ConversationListItemData{
 		ConversationID:     conversationID,
 		AdID:               adID,
@@ -86,8 +86,8 @@ func conversationListItemData(conversationID, adID, ownerID, inquirerID,
 		OtherUserName:      otherUserName,
 		UpdatedAt:          updatedAt.In(tz),
 		HasUnread:          hasUnread,
-		EggCount:           eggCount,
-		OtherUserEggCount:  otherUserEggCount,
+		RockCount:          rockCount,
+		OtherUserRockCount: otherUserRockCount,
 	}
 	if lastMessageAt != nil {
 		t := lastMessageAt.In(tz)
@@ -110,8 +110,8 @@ func conversationListItemFromConv(conv message.ConversationWithLastMessage,
 		LastMessageAt:      conv.LastMessageAt,
 		UpdatedAt:          conv.UpdatedAt,
 		HasUnread:          conv.HasUnread,
-		EggCount:           conv.RockCount,
-		OtherUserEggCount:  conv.OtherUserEggCount,
+		RockCount:          conv.RockCount,
+		OtherUserRockCount: conv.OtherUserRockCount,
 	}
 }
 
@@ -121,24 +121,24 @@ func messageTimelineFromView(view message.ConversationModalView,
 	for i, msg := range view.Messages {
 		msgs[i] = messageItemData(msg, currentUserID, tz)
 	}
-	var egg *ui.EggEventData
+	var rock *ui.RockEventData
 	conv := view.Conversation
-	if conv.EggThrowerID != nil && conv.EggThrownAt != nil {
-		e := eggEventData(
-			*conv.EggThrowerID, currentUserID, conv.OwnerID, conv.InquirerID,
-			*conv.EggThrownAt, tz)
-		egg = &e
+	if conv.RockThrowerID != nil && conv.RockThrownAt != nil {
+		e := rockEventData(
+			*conv.RockThrowerID, currentUserID, conv.OwnerID, conv.InquirerID,
+			*conv.RockThrownAt, tz)
+		rock = &e
 	}
-	return ui.MessageTimeline(msgs, egg)
+	return ui.MessageTimeline(msgs, rock)
 }
 
 func conversationModalDataFromView(view message.ConversationModalView,
 	currentUserID int, csrfToken, targetModalID string, messageNodes []g.Node) ui.ConversationModalData {
 	return conversationModalData(
 		view.Conversation, currentUserID,
-		view.InquirerEggCount, view.OwnerEggCount,
+		view.InquirerRockCount, view.OwnerRockCount,
 		view.AdTitle, view.OwnerName, view.InquirerName, csrfToken,
-		view.CanPost, view.HasThrownEgg, view.CanThrowEgg,
+		view.CanPost, view.HasThrownRock, view.CanThrowRock,
 		messageNodes, targetModalID,
 	)
 }
@@ -157,7 +157,7 @@ func renderConversationModalView(c *fiber.Ctx,
 	messageNodes := messageTimelineFromView(view, currentUserID, tz)
 	data := conversationModalDataFromView(view, currentUserID, csrfToken, targetModalID, messageNodes)
 	if mode == modalRenderInitial {
-		return render(c, ui.ConversationModalWithEgg(data))
+		return render(c, ui.ConversationModalWithRock(data))
 	}
 	return render(c, ui.ConversationModalSwapOOB(data))
 }
@@ -255,8 +255,8 @@ func sendMessageAndRenderUpdate(c *fiber.Ctx, conv message.Conversation,
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to send message")
 	}
-	if err := eggopinion.Invalidate(conv.ID); err != nil {
-		logger.Error("Failed to invalidate egg opinion",
+	if err := rockopinion.Invalidate(conv.ID); err != nil {
+		logger.Error("Failed to invalidate rock opinion",
 			"error", err, "conversationID", conv.ID)
 	}
 
@@ -323,8 +323,8 @@ func sendConversationListItemUpdate(conv message.Conversation, currentUserID int
 		otherUserID = conv.OwnerID
 	}
 
-	// Get egg count for the other user
-	otherUserEggCount, _ := egg.GetEggCountForUser(otherUserID)
+	// Get rock count for the other user
+	otherUserRockCount, _ := rock.GetRockCountForUser(otherUserID)
 
 	// Get last message for preview
 	messages, err := message.GetConversationMessages(conv.ID, currentUserID, time.UTC)
@@ -341,7 +341,7 @@ func sendConversationListItemUpdate(conv message.Conversation, currentUserID int
 		conv.ID, conv.AdID, conv.OwnerID, conv.InquirerID, currentUserID,
 		a.Title, lastMessageContent, otherUserName,
 		lastMessageAt, conv.UpdatedAt,
-		hasUnread, a.RockCount, otherUserEggCount,
+		hasUnread, a.RockCount, otherUserRockCount,
 		time.UTC,
 	))
 	conversationItemSwapOOB := ui.ConversationListItemSwapOOB(conv.ID, conversationItem)
@@ -384,12 +384,12 @@ func MessageModalHandler(c *fiber.Ctx) error {
 			// No conversation exists yet - create a temporary conversation struct for the modal
 			// The conversation will be created when the first message is sent
 			conv = message.Conversation{
-				ID:           0, // 0 indicates conversation doesn't exist yet
-				AdID:         adID,
-				OwnerID:      a.UserID,
-				InquirerID:   currentUserID,
-				EggThrowerID: nil,
-				EggThrownAt:  nil,
+				ID:            0, // 0 indicates conversation doesn't exist yet
+				AdID:          adID,
+				OwnerID:       a.UserID,
+				InquirerID:    currentUserID,
+				RockThrowerID: nil,
+				RockThrownAt:  nil,
 			}
 		} else {
 			logger.Error("Failed to get conversation", "error", err, "adID", adID, "ownerID", a.UserID, "inquirerID", currentUserID)
@@ -460,19 +460,19 @@ func SendConversationMessageHandler(c *fiber.Ctx) error {
 	return sendMessageAndRenderUpdate(c, conv, currentUserID, tz, false)
 }
 
-func eggOpinionModalData(conv message.Conversation, currentUserID int,
-	tz *time.Location) (ui.EggOpinionModalData, error) {
+func rockOpinionModalData(conv message.Conversation, currentUserID int,
+	tz *time.Location) (ui.RockOpinionModalData, error) {
 	ownerName, inquirerName, err := message.OwnerAndInquirerNames(conv)
 	if err != nil {
-		return ui.EggOpinionModalData{}, err
+		return ui.RockOpinionModalData{}, err
 	}
 
 	a, err := ad.GetAd(currentUserID, conv.AdID, tz)
 	if err != nil {
-		return ui.EggOpinionModalData{}, err
+		return ui.RockOpinionModalData{}, err
 	}
 
-	d := ui.EggOpinionModalData{
+	d := ui.RockOpinionModalData{
 		ConversationID: conv.ID,
 		AdID:           conv.AdID,
 		AdTitle:        a.Title,
@@ -481,19 +481,19 @@ func eggOpinionModalData(conv message.Conversation, currentUserID int,
 		OwnerName:      ownerName,
 		InquirerName:   inquirerName,
 		CurrentUserID:  currentUserID,
-		AdFacts:        eggopinion.AdFactLines(a, tz),
+		AdFacts:        rockopinion.AdFactLines(a, tz),
 	}
-	if conv.EggThrowerID != nil {
-		d.EggThrowerID = *conv.EggThrowerID
+	if conv.RockThrowerID != nil {
+		d.RockThrowerID = *conv.RockThrowerID
 	}
 
-	op, err := eggopinion.GetOrGenerate(conv, tz)
-	if errors.Is(err, eggopinion.ErrUnavailable) {
+	op, err := rockopinion.GetOrGenerate(conv, tz)
+	if errors.Is(err, rockopinion.ErrUnavailable) {
 		d.Unavailable = true
 		return d, nil
 	}
 	if err != nil {
-		return ui.EggOpinionModalData{}, err
+		return ui.RockOpinionModalData{}, err
 	}
 
 	d.Summary = op.Summary
@@ -509,20 +509,20 @@ func eggOpinionModalData(conv message.Conversation, currentUserID int,
 	return d, nil
 }
 
-func renderEggOpinionModal(c *fiber.Ctx, conv message.Conversation,
+func renderRockOpinionModal(c *fiber.Ctx, conv message.Conversation,
 	currentUserID int, tz *time.Location) error {
-	d, err := eggOpinionModalData(conv, currentUserID, tz)
+	d, err := rockOpinionModalData(conv, currentUserID, tz)
 	if err != nil {
-		logger.Error("Failed to build egg opinion modal", "error", err)
+		logger.Error("Failed to build rock opinion modal", "error", err)
 		return fiber.NewError(
 			fiber.StatusInternalServerError,
 			"Failed to load dispute assessment",
 		)
 	}
-	return render(c, ui.EggOpinionModal(d))
+	return render(c, ui.RockOpinionModal(d))
 }
 
-func EggOpinionHandler(c *fiber.Ctx) error {
+func RockOpinionHandler(c *fiber.Ctx) error {
 	conversationID, err := c.ParamsInt("id")
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid conversation ID")
@@ -538,11 +538,11 @@ func EggOpinionHandler(c *fiber.Ctx) error {
 	if !message.CanViewConversation(conv, currentUserID) {
 		return fiber.NewError(fiber.StatusForbidden, "Conversation not found")
 	}
-	if conv.EggThrowerID == nil {
+	if conv.RockThrowerID == nil {
 		return fiber.NewError(fiber.StatusNotFound, "No dispute assessment")
 	}
 
-	return renderEggOpinionModal(c, conv, currentUserID, tz)
+	return renderRockOpinionModal(c, conv, currentUserID, tz)
 }
 
 func ConversationModalHandler(c *fiber.Ctx) error {

@@ -53,7 +53,7 @@ const (
 
 	// Ad configuration
 	MaxImagesPerAd         = 20
-	MaxEggCount            = 2 // Maximum egg count to allow in search results
+	MaxRockCount           = 2 // Maximum rock count to allow in search results
 	DefaultAdCategoryName  = "Car & Truck Parts"
 	MaxAdTitleLength       = 35   // Maximum length for ad title
 	MaxAdDescriptionLength = 1000 // Maximum length for ad description
