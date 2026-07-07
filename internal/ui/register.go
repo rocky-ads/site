@@ -2,6 +2,7 @@ package ui
 
 import (
 	"github.com/rocky-ads/site/internal/config"
+	"github.com/rocky-ads/site/internal/password"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -193,7 +194,13 @@ func RegisterPassword(username, phoneE64 string) g.Node {
 		hx.SwapOOB("true"),
 		hiddenUserName(username),
 		hiddenPhone(phoneE64),
-		passwordInput("new-password"),
+		Div(
+			passwordInput("new-password"),
+			Span(
+				Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1 block"),
+				g.Text(password.StrengthRequirements),
+			),
+		),
 		passwordInput2(),
 		terms(),
 		Div(

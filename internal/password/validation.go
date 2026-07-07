@@ -3,12 +3,24 @@ package password
 import (
 	"errors"
 	"fmt"
-	"unicode"
+)
+
+const (
+	MinPasswordLength = 8
+	MaxPasswordLength = 128
+)
+
+var (
+	strengthTooShort = fmt.Sprintf(
+		"Password must be at least %d characters.", MinPasswordLength)
+	strengthTooLong = fmt.Sprintf(
+		"Password must be at most %d characters.", MaxPasswordLength)
 )
 
 // StrengthRequirements is the full password rule text for user-facing errors.
-const StrengthRequirements = "Password must be at least 8 characters and include " +
-	"uppercase and lowercase letters, a number, and a special character (e.g., !@#$%^&*)."
+var StrengthRequirements = fmt.Sprintf(
+	"Password must be between %d and %d characters.",
+	MinPasswordLength, MaxPasswordLength)
 
 func ValidatePasswordConfirmation(password, confirmation string) error {
 	if password != confirmation {
@@ -18,35 +30,14 @@ func ValidatePasswordConfirmation(password, confirmation string) error {
 }
 
 func ValidatePasswordStrength(password string) error {
-	okLen := len(password) >= 8
-	hasNumber := false
-	hasUpper := false
-	hasLower := false
-	hasSpecial := false
-
-	for _, char := range password {
-		if unicode.IsLetter(char) {
-			if unicode.IsUpper(char) {
-				hasUpper = true
-			}
-			if unicode.IsLower(char) {
-				hasLower = true
-			}
-		}
-		if unicode.IsNumber(char) {
-			hasNumber = true
-		}
-		if !unicode.IsLetter(char) && !unicode.IsNumber(char) &&
-			!unicode.IsSpace(char) && char >= 33 && char <= 126 {
-			hasSpecial = true
-		}
+	n := len(password)
+	if n < MinPasswordLength {
+		return errors.New(strengthTooShort)
 	}
-
-	if okLen && hasUpper && hasLower && hasNumber && hasSpecial {
-		return nil
+	if n > MaxPasswordLength {
+		return errors.New(strengthTooLong)
 	}
-
-	return errors.New(StrengthRequirements)
+	return nil
 }
 
 // ValidatePasswordChange validates a password change operation
