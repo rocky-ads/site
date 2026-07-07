@@ -25,7 +25,7 @@ func editDescriptionWithSuggestionsBox(cfg AdFormConfig) g.Node {
 		Div(
 			Class("p-2 bg-zinc-50 dark:bg-zinc-900 whitespace-pre-wrap "+
 				"text-zinc-700 dark:text-zinc-300"),
-			g.Text(cfg.Values.OriginalDescription),
+			DescriptionTextWithLinks(cfg.Values.OriginalDescription),
 		),
 		descriptionContextInput(cfg),
 		suggestionsRow(cfg, cfg.Values.Suggestions),

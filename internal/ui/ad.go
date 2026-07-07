@@ -467,7 +467,10 @@ func descriptionDisplay(adID int, original string, facetDetails []string,
 	if len(facetDetails) > 0 {
 		nodes = append(nodes, adFacetList(facetDetails))
 	}
-	nodes = append(nodes, Div(Class("whitespace-pre-wrap"), g.Text(original)))
+	nodes = append(nodes, Div(
+		Class("whitespace-pre-wrap"),
+		uiads.DescriptionTextWithLinks(original),
+	))
 	if len(tags) > 0 {
 		nodes = append(nodes, adPills(tags, "mt-3"))
 	}
@@ -510,7 +513,7 @@ func descriptionHistoryEntry(adID int, e AdHistoryEntry) g.Node {
 					Div(
 						Class("whitespace-pre-wrap mt-1 "+
 							"text-blue-600/90 dark:text-blue-200/90"),
-						g.Text(e.Body),
+						uiads.DescriptionTextWithLinks(e.Body),
 					),
 				),
 				g.If(len(e.ImageIndices) > 0,
