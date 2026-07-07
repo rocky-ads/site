@@ -118,7 +118,7 @@ func navLoggedOut(currentPath string) g.Node {
 func indicator() g.Node {
 	return Div(
 		ID("indicator"),
-		Class("htmx-indicator w-4 h-4 border-2 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin flex-shrink-0"),
+		Class("htmx-indicator w-4 h-4 border-2 border-blue-600 dark:border-blue-400 border-t-transparent animate-spin flex-shrink-0"),
 	)
 }
 
@@ -176,10 +176,10 @@ func navigation(userID int, userName, currentPath string,
 		Class("sticky top-0 z-10 "+
 			"bg-white/75 dark:bg-zinc-900/75 backdrop-blur-xl "+
 			"border-b border-zinc-200 dark:border-zinc-700 "+
-			"flex items-center justify-between mb-4 py-4 -mx-4 px-4"),
+			"grid grid-cols-[1fr_auto_1fr] items-center mb-4 py-4 -mx-4 px-4"),
 		A(
 			Href("/"),
-			Class("flex items-center gap-2 shrink-0 whitespace-nowrap"),
+			Class("flex items-center gap-2 shrink-0 whitespace-nowrap justify-self-start"),
 			Img(
 				Src("/images/rock.svg"),
 				Alt(""),
@@ -188,8 +188,11 @@ func navigation(userID int, userName, currentPath string,
 			Span(Class("text-xl font-bold"), g.Text(config.ServerName)),
 		),
 		Div(
-			Class("flex items-center gap-3 shrink-0"),
+			Class("justify-self-center"),
 			indicator(),
+		),
+		Div(
+			Class("flex items-center gap-3 shrink-0 justify-self-end"),
 			g.Iff(local.IsLoggedIn(userID), func() g.Node { return navLoggedIn(userName, hasUnread) }),
 			g.Iff(!local.IsLoggedIn(userID), func() g.Node { return navLoggedOut(currentPath) }),
 		),
