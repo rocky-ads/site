@@ -95,13 +95,22 @@ func saveSearchStateFromRequest(c *fiber.Ctx, expanded *bool,
 	distanceUnit := cookie.GetDistanceUnit(c)
 	state := cookie.GetSearchState(c)
 	if fromForm {
-		state.Q = strings.TrimSpace(c.Query("q"))
-		state.Location = strings.TrimSpace(c.Query("location"))
-		state.Within = parseWithin(c.Query("within"), distanceUnit)
-		if state.Location == "" {
-			state.Within = 0
+		args := c.Context().QueryArgs()
+		if args.Has("q") {
+			state.Q = strings.TrimSpace(c.Query("q"))
 		}
-		if state.Expanded {
+		if args.Has("location") {
+			state.Location = strings.TrimSpace(c.Query("location"))
+			if state.Location == "" {
+				state.Within = 0
+			}
+		}
+		if args.Has("within") {
+			state.Within = parseWithin(c.Query("within"), distanceUnit)
+		}
+		// Facet filters come from #search-widget; skip when it was not included
+		// (e.g. category switch from the new-ad page).
+		if state.Expanded && args.Has("q") {
 			category := ad.GetCategory(cookie.GetCategoryID(c))
 			state.Facets = parseFacetFilters(c, category)
 		}

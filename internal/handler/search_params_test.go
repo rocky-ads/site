@@ -56,6 +56,48 @@ func TestSaveSearchStateAlwaysPersistsLocation(t *testing.T) {
 	}
 }
 
+func TestSaveSearchStatePreservesLocationWithoutSearchWidget(t *testing.T) {
+	want := cookie.SearchState{
+		Location: "Denver, CO",
+		Within:   25,
+		Q:        "Honda",
+	}
+	app := fiber.New()
+	app.Get("/seed", func(c *fiber.Ctx) error {
+		cookie.SetSearchState(c, want)
+		return c.SendStatus(fiber.StatusOK)
+	})
+	var state cookie.SearchState
+	app.Get("/search", func(c *fiber.Ctx) error {
+		state = saveSearchStateFromRequest(c, nil, true)
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	seedResp, err := app.Test(httptest.NewRequest("GET", "/seed", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cookieVal string
+	for _, c := range seedResp.Cookies() {
+		if c.Name == "search" {
+			cookieVal = c.Value
+			break
+		}
+	}
+	if cookieVal == "" {
+		t.Fatal("expected search cookie in response")
+	}
+
+	req := httptest.NewRequest("GET", "/search", nil)
+	req.Header.Set("Cookie", "search="+cookieVal)
+	if _, err := app.Test(req); err != nil {
+		t.Fatal(err)
+	}
+	if state.Location != "Denver, CO" || state.Within != 25 || state.Q != "Honda" {
+		t.Fatalf("expected cookie location preserved, got %+v", state)
+	}
+}
+
 func TestParseFacetFiltersConditionCheckboxes(t *testing.T) {
 	category := ad.Category{FacetKeys: []string{"condition"}}
 

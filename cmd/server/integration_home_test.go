@@ -322,6 +322,47 @@ func TestSwitchCategoryPreservesSearchCookie(t *testing.T) {
 	}
 }
 
+func TestSwitchCategoryFromNewAdPreservesLocation(t *testing.T) {
+	client, err := getClientWithCategoryCookie(6)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	if err := setSearchCookieOnClient(client, cookie.SearchState{
+		Location: "Denver, CO",
+		Within:   25,
+	}); err != nil {
+		t.Fatalf("set search cookie: %v", err)
+	}
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	switchURL := baseURL + "/api/category/5/switch?return=" + url.QueryEscape("/auth/ad/new")
+	resp, _ := getRequestWithCookies(t, client, switchURL)
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("switch: expected 302, got %d", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Location"); got != "/auth/ad/new" {
+		t.Fatalf("expected redirect /auth/ad/new, got %q", got)
+	}
+
+	state, err := getSearchStateFromClient(client)
+	if err != nil {
+		t.Fatalf("read search cookie: %v", err)
+	}
+	if state.Location != "Denver, CO" || state.Within != 25 {
+		t.Fatalf("expected location preserved, got %+v", state)
+	}
+
+	resp, body := getRequestWithCookies(t, client, baseURL+"/")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("home: expected 200, got %d", resp.StatusCode)
+	}
+	if strings.Contains(body, "No location set") {
+		t.Error("expected home page to keep saved location after new-ad category switch")
+	}
+}
+
 func TestSwitchCategoryPreservesSearchOpen(t *testing.T) {
 	client, err := getClientWithCategoryCookie(6)
 	if err != nil {
