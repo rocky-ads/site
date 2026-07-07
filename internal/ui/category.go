@@ -18,11 +18,15 @@ func CategoryItem(currentCategoryID, categoryID int, name, imageFile,
 
 	returnURL := "/api/category/" + strconv.Itoa(categoryID) + "/switch?return=" + url.QueryEscape(returnParam)
 
-	return Div(
+	attrs := []g.Node{
 		Class(itemClass),
 		hx.Get(returnURL),
 		hx.Swap("none"),
-		hx.Include("#search-widget"),
+	}
+	if returnParam == "/" {
+		attrs = append(attrs, hx.Include("#search-widget"))
+	}
+	attrs = append(attrs,
 		Div(
 			Class("p-2 bg-zinc-200 dark:bg-zinc-700 rounded-full flex items-center justify-center"),
 			Img(
@@ -33,6 +37,8 @@ func CategoryItem(currentCategoryID, categoryID int, name, imageFile,
 		),
 		Span(Class("flex-1"), g.Text(name)),
 	)
+
+	return Div(attrs...)
 }
 
 func CategorySelectModal(selectedID int, returnParam string,

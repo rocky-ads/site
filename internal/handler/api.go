@@ -10,24 +10,32 @@ import (
 )
 
 func SwitchCategoryHandler(c *fiber.Ctx) error {
-	state := saveSearchStateFromRequest(c, nil, true)
+	redirect := categorySwitchRedirect(c)
 
 	categoryID := param.GetCategoryID(c)
-
 	cookie.SetCategoryID(c, categoryID)
 
-	state = clearFacetFilters(state, categoryID)
-	cookie.SetSearchState(c, state)
-
-	redirect := c.Query("return")
-	if redirect == "" || redirect[0] != '/' || (len(redirect) > 1 && redirect[1] == '/') {
-		redirect = "/"
+	// Search state is owned by the home page search widget; other pages
+	// (new ad, edit ad, etc.) only change the category cookie.
+	if redirect == "/" {
+		state := saveSearchStateFromRequest(c, nil, true)
+		state = clearFacetFilters(state, categoryID)
+		cookie.SetSearchState(c, state)
 	}
+
 	if c.Get("HX-Request") == "true" {
 		c.Set("HX-Redirect", redirect)
 		return render(c, g.Group(ui.RemoveModal("category")))
 	}
 	return c.Redirect(redirect, fiber.StatusFound)
+}
+
+func categorySwitchRedirect(c *fiber.Ctx) string {
+	redirect := c.Query("return")
+	if redirect == "" || redirect[0] != '/' || (len(redirect) > 1 && redirect[1] == '/') {
+		return "/"
+	}
+	return redirect
 }
 
 func renderFilterPanelResponse(c *fiber.Ctx, state cookie.SearchState) error {
