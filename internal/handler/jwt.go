@@ -27,7 +27,7 @@ func JWTMiddleware(c *fiber.Ctx) error {
 	claims, err := validateJWTToken(tokenString)
 	if err != nil {
 		// Invalid token, clear cookie
-		logout(c)
+		clearAuth(c)
 		return c.Next()
 	}
 
@@ -35,7 +35,7 @@ func JWTMiddleware(c *fiber.Ctx) error {
 	userID := getUserID(claims)
 	if !user.Exists(userID) {
 		// User doesn't exist (may have been deleted), clear cookie
-		logout(c)
+		clearAuth(c)
 		return c.Next()
 	}
 

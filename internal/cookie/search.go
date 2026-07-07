@@ -37,6 +37,10 @@ func GetSearchState(c *fiber.Ctx) SearchState {
 	return state
 }
 
+func ClearSearchState(c *fiber.Ctx) {
+	c.ClearCookie(searchCookieName)
+}
+
 func SetSearchState(c *fiber.Ctx, state SearchState) {
 	data, err := json.Marshal(state)
 	if err != nil {

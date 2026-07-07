@@ -77,6 +77,50 @@ func TestGetSearchStateInvalidCookie(t *testing.T) {
 	}
 }
 
+func TestClearSearchState(t *testing.T) {
+	app := fiber.New()
+	app.Get("/set", func(c *fiber.Ctx) error {
+		SetSearchState(c, SearchState{Q: "Honda", Location: "Denver"})
+		return c.SendStatus(fiber.StatusOK)
+	})
+	app.Get("/clear", func(c *fiber.Ctx) error {
+		ClearSearchState(c)
+		return c.SendStatus(fiber.StatusOK)
+	})
+	app.Get("/get", func(c *fiber.Ctx) error {
+		state := GetSearchState(c)
+		if state.Q != "" || state.Location != "" {
+			t.Fatalf("expected empty state, got %+v", state)
+		}
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	setResp, err := app.Test(httptest.NewRequest("GET", "/set", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cookieVal string
+	for _, c := range setResp.Cookies() {
+		if c.Name == searchCookieName {
+			cookieVal = c.Value
+			break
+		}
+	}
+	if cookieVal == "" {
+		t.Fatal("expected search cookie in response")
+	}
+
+	clearReq := httptest.NewRequest("GET", "/clear", nil)
+	clearReq.Header.Set("Cookie", searchCookieName+"="+cookieVal)
+	if _, err := app.Test(clearReq); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := app.Test(httptest.NewRequest("GET", "/get", nil)); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSearchStateJSON(t *testing.T) {
 	min := 10
 	state := SearchState{Q: "test", Facets: map[string]facet.Filter{"price": {Min: &min}}, Expanded: true}

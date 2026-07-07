@@ -14,12 +14,17 @@ func LoginHandler(c *fiber.Ctx) error {
 	return renderPage(c, "Login", ui.LoginPage())
 }
 
-func logout(c *fiber.Ctx) {
+func clearAuth(c *fiber.Ctx) {
 	cookie.ClearJWT(c)
 	cookie.ResetDistanceUnit(c)
 	local.SetUserID(c, 0)
 	local.SetUserName(c, "")
 	local.SetUserIsAdmin(c, false)
+}
+
+func logout(c *fiber.Ctx) {
+	clearAuth(c)
+	cookie.ClearSearchState(c)
 }
 
 func LogoutHandler(c *fiber.Ctx) error {
