@@ -142,9 +142,9 @@ func RemoveIntroBanner() g.Node {
 func introBanner() g.Node {
 	return Div(
 		ID("intro-banner"),
-		Class("relative -mx-4 px-4 h-10 flex items-center "+
-			"justify-center bg-amber-100 "+
-			"border-b border-amber-200 "+
+		Class("relative -mx-4 px-4 h-8 flex items-center "+
+			"justify-center bg-yellow-400 "+
+			"border-b border-yellow-400 "+
 			"text-zinc-700"),
 		A(
 			Href("/about"),
@@ -152,16 +152,16 @@ func introBanner() g.Node {
 				"hover:underline"),
 			hx.Get("/api/intro-banner/dismiss?redirect=/about"),
 			hx.Swap("none"),
-			g.Text("What am I looking at?"),
+			g.Text("What is Rocky Ads?"),
 		),
 		Button(
 			Type("button"),
 			g.Attr("aria-label", "Close"),
 			Class("absolute right-4 top-1/2 -translate-y-1/2 "+
-				"w-8 h-8 flex items-center justify-center "+
+				"w-6 h-6 flex items-center justify-center "+
 				"rounded-full hover:bg-amber-200/60 "+
 				"dark:hover:bg-amber-900/50 cursor-pointer "+
-				"text-xl leading-none"),
+				"text-lg leading-none"),
 			hx.Get("/api/intro-banner/dismiss"),
 			hx.Swap("none"),
 			g.Text("×"),
