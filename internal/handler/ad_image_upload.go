@@ -11,6 +11,7 @@ import (
 	"mime/multipart"
 
 	"github.com/chai2010/webp"
+	"github.com/disintegration/imageorient"
 	"github.com/rocky-ads/site/internal/imagestore"
 	"github.com/rocky-ads/site/internal/logger"
 	"golang.org/x/image/draw"
@@ -58,7 +59,7 @@ func uploadAdImagesFromIndex(store imagestore.Store, adID, startIndex int,
 		}
 		file.Close()
 
-		img, _, err := image.Decode(bytes.NewReader(buf.Bytes()))
+		img, _, err := imageorient.Decode(bytes.NewReader(buf.Bytes()))
 		if err != nil {
 			logger.Error("Failed to decode uploaded image",
 				"error", err, "adID", adID, "imageIndex", i+1)

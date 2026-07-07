@@ -5,6 +5,7 @@ go 1.25.3
 require (
 	github.com/chai2010/webp v1.4.0
 	github.com/dgraph-io/ristretto/v2 v2.4.0
+	github.com/disintegration/imageorient v0.0.0-20180920195336-8147d86e83ec
 	github.com/gofiber/fiber/v2 v2.52.13
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/jackc/pgx/v5 v5.10.0
@@ -31,6 +32,7 @@ require (
 	github.com/andybalholm/brotli v1.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
+	github.com/disintegration/gift v1.1.2 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/mock v1.6.0 // indirect
