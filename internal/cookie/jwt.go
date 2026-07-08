@@ -18,7 +18,16 @@ func SetJWT(c *fiber.Ctx, token string) {
 }
 
 func ClearJWT(c *fiber.Ctx) {
-	c.ClearCookie("auth_token")
+	// Match SetJWT attributes so the browser actually deletes the cookie.
+	c.Cookie(&fiber.Cookie{
+		Name:     "auth_token",
+		Value:    "",
+		HTTPOnly: true,
+		Secure:   config.CookieSecure,
+		Path:     "/",
+		SameSite: "Strict",
+		MaxAge:   -1,
+	})
 }
 
 func GetJWT(c *fiber.Ctx) string {
