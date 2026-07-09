@@ -62,9 +62,9 @@ const (
 	// Password/Argon2 configuration
 	Argon2Memory = 64 * 1024
 
-	// CDN URLs for external resources
-	HTMXURL    = "https://unpkg.com/htmx.org@2.0.7"
-	HTMXSSEURL = "https://unpkg.com/htmx-ext-sse@2.2.3/dist/sse.min.js"
+	// HTMX scripts (self-hosted for privacy browsers that block third-party CDNs)
+	HTMXURL    = "/js/htmx.min.js"
+	HTMXSSEURL = "/js/htmx-ext-sse.min.js"
 
 	// Public links
 	GitHubRepoURL = "https://github.com/rocky-ads/site"
