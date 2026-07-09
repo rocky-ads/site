@@ -31,7 +31,7 @@ func ConfigureHelmet() fiber.Handler {
 	// Custom Content-Security-Policy
 	// This policy restricts which resources can be loaded
 	csp := "default-src 'self'; " +
-		"script-src 'self' https://unpkg.com 'unsafe-inline'; " + // unpkg.com for HTMX library, 'unsafe-inline' for inline scripts (redirect scripts, category modal removal, MAX_IMAGES_PER_AD constant)
+		"script-src 'self' 'unsafe-inline'; " + // 'unsafe-inline' for inline scripts (redirect scripts, category modal removal, MAX_IMAGES_PER_AD constant)
 		"style-src 'self' 'unsafe-inline'; " + // 'unsafe-inline' needed for Tailwind CSS
 		"img-src " + imgSrc + "; " +
 		"font-src 'self' data:; " +
