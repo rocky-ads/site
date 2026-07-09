@@ -48,7 +48,6 @@ func setupApp() *fiber.App {
 
 	app.Static("/", "./static")
 
-	app.Get("/c/:category", handler.ShortCategoryHandler)
 	app.Get("/", handler.HomeHandler)
 	app.Get("/login", handler.LoginHandler)
 	app.Get("/logout", handler.LogoutHandler)
@@ -60,6 +59,7 @@ func setupApp() *fiber.App {
 	app.Get("/faq/:section", handler.FAQHandler)
 	app.Get("/ad/:id", handler.AdHandler)
 	app.Get("/ad/:id/image/:index/:size", handler.ImageHandler)
+	app.Get("/c/:category", handler.ShortCategoryHandler)
 
 	// Auth routes
 
