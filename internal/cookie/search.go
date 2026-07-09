@@ -38,7 +38,15 @@ func GetSearchState(c *fiber.Ctx) SearchState {
 }
 
 func ClearSearchState(c *fiber.Ctx) {
-	c.ClearCookie(searchCookieName)
+	c.Cookie(&fiber.Cookie{
+		Name:     searchCookieName,
+		Value:    "",
+		HTTPOnly: true,
+		Secure:   config.CookieSecure,
+		Path:     "/",
+		SameSite: "Strict",
+		MaxAge:   -1,
+	})
 }
 
 func SetSearchState(c *fiber.Ctx, state SearchState) {
