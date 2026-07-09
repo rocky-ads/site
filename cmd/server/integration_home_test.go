@@ -296,6 +296,37 @@ func TestSwitchCategoryHandler(t *testing.T) {
 	}
 }
 
+func TestShortCategoryRoute(t *testing.T) {
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("Failed to create cookie jar: %v", err)
+	}
+	client := &http.Client{
+		Jar: jar,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	resp, _ := getRequestWithCookies(t, client, baseURL+"/c/6")
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("expected 302, got %d", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Location"); got != "/" {
+		t.Fatalf("expected redirect /, got %q", got)
+	}
+
+	var categoryVal string
+	for _, c := range resp.Cookies() {
+		if c.Name == "category" {
+			categoryVal = c.Value
+		}
+	}
+	if categoryVal != "6" {
+		t.Fatalf("expected category cookie 6, got %q", categoryVal)
+	}
+}
+
 func TestSwitchCategoryPreservesSearchCookie(t *testing.T) {
 	client, err := getClientWithCategoryCookie(6)
 	if err != nil {

@@ -14,6 +14,9 @@ require (
 	github.com/nyaruka/phonenumbers v1.8.0
 	github.com/pgvector/pgvector-go v0.4.0
 	github.com/sasha-s/go-deadlock v0.3.9
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
+	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c
+	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef
 	github.com/twilio/twilio-go v1.30.9
 	github.com/valyala/fasthttp v1.71.0
 	golang.org/x/crypto v0.53.0

@@ -48,6 +48,7 @@ func setupApp() *fiber.App {
 
 	app.Static("/", "./static")
 
+	app.Get("/c/:category", handler.ShortCategoryHandler)
 	app.Get("/", handler.HomeHandler)
 	app.Get("/login", handler.LoginHandler)
 	app.Get("/logout", handler.LogoutHandler)
