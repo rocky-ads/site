@@ -188,7 +188,7 @@ func searchBox(q string) g.Node {
 		hx.Target("#search-results"),
 		hx.Swap("outerHTML"),
 		hx.Include("#search-widget"),
-		hx.Trigger("keyup[key=='Enter'], change, input[!event.target.value.length]"),
+		hx.Trigger("keyup[key=='Enter'], blur changed, input[!event.target.value.length]"),
 		Placeholder("What are you looking for?"),
 	)
 }
