@@ -128,10 +128,10 @@ func paginationDiv(nextPage int) g.Node {
 	)
 }
 
-func adCardMeta(location string, createdAt time.Time) g.Node {
+func adCardMeta(location string, createdAt time.Time, showNewBadge bool) g.Node {
 	return Div(
 		Class("flex items-center gap-2 text-xs text-zinc-500"),
-		g.If(time.Since(createdAt) < 4*time.Hour, newBadge()),
+		g.If(showNewBadge && time.Since(createdAt) < 4*time.Hour, newBadge()),
 		g.Text(location),
 	)
 }
@@ -162,11 +162,15 @@ func AdGridNode(userID, adID, imageCount, nextPage int, priceDisplay, title,
 	node := A(
 		Href("/ad/"+strconv.Itoa(adID)),
 		Class(class),
-		gridImageNode(adID, imageCount, 1),
+		Div(
+			Class("relative"),
+			gridImageNode(adID, imageCount, 1),
+			g.If(time.Since(createdAt) < 4*time.Hour, newBadgeImageOverlay()),
+		),
 		Div(
 			Class("flex items-center justify-between pt-1"),
 			priceSpan(priceDisplay, hasPrice),
-			adCardMeta(location, createdAt),
+			adCardMeta(location, createdAt, false),
 		),
 		Div(
 			Class("flex items-center gap-2 min-w-0"),
@@ -207,7 +211,7 @@ func AdListNode(userID, adID int, priceDisplay, title, location,
 		),
 		Div(
 			Class("flex items-center gap-2 ml-auto"),
-			adCardMeta(location, createdAt),
+			adCardMeta(location, createdAt, true),
 			priceSpan(priceDisplay, hasPrice),
 		),
 	)
