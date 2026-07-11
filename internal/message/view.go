@@ -23,7 +23,7 @@ type ConversationModalView struct {
 	OwnerName         string
 	InquirerName      string
 	Messages          []Message
-	RockEvents        []rock.Event
+	RockEvents        []RockJournalEvent
 	InquirerRockCount int
 	OwnerRockCount    int
 	CanPost           bool
@@ -114,21 +114,8 @@ func BuildConversationModal(conv Conversation, currentUserID int,
 		return view, nil
 	}
 
-	messages, err := GetConversationMessages(conv.ID, currentUserID, tz)
-	if err != nil {
-		return ConversationModalView{}, fmt.Errorf("failed to get messages: %w", err)
-	}
-	view.Messages = messages
-
-	rockEvents, err := rock.GetEvents(conv.ID, conv.RockThrowerID,
-		conv.RockThrownAt)
-	if err != nil {
-		return ConversationModalView{}, fmt.Errorf("failed to get rock events: %w", err)
-	}
-	for i := range rockEvents {
-		rockEvents[i].CreatedAt = rockEvents[i].CreatedAt.In(tz)
-	}
-	view.RockEvents = rockEvents
+	view.Messages = MessagesFromJournal(conv.ID, conv.Journal, tz)
+	view.RockEvents = RockEventsFromJournal(conv.Journal, tz)
 
 	canPost, err := CanUserPost(conv.ID, currentUserID)
 	if err != nil {

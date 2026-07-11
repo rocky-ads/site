@@ -6,16 +6,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/currency"
+	"github.com/rocky-ads/site/internal/entrylog"
 	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/location"
 )
 
-// historyMarker prefixes each edit-history entry header (stripped from user input).
-const historyMarker = "\u001e"
-
-// historyEndMarker separates immutable original text from edit history.
-const historyEndMarker = "\u001f"
+const OriginalLabel = "original"
 
 // HistoryEntryDisplay is one parsed edit-history block for UI rendering.
 type HistoryEntryDisplay struct {
@@ -30,20 +28,40 @@ type DescriptionDisplay struct {
 	History  []HistoryEntryDisplay
 }
 
-// DisplayDescription strips server markers for plain-text rendering.
+// DisplayDescription renders stored description as plain text for display.
 func DisplayDescription(desc string) string {
-	s := strings.ReplaceAll(desc, historyEndMarker, "")
-	return strings.ReplaceAll(s, historyMarker, "")
+	parts := ParseDescriptionForDisplay(desc)
+	var b strings.Builder
+	if parts.Original != "" {
+		b.WriteString(parts.Original)
+	}
+	for _, h := range parts.History {
+		if b.Len() > 0 {
+			b.WriteString("\n\n")
+		}
+		b.WriteString(h.Header)
+		if h.Body != "" {
+			b.WriteString("\n\n")
+			b.WriteString(h.Body)
+		}
+	}
+	return b.String()
+}
+
+// WrapDescription stores plain body text as the immutable original entry.
+func WrapDescription(body string, at time.Time, tz *time.Location) string {
+	body = strings.TrimSpace(SanitizeAdText(body))
+	return entrylog.BuildBlock(OriginalLabel, "", body, at, tz)
 }
 
 // ParseDescriptionForDisplay splits stored description into original and history.
 func ParseDescriptionForDisplay(desc string) DescriptionDisplay {
-	original, history := SplitDescription(desc)
+	original, historyBlocks := splitDescriptionBlocks(desc)
 	out := DescriptionDisplay{Original: original}
-	for _, e := range parseHistoryEntries(history) {
-		header := strings.TrimSpace(DisplayDescription(e.header))
-		indices := imageIndicesFromHistoryEntry(header, e.body)
-		body := e.body
+	for _, b := range historyBlocks {
+		header := formatDisplayHeader(b)
+		indices := imageIndicesFromHistoryEntry(header, b.Body)
+		body := b.Body
 		if len(indices) > 0 {
 			body = ""
 		}
@@ -58,16 +76,44 @@ func ParseDescriptionForDisplay(desc string) DescriptionDisplay {
 
 // SplitDescription separates the immutable original body from server history.
 func SplitDescription(desc string) (original, history string) {
-	if i := strings.Index(desc, historyEndMarker); i >= 0 {
-		return strings.TrimRight(desc[:i], "\n"),
-			strings.TrimLeft(desc[i+len(historyEndMarker):], "\n")
+	orig, blocks := splitDescriptionBlocks(desc)
+	if len(blocks) == 0 {
+		return orig, ""
 	}
-	// Legacy ads: history begins at the first entry marker.
-	if i := strings.Index(desc, historyMarker); i >= 0 {
-		return strings.TrimRight(desc[:i], "\n"),
-			strings.TrimLeft(desc[i:], "\n")
+	return orig, joinHistoryBlocks(blocks)
+}
+
+func splitDescriptionBlocks(desc string) (original string,
+	history []entrylog.Block) {
+	blocks := entrylog.Parse(desc)
+	if len(blocks) == 0 {
+		return desc, nil
 	}
-	return desc, ""
+	if blocks[0].Label == OriginalLabel {
+		return blocks[0].Body, blocks[1:]
+	}
+	return blocks[0].Body, blocks[1:]
+}
+
+func joinHistoryBlocks(blocks []entrylog.Block) string {
+	if len(blocks) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	for i, block := range blocks {
+		if i > 0 {
+			b.WriteString("\n\n")
+		}
+		b.WriteString(entrylog.BuildBlock(
+			block.Label, block.Meta, block.Body, block.At, nil,
+		))
+	}
+	return b.String()
+}
+
+func formatDisplayHeader(b entrylog.Block) string {
+	return strings.ToLower(b.At.Format("1/2/2006 3:04 pm")) +
+		"  " + b.Label
 }
 
 const imagesAddedLabel = "Images Added"
@@ -106,24 +152,6 @@ func imageIndicesFromHistoryEntry(header, body string) []int {
 	return indices
 }
 
-func formatHistoryTimestamp(at time.Time, tz *time.Location) string {
-	if tz != nil {
-		at = at.In(tz)
-	}
-	return strings.ToLower(at.Format("1/2/2006 3:04 pm"))
-}
-
-func buildHistoryBlock(label, body string, at time.Time,
-	tz *time.Location) string {
-	body = strings.TrimSpace(SanitizeAdText(body))
-	header := historyMarker + formatHistoryTimestamp(at, tz) +
-		"  " + label
-	if body == "" {
-		return header
-	}
-	return header + "\n\n" + body
-}
-
 // AppendHistoryEntry prepends a labeled, timestamped history block (newest first).
 func AppendHistoryEntry(desc, label, body string, at time.Time,
 	tz *time.Location) string {
@@ -132,74 +160,106 @@ func AppendHistoryEntry(desc, label, body string, at time.Time,
 		label != "History compressed" {
 		return desc
 	}
-	block := buildHistoryBlock(label, body, at, tz)
-	original, history := SplitDescription(desc)
-	original = strings.TrimRight(original, "\n")
-	if history == "" {
-		if original == "" {
-			return historyEndMarker + block
-		}
-		return original + historyEndMarker + block
-	}
-	return original + historyEndMarker + block + "\n\n" + history
+	return entrylog.PrependAfterFirst(desc, label, "", body, at, tz)
 }
 
-type historyEntry struct {
-	header string
-	body   string
+func historyEntryText(b entrylog.Block) string {
+	header := formatDisplayHeader(b)
+	if b.Body == "" {
+		return header
+	}
+	return header + "\n\n" + b.Body
 }
 
-func parseHistoryEntries(history string) []historyEntry {
-	if history == "" {
-		return nil
-	}
-	parts := strings.Split(history, historyMarker)
-	var entries []historyEntry
-	for _, part := range parts {
-		part = strings.TrimLeft(part, "\n")
-		if part == "" {
-			continue
-		}
-		header, body, _ := strings.Cut(part, "\n\n")
-		entries = append(entries, historyEntry{
-			header: historyMarker + header,
-			body:   body,
-		})
-	}
-	return entries
+// EnsureDescriptionFits compresses description text until it fits MaxAdDescriptionLength.
+func EnsureDescriptionFits(desc string, at time.Time,
+	tz *time.Location) (string, error) {
+	return ensureDescriptionFits(desc, at, tz)
 }
 
-func joinHistoryEntries(entries []historyEntry) string {
-	if len(entries) == 0 {
-		return ""
+func ensureDescriptionFits(desc string, at time.Time,
+	tz *time.Location) (string, error) {
+	max := config.MaxAdDescriptionLength
+	if descriptionRuneCount(desc) <= max {
+		return desc, nil
 	}
-	var b strings.Builder
-	for i, e := range entries {
-		if i > 0 {
-			b.WriteString("\n\n")
-		}
-		b.WriteString(e.header)
-		if e.body != "" {
-			b.WriteString("\n\n")
-			b.WriteString(e.body)
-		}
-	}
-	return b.String()
-}
 
-func assembleDescription(original, history string) string {
-	original = strings.TrimRight(original, "\n")
-	history = strings.TrimLeft(history, "\n")
-	if original == "" && history == "" {
-		return ""
+	original, historyBlocks := splitDescriptionBlocks(desc)
+
+	targetOriginal := max / 2
+	if targetOriginal < 100 {
+		targetOriginal = 100
 	}
-	if history == "" {
-		return original
+	compressed, err := compressWithGrok(
+		compressOriginalSystemPrompt, original, targetOriginal,
+	)
+	if err != nil {
+		return "", fmt.Errorf("compress description: %w", err)
 	}
-	if original == "" {
-		return historyEndMarker + history
+	original = compressed
+	blocks := entrylog.Parse(desc)
+	origAt := at
+	if len(blocks) > 0 && blocks[0].Label == OriginalLabel {
+		origAt = blocks[0].At
 	}
-	return original + historyEndMarker + history
+	desc = entrylog.Join(
+		append([]entrylog.Block{{
+			Label: OriginalLabel,
+			Body:  original,
+			At:    origAt,
+		}}, historyBlocks...),
+		tz,
+	)
+	desc = AppendHistoryEntry(
+		desc,
+		"Description compressed",
+		"Original description was summarized to make room for edit history.",
+		at,
+		tz,
+	)
+	if descriptionRuneCount(desc) <= max {
+		return desc, nil
+	}
+
+	_, historyBlocks = splitDescriptionBlocks(desc)
+	keepRecent := 2
+	if len(historyBlocks) <= keepRecent {
+		return truncateRunes(desc, max), nil
+	}
+
+	recentEntries := historyBlocks[:keepRecent]
+	oldEntries := historyBlocks[keepRecent:]
+	var oldParts []string
+	for _, e := range oldEntries {
+		oldParts = append(oldParts, historyEntryText(e))
+	}
+	oldText := strings.Join(oldParts, "\n\n")
+	targetHistory := max / 4
+	if targetHistory < 80 {
+		targetHistory = 80
+	}
+	compressedHistory, err := compressWithGrok(
+		compressHistorySystemPrompt, oldText, targetHistory,
+	)
+	if err != nil {
+		return "", fmt.Errorf("compress history: %w", err)
+	}
+	mergedOld := entrylog.Block{
+		Label: "History compressed",
+		Body:  compressedHistory,
+		At:    at,
+	}
+	allHistory := append(recentEntries, mergedOld)
+	origBlock := entrylog.Block{
+		Label: OriginalLabel,
+		Body:  original,
+		At:    origAt,
+	}
+	desc = entrylog.Join(append([]entrylog.Block{origBlock}, allHistory...), tz)
+	if descriptionRuneCount(desc) <= max {
+		return desc, nil
+	}
+	return truncateRunes(desc, max), nil
 }
 
 func facetValuesEqual(a, b facet.Value) bool {

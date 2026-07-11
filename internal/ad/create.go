@@ -3,6 +3,7 @@ package ad
 import (
 	"fmt"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/rocky-ads/site/internal/config"
@@ -42,6 +43,7 @@ func CreateAd(input CreateInput) (int, error) {
 	if utf8.RuneCountInString(description) > config.MaxAdDescriptionLength {
 		return 0, fmt.Errorf("description must be at most %d characters", config.MaxAdDescriptionLength)
 	}
+	description = WrapDescription(description, time.Now().UTC(), time.UTC)
 	defs := category.Facets()
 	values := make(map[string]facet.Value, len(defs))
 	for _, d := range defs {

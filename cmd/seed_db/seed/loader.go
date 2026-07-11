@@ -324,9 +324,9 @@ func init() {
 }
 
 // AssembleDescription applies seed history entries to the original body.
-func AssembleDescription(original string,
-	history []HistoryEntryJSON) (string, error) {
-	desc := original
+func AssembleDescription(original string, history []HistoryEntryJSON,
+	createdAt time.Time) (string, error) {
+	desc := adp.WrapDescription(original, createdAt, seedHistoryLocation)
 	for _, h := range history {
 		at, err := time.Parse(time.RFC3339, h.At)
 		if err != nil {
@@ -408,7 +408,7 @@ func loadAdsFromFile(categoryID int, filename string, categoryFacets []string,
 		}
 
 		description, err := AssembleDescription(
-			ad.Description, aj.DescriptionHistory,
+			ad.Description, aj.DescriptionHistory, createdAt,
 		)
 		if err != nil {
 			return fmt.Errorf("assembling description for ad %d: %w", adID, err)

@@ -8,6 +8,7 @@ import (
 
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/entrylog"
 	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/location"
 )
@@ -54,8 +55,7 @@ func UpdateAd(input UpdateInput) error {
 	}
 
 	addition := strings.TrimSpace(SanitizeAdText(input.DescriptionAddition))
-	if strings.Contains(addition, historyMarker) ||
-		strings.Contains(addition, historyEndMarker) {
+	if strings.Contains(addition, entrylog.Marker) {
 		return fmt.Errorf("invalid description addition")
 	}
 

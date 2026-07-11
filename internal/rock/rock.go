@@ -4,9 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/journal"
 )
 
 var ErrRockNotFound = errors.New("rock not found")
@@ -17,18 +19,15 @@ var ErrRockAlreadyThrown = errors.New("a rock has already been thrown at this co
 // If inquirer throws: rock_thrower_id = inquirer_id (bound to ad)
 // If owner throws: rock_thrower_id = owner_id (bound to inquirer)
 func ThrowRock(userID, conversationID int) error {
-	// Get conversation to determine owner and inquirer
 	conv, err := getConversationForRock(conversationID)
 	if err != nil {
 		return fmt.Errorf("failed to get conversation: %w", err)
 	}
 
-	// Verify user is participant
 	if conv.OwnerID != userID && conv.InquirerID != userID {
 		return fmt.Errorf("only conversation participants can throw rocks")
 	}
 
-	// Check if user already has 3 outstanding rocks
 	count, err := GetUserRockCount(userID)
 	if err != nil {
 		return fmt.Errorf("failed to check rock count: %w", err)
@@ -37,7 +36,6 @@ func ThrowRock(userID, conversationID int) error {
 		return ErrMaxRocksReached
 	}
 
-	// Check if ANY rock already exists on this conversation (only one rock per conversation)
 	rockCount, err := GetRockCountForConversation(conversationID)
 	if err != nil {
 		return fmt.Errorf("failed to check existing rocks: %w", err)
@@ -46,37 +44,38 @@ func ThrowRock(userID, conversationID int) error {
 		return ErrRockAlreadyThrown
 	}
 
-	// Update conversation with rock info (making it public)
+	now := time.Now().UTC()
+	newJournal := journal.AppendRock(conv.Journal, journal.RockThrown, userID,
+		now, time.UTC)
+
 	_, err = db.Exec(`
 		UPDATE conversations
-		SET rock_thrower_id = $1, rock_thrown_at = CURRENT_TIMESTAMP
-		WHERE id = $2
-	`, userID, conversationID)
+		SET rock_thrower_id = $1, rock_thrown_at = $2,
+			journal = $3, updated_at = $2
+		WHERE id = $4
+	`, userID, now, newJournal, conversationID)
 	if err != nil {
 		return fmt.Errorf("failed to throw rock: %w", err)
-	}
-
-	if err := RecordEvent(conversationID, userID, EventThrown); err != nil {
-		return err
 	}
 
 	return nil
 }
 
-// getConversationForRock gets conversation details needed for rock throwing
 func getConversationForRock(conversationID int) (struct {
 	OwnerID    int
 	InquirerID int
+	Journal    string
 }, error) {
 	var conv struct {
 		OwnerID    int
 		InquirerID int
+		Journal    string
 	}
 	err := db.QueryRow(`
-		SELECT owner_id, inquirer_id
+		SELECT owner_id, inquirer_id, journal
 		FROM conversations
 		WHERE id = $1
-	`, conversationID).Scan(&conv.OwnerID, &conv.InquirerID)
+	`, conversationID).Scan(&conv.OwnerID, &conv.InquirerID, &conv.Journal)
 	if err != nil {
 		return conv, fmt.Errorf("failed to get conversation: %w", err)
 	}
@@ -85,14 +84,13 @@ func getConversationForRock(conversationID int) (struct {
 
 // UnthrowRock removes a rock from a conversation
 func UnthrowRock(userID, conversationID int) error {
-	// Verify user is participant and threw the rock
 	var rockThrowerID sql.NullInt64
-	var rockThrownAt sql.NullTime
+	var j string
 	err := db.QueryRow(`
-		SELECT rock_thrower_id, rock_thrown_at
+		SELECT rock_thrower_id, journal
 		FROM conversations
 		WHERE id = $1
-	`, conversationID).Scan(&rockThrowerID, &rockThrownAt)
+	`, conversationID).Scan(&rockThrowerID, &j)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return ErrRockNotFound
@@ -108,23 +106,16 @@ func UnthrowRock(userID, conversationID int) error {
 		return fmt.Errorf("only the rock thrower can remove the rock")
 	}
 
-	if rockThrownAt.Valid {
-		if err := EnsureThrownEventRecorded(conversationID, userID,
-			rockThrownAt.Time); err != nil {
-			return err
-		}
-	}
+	now := time.Now().UTC()
+	newJournal := journal.AppendRock(j, journal.RockUnthrown, userID, now,
+		time.UTC)
 
-	if err := RecordEvent(conversationID, userID, EventUnthrown); err != nil {
-		return err
-	}
-
-	// Remove rock (making conversation private)
 	_, err = db.Exec(`
 		UPDATE conversations
-		SET rock_thrower_id = NULL, rock_thrown_at = NULL
-		WHERE id = $1
-	`, conversationID)
+		SET rock_thrower_id = NULL, rock_thrown_at = NULL,
+			journal = $1, updated_at = $2
+		WHERE id = $3
+	`, newJournal, now, conversationID)
 	if err != nil {
 		return fmt.Errorf("failed to remove rock: %w", err)
 	}
@@ -138,10 +129,8 @@ func GetPublicConversationsForAd(adID int) ([]int, error) {
 	query := `
 		SELECT c.id
 		FROM conversations c
-		LEFT JOIN messages m ON c.id = m.conversation_id
 		WHERE c.ad_id = $1 AND c.rock_thrower_id IS NOT NULL AND c.rock_thrower_id = c.inquirer_id
-		GROUP BY c.id
-		ORDER BY COALESCE(MAX(m.created_at), c.rock_thrown_at) DESC
+		ORDER BY c.updated_at DESC
 	`
 	var conversationIDs []int
 	err := db.Select(&conversationIDs, query, adID)
@@ -157,10 +146,8 @@ func GetPublicConversationIDByOrdinal(adID int, ordinal int) (int, error) {
 	query := `
 		SELECT c.id
 		FROM conversations c
-		LEFT JOIN messages m ON c.id = m.conversation_id
 		WHERE c.ad_id = $1 AND c.rock_thrower_id IS NOT NULL AND c.rock_thrower_id = c.inquirer_id
-		GROUP BY c.id
-		ORDER BY COALESCE(MAX(m.created_at), c.rock_thrown_at) DESC
+		ORDER BY c.updated_at DESC
 		LIMIT 1 OFFSET $2
 	`
 	var conversationID int

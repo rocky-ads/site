@@ -32,28 +32,34 @@ func WelcomePage(rockCount int) []g.Node {
 				"rounded-xl p-5 md:p-8 shadow-lg"),
 			Div(
 				Class("flex flex-col items-center text-center space-y-4"),
-				Div(
-					Class("space-y-2"),
-					H1(
-						Class("text-2xl font-bold "+
-							"text-zinc-900 dark:text-zinc-100"),
-						g.Textf("Welcome to %s!", config.ServerName),
+				Form(
+					Class("flex flex-col items-center text-center space-y-4 w-full"),
+					Method("get"),
+					Action("/"),
+					Div(
+						Class("space-y-2"),
+						H1(
+							Class("text-2xl font-bold "+
+								"text-zinc-900 dark:text-zinc-100"),
+							g.Textf("Welcome to %s!", config.ServerName),
+						),
+						P(
+							Class("text-base text-zinc-700 dark:text-zinc-300"),
+							g.Textf("Here are your %d rocks", rockCount),
+						),
 					),
+					welcomeRocks(rockCount),
 					P(
-						Class("text-base text-zinc-700 dark:text-zinc-300"),
-						g.Textf("Here are your %d rocks", rockCount),
+						Class("text-base text-zinc-600 dark:text-zinc-400 leading-snug"),
+						faqLink("/faq/rocks", "What are the rocks for?"),
 					),
+					standardButton(buttonProps{
+						Type:  "submit",
+						Text:  "Go To Ads",
+						Class: "font-semibold py-3",
+						Attrs: []g.Node{g.Attr("autofocus", "autofocus")},
+					}),
 				),
-				welcomeRocks(rockCount),
-				P(
-					Class("text-base text-zinc-600 dark:text-zinc-400 leading-snug"),
-					faqLink("/faq/rocks", "What are the rocks for?"),
-				),
-				standardButton(buttonProps{
-					Href:  "/",
-					Text:  "Go To Ads",
-					Class: "font-semibold py-3",
-				}),
 			),
 		),
 	}

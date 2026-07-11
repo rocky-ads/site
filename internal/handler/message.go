@@ -62,10 +62,10 @@ func messageItemData(msg message.Message, currentUserID int,
 	}
 }
 
-func rockEventData(event rock.Event, currentUserID, ownerID,
+func rockEventData(event message.RockJournalEvent, currentUserID, ownerID,
 	inquirerID int) ui.RockEventData {
 	kind := ui.RockEventThrown
-	if event.Kind == rock.EventUnthrown {
+	if event.Kind == "unthrown" {
 		kind = ui.RockEventUnthrown
 	}
 	return ui.RockEventData{

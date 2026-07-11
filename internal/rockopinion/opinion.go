@@ -194,22 +194,11 @@ func generate(conv message.Conversation, tz *time.Location) (Opinion, error) {
 
 func listMessages(conversationID int,
 	tz *time.Location) ([]message.Message, error) {
-	var messages []message.Message
-	err := db.Select(&messages, `
-		SELECT id, conversation_id, sender_id, content, created_at
-		FROM messages
-		WHERE conversation_id = $1
-		ORDER BY created_at ASC
-	`, conversationID)
+	conv, err := message.GetConversationByID(conversationID)
 	if err != nil {
 		return nil, fmt.Errorf("list messages: %w", err)
 	}
-	for i := range messages {
-		if tz != nil {
-			messages[i].CreatedAt = messages[i].CreatedAt.In(tz)
-		}
-	}
-	return messages, nil
+	return message.MessagesFromJournal(conv.ID, conv.Journal, tz), nil
 }
 
 // AdFactLines returns description history lines for UI display.

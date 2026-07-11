@@ -5,35 +5,46 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rocky-ads/site/internal/entrylog"
 	"github.com/rocky-ads/site/internal/facet"
 )
 
 func TestSplitDescription(t *testing.T) {
-	original := "Triumph tr7 $3500 obo."
-	history := historyMarker + "1/7/2026 12:34 am  Description Addition\n\nHas the 2.0L engine."
-	desc := original + historyEndMarker + history
+	loc, _ := time.LoadLocation("America/Los_Angeles")
+	origAt := time.Date(2026, 1, 5, 12, 0, 0, 0, loc)
+	editAt := time.Date(2026, 1, 7, 0, 34, 0, 0, loc)
+
+	desc := WrapDescription("Triumph tr7 $3500 obo.", origAt, loc)
+	desc = AppendHistoryEntry(
+		desc, "Description Addition", "Has the 2.0L engine.", editAt, loc,
+	)
 
 	gotOrig, gotHist := SplitDescription(desc)
-	if gotOrig != original {
-		t.Errorf("original = %q, want %q", gotOrig, original)
+	if gotOrig != "Triumph tr7 $3500 obo." {
+		t.Errorf("original = %q, want Triumph tr7 $3500 obo.", gotOrig)
 	}
-	if gotHist != history {
-		t.Errorf("history = %q, want %q", gotHist, history)
+	if !strings.Contains(gotHist, "Description Addition") {
+		t.Errorf("history = %q", gotHist)
+	}
+	if !strings.Contains(gotHist, entrylog.Marker) {
+		t.Fatal("expected entry marker in history")
 	}
 
-	gotOrig, gotHist = SplitDescription("no history here")
+	gotOrig, gotHist = SplitDescription(WrapDescription("no history here", origAt, loc))
 	if gotOrig != "no history here" || gotHist != "" {
-		t.Errorf("no marker split failed: orig=%q hist=%q", gotOrig, gotHist)
+		t.Errorf("no history split failed: orig=%q hist=%q", gotOrig, gotHist)
 	}
 }
 
 func TestAppendHistoryEntryPrependsNewest(t *testing.T) {
 	loc, _ := time.LoadLocation("America/Los_Angeles")
+	origAt := time.Date(2026, 1, 5, 12, 0, 0, 0, loc)
 	first := time.Date(2026, 1, 7, 0, 34, 0, 0, loc)
 	second := time.Date(2026, 1, 7, 18, 47, 0, 0, loc)
 
-	desc := AppendHistoryEntry(
-		"Original text.",
+	desc := WrapDescription("Original text.", origAt, loc)
+	desc = AppendHistoryEntry(
+		desc,
 		"Description Addition",
 		"First edit.",
 		first,
@@ -60,31 +71,30 @@ func TestAppendHistoryEntryPrependsNewest(t *testing.T) {
 	if !strings.Contains(parts.History[1].Header, "Description Addition") {
 		t.Errorf("oldest second: %q", parts.History[1].Header)
 	}
-	if !strings.Contains(desc, historyEndMarker) {
-		t.Fatal("expected history end marker")
-	}
 }
 
 func TestAppendHistoryEntry(t *testing.T) {
 	loc, _ := time.LoadLocation("America/Los_Angeles")
+	origAt := time.Date(2026, 1, 5, 12, 0, 0, 0, loc)
 	at := time.Date(2026, 1, 7, 0, 34, 0, 0, loc)
 
-	desc := AppendHistoryEntry(
-		"Original text.",
+	desc := WrapDescription("Original text.", origAt, loc)
+	desc = AppendHistoryEntry(
+		desc,
 		"Description Addition",
 		"Has the 2.0L engine.",
 		at,
 		loc,
 	)
-	if !strings.Contains(desc, historyMarker) {
+	if !strings.Contains(desc, entrylog.Marker) {
 		t.Fatal("expected history marker in stored description")
 	}
 	orig, _ := SplitDescription(desc)
-	if strings.Contains(orig, historyMarker) {
-		t.Fatal("marker must not appear in original portion")
+	if orig != "Original text." {
+		t.Fatalf("original portion = %q", orig)
 	}
 	display := DisplayDescription(desc)
-	if strings.Contains(display, historyMarker) {
+	if strings.Contains(display, entrylog.Marker) {
 		t.Fatal("marker visible after DisplayDescription")
 	}
 	if !strings.Contains(display, "1/7/2026 12:34 am  Description Addition") {
@@ -184,10 +194,12 @@ func TestImageIndicesFromHistoryEntry(t *testing.T) {
 
 func TestAppendHistoryEntryImagesAdded(t *testing.T) {
 	loc, _ := time.LoadLocation("America/Los_Angeles")
+	origAt := time.Date(2026, 1, 5, 12, 0, 0, 0, loc)
 	at := time.Date(2026, 1, 7, 0, 34, 0, 0, loc)
 
-	desc := AppendHistoryEntry(
-		"Original.", imagesAddedLabel, "2,3", at, loc,
+	desc := WrapDescription("Original.", origAt, loc)
+	desc = AppendHistoryEntry(
+		desc, imagesAddedLabel, "2,3", at, loc,
 	)
 	parts := ParseDescriptionForDisplay(desc)
 	if len(parts.History) != 1 {

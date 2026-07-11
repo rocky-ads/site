@@ -4,10 +4,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/entrylog"
 	"github.com/rocky-ads/site/internal/rock"
 	"github.com/rocky-ads/site/internal/user"
 )
@@ -17,12 +19,13 @@ type Conversation struct {
 	AdID              int        `db:"ad_id"`
 	OwnerID           int        `db:"owner_id"`
 	InquirerID        int        `db:"inquirer_id"`
-	CreatedAt         time.Time  `db:"created_at"` // Computed: MIN(messages.created_at) or rock_thrown_at
-	UpdatedAt         time.Time  `db:"updated_at"` // Computed: MAX(MAX(messages.created_at), rock_thrown_at)
+	CreatedAt         time.Time  `db:"created_at"`
+	UpdatedAt         time.Time  `db:"updated_at"`
 	OwnerHasUnread    bool       `db:"owner_has_unread"`
 	InquirerHasUnread bool       `db:"inquirer_has_unread"`
-	RockThrowerID     *int       `db:"rock_thrower_id"` // nil = no rock (private), NOT NULL = public, owner_id = bound to inquirer, inquirer_id = bound to ad
-	RockThrownAt      *time.Time `db:"rock_thrown_at"`  // Only valid if rock_thrower_id IS NOT NULL
+	RockThrowerID     *int       `db:"rock_thrower_id"`
+	RockThrownAt      *time.Time `db:"rock_thrown_at"`
+	Journal           string     `db:"journal"`
 }
 
 type Message struct {
@@ -52,35 +55,25 @@ type ConversationWithLastMessage struct {
 var ErrConversationNotFound = errors.New("conversation not found")
 var ErrNotParticipant = errors.New("user is not a participant in this conversation")
 
-// GetConversationByAdAndInquirer gets an existing conversation by ad ID and inquirer ID
-// Returns ErrConversationNotFound if the conversation does not exist
-func GetConversationByAdAndInquirer(adID, ownerID,
-	inquirerID int) (Conversation, error) {
-	if ownerID == inquirerID {
-		return Conversation{}, fmt.Errorf("owner and inquirer cannot be the same")
+func applyJournalDerivedTimes(conv *Conversation) {
+	if at, ok := FirstEntryAt(conv.Journal); ok {
+		conv.CreatedAt = at
+		return
 	}
+	if conv.RockThrownAt != nil {
+		conv.CreatedAt = *conv.RockThrownAt
+		return
+	}
+	conv.CreatedAt = conv.UpdatedAt
+}
 
+func scanConversationRow(scanner interface {
+	Scan(dest ...any) error
+}) (Conversation, error) {
 	var conv Conversation
-	var rockThrownAt sql.NullTime
-	query := `
-		SELECT
-			c.id, c.ad_id, c.owner_id, c.inquirer_id,
-			c.owner_has_unread, c.inquirer_has_unread, c.rock_thrower_id, c.rock_thrown_at,
-			COALESCE(MIN(m.created_at), c.rock_thrown_at, NOW()) AS created_at,
-			COALESCE((SELECT MAX(ts) FROM (
-				SELECT MAX(m2.created_at) AS ts FROM messages m2 WHERE m2.conversation_id = c.id
-				UNION ALL
-				SELECT c.rock_thrown_at AS ts WHERE c.rock_thrown_at IS NOT NULL
-			)), NOW()) AS updated_at
-		FROM conversations c
-		LEFT JOIN messages m ON c.id = m.conversation_id
-		WHERE c.ad_id = $1 AND c.inquirer_id = $2
-		GROUP BY c.id
-	`
 	var rockThrowerID sql.NullInt64
-	var createdAtStr string
-	var updatedAtStr string
-	err := db.QueryRow(query, adID, inquirerID).Scan(
+	var rockThrownAt sql.NullTime
+	err := scanner.Scan(
 		&conv.ID,
 		&conv.AdID,
 		&conv.OwnerID,
@@ -89,50 +82,50 @@ func GetConversationByAdAndInquirer(adID, ownerID,
 		&conv.InquirerHasUnread,
 		&rockThrowerID,
 		&rockThrownAt,
-		&createdAtStr,
-		&updatedAtStr,
+		&conv.Journal,
+		&conv.UpdatedAt,
 	)
+	if err != nil {
+		return Conversation{}, err
+	}
+	if rockThrowerID.Valid {
+		id := int(rockThrowerID.Int64)
+		conv.RockThrowerID = &id
+	}
+	if rockThrownAt.Valid {
+		conv.RockThrownAt = &rockThrownAt.Time
+	}
+	applyJournalDerivedTimes(&conv)
+	return conv, nil
+}
+
+const conversationColumns = `
+	c.id, c.ad_id, c.owner_id, c.inquirer_id,
+	c.owner_has_unread, c.inquirer_has_unread, c.rock_thrower_id, c.rock_thrown_at,
+	c.journal, c.updated_at`
+
+// GetConversationByAdAndInquirer gets an existing conversation by ad ID and inquirer ID
+// Returns ErrConversationNotFound if the conversation does not exist
+func GetConversationByAdAndInquirer(adID, ownerID,
+	inquirerID int) (Conversation, error) {
+	if ownerID == inquirerID {
+		return Conversation{}, fmt.Errorf("owner and inquirer cannot be the same")
+	}
+
+	query := `
+		SELECT ` + conversationColumns + `
+		FROM conversations c
+		WHERE c.ad_id = $1 AND c.inquirer_id = $2
+	`
+	conv, err := scanConversationRow(db.QueryRow(query, adID, inquirerID))
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return Conversation{}, ErrConversationNotFound
 		}
 		return Conversation{}, fmt.Errorf("failed to query conversation: %w", err)
 	}
-
-	// Parse timestamps from strings
-	createdAt, err := time.Parse("2006-01-02 15:04:05", createdAtStr)
-	if err != nil {
-		// Try with microseconds if present
-		createdAt, err = time.Parse("2006-01-02 15:04:05.999999999", createdAtStr)
-		if err != nil {
-			createdAt = time.Now()
-		}
-	}
-	conv.CreatedAt = createdAt
-
-	updatedAt, err := time.Parse("2006-01-02 15:04:05", updatedAtStr)
-	if err != nil {
-		// Try with microseconds if present
-		updatedAt, err = time.Parse("2006-01-02 15:04:05.999999999", updatedAtStr)
-		if err != nil {
-			updatedAt = time.Now()
-		}
-	}
-	conv.UpdatedAt = updatedAt
-	if rockThrowerID.Valid {
-		id := int(rockThrowerID.Int64)
-		conv.RockThrowerID = &id
-	} else {
-		conv.RockThrowerID = nil
-	}
-	if rockThrownAt.Valid {
-		conv.RockThrownAt = &rockThrownAt.Time
-	} else {
-		conv.RockThrownAt = nil
-	}
 	// Verify owner_id matches (in case ad ownership changed)
 	if conv.OwnerID != ownerID {
-		// Update owner_id if it changed
 		_, updateErr := db.Exec(`
 			UPDATE conversations
 			SET owner_id = $1
@@ -153,11 +146,12 @@ func CreateConversation(adID, ownerID, inquirerID int) (Conversation, error) {
 	}
 
 	var id int
+	var updatedAt time.Time
 	err := db.QueryRow(`
-		INSERT INTO conversations (ad_id, owner_id, inquirer_id, owner_has_unread, inquirer_has_unread, rock_thrower_id)
-		VALUES ($1, $2, $3, 0, 0, NULL)
-		RETURNING id
-	`, adID, ownerID, inquirerID).Scan(&id)
+		INSERT INTO conversations (ad_id, owner_id, inquirer_id, owner_has_unread, inquirer_has_unread, rock_thrower_id, journal, updated_at)
+		VALUES ($1, $2, $3, 0, 0, NULL, '', CURRENT_TIMESTAMP)
+		RETURNING id, updated_at
+	`, adID, ownerID, inquirerID).Scan(&id, &updatedAt)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -166,164 +160,46 @@ func CreateConversation(adID, ownerID, inquirerID int) (Conversation, error) {
 		return Conversation{}, fmt.Errorf("failed to create conversation: %w", err)
 	}
 
-	var conv Conversation
-	conv.ID = id
-	conv.AdID = adID
-	conv.OwnerID = ownerID
-	conv.InquirerID = inquirerID
-	conv.RockThrowerID = nil
-	conv.RockThrownAt = nil
-	// CreatedAt and UpdatedAt will be computed from messages/rock_thrown_at on next query
-
-	return conv, nil
+	return Conversation{
+		ID:         id,
+		AdID:       adID,
+		OwnerID:    ownerID,
+		InquirerID: inquirerID,
+		UpdatedAt:  updatedAt,
+		CreatedAt:  updatedAt,
+		Journal:    "",
+	}, nil
 }
 
 func GetConversation(conversationID, userID int) (Conversation, error) {
-	var conv Conversation
-	var rockThrownAt sql.NullTime
 	query := `
-		SELECT 
-			c.id, c.ad_id, c.owner_id, c.inquirer_id,
-			c.owner_has_unread, c.inquirer_has_unread, c.rock_thrower_id, c.rock_thrown_at,
-			COALESCE(MIN(m.created_at), c.rock_thrown_at, NOW()) AS created_at,
-			COALESCE((SELECT MAX(ts) FROM (
-				SELECT MAX(m2.created_at) AS ts FROM messages m2 WHERE m2.conversation_id = c.id
-				UNION ALL
-				SELECT c.rock_thrown_at AS ts WHERE c.rock_thrown_at IS NOT NULL
-			)), NOW()) AS updated_at
+		SELECT ` + conversationColumns + `
 		FROM conversations c
-		LEFT JOIN messages m ON c.id = m.conversation_id
 		WHERE c.id = $1 AND (c.owner_id = $2 OR c.inquirer_id = $3 OR c.rock_thrower_id IS NOT NULL)
-		GROUP BY c.id
 	`
-	var rockThrowerID sql.NullInt64
-	var createdAtStr string
-	var updatedAtStr string
-	err := db.QueryRow(query, conversationID, userID, userID).Scan(
-		&conv.ID,
-		&conv.AdID,
-		&conv.OwnerID,
-		&conv.InquirerID,
-		&conv.OwnerHasUnread,
-		&conv.InquirerHasUnread,
-		&rockThrowerID,
-		&rockThrownAt,
-		&createdAtStr,
-		&updatedAtStr,
-	)
+	conv, err := scanConversationRow(db.QueryRow(query, conversationID, userID, userID))
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return Conversation{}, ErrConversationNotFound
 		}
 		return Conversation{}, fmt.Errorf("failed to get conversation: %w", err)
-	}
-
-	// Parse timestamps from strings
-	createdAt, err := time.Parse("2006-01-02 15:04:05", createdAtStr)
-	if err != nil {
-		// Try with microseconds if present
-		createdAt, err = time.Parse("2006-01-02 15:04:05.999999999", createdAtStr)
-		if err != nil {
-			createdAt = time.Now()
-		}
-	}
-	conv.CreatedAt = createdAt
-
-	updatedAt, err := time.Parse("2006-01-02 15:04:05", updatedAtStr)
-	if err != nil {
-		// Try with microseconds if present
-		updatedAt, err = time.Parse("2006-01-02 15:04:05.999999999", updatedAtStr)
-		if err != nil {
-			updatedAt = time.Now()
-		}
-	}
-	conv.UpdatedAt = updatedAt
-	if rockThrowerID.Valid {
-		id := int(rockThrowerID.Int64)
-		conv.RockThrowerID = &id
-	} else {
-		conv.RockThrowerID = nil
-	}
-	if rockThrownAt.Valid {
-		conv.RockThrownAt = &rockThrownAt.Time
-	} else {
-		conv.RockThrownAt = nil
 	}
 	return conv, nil
 }
 
 // GetConversationByID gets a conversation by ID without user check (for public access)
 func GetConversationByID(conversationID int) (Conversation, error) {
-	var conv Conversation
-	var rockThrownAt sql.NullTime
 	query := `
-		SELECT
-			c.id, c.ad_id, c.owner_id, c.inquirer_id,
-			c.owner_has_unread, c.inquirer_has_unread, c.rock_thrower_id, c.rock_thrown_at,
-			COALESCE(MIN(m.created_at), c.rock_thrown_at, NOW()) AS created_at,
-			COALESCE((SELECT MAX(ts) FROM (
-				SELECT MAX(m2.created_at) AS ts FROM messages m2 WHERE m2.conversation_id = c.id
-				UNION ALL
-				SELECT c.rock_thrown_at AS ts WHERE c.rock_thrown_at IS NOT NULL
-			)), NOW()) AS updated_at
+		SELECT ` + conversationColumns + `
 		FROM conversations c
-		LEFT JOIN messages m ON c.id = m.conversation_id
 		WHERE c.id = $1
-		GROUP BY c.id
 	`
-	var rockThrowerID sql.NullInt64
-	var createdAtStr string
-	var updatedAtStr string
-	err := db.QueryRow(query, conversationID).Scan(
-		&conv.ID,
-		&conv.AdID,
-		&conv.OwnerID,
-		&conv.InquirerID,
-		&conv.OwnerHasUnread,
-		&conv.InquirerHasUnread,
-		&rockThrowerID,
-		&rockThrownAt,
-		&createdAtStr,
-		&updatedAtStr,
-	)
+	conv, err := scanConversationRow(db.QueryRow(query, conversationID))
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return Conversation{}, ErrConversationNotFound
 		}
 		return Conversation{}, fmt.Errorf("failed to get conversation: %w", err)
-	}
-
-	// Parse timestamps from strings
-	createdAt, err := time.Parse("2006-01-02 15:04:05", createdAtStr)
-	if err != nil {
-		// Try with microseconds if present
-		createdAt, err = time.Parse("2006-01-02 15:04:05.999999999", createdAtStr)
-		if err != nil {
-			createdAt = time.Now()
-		}
-	}
-	conv.CreatedAt = createdAt
-
-	updatedAt, err := time.Parse("2006-01-02 15:04:05", updatedAtStr)
-	if err != nil {
-		// Try with microseconds if present
-		updatedAt, err = time.Parse("2006-01-02 15:04:05.999999999", updatedAtStr)
-		if err != nil {
-			updatedAt = time.Now()
-		}
-	}
-	conv.UpdatedAt = updatedAt
-
-	if rockThrowerID.Valid {
-		id := int(rockThrowerID.Int64)
-		conv.RockThrowerID = &id
-	} else {
-		conv.RockThrowerID = nil
-	}
-	if rockThrownAt.Valid {
-		conv.RockThrownAt = &rockThrownAt.Time
-	} else {
-		conv.RockThrownAt = nil
 	}
 	return conv, nil
 }
@@ -362,25 +238,11 @@ func CanUserPost(conversationID, userID int) (bool, error) {
 // GetPublicConversations returns public conversations for an ad
 func GetPublicConversations(adID int) ([]Conversation, error) {
 	query := `
-		SELECT 
-			c.id, c.ad_id, c.owner_id, c.inquirer_id,
-			c.owner_has_unread, c.inquirer_has_unread, c.rock_thrower_id, c.rock_thrown_at,
-			COALESCE(MIN(m.created_at), c.rock_thrown_at, NOW()) AS created_at,
-			COALESCE(
-				(SELECT MAX(ts) FROM (
-					SELECT MAX(m2.created_at) AS ts FROM messages m2 WHERE m2.conversation_id = c.id
-					UNION ALL
-					SELECT c.rock_thrown_at AS ts WHERE c.rock_thrown_at IS NOT NULL
-				)),
-				NOW()
-			) AS updated_at
+		SELECT ` + conversationColumns + `
 		FROM conversations c
-		LEFT JOIN messages m ON c.id = m.conversation_id
 		WHERE c.ad_id = $1 AND c.rock_thrower_id IS NOT NULL
-		GROUP BY c.id
-		ORDER BY updated_at DESC
+		ORDER BY c.updated_at DESC
 	`
-	// Use Query instead of Select to manually handle datetime string conversion
 	rows, err := db.Query(query, adID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get public conversations: %w", err)
@@ -389,57 +251,10 @@ func GetPublicConversations(adID int) ([]Conversation, error) {
 
 	var conversations []Conversation
 	for rows.Next() {
-		var conv Conversation
-		var rockThrowerID sql.NullInt64
-		var rockThrownAt sql.NullTime
-		var createdAtStr string
-		var updatedAtStr string
-
-		err := rows.Scan(
-			&conv.ID,
-			&conv.AdID,
-			&conv.OwnerID,
-			&conv.InquirerID,
-			&conv.OwnerHasUnread,
-			&conv.InquirerHasUnread,
-			&rockThrowerID,
-			&rockThrownAt,
-			&createdAtStr,
-			&updatedAtStr,
-		)
+		conv, err := scanConversationRow(rows)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan conversation: %w", err)
 		}
-
-		// Parse timestamps from strings
-		createdAt, err := time.Parse("2006-01-02 15:04:05", createdAtStr)
-		if err != nil {
-			// Try with microseconds if present
-			createdAt, err = time.Parse("2006-01-02 15:04:05.999999999", createdAtStr)
-			if err != nil {
-				createdAt = time.Now()
-			}
-		}
-		conv.CreatedAt = createdAt
-
-		updatedAt, err := time.Parse("2006-01-02 15:04:05", updatedAtStr)
-		if err != nil {
-			// Try with microseconds if present
-			updatedAt, err = time.Parse("2006-01-02 15:04:05.999999999", updatedAtStr)
-			if err != nil {
-				updatedAt = time.Now()
-			}
-		}
-		conv.UpdatedAt = updatedAt
-
-		if rockThrowerID.Valid {
-			id := int(rockThrowerID.Int64)
-			conv.RockThrowerID = &id
-		}
-		if rockThrownAt.Valid {
-			conv.RockThrownAt = &rockThrownAt.Time
-		}
-
 		conversations = append(conversations, conv)
 	}
 
@@ -462,9 +277,9 @@ func GetUserConversations(userID int,
 			c.inquirer_has_unread,
 			c.rock_thrower_id,
 			c.rock_thrown_at,
+			c.journal,
+			c.updated_at,
 			a.title AS ad_title,
-			COALESCE(m.content, '') AS last_message_content,
-			m.created_at AS last_message_at,
 			COALESCE((
 				SELECT COUNT(*)
 				FROM conversations c2
@@ -472,15 +287,6 @@ func GetUserConversations(userID int,
 					AND c2.rock_thrower_id IS NOT NULL
 					AND c2.rock_thrower_id = c2.inquirer_id
 			), 0) AS rock_count,
-			COALESCE(MIN(msg.created_at), c.rock_thrown_at, NOW()) AS created_at,
-			COALESCE(
-				(SELECT MAX(ts) FROM (
-					SELECT MAX(msg2.created_at) AS ts FROM messages msg2 WHERE msg2.conversation_id = c.id
-					UNION ALL
-					SELECT c.rock_thrown_at AS ts WHERE c.rock_thrown_at IS NOT NULL
-				)),
-				NOW()
-			) AS updated_at,
 			CASE
 				WHEN c.owner_id = $1 THEN c.inquirer_id
 				ELSE c.owner_id
@@ -491,19 +297,9 @@ func GetUserConversations(userID int,
 			END AS has_unread
 		FROM conversations c
 		JOIN ads a ON c.ad_id = a.id
-		LEFT JOIN (
-			SELECT conversation_id, content, created_at
-			FROM messages
-			WHERE id IN (
-				SELECT MAX(id) FROM messages GROUP BY conversation_id
-			)
-		) m ON c.id = m.conversation_id
-		LEFT JOIN messages msg ON c.id = msg.conversation_id
 		WHERE (c.owner_id = $3 OR c.inquirer_id = $4)
-		GROUP BY c.id, a.title, m.content, m.created_at
-		ORDER BY updated_at DESC
+		ORDER BY c.updated_at DESC
 	`
-	// Use Query instead of Select to manually handle datetime string conversion
 	rows, err := db.Query(query, userID, userID, userID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user conversations: %w", err)
@@ -515,9 +311,6 @@ func GetUserConversations(userID int,
 		var conv ConversationWithLastMessage
 		var rockThrowerID sql.NullInt64
 		var rockThrownAt sql.NullTime
-		var lastMessageAt sql.NullTime
-		var createdAtStr string
-		var updatedAtStr string
 
 		err := rows.Scan(
 			&conv.ID,
@@ -528,39 +321,16 @@ func GetUserConversations(userID int,
 			&conv.InquirerHasUnread,
 			&rockThrowerID,
 			&rockThrownAt,
+			&conv.Journal,
+			&conv.UpdatedAt,
 			&conv.AdTitle,
-			&conv.LastMessageContent,
-			&lastMessageAt,
 			&conv.RockCount,
-			&createdAtStr,
-			&updatedAtStr,
 			&conv.OtherUserID,
 			&conv.HasUnread,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan conversation: %w", err)
 		}
-
-		// Parse timestamps from strings
-		createdAt, err := time.Parse("2006-01-02 15:04:05", createdAtStr)
-		if err != nil {
-			// Try with microseconds if present
-			createdAt, err = time.Parse("2006-01-02 15:04:05.999999999", createdAtStr)
-			if err != nil {
-				createdAt = time.Now()
-			}
-		}
-		conv.CreatedAt = createdAt
-
-		updatedAt, err := time.Parse("2006-01-02 15:04:05", updatedAtStr)
-		if err != nil {
-			// Try with microseconds if present
-			updatedAt, err = time.Parse("2006-01-02 15:04:05.999999999", updatedAtStr)
-			if err != nil {
-				updatedAt = time.Now()
-			}
-		}
-		conv.UpdatedAt = updatedAt
 
 		if rockThrowerID.Valid {
 			id := int(rockThrowerID.Int64)
@@ -569,8 +339,12 @@ func GetUserConversations(userID int,
 		if rockThrownAt.Valid {
 			conv.RockThrownAt = &rockThrownAt.Time
 		}
-		if lastMessageAt.Valid {
-			conv.LastMessageAt = &lastMessageAt.Time
+		applyJournalDerivedTimes(&conv.Conversation)
+
+		if content, at, ok := LastMessagePreview(conv.Journal); ok {
+			conv.LastMessageContent = content
+			lastAt := at
+			conv.LastMessageAt = &lastAt
 		}
 
 		conversations = append(conversations, conv)
@@ -629,52 +403,29 @@ func enrichConversationListItems(conversations []ConversationWithLastMessage) {
 
 func GetConversationMessages(conversationID, userID int,
 	tz *time.Location) ([]Message, error) {
-	// Allow access if user is participant OR conversation is public
 	conv, err := GetConversation(conversationID, userID)
 	if err != nil {
 		return nil, err
 	}
-	_ = conv
-
-	query := `
-		SELECT id, conversation_id, sender_id, content, created_at
-		FROM messages
-		WHERE conversation_id = $1
-		ORDER BY created_at ASC
-	`
-	var messages []Message
-	err = db.Select(&messages, query, conversationID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get messages: %w", err)
-	}
-
-	for i := range messages {
-		messages[i].CreatedAt = messages[i].CreatedAt.In(tz)
-	}
-
-	return messages, nil
+	return MessagesFromJournal(conv.ID, conv.Journal, tz), nil
 }
 
 func CreateMessage(conversationID, senderID int,
 	content string) (Message, error) {
+	content = strings.TrimSpace(entrylog.SanitizeText(content))
 	if content == "" {
 		return Message{}, fmt.Errorf("message content cannot be empty")
 	}
 
-	// Get conversation (or create if it doesn't exist - this handles the case where conversationID is 0)
-	var conv Conversation
-	var err error
 	if conversationID == 0 {
-		// This shouldn't happen in normal flow, but handle it gracefully
 		return Message{}, fmt.Errorf("conversation ID is required")
 	}
 
-	conv, err = GetConversationByID(conversationID)
+	conv, err := GetConversationByID(conversationID)
 	if err != nil {
 		return Message{}, err
 	}
 
-	// Check if user can post (must be participant)
 	canPost, err := CanUserPost(conversationID, senderID)
 	if err != nil {
 		return Message{}, err
@@ -683,17 +434,9 @@ func CreateMessage(conversationID, senderID int,
 		return Message{}, ErrNotParticipant
 	}
 
-	var id int
-	err = db.QueryRow(`
-		INSERT INTO messages (conversation_id, sender_id, content, created_at)
-		VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
-		RETURNING id
-	`, conversationID, senderID, content).Scan(&id)
-	if err != nil {
-		return Message{}, fmt.Errorf("failed to create message: %w", err)
-	}
+	now := time.Now().UTC()
+	newJournal := AppendMessageEntry(conv.Journal, senderID, content, now, time.UTC)
 
-	// Set has_unread=true for the recipient (the one who didn't send the message)
 	var recipientField string
 	if conv.OwnerID == senderID {
 		recipientField = "inquirer_has_unread"
@@ -703,31 +446,18 @@ func CreateMessage(conversationID, senderID int,
 
 	_, err = db.Exec(fmt.Sprintf(`
 		UPDATE conversations
-		SET %s = 1
-		WHERE id = $1
-	`, recipientField), conversationID)
+		SET journal = $1, updated_at = $2, %s = 1
+		WHERE id = $3
+	`, recipientField), newJournal, now, conversationID)
 	if err != nil {
-		return Message{}, fmt.Errorf("failed to update conversation: %w", err)
+		return Message{}, fmt.Errorf("failed to create message: %w", err)
 	}
 
-	var msg Message
-	query := `
-		SELECT id, conversation_id, sender_id, content, created_at
-		FROM messages
-		WHERE id = $1
-	`
-	err = db.QueryRow(query, id).Scan(
-		&msg.ID,
-		&msg.ConversationID,
-		&msg.SenderID,
-		&msg.Content,
-		&msg.CreatedAt,
-	)
-	if err != nil {
-		return Message{}, fmt.Errorf("failed to get created message: %w", err)
+	msgs := MessagesFromJournal(conversationID, newJournal, time.UTC)
+	if len(msgs) == 0 {
+		return Message{}, fmt.Errorf("failed to read created message")
 	}
-
-	return msg, nil
+	return msgs[len(msgs)-1], nil
 }
 
 // GetHasUnread checks if the user has any unread conversations

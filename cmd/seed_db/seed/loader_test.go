@@ -3,11 +3,14 @@ package seed
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/rocky-ads/site/internal/ad"
+	"github.com/rocky-ads/site/internal/entrylog"
 )
 
 func TestAssembleDescription(t *testing.T) {
+	createdAt := time.Date(2024, 7, 4, 0, 0, 0, 0, time.UTC)
 	history := []HistoryEntryJSON{
 		{
 			Label: "Description Addition",
@@ -15,12 +18,15 @@ func TestAssembleDescription(t *testing.T) {
 			At:    "2024-09-12T15:30:00-04:00",
 		},
 	}
-	got, err := AssembleDescription("Original body.", history)
+	got, err := AssembleDescription("Original body.", history, createdAt)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(got, "\u001f") {
-		t.Fatal("expected history end marker")
+	if !strings.Contains(got, entrylog.Marker) {
+		t.Fatal("expected entry marker")
+	}
+	if !strings.Contains(got, ad.OriginalLabel) {
+		t.Fatal("expected original entry label")
 	}
 	parts := ad.ParseDescriptionForDisplay(got)
 	if parts.Original != "Original body." {

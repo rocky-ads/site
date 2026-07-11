@@ -172,12 +172,27 @@ func ConversationMessagesArea(conversationID int, canPost bool,
 	)
 }
 
+func messageActionsBannerVisible(d ConversationModalData) bool {
+	if d.CanPost && d.RockThrowerID != nil {
+		return true
+	}
+	return d.HasThrownRock || d.CanThrowRock
+}
+
 func ConversationMessageActionsBanner(d ConversationModalData,
 	extraAttrs ...g.Node) g.Node {
+	visible := messageActionsBannerVisible(d)
+	classes := "w-full flex-shrink-0 flex items-center justify-end gap-2"
+	if visible {
+		classes += " border-b border-zinc-200 dark:border-zinc-700 px-4 py-2"
+	}
 	attrs := append([]g.Node{
 		ID(fmt.Sprintf("conversation-%d-message-actions", d.ConversationID)),
-		Class("w-full flex-shrink-0 border-b border-zinc-200 dark:border-zinc-700 px-4 py-2 flex items-center justify-end gap-2"),
+		Class(classes),
 	}, extraAttrs...)
+	if !visible {
+		return Div(g.Group(attrs))
+	}
 	return Div(
 		g.Group(attrs),
 		g.If(d.CanPost && d.RockThrowerID != nil,
