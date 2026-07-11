@@ -53,6 +53,21 @@ func UserRockIcons(userID int, rockCount int) g.Node {
 	return renderRockIconsByOrdinal(rockCount, "/auth/user/%d/rock/%d", userID)
 }
 
+func rockThrowLinkContent(unthrow bool) g.Node {
+	circleClass := "rock-action-circle"
+	if unthrow {
+		circleClass += " rock-action-circle-slash"
+	}
+	return Span(
+		Class(circleClass),
+		Img(
+			Src("/images/rock.svg"),
+			Alt(""),
+			Class("w-5 h-5 flex-shrink-0"),
+		),
+	)
+}
+
 // RockThrowLink renders a link to throw/unthrow a rock in the conversation modal
 // hasThrownRock: whether the current user has thrown a rock at this conversation
 // canThrow: whether the current user can throw a rock (is participant and has < 3 rocks)
@@ -64,28 +79,23 @@ func RockThrowLink(conversationID int, hasThrownRock, canThrow bool,
 	}
 
 	var attrs []g.Node
-	var text string
-	var class string
+	var label string
 
 	if hasThrownRock {
 		// Unthrow link - user has thrown a rock, show remove option
-		text = "Remove Rock"
-		class = "text-red-600 dark:text-red-400 hover:underline text-sm"
+		label = "Remove rock"
 		attrs = []g.Node{
 			hx.Delete(fmt.Sprintf("/auth/conversation/%d/rock/unthrow", conversationID)),
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
-			hx.Target("body"),
-			hx.Swap("outerHTML"),
+			hx.Swap("none"),
 		}
 	} else if canThrow {
 		// Throw link - user can throw and hasn't thrown one yet
-		text = "Throw Rock"
-		class = "text-orange-600 dark:text-orange-400 hover:underline text-sm"
+		label = "Throw rock"
 		attrs = []g.Node{
 			hx.Post(fmt.Sprintf("/auth/conversation/%d/rock/throw", conversationID)),
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
-			hx.Target("body"),
-			hx.Swap("outerHTML"),
+			hx.Swap("none"),
 		}
 	} else {
 		// Shouldn't reach here due to check above, but just in case
@@ -95,8 +105,10 @@ func RockThrowLink(conversationID int, hasThrownRock, canThrow bool,
 	return A(
 		g.Group(attrs),
 		Href("#"),
-		Class(class),
-		g.Text(text),
+		Class("inline-flex cursor-pointer hover:opacity-80 transition-opacity"),
+		Title(label),
+		g.Attr("aria-label", label),
+		rockThrowLinkContent(hasThrownRock),
 	)
 }
 

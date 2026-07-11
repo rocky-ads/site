@@ -56,6 +56,10 @@ func ThrowRock(userID, conversationID int) error {
 		return fmt.Errorf("failed to throw rock: %w", err)
 	}
 
+	if err := RecordEvent(conversationID, userID, EventThrown); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -83,11 +87,12 @@ func getConversationForRock(conversationID int) (struct {
 func UnthrowRock(userID, conversationID int) error {
 	// Verify user is participant and threw the rock
 	var rockThrowerID sql.NullInt64
+	var rockThrownAt sql.NullTime
 	err := db.QueryRow(`
-		SELECT rock_thrower_id
+		SELECT rock_thrower_id, rock_thrown_at
 		FROM conversations
 		WHERE id = $1
-	`, conversationID).Scan(&rockThrowerID)
+	`, conversationID).Scan(&rockThrowerID, &rockThrownAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return ErrRockNotFound
@@ -101,6 +106,17 @@ func UnthrowRock(userID, conversationID int) error {
 
 	if int(rockThrowerID.Int64) != userID {
 		return fmt.Errorf("only the rock thrower can remove the rock")
+	}
+
+	if rockThrownAt.Valid {
+		if err := EnsureThrownEventRecorded(conversationID, userID,
+			rockThrownAt.Time); err != nil {
+			return err
+		}
+	}
+
+	if err := RecordEvent(conversationID, userID, EventUnthrown); err != nil {
+		return err
 	}
 
 	// Remove rock (making conversation private)

@@ -133,12 +133,21 @@ type MessageItemData struct {
 	CreatedAt     time.Time
 }
 
-// RockEventData holds presentation fields for a rock-thrown timeline entry.
-// ThrownAt is in the viewer's timezone.
+// RockEventKind identifies a rock journal entry type.
+type RockEventKind int
+
+const (
+	RockEventThrown RockEventKind = iota
+	RockEventUnthrown
+)
+
+// RockEventData holds presentation fields for a rock journal timeline entry.
+// EventAt is in the viewer's timezone.
 type RockEventData struct {
 	ThrowerID     int
 	CurrentUserID int
-	ThrownAt      time.Time
+	Kind          RockEventKind
+	EventAt       time.Time
 	OwnerID       int
 	InquirerID    int
 }

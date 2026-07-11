@@ -23,6 +23,8 @@ type conversationModalRenderMode int
 const (
 	modalRenderInitial conversationModalRenderMode = iota
 	modalRenderSwapOOB
+	modalRenderMessagesSwapOOB
+	modalRenderMessageActionsSwapOOB
 )
 
 func conversationModalData(conv message.Conversation, currentUserID,
@@ -60,15 +62,40 @@ func messageItemData(msg message.Message, currentUserID int,
 	}
 }
 
-func rockEventData(throwerID, currentUserID, ownerID, inquirerID int,
-	thrownAt time.Time, tz *time.Location) ui.RockEventData {
+func rockEventData(event rock.Event, currentUserID, ownerID,
+	inquirerID int) ui.RockEventData {
+	kind := ui.RockEventThrown
+	if event.Kind == rock.EventUnthrown {
+		kind = ui.RockEventUnthrown
+	}
 	return ui.RockEventData{
-		ThrowerID:     throwerID,
+		ThrowerID:     event.UserID,
 		CurrentUserID: currentUserID,
-		ThrownAt:      thrownAt.In(tz),
+		Kind:          kind,
+		EventAt:       event.CreatedAt,
 		OwnerID:       ownerID,
 		InquirerID:    inquirerID,
 	}
+}
+
+func rockEventsFromView(view message.ConversationModalView,
+	currentUserID int) []ui.RockEventData {
+	conv := view.Conversation
+	events := make([]ui.RockEventData, len(view.RockEvents))
+	for i, event := range view.RockEvents {
+		events[i] = rockEventData(event, currentUserID, conv.OwnerID,
+			conv.InquirerID)
+	}
+	return events
+}
+
+func messageTimelineFromView(view message.ConversationModalView,
+	currentUserID int, tz *time.Location) []g.Node {
+	msgs := make([]ui.MessageItemData, len(view.Messages))
+	for i, msg := range view.Messages {
+		msgs[i] = messageItemData(msg, currentUserID, tz)
+	}
+	return ui.MessageTimeline(msgs, rockEventsFromView(view, currentUserID))
 }
 
 func conversationListItemData(conversationID, adID, ownerID, inquirerID,
@@ -115,23 +142,6 @@ func conversationListItemFromConv(conv message.ConversationWithLastMessage,
 	}
 }
 
-func messageTimelineFromView(view message.ConversationModalView,
-	currentUserID int, tz *time.Location) []g.Node {
-	msgs := make([]ui.MessageItemData, len(view.Messages))
-	for i, msg := range view.Messages {
-		msgs[i] = messageItemData(msg, currentUserID, tz)
-	}
-	var rock *ui.RockEventData
-	conv := view.Conversation
-	if conv.RockThrowerID != nil && conv.RockThrownAt != nil {
-		e := rockEventData(
-			*conv.RockThrowerID, currentUserID, conv.OwnerID, conv.InquirerID,
-			*conv.RockThrownAt, tz)
-		rock = &e
-	}
-	return ui.MessageTimeline(msgs, rock)
-}
-
 func conversationModalDataFromView(view message.ConversationModalView,
 	currentUserID int, csrfToken, targetModalID string, messageNodes []g.Node) ui.ConversationModalData {
 	return conversationModalData(
@@ -156,10 +166,24 @@ func renderConversationModalView(c *fiber.Ctx,
 	csrfToken, targetModalID string, mode conversationModalRenderMode) error {
 	messageNodes := messageTimelineFromView(view, currentUserID, tz)
 	data := conversationModalDataFromView(view, currentUserID, csrfToken, targetModalID, messageNodes)
-	if mode == modalRenderInitial {
+	switch mode {
+	case modalRenderInitial:
 		return render(c, ui.ConversationModalWithRock(data))
+	case modalRenderSwapOOB:
+		return render(c, ui.ConversationModalSwapOOB(data))
+	case modalRenderMessagesSwapOOB:
+		return render(c, g.Group([]g.Node{
+			ui.ConversationMessagesSwapOOB(data),
+			ui.ConversationContentInputClearSwapOOB(data.ConversationID),
+		}))
+	case modalRenderMessageActionsSwapOOB:
+		return render(c, g.Group([]g.Node{
+			ui.ConversationMessageActionsSwapOOB(data),
+			ui.ConversationMessagesSwapOOB(data),
+		}))
+	default:
+		return render(c, ui.ConversationModalSwapOOB(data))
 	}
-	return render(c, ui.ConversationModalSwapOOB(data))
 }
 
 func renderConversationModal(c *fiber.Ctx, conv message.Conversation,
@@ -171,13 +195,13 @@ func renderConversationModal(c *fiber.Ctx, conv message.Conversation,
 	return renderConversationModalView(c, view, currentUserID, tz, csrfToken, "", modalRenderInitial)
 }
 
-func renderConversationModalSwapOOB(c *fiber.Ctx, conv message.Conversation,
+func renderConversationMessageActionsSwapOOB(c *fiber.Ctx, conv message.Conversation,
 	currentUserID int, tz *time.Location, csrfToken string) error {
 	view, err := message.BuildConversationModal(conv, currentUserID, tz)
 	if err != nil {
 		return buildConversationModalError(err)
 	}
-	return renderConversationModalView(c, view, currentUserID, tz, csrfToken, "", modalRenderSwapOOB)
+	return renderConversationModalView(c, view, currentUserID, tz, csrfToken, "", modalRenderMessageActionsSwapOOB)
 }
 
 func sendMessageSSE(conv message.Conversation, senderID int,
@@ -213,11 +237,11 @@ func sendMessageUpdate(conversationID int, msg message.Message, recipientID int)
 	}
 
 	messageNodes := messageTimelineFromView(view, recipientID, tz)
-	modalSwapOOB := ui.ConversationModalSwapOOB(conversationModalDataFromView(
+	messagesSwapOOB := ui.ConversationMessagesSwapOOB(conversationModalDataFromView(
 		view, recipientID, "", "", messageNodes))
-	modalHTML, err := renderToString(modalSwapOOB)
+	modalHTML, err := renderToString(messagesSwapOOB)
 	if err != nil {
-		logger.Error("Failed to render modal for SSE", "error", err, "conversationID", conversationID, "recipientID", recipientID)
+		logger.Error("Failed to render messages for SSE", "error", err, "conversationID", conversationID, "recipientID", recipientID)
 		return
 	}
 
@@ -292,11 +316,13 @@ func sendMessageAndRenderUpdate(c *fiber.Ctx, conv message.Conversation,
 	}
 
 	targetModalID := ""
+	renderMode := modalRenderMessagesSwapOOB
 	if isNewConversation {
 		targetModalID = "conversation-0-modal"
+		renderMode = modalRenderSwapOOB
 	}
 
-	return renderConversationModalView(c, view, currentUserID, tz, csrfToken, targetModalID, modalRenderSwapOOB)
+	return renderConversationModalView(c, view, currentUserID, tz, csrfToken, targetModalID, renderMode)
 }
 
 func sendConversationListItemUpdate(conv message.Conversation, currentUserID int,

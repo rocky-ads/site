@@ -65,8 +65,8 @@ func MessageItem(d MessageItemData, attrs ...g.Node) g.Node {
 	)
 }
 
-// RockThrownMessage renders a message-like item showing when a rock was thrown
-func RockThrownMessage(d RockEventData) g.Node {
+// RockEventMessage renders a journal entry for a rock throw or unthrow.
+func RockEventMessage(d RockEventData) g.Node {
 	isSent := d.ThrowerID == d.CurrentUserID
 
 	var bubbleClass string
@@ -79,7 +79,12 @@ func RockThrownMessage(d RockEventData) g.Node {
 		containerClass = "flex justify-start"
 	}
 
-	fullTimestamp := d.ThrownAt.Format("2006-01-02 03:04:05 PM MST")
+	label := "Rock thrown"
+	if d.Kind == RockEventUnthrown {
+		label = "Rock unthrown"
+	}
+
+	fullTimestamp := d.EventAt.Format("2006-01-02 03:04:05 PM MST")
 
 	return Div(
 		Class(containerClass+" mb-2"),
@@ -90,24 +95,25 @@ func RockThrownMessage(d RockEventData) g.Node {
 				Class("px-4 py-2 "+bubbleClass+" flex items-center gap-2"),
 				Img(
 					Src("/images/rock.svg"),
-					Alt("Rock thrown"),
+					Alt(label),
 					Class("w-5 h-5 flex-shrink-0"),
 				),
-				g.Text("Rock thrown"),
+				g.Text(label),
 			),
 			Div(
 				Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1 px-1"),
-				g.Text(formatMessageTime(d.ThrownAt)),
+				g.Text(formatMessageTime(d.EventAt)),
 			),
 		),
 	)
 }
 
-// MessageTimeline renders chat messages with an optional rock event inserted
+// MessageTimeline renders chat messages with rock journal entries inserted
 // chronologically. Message and rock timestamps must already be in the viewer's
 // timezone.
-func MessageTimeline(messages []MessageItemData, rock *RockEventData) []g.Node {
-	if rock == nil {
+func MessageTimeline(messages []MessageItemData,
+	rocks []RockEventData) []g.Node {
+	if len(rocks) == 0 {
 		nodes := make([]g.Node, len(messages))
 		for i, m := range messages {
 			nodes[i] = MessageItem(m)
@@ -116,16 +122,18 @@ func MessageTimeline(messages []MessageItemData, rock *RockEventData) []g.Node {
 	}
 
 	var nodes []g.Node
-	inserted := false
-	for _, m := range messages {
-		if !inserted && m.CreatedAt.After(rock.ThrownAt) {
-			nodes = append(nodes, RockThrownMessage(*rock))
-			inserted = true
+	ri, mi := 0, 0
+	for ri < len(rocks) || mi < len(messages) {
+		useRock := mi >= len(messages) ||
+			(ri < len(rocks) &&
+				!rocks[ri].EventAt.After(messages[mi].CreatedAt))
+		if useRock {
+			nodes = append(nodes, RockEventMessage(rocks[ri]))
+			ri++
+			continue
 		}
-		nodes = append(nodes, MessageItem(m))
-	}
-	if !inserted {
-		nodes = append(nodes, RockThrownMessage(*rock))
+		nodes = append(nodes, MessageItem(messages[mi]))
+		mi++
 	}
 	return nodes
 }
@@ -135,6 +143,68 @@ func ConversationMessagesSentinel(conversationID int) g.Node {
 		ID(fmt.Sprintf("conversation-%d-sentinel", conversationID)),
 		g.Attr("style", "display: none;"),
 	)
+}
+
+func ConversationMessagesArea(conversationID int, canPost bool,
+	messageNodes []g.Node, extraAttrs ...g.Node) g.Node {
+	attrs := append([]g.Node{
+		ID(fmt.Sprintf("conversation-%d-messages", conversationID)),
+		Class("flex-1 overflow-y-auto p-4 space-y-2"),
+	}, extraAttrs...)
+	return Div(
+		g.Group(attrs),
+		g.If(len(messageNodes) == 0,
+			Div(
+				ID(fmt.Sprintf("conversation-%d-empty-message", conversationID)),
+				Class("text-center text-zinc-500 dark:text-zinc-400 py-8"),
+				g.If(canPost,
+					g.Text("No messages yet. Start the conversation!"),
+				),
+				g.If(!canPost,
+					g.Text("No messages yet."),
+				),
+			),
+		),
+		g.If(len(messageNodes) > 0,
+			g.Group(messageNodes),
+		),
+		ConversationMessagesSentinel(conversationID),
+	)
+}
+
+func ConversationMessageActionsBanner(d ConversationModalData,
+	extraAttrs ...g.Node) g.Node {
+	attrs := append([]g.Node{
+		ID(fmt.Sprintf("conversation-%d-message-actions", d.ConversationID)),
+		Class("w-full flex-shrink-0 border-b border-zinc-200 dark:border-zinc-700 px-4 py-2 flex items-center justify-end gap-2"),
+	}, extraAttrs...)
+	return Div(
+		g.Group(attrs),
+		g.If(d.CanPost && d.RockThrowerID != nil,
+			RockOpinionLink(d.ConversationID),
+		),
+		RockThrowLink(d.ConversationID, d.HasThrownRock,
+			d.CanThrowRock, d.CSRFToken),
+	)
+}
+
+func ConversationMessagesPanel(d ConversationModalData) g.Node {
+	return Div(
+		Class("flex-1 flex flex-col"),
+		Style("min-height: 0"),
+		ConversationMessageActionsBanner(d),
+		ConversationMessagesArea(d.ConversationID, d.CanPost, d.MessageNodes),
+	)
+}
+
+// ConversationMessagesSwapOOB updates only the message timeline in an open modal.
+func ConversationMessagesSwapOOB(d ConversationModalData) g.Node {
+	return ConversationMessagesArea(
+		d.ConversationID, d.CanPost, d.MessageNodes, hx.SwapOOB("outerHTML"))
+}
+
+func ConversationMessageActionsSwapOOB(d ConversationModalData) g.Node {
+	return ConversationMessageActionsBanner(d, hx.SwapOOB("outerHTML"))
 }
 
 func ConversationListItemSwapOOB(conversationID int,
@@ -147,8 +217,8 @@ func ConversationListItemSwapOOB(conversationID int,
 	)
 }
 
-func ConversationContentInput(conversationID int, attrs ...g.Node) g.Node {
-	allAttrs := []g.Node{
+func conversationContentInputAttrs(conversationID int) []g.Node {
+	return []g.Node{
 		ID(fmt.Sprintf("conversation-%d-content-input", conversationID)),
 		Type("text"),
 		Name("content"),
@@ -156,14 +226,22 @@ func ConversationContentInput(conversationID int, attrs ...g.Node) g.Node {
 		Required(),
 		Class("flex-1 px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200"),
 		g.Attr("onkeydown", "if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); this.form.requestSubmit(); }"),
-		g.Attr("hx-preserve", "true"), // Preserve input value during outerHTML swaps
 	}
-	allAttrs = append(allAttrs, attrs...)
+}
+
+func ConversationContentInput(conversationID int, attrs ...g.Node) g.Node {
+	allAttrs := append(conversationContentInputAttrs(conversationID), attrs...)
 	return Input(g.Group(allAttrs))
 }
 
-func ConversationForm(conversationID, adID int, csrfToken string, canPost bool,
-	hasThrownRock, canThrowRock bool, hasPublicRock bool, messageCount int) g.Node {
+// ConversationContentInputClearSwapOOB replaces the message input with an empty field after send.
+func ConversationContentInputClearSwapOOB(conversationID int) g.Node {
+	attrs := append(conversationContentInputAttrs(conversationID), hx.SwapOOB("outerHTML"))
+	return Input(g.Group(attrs))
+}
+
+func ConversationForm(conversationID, adID int, csrfToken string,
+	canPost bool) g.Node {
 	modalName := fmt.Sprintf("conversation-%d", conversationID)
 	attrs := []g.Node{
 		ID(fmt.Sprintf("%s-form", modalName)),
@@ -210,32 +288,11 @@ func ConversationForm(conversationID, adID int, csrfToken string, canPost bool,
 				),
 			),
 		),
-		// Rock throw link below the input (only shown if conversation has messages)
-		g.If(messageCount > 0,
-			Div(
-				ID(fmt.Sprintf("%s-rock-link-container", modalName)),
-				Class("mt-2"),
-				RockThrowLink(conversationID, hasThrownRock, canThrowRock, csrfToken),
-			),
-		),
-		g.If(messageCount == 0,
-			Div(
-				ID(fmt.Sprintf("%s-rock-link-container", modalName)),
-				Class("mt-2"),
-			),
-		),
-		g.If(canPost && hasPublicRock,
-			Div(
-				Class("mt-2"),
-				RockOpinionLink(conversationID),
-				RockOpinionIndicator(),
-			),
-		),
 	)
 }
 
-// ConversationModalSwapOOB returns just the modal div (without backdrop) with hx-swap-oob="outerHTML" for updating via SSE or OOB swaps
-// This is used to update the modal when messages are sent or rocks are thrown
+// ConversationModalSwapOOB returns the modal div with hx-swap-oob="outerHTML".
+// Used when the first message creates a conversation.
 func ConversationModalSwapOOB(d ConversationModalData) g.Node {
 	modalName := fmt.Sprintf("conversation-%d", d.ConversationID)
 	modalID := modalName + "-modal"
@@ -318,30 +375,9 @@ func ConversationModalSwapOOB(d ConversationModalData) g.Node {
 					),
 				),
 			),
-			Div(
-				ID(fmt.Sprintf("%s-messages", modalName)),
-				Class("flex-1 overflow-y-auto p-4 space-y-2"),
-				g.If(len(d.MessageNodes) == 0,
-					Div(
-						ID(fmt.Sprintf("conversation-%d-empty-message", d.ConversationID)),
-						Class("text-center text-zinc-500 dark:text-zinc-400 py-8"),
-						g.If(d.CanPost,
-							g.Text("No messages yet. Start the conversation!"),
-						),
-						g.If(!d.CanPost,
-							g.Text("No messages yet."),
-						),
-					),
-				),
-				g.If(len(d.MessageNodes) > 0,
-					g.Group(d.MessageNodes),
-				),
-				ConversationMessagesSentinel(d.ConversationID),
-			),
+			ConversationMessagesPanel(d),
 			ConversationForm(
-				d.ConversationID, d.AdID, d.CSRFToken,
-				d.CanPost, d.HasThrownRock, d.CanThrowRock,
-				d.RockThrowerID != nil, len(d.MessageNodes),
+				d.ConversationID, d.AdID, d.CSRFToken, d.CanPost,
 			),
 		),
 	)
@@ -425,30 +461,9 @@ func ConversationModalWithRock(d ConversationModalData) g.Node {
 						),
 					),
 				),
-				Div(
-					ID(fmt.Sprintf("%s-messages", modalName)),
-					Class("flex-1 overflow-y-auto p-4 space-y-2"),
-					g.If(len(d.MessageNodes) == 0,
-						Div(
-							ID(fmt.Sprintf("conversation-%d-empty-message", d.ConversationID)),
-							Class("text-center text-zinc-500 dark:text-zinc-400 py-8"),
-							g.If(d.CanPost,
-								g.Text("No messages yet. Start the conversation!"),
-							),
-							g.If(!d.CanPost,
-								g.Text("No messages yet."),
-							),
-						),
-					),
-					g.If(len(d.MessageNodes) > 0,
-						g.Group(d.MessageNodes),
-					),
-					ConversationMessagesSentinel(d.ConversationID),
-				),
+				ConversationMessagesPanel(d),
 				ConversationForm(
-					d.ConversationID, d.AdID, d.CSRFToken,
-					d.CanPost, d.HasThrownRock, d.CanThrowRock,
-					d.RockThrowerID != nil, len(d.MessageNodes),
+					d.ConversationID, d.AdID, d.CSRFToken, d.CanPost,
 				),
 			),
 		),

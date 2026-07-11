@@ -217,22 +217,21 @@ func adFactItems(facts []string) []g.Node {
 
 // RockOpinionLink renders a link for participants to view the assessment.
 func RockOpinionLink(conversationID int) g.Node {
+	const label = "View dispute assessment"
 	return A(
 		Href("#"),
-		Class("text-orange-600 dark:text-orange-400 hover:underline text-sm"),
+		ID(fmt.Sprintf("rock-opinion-link-%d", conversationID)),
+		Class("flex-shrink-0 cursor-pointer rock-opinion-link"),
 		hx.Get(fmt.Sprintf("/auth/conversation/%d/rock-opinion", conversationID)),
 		hx.Target("body"),
 		hx.Swap("beforeend"),
-		hx.Indicator("#rock-opinion-indicator"),
-		g.Text("View dispute assessment"),
-	)
-}
-
-// RockOpinionIndicator is shown while an assessment is being generated.
-func RockOpinionIndicator() g.Node {
-	return Span(
-		ID("rock-opinion-indicator"),
-		Class("htmx-indicator text-sm text-zinc-500 dark:text-zinc-400 ml-2"),
-		g.Text("Generating assessment…"),
+		hx.Indicator("this"),
+		Title(label),
+		g.Attr("aria-label", label),
+		Img(
+			Src("/images/balance.svg"),
+			Alt(label),
+			Class("w-6 h-6 dark:invert dark:opacity-80"),
+		),
 	)
 }
