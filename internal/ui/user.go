@@ -397,15 +397,15 @@ func SettingsPage(name, phoneE64 string, smsOptedOut bool) []g.Node {
 				Class("space-y-4"),
 				hx.Post("/auth/user/settings/password"),
 				hx.Swap("none"),
-				labeledPasswordField("Current Password", "current_password", "current-password"),
+				labeledPasswordField("Current Password", "current_password", "current-password", false),
 				Div(
-					labeledPasswordField("New Password", "new_password", "new-password"),
+					labeledPasswordField("New Password", "new_password", "new-password", false),
 					Span(
 						Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1 block"),
 						g.Text(password.StrengthRequirements),
 					),
 				),
-				labeledPasswordField("Confirm New Password", "confirm_password", "new-password"),
+				labeledPasswordField("Confirm New Password", "confirm_password", "new-password", false),
 				settingsFormActions(buttonProps{
 					Type: "submit",
 					Text: "Change Password",
@@ -421,7 +421,7 @@ func SettingsPage(name, phoneE64 string, smsOptedOut bool) []g.Node {
 				Class("space-y-4"),
 				hx.Post("/auth/user/settings/delete"),
 				hx.Swap("none"),
-				labeledPasswordField("Password", "password", "current-password"),
+				labeledPasswordField("Password", "password", "current-password", false),
 				settingsFormActions(buttonProps{
 					Type:  "submit",
 					Text:  "Delete My Account",

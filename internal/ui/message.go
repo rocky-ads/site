@@ -283,7 +283,7 @@ func ConversationForm(conversationID, adID int, csrfToken string,
 		Div(
 			Class("flex gap-2"),
 			g.If(canPost,
-				ConversationContentInput(conversationID),
+				ConversationContentInput(conversationID, Autofocus()),
 			),
 			g.If(!canPost,
 				Input(

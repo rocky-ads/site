@@ -64,7 +64,7 @@ func RegisterForm() g.Node {
 		ID("registerForm"),
 		hx.Post("/api/register/step1"),
 		hx.Swap("none"),
-		userNameInput(true, "username"),
+		userNameInput(true, "username", true),
 		phoneInput(),
 		offers(),
 		Div(
@@ -124,12 +124,13 @@ func verificationCodeInput() g.Node {
 			g.Attr("pattern", "[0-9]*"),
 			g.Attr("maxlength", "6"),
 			g.Attr("placeholder", "000000"),
+			Autofocus(),
 		),
 	)
 }
 
 func passwordInput2() g.Node {
-	return labeledPasswordField("Confirm Password", "password2", "off")
+	return labeledPasswordField("Confirm Password", "password2", "off", false)
 }
 
 func terms() g.Node {
@@ -195,7 +196,7 @@ func RegisterPassword(username, phoneE64 string) g.Node {
 		hiddenUserName(username),
 		hiddenPhone(phoneE64),
 		Div(
-			passwordInput("new-password"),
+			labeledPasswordField("Password", "password", "new-password", true),
 			Span(
 				Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1 block"),
 				g.Text(password.StrengthRequirements),

@@ -6,17 +6,21 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-func userNameInput(showHelp bool, autocomplete string) g.Node {
+func userNameInput(showHelp bool, autocomplete string, autofocus bool) g.Node {
+	attrs := []g.Node{
+		Type("text"),
+		Name("username"),
+		MinLength("3"),
+		MaxLength("20"),
+		g.Attr("pattern", "^[a-zA-Z][a-zA-Z0-9]{2,19}$"),
+		g.Attr("autocomplete", autocomplete),
+		Required(),
+	}
+	if autofocus {
+		attrs = append(attrs, Autofocus())
+	}
 	return Div(
-		labeledTextInput("Username", "username",
-			Type("text"),
-			Name("username"),
-			MinLength("3"),
-			MaxLength("20"),
-			g.Attr("pattern", "^[a-zA-Z][a-zA-Z0-9]{2,19}$"),
-			g.Attr("autocomplete", autocomplete),
-			Required(),
-		),
+		labeledTextInput("Username", "username", attrs...),
 		g.If(showHelp, Span(
 			Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1"),
 			g.Text("3-20 characters, letters and digits only. Must start with a letter."),
@@ -25,7 +29,7 @@ func userNameInput(showHelp bool, autocomplete string) g.Node {
 }
 
 func passwordInput(autocomplete string) g.Node {
-	return labeledPasswordField("Password", "password", autocomplete)
+	return labeledPasswordField("Password", "password", autocomplete, false)
 }
 
 func LoginForm() g.Node {
@@ -33,7 +37,7 @@ func LoginForm() g.Node {
 		Class("space-y-8 mt-8"),
 		hx.Post("/api/login"),
 		hx.Swap("none"),
-		userNameInput(false, "username"),
+		userNameInput(false, "username", true),
 		passwordInput("current-password"),
 		Div(
 			Class("flex items-center gap-4"),

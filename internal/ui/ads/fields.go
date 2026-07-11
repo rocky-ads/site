@@ -253,6 +253,9 @@ func (f adFields) titleInput() g.Node {
 	if f.cfg.Values.Title != "" {
 		attrs = append(attrs, Value(f.cfg.Values.Title))
 	}
+	if f.cfg.Mode == AdFormCreate {
+		attrs = append(attrs, g.Attr("autofocus", "autofocus"))
+	}
 	return Input(attrs...)
 }
 

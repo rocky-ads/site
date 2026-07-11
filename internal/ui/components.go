@@ -12,6 +12,11 @@ import (
 const textFieldClass = "w-full p-2 border border-zinc-300 dark:border-zinc-200 rounded-md " +
 	"bg-transparent text-zinc-900 dark:text-zinc-200"
 
+// Autofocus marks a field for initial focus. HTMX focuses [autofocus] after swaps.
+func Autofocus() g.Node {
+	return g.Attr("autofocus", "autofocus")
+}
+
 func labeledTextInput(labelText, fieldID string, attrs ...g.Node) g.Node {
 	inputAttrs := append([]g.Node{Class(textFieldClass), ID(fieldID)}, attrs...)
 	return Div(
@@ -34,6 +39,7 @@ type PasswordFieldView struct {
 	Autocomplete string
 	Value        string
 	Visible      bool
+	Autofocus    bool
 }
 
 func passwordFieldID(name string) string {
@@ -83,6 +89,9 @@ func PasswordField(view PasswordFieldView) g.Node {
 	if view.Value != "" {
 		inputAttrs = append(inputAttrs, Value(view.Value))
 	}
+	if view.Autofocus {
+		inputAttrs = append(inputAttrs, Autofocus())
+	}
 
 	wrapID := passwordFieldWrapID(view.Name)
 	toggleVisible := !view.Visible
@@ -113,12 +122,14 @@ func PasswordField(view PasswordFieldView) g.Node {
 	)
 }
 
-func labeledPasswordField(labelText, name, autocomplete string) g.Node {
+func labeledPasswordField(labelText, name, autocomplete string,
+	autofocus bool) g.Node {
 	return Div(
 		fieldLabel(labelText, passwordFieldID(name)),
 		PasswordField(PasswordFieldView{
 			Name:         name,
 			Autocomplete: autocomplete,
+			Autofocus:    autofocus,
 		}),
 	)
 }

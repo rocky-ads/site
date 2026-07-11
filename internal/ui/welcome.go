@@ -57,7 +57,7 @@ func WelcomePage(rockCount int) []g.Node {
 						Type:  "submit",
 						Text:  "Go To Ads",
 						Class: "font-semibold py-3",
-						Attrs: []g.Node{g.Attr("autofocus", "autofocus")},
+						Attrs: []g.Node{Autofocus()},
 					}),
 				),
 			),
