@@ -9,9 +9,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/imagestore"
+	"github.com/rocky-ads/site/internal/journal"
 	"github.com/rocky-ads/site/internal/logger"
 )
 
@@ -214,6 +216,16 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 		return conversations[i].Ref < conversations[j].Ref
 	})
 
+	msgsByConv := make(map[int][]MessageRow, len(conversations))
+	for _, m := range messages {
+		msgsByConv[m.ConversationRef] = append(msgsByConv[m.ConversationRef], m)
+	}
+	for ref := range msgsByConv {
+		sort.Slice(msgsByConv[ref], func(i, j int) bool {
+			return msgsByConv[ref][i].CreatedAt.Before(msgsByConv[ref][j].CreatedAt)
+		})
+	}
+
 	convRefToID := make(map[int]int, len(conversations))
 	for _, c := range conversations {
 		adID, ok := adRefToID[c.AdRef]
@@ -243,39 +255,18 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 			INSERT INTO conversations (
 				ad_id, owner_id, inquirer_id,
 				owner_has_unread, inquirer_has_unread,
-				rock_thrower_id, rock_thrown_at
-			) VALUES ($1, $2, $3, $4, $5, $6, $7)
+				rock_thrower_id, rock_thrown_at, journal
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 			RETURNING id`,
 			adID, ownerID, inquirerID,
 			c.OwnerHasUnread, c.InquirerHasUnread,
 			rockThrowerID, c.RockThrownAt,
+			buildConversationJournal(c, msgsByConv[c.Ref], userHashToID),
 		).Scan(&newID)
 		if err != nil {
 			return fmt.Errorf("insert conversation ref %d: %w", c.Ref, err)
 		}
 		convRefToID[c.Ref] = newID
-	}
-
-	for _, m := range messages {
-		convID, ok := convRefToID[m.ConversationRef]
-		if !ok {
-			return fmt.Errorf(
-				"unknown conversation ref %d for message", m.ConversationRef,
-			)
-		}
-		senderID, ok := userHashToID[m.SenderHash]
-		if !ok {
-			return fmt.Errorf("unknown sender for message")
-		}
-		_, err := db.Exec(`
-			INSERT INTO messages (
-				conversation_id, sender_id, content, created_at
-			) VALUES ($1, $2, $3, $4)`,
-			convID, senderID, m.Content, m.CreatedAt,
-		)
-		if err != nil {
-			return fmt.Errorf("insert message: %w", err)
-		}
 	}
 
 	for _, o := range opinions {
@@ -376,9 +367,52 @@ func resolveLocationID(loc LocationRow) (int, error) {
 	return id, nil
 }
 
+func buildConversationJournal(c ConversationRow, msgs []MessageRow,
+	userHashToID map[string]int) string {
+	type journalEvent struct {
+		at     time.Time
+		append func(string) string
+	}
+	var events []journalEvent
+
+	if c.RockThrowerHash != nil && c.RockThrownAt != nil {
+		throwerID := userHashToID[*c.RockThrowerHash]
+		thrownAt := *c.RockThrownAt
+		events = append(events, journalEvent{
+			at: thrownAt,
+			append: func(j string) string {
+				return journal.AppendRock(j, journal.RockThrown, throwerID,
+					thrownAt, time.UTC)
+			},
+		})
+	}
+	for _, m := range msgs {
+		senderID := userHashToID[m.SenderHash]
+		content := m.Content
+		createdAt := m.CreatedAt
+		events = append(events, journalEvent{
+			at: createdAt,
+			append: func(j string) string {
+				return journal.AppendMessage(j, senderID, content, createdAt,
+					time.UTC)
+			},
+		})
+	}
+
+	sort.Slice(events, func(i, j int) bool {
+		return events[i].at.Before(events[j].at)
+	})
+
+	j := ""
+	for _, e := range events {
+		j = e.append(j)
+	}
+	return j
+}
+
 func syncIdentitySequences() error {
 	tables := []string{
-		"users", "locations", "ads", "conversations", "messages",
+		"users", "locations", "ads", "conversations",
 	}
 	for _, table := range tables {
 		var maxID int

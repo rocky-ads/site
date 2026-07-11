@@ -16,7 +16,9 @@ import (
 	"github.com/rocky-ads/site/internal/db/testdb"
 	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/imagestore"
+	"github.com/rocky-ads/site/internal/journal"
 	"github.com/rocky-ads/site/internal/logger"
+	"github.com/rocky-ads/site/internal/message"
 	"github.com/rocky-ads/site/internal/user"
 )
 
@@ -142,13 +144,9 @@ func TestBackupRestoreRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("insert conversation: %v", err)
 	}
-	_, err = db.Exec(`
-		INSERT INTO messages (conversation_id, sender_id, content, created_at)
-		VALUES ($1, $2, $3, $4)`,
-		convID, bob.ID, "Is this still available?", clickedAt,
-	)
+	_, err = message.CreateMessage(convID, bob.ID, "Is this still available?")
 	if err != nil {
-		t.Fatalf("insert message: %v", err)
+		t.Fatalf("create message: %v", err)
 	}
 
 	imageDir := t.TempDir()
@@ -244,16 +242,19 @@ func TestBackupRestoreRoundTrip(t *testing.T) {
 
 	var msgContent string
 	err = db.QueryRow(`
-		SELECT m.content FROM messages m
-		JOIN conversations c ON c.id = m.conversation_id
+		SELECT c.journal FROM conversations c
 		WHERE c.ad_id = $1`,
 		restoredID,
 	).Scan(&msgContent)
 	if err != nil {
-		t.Fatalf("query message: %v", err)
+		t.Fatalf("query conversation journal: %v", err)
 	}
-	if msgContent != "Is this still available?" {
-		t.Fatalf("message = %q", msgContent)
+	content, _, ok := journal.LastMessagePreview(msgContent)
+	if !ok {
+		t.Fatal("expected message in restored journal")
+	}
+	if content != "Is this still available?" {
+		t.Fatalf("message = %q", content)
 	}
 
 	restoredImage, err := restoreStore.Get(restoredID, 1, "480w")
