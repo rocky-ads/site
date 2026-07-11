@@ -339,6 +339,12 @@ func isLocalhost(hostname string) bool {
 // Returns an error if configuration is invalid, nil if SMS is ready or disabled
 func Init() error {
 
+	if config.AllowTestRegistration {
+		logger.Warn("SMS Twilio validation skipped (ALLOW_TEST_REGISTRATION enabled)",
+			"component", "SMS")
+		return nil
+	}
+
 	// Validate Twilio SMS configuration
 	// All SMS variables are required to be non-empty
 	if config.TwilioAccountSID == "" {

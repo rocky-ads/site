@@ -126,11 +126,22 @@ var (
 	// When LOCAL_DEVELOPMENT is set, cookies will work over HTTP even if TWILIO_WEBHOOK_URL is HTTPS
 	CookieSecure = os.Getenv("LOCAL_DEVELOPMENT") != "true"
 
+	// AllowTestRegistration skips SMS verification for +1555010xxxx phones (dev/test harness).
+	AllowTestRegistration = os.Getenv("ALLOW_TEST_REGISTRATION") == "true"
+
 	// Logging configuration
 	LogLevel  = getEnvWithDefault("LOG_LEVEL", "info")
 	LogFormat = getEnvWithDefault("LOG_FORMAT", "json")
 	LogFile   = getEnvWithDefault("LOG_FILE", "")
 )
+
+// EffectiveRegistrationRateLimitMax returns the registration rate limit max attempts.
+func EffectiveRegistrationRateLimitMax() int {
+	if AllowTestRegistration {
+		return 100
+	}
+	return RegistrationRateLimitMax
+}
 
 // getEnvWithDefault returns the environment variable value or a default if not set
 func getEnvWithDefault(key, defaultValue string) string {
@@ -226,4 +237,8 @@ func SecurityCheck() {
 		logger.Fatal("USER_ENCRYPTION_KEY must be 32 bytes (256 bits)")
 	}
 	logger.Info("User encryption key configured", "length", len(UserEncryptionKey))
+
+	if AllowTestRegistration {
+		logger.Warn("ALLOW_TEST_REGISTRATION is enabled: test phone signup skips SMS verification")
+	}
 }
