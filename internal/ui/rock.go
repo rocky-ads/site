@@ -54,17 +54,17 @@ func UserRockIcons(userID int, rockCount int) g.Node {
 }
 
 func rockThrowLinkContent(thrown bool) g.Node {
-	circleClass := "rock-action-circle"
+	plungerClass := "rock-plunger"
 	if thrown {
-		circleClass += " rock-action-circle--thrown"
+		plungerClass += " rock-plunger--thrown"
+	}
+	label := "Throw Rock"
+	if thrown {
+		label = "Unthrow Rock"
 	}
 	return Span(
-		Class(circleClass),
-		Img(
-			Src("/images/rock.svg"),
-			Alt(""),
-			Class("rock-action-circle__icon"),
-		),
+		Class(plungerClass),
+		Span(Class("rock-plunger__face"), g.Text(label)),
 	)
 }
 
@@ -83,7 +83,7 @@ func RockThrowLink(conversationID int, hasThrownRock, canThrow bool,
 
 	if hasThrownRock {
 		// Unthrow link - user has thrown a rock, show remove option
-		label = "Remove rock"
+		label = "Unthrow Rock"
 		attrs = []g.Node{
 			hx.Delete(fmt.Sprintf("/auth/conversation/%d/rock/unthrow", conversationID)),
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
@@ -91,7 +91,7 @@ func RockThrowLink(conversationID int, hasThrownRock, canThrow bool,
 		}
 	} else if canThrow {
 		// Throw link - user can throw and hasn't thrown one yet
-		label = "Throw rock"
+		label = "Throw Rock"
 		attrs = []g.Node{
 			hx.Post(fmt.Sprintf("/auth/conversation/%d/rock/throw", conversationID)),
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
