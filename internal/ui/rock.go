@@ -53,17 +53,17 @@ func UserRockIcons(userID int, rockCount int) g.Node {
 	return renderRockIconsByOrdinal(rockCount, "/auth/user/%d/rock/%d", userID)
 }
 
-func rockThrowLinkContent(unthrow bool) g.Node {
+func rockThrowLinkContent(thrown bool) g.Node {
 	circleClass := "rock-action-circle"
-	if unthrow {
-		circleClass += " rock-action-circle-slash"
+	if thrown {
+		circleClass += " rock-action-circle--thrown"
 	}
 	return Span(
 		Class(circleClass),
 		Img(
 			Src("/images/rock.svg"),
 			Alt(""),
-			Class("w-5 h-5 flex-shrink-0"),
+			Class("rock-action-circle__icon"),
 		),
 	)
 }
@@ -105,9 +105,10 @@ func RockThrowLink(conversationID int, hasThrownRock, canThrow bool,
 	return A(
 		g.Group(attrs),
 		Href("#"),
-		Class("inline-flex cursor-pointer hover:opacity-80 transition-opacity"),
+		Class("rock-throw-link"),
 		Title(label),
 		g.Attr("aria-label", label),
+		g.Attr("aria-pressed", fmt.Sprintf("%t", hasThrownRock)),
 		rockThrowLinkContent(hasThrownRock),
 	)
 }

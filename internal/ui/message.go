@@ -182,7 +182,7 @@ func messageActionsBannerVisible(d ConversationModalData) bool {
 func ConversationMessageActionsBanner(d ConversationModalData,
 	extraAttrs ...g.Node) g.Node {
 	visible := messageActionsBannerVisible(d)
-	classes := "w-full flex-shrink-0 flex items-center justify-end gap-2"
+	classes := "w-full flex-shrink-0 flex items-center justify-end gap-3"
 	if visible {
 		classes += " border-b border-zinc-200 dark:border-zinc-700 px-4 py-2"
 	}
