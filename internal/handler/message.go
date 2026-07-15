@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -23,8 +24,6 @@ type conversationModalRenderMode int
 const (
 	modalRenderInitial conversationModalRenderMode = iota
 	modalRenderSwapOOB
-	modalRenderMessagesSwapOOB
-	modalRenderMessageActionsSwapOOB
 )
 
 func conversationModalData(conv message.Conversation, currentUserID,
@@ -171,16 +170,6 @@ func renderConversationModalView(c *fiber.Ctx,
 		return render(c, ui.ConversationModalWithRock(data))
 	case modalRenderSwapOOB:
 		return render(c, ui.ConversationModalSwapOOB(data))
-	case modalRenderMessagesSwapOOB:
-		return render(c, g.Group([]g.Node{
-			ui.ConversationMessagesSwapOOB(data),
-			ui.ConversationContentInputClearSwapOOB(data.ConversationID),
-		}))
-	case modalRenderMessageActionsSwapOOB:
-		return render(c, g.Group([]g.Node{
-			ui.ConversationMessageActionsSwapOOB(data),
-			ui.ConversationMessagesSwapOOB(data),
-		}))
 	default:
 		return render(c, ui.ConversationModalSwapOOB(data))
 	}
@@ -195,13 +184,89 @@ func renderConversationModal(c *fiber.Ctx, conv message.Conversation,
 	return renderConversationModalView(c, view, currentUserID, tz, csrfToken, "", modalRenderInitial)
 }
 
-func renderConversationMessageActionsSwapOOB(c *fiber.Ctx, conv message.Conversation,
-	currentUserID int, tz *time.Location, csrfToken string) error {
-	view, err := message.BuildConversationModal(conv, currentUserID, tz)
+func buildRockEventUpdateNodes(conv message.Conversation, viewerID int,
+	tz *time.Location, csrfToken string, rockEventOOB bool) ([]g.Node, error) {
+	view, err := message.BuildConversationModal(conv, viewerID, tz)
 	if err != nil {
-		return buildConversationModalError(err)
+		return nil, err
 	}
-	return renderConversationModalView(c, view, currentUserID, tz, csrfToken, "", modalRenderMessageActionsSwapOOB)
+
+	events := message.RockEventsFromJournal(conv.Journal, tz)
+	if len(events) == 0 {
+		return nil, fmt.Errorf("no rock events in journal")
+	}
+	lastEvent := events[len(events)-1]
+	clearEmpty := len(view.Messages) == 0 && len(events) == 1
+
+	var rockAttrs []g.Node
+	if rockEventOOB {
+		rockAttrs = append(rockAttrs,
+			ui.ConversationMessageAppendOOB(conv.ID))
+	}
+
+	nodes := []g.Node{
+		ui.RockEventMessage(rockEventData(lastEvent, viewerID,
+			conv.OwnerID, conv.InquirerID), rockAttrs...),
+		ui.ConversationMessageActionsSwapOOB(
+			conversationModalDataFromView(view, viewerID, csrfToken, "", nil)),
+	}
+	if clearEmpty {
+		nodes = append(nodes,
+			ui.ConversationEmptyMessageDeleteSwapOOB(conv.ID))
+	}
+	return nodes, nil
+}
+
+func renderConversationRockEventAppend(c *fiber.Ctx, conv message.Conversation,
+	currentUserID int, tz *time.Location, csrfToken string) error {
+	nodes, err := buildRockEventUpdateNodes(conv, currentUserID, tz,
+		csrfToken, false)
+	if err != nil {
+		logger.Error("Failed to build rock event response", "error", err,
+			"conversationID", conv.ID)
+		return fiber.NewError(fiber.StatusInternalServerError,
+			"Failed to update conversation")
+	}
+	return render(c, g.Group(nodes))
+}
+
+func sendRockEventSSE(conv message.Conversation, throwerID int) {
+	recipientID := conv.OwnerID
+	if conv.OwnerID == throwerID {
+		recipientID = conv.InquirerID
+	}
+
+	tz := time.UTC
+	nodes, err := buildRockEventUpdateNodes(conv, recipientID, tz, "", true)
+	if err != nil {
+		logger.Error("Failed to build rock event for SSE", "error", err,
+			"conversationID", conv.ID, "recipientID", recipientID)
+		return
+	}
+
+	modalHTML, err := renderToString(g.Group(nodes))
+	if err != nil {
+		logger.Error("Failed to render rock event for SSE", "error", err,
+			"conversationID", conv.ID, "recipientID", recipientID)
+		return
+	}
+
+	SendSSEEvent(recipientID, SSEEvent{
+		Event: "",
+		Data:  modalHTML,
+	})
+}
+
+func renderConversationMessageAppend(c *fiber.Ctx, conversationID int,
+	appendNode g.Node, clearEmpty bool) error {
+	nodes := []g.Node{
+		appendNode,
+		ui.ConversationContentInputClearSwapOOB(conversationID),
+	}
+	if clearEmpty {
+		nodes = append(nodes, ui.ConversationEmptyMessageDeleteSwapOOB(conversationID))
+	}
+	return render(c, g.Group(nodes))
 }
 
 func sendMessageSSE(conv message.Conversation, senderID int,
@@ -230,16 +295,15 @@ func sendMessageUpdate(conversationID int, msg message.Message, recipientID int)
 	}
 
 	tz := time.UTC
-	view, err := message.BuildConversationModal(conv, recipientID, tz)
-	if err != nil {
-		logger.Error("Failed to build conversation modal for SSE", "error", err, "conversationID", conversationID, "recipientID", recipientID)
-		return
+	msgData := messageItemData(msg, recipientID, tz)
+	var nodes []g.Node
+	if len(message.MessagesFromJournal(conversationID, conv.Journal, tz)) == 1 {
+		nodes = append(nodes, ui.ConversationEmptyMessageDeleteSwapOOB(conversationID))
 	}
+	nodes = append(nodes, ui.MessageItem(msgData,
+		ui.ConversationMessageAppendOOB(conversationID)))
 
-	messageNodes := messageTimelineFromView(view, recipientID, tz)
-	messagesSwapOOB := ui.ConversationMessagesSwapOOB(conversationModalDataFromView(
-		view, recipientID, "", "", messageNodes))
-	modalHTML, err := renderToString(messagesSwapOOB)
+	modalHTML, err := renderToString(g.Group(nodes))
 	if err != nil {
 		logger.Error("Failed to render messages for SSE", "error", err, "conversationID", conversationID, "recipientID", recipientID)
 		return
@@ -316,13 +380,14 @@ func sendMessageAndRenderUpdate(c *fiber.Ctx, conv message.Conversation,
 	}
 
 	targetModalID := ""
-	renderMode := modalRenderMessagesSwapOOB
 	if isNewConversation {
 		targetModalID = "conversation-0-modal"
-		renderMode = modalRenderSwapOOB
+		return renderConversationModalView(c, view, currentUserID, tz, csrfToken, targetModalID, modalRenderSwapOOB)
 	}
 
-	return renderConversationModalView(c, view, currentUserID, tz, csrfToken, targetModalID, renderMode)
+	msgData := messageItemData(msg, currentUserID, tz)
+	return renderConversationMessageAppend(c, conv.ID, ui.MessageItem(msgData),
+		len(view.Messages) == 1)
 }
 
 func sendConversationListItemUpdate(conv message.Conversation, currentUserID int,

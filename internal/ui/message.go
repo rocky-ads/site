@@ -66,7 +66,7 @@ func MessageItem(d MessageItemData, attrs ...g.Node) g.Node {
 }
 
 // RockEventMessage renders a journal entry for a rock throw or unthrow.
-func RockEventMessage(d RockEventData) g.Node {
+func RockEventMessage(d RockEventData, attrs ...g.Node) g.Node {
 	isSent := d.ThrowerID == d.CurrentUserID
 
 	var bubbleClass string
@@ -86,9 +86,13 @@ func RockEventMessage(d RockEventData) g.Node {
 
 	fullTimestamp := d.EventAt.Format("2006-01-02 03:04:05 PM MST")
 
-	return Div(
-		Class(containerClass+" mb-2"),
+	allAttrs := append([]g.Node{
+		Class(containerClass + " mb-2"),
 		Title(fullTimestamp),
+	}, attrs...)
+
+	return Div(
+		g.Group(allAttrs),
 		Div(
 			Class("max-w-[70%]"),
 			Div(
@@ -138,10 +142,51 @@ func MessageTimeline(messages []MessageItemData,
 	return nodes
 }
 
+func conversationMessagesSelector(conversationID int) string {
+	return fmt.Sprintf("#conversation-%d-messages", conversationID)
+}
+
+func conversationMessagesAppendSwap(conversationID int) string {
+	// scroll:bottom alone scrolls the swapped node; name the container
+	// explicitly so the overflow-y-auto journal scrolls to the bottom.
+	return fmt.Sprintf("beforeend scroll:%s:bottom",
+		conversationMessagesSelector(conversationID))
+}
+
+func conversationMessagesScrollOnOOB() g.Node {
+	// hx-swap-oob cannot combine beforeend:#target with scroll modifiers
+	// (HTMX splits on the first colon), so SSE appends scroll here.
+	return g.Attr("hx-on:htmx:oob-after-swap",
+		"this.scrollTop=this.scrollHeight")
+}
+
+func conversationModalScrollOnLoad(conversationID int) g.Node {
+	// htmx:load fires on swapped roots (modal), not nested descendants, so
+	// find the messages scroller from the modal and scroll after layout.
+	sel := conversationMessagesSelector(conversationID)
+	return g.Attr("hx-on::load", fmt.Sprintf(
+		`const el=this.querySelector(%q);console.log('[chat-scroll] load',{modal:this.id,found:!!el,sel:%q,clientHeight:el&&el.clientHeight,scrollHeight:el&&el.scrollHeight,scrollTop:el&&el.scrollTop});if(!el)return;requestAnimationFrame(()=>{console.log('[chat-scroll] raf1',{clientHeight:el.clientHeight,scrollHeight:el.scrollHeight,scrollTop:el.scrollTop});requestAnimationFrame(()=>{console.log('[chat-scroll] raf2 before',{clientHeight:el.clientHeight,scrollHeight:el.scrollHeight,scrollTop:el.scrollTop});el.scrollTop=el.scrollHeight;console.log('[chat-scroll] raf2 after',{clientHeight:el.clientHeight,scrollHeight:el.scrollHeight,scrollTop:el.scrollTop});setTimeout(()=>{console.log('[chat-scroll] t+50',{clientHeight:el.clientHeight,scrollHeight:el.scrollHeight,scrollTop:el.scrollTop})},50)})})`,
+		sel, sel))
+}
+
+func ConversationMessageAppendOOB(conversationID int) g.Node {
+	return hx.SwapOOB(fmt.Sprintf(
+		"beforeend:%s", conversationMessagesSelector(conversationID)))
+}
+
 func ConversationMessagesSentinel(conversationID int) g.Node {
 	return Div(
 		ID(fmt.Sprintf("conversation-%d-sentinel", conversationID)),
 		g.Attr("style", "display: none;"),
+	)
+}
+
+// ConversationEmptyMessageDeleteSwapOOB removes the empty-state placeholder
+// when the first message is appended.
+func ConversationEmptyMessageDeleteSwapOOB(conversationID int) g.Node {
+	return Div(
+		ID(fmt.Sprintf("conversation-%d-empty-message", conversationID)),
+		hx.SwapOOB("delete"),
 	)
 }
 
@@ -150,6 +195,7 @@ func ConversationMessagesArea(conversationID int, canPost bool,
 	attrs := append([]g.Node{
 		ID(fmt.Sprintf("conversation-%d-messages", conversationID)),
 		Class("flex-1 overflow-y-auto p-4 space-y-2"),
+		conversationMessagesScrollOnOOB(),
 	}, extraAttrs...)
 	return Div(
 		g.Group(attrs),
@@ -212,10 +258,13 @@ func ConversationMessagesPanel(d ConversationModalData) g.Node {
 	)
 }
 
-// ConversationMessagesSwapOOB updates only the message timeline in an open modal.
-func ConversationMessagesSwapOOB(d ConversationModalData) g.Node {
-	return ConversationMessagesArea(
-		d.ConversationID, d.CanPost, d.MessageNodes, hx.SwapOOB("outerHTML"))
+func ConversationMessagesSelector(conversationID int) string {
+	return conversationMessagesSelector(conversationID)
+}
+
+// ConversationMessagesAppendSwapForTest exposes the append swap spec for tests.
+func ConversationMessagesAppendSwapForTest(conversationID int) string {
+	return conversationMessagesAppendSwap(conversationID)
 }
 
 func ConversationMessageActionsSwapOOB(d ConversationModalData) g.Node {
@@ -275,7 +324,8 @@ func ConversationForm(conversationID, adID int, csrfToken string,
 			hx.Post(postURL),
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
 			hx.Include("this"),
-			hx.Swap("none"),
+			hx.Target(conversationMessagesSelector(conversationID)),
+			hx.Swap(conversationMessagesAppendSwap(conversationID)),
 		)
 	}
 	return Form(
@@ -324,6 +374,7 @@ func ConversationModalSwapOOB(d ConversationModalData) g.Node {
 	return Div(
 		ID(modalID),
 		hx.SwapOOB("outerHTML"),
+		conversationModalScrollOnLoad(d.ConversationID),
 		Class("fixed inset-0 flex items-center justify-center z-50 p-8 pointer-events-none"),
 		Div(
 			Class("bg-white dark:bg-zinc-800 rounded-lg w-full max-w-lg shadow-2xl border-2 border-zinc-300 dark:border-zinc-600 flex flex-col pointer-events-auto"),
@@ -410,6 +461,7 @@ func ConversationModalWithRock(d ConversationModalData) g.Node {
 		modalBackdrop(modalName),
 		Div(
 			ID(modalName+"-modal"),
+			conversationModalScrollOnLoad(d.ConversationID),
 			Class("fixed inset-0 flex items-center justify-center z-50 p-8 pointer-events-none"),
 			Div(
 				Class("bg-white dark:bg-zinc-800 rounded-lg w-full max-w-lg shadow-2xl border-2 border-zinc-300 dark:border-zinc-600 flex flex-col pointer-events-auto"),

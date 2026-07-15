@@ -87,7 +87,8 @@ func RockThrowLink(conversationID int, hasThrownRock, canThrow bool,
 		attrs = []g.Node{
 			hx.Delete(fmt.Sprintf("/auth/conversation/%d/rock/unthrow", conversationID)),
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
-			hx.Swap("none"),
+			hx.Target(ConversationMessagesSelector(conversationID)),
+			hx.Swap(conversationMessagesAppendSwap(conversationID)),
 		}
 	} else if canThrow {
 		// Throw link - user can throw and hasn't thrown one yet
@@ -95,7 +96,8 @@ func RockThrowLink(conversationID int, hasThrownRock, canThrow bool,
 		attrs = []g.Node{
 			hx.Post(fmt.Sprintf("/auth/conversation/%d/rock/throw", conversationID)),
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
-			hx.Swap("none"),
+			hx.Target(ConversationMessagesSelector(conversationID)),
+			hx.Swap(conversationMessagesAppendSwap(conversationID)),
 		}
 	} else {
 		// Shouldn't reach here due to check above, but just in case

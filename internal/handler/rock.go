@@ -52,7 +52,8 @@ func ThrowRockHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get conversation")
 	}
 
-	return renderConversationMessageActionsSwapOOB(c, conv, currentUserID, tz, csrfToken)
+	sendRockEventSSE(conv, currentUserID)
+	return renderConversationRockEventAppend(c, conv, currentUserID, tz, csrfToken)
 }
 
 func UnthrowRockHandler(c *fiber.Ctx) error {
@@ -92,5 +93,6 @@ func UnthrowRockHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get conversation")
 	}
 
-	return renderConversationMessageActionsSwapOOB(c, conv, currentUserID, tz, csrfToken)
+	sendRockEventSSE(conv, currentUserID)
+	return renderConversationRockEventAppend(c, conv, currentUserID, tz, csrfToken)
 }
