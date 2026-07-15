@@ -704,9 +704,6 @@
   .cursor-pointer {
     cursor: pointer;
   }
-  .resize {
-    resize: both;
-  }
   .scroll-mt-24 {
     scroll-margin-top: calc(var(--spacing) * 24);
   }

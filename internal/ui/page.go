@@ -123,16 +123,6 @@ func indicator() g.Node {
 	)
 }
 
-// Global listener for unnamed SSE events sunk here.  Assumption is unnamed
-// event data contains htmx swap-oob elements to swap into DOM.
-func swapOOBmessages() g.Node {
-	return Div(
-		g.Attr("sse-swap", "message"),
-		hx.Swap("none"),
-		g.Attr("style", "display: none;"),
-	)
-}
-
 func RemoveIntroBanner() g.Node {
 	return Div(
 		ID("intro-banner"),
@@ -215,11 +205,16 @@ func Page(userID int, hasUnread bool, userName, title, currentPath,
 		),
 	)
 
-	// Stylesheets
+	// Stylesheets and scripts. htmx-config restores 2.x inheritance (CSRF
+	// headers / indicator) and error no-swap.
 	headNodes = append(headNodes,
 		Link(
 			Rel("stylesheet"),
 			Href("/css/output.css"),
+		),
+		Meta(
+			Name("htmx-config"),
+			Content(`{"implicitInheritance":true,"noSwap":[204,304,"4xx","5xx"]}`),
 		),
 		Script(
 			Type("text/javascript"),
@@ -253,10 +248,15 @@ func Page(userID int, hasUnread bool, userName, title, currentPath,
 		Class("min-h-screen bg-white dark:bg-zinc-900"),
 		Div(
 			ID("page-content"),
-			g.If(local.IsLoggedIn(userID), hx.Ext("sse")),
-			g.If(local.IsLoggedIn(userID), g.Attr("sse-connect", "/auth/sse")),
-			g.If(local.IsLoggedIn(userID), g.Attr("sse-close", "close")),
-			g.If(local.IsLoggedIn(userID), swapOOBmessages()),
+			// Leaf connect target: unnamed SSE payloads are OOB-only;
+			// swapEmpty:false (SSE default) leaves this node empty.
+			// pauseOnBackground false matches prior EventSource behavior.
+			g.If(local.IsLoggedIn(userID), Div(
+				g.Attr("hx-sse:connect", "/auth/sse"),
+				g.Attr("hx-sse:close", "close"),
+				g.Attr("hx-config", "sse.pauseOnBackground:false"),
+				g.Attr("aria-hidden", "true"),
+			)),
 			Div(
 				Class(contentClass),
 				hx.Headers(headersJSON),
