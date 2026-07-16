@@ -252,7 +252,7 @@ func sendRockEventSSE(conv message.Conversation, throwerID int) {
 	}
 
 	SendSSEEvent(recipientID, SSEEvent{
-		Event: "",
+		Event: ui.SSEEventConversation(conv.ID),
 		Data:  modalHTML,
 	})
 }
@@ -310,7 +310,7 @@ func sendMessageUpdate(conversationID int, msg message.Message, recipientID int)
 	}
 
 	SendSSEEvent(recipientID, SSEEvent{
-		Event: "",
+		Event: ui.SSEEventConversation(conversationID),
 		Data:  modalHTML,
 	})
 }
@@ -323,9 +323,8 @@ func sendUnreadIndicatorUpdate(userID int, hasUnread bool) {
 		return
 	}
 
-	// Send indicator update
 	SendSSEEvent(userID, SSEEvent{
-		Event: "",
+		Event: ui.SSEEventUnread,
 		Data:  indicatorHTML,
 	})
 }
@@ -442,9 +441,8 @@ func sendConversationListItemUpdate(conv message.Conversation, currentUserID int
 		return
 	}
 
-	// Send conversation list item update
 	SendSSEEvent(currentUserID, SSEEvent{
-		Event: "",
+		Event: ui.SSEEventConversationList,
 		Data:  itemHTML,
 	})
 }

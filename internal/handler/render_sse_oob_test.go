@@ -10,8 +10,8 @@ import (
 )
 
 func TestConversationMessagesAppendSwap(t *testing.T) {
-	got := ui.ConversationMessagesAppendSwapForTest(5)
-	want := "beforeend scroll:#conversation-5-messages:bottom"
+	got := ui.ConversationMessagesAppendSwapForTest()
+	want := "beforeend"
 	if got != want {
 		t.Fatalf("swap = %q, want %q", got, want)
 	}
@@ -30,7 +30,7 @@ func TestRenderMessageAppendOOB(t *testing.T) {
 	}
 	html := buf.String()
 	t.Logf("HTML:\n%s", html)
-	if !strings.Contains(html, `hx-swap-oob="beforeend:#conversation-5-messages"`) {
+	if !strings.Contains(html, `hx-swap-oob="beforeend:#conversation-5-messages-list"`) {
 		t.Fatalf("missing oob attr: %s", html)
 	}
 	if strings.Contains(html, "scroll:bottom") {
@@ -54,10 +54,84 @@ func TestRenderRockEventAppendOOB(t *testing.T) {
 		t.Fatal(err)
 	}
 	html := buf.String()
-	if !strings.Contains(html, `hx-swap-oob="beforeend:#conversation-5-messages"`) {
+	if !strings.Contains(html, `hx-swap-oob="beforeend:#conversation-5-messages-list"`) {
 		t.Fatalf("missing oob attr: %s", html)
 	}
 	if !strings.Contains(html, "Rock thrown") {
 		t.Fatalf("missing rock event label: %s", html)
+	}
+}
+
+func TestConversationMessagesAreaStructure(t *testing.T) {
+	var buf bytes.Buffer
+	node := ui.ConversationMessagesArea(5, true, nil)
+	if err := node.Render(&buf); err != nil {
+		t.Fatal(err)
+	}
+	html := buf.String()
+	t.Logf("HTML:\n%s", html)
+	for _, want := range []string{
+		`id="conversation-5-messages"`,
+		`flex-col-reverse`,
+		`id="conversation-5-messages-list"`,
+		`hx-on::after-settle="this.parentElement.scrollTop=0"`,
+		`hx-on:htmx:oob-after-swap="this.parentElement.scrollTop=0"`,
+		`conversation-5-empty-message`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("missing %q in:\n%s", want, html)
+		}
+	}
+	if strings.Contains(html, "sentinel") {
+		t.Fatalf("sentinel should be removed: %s", html)
+	}
+}
+
+func TestSSEEventNames(t *testing.T) {
+	if ui.SSEEventUnread != "unread" {
+		t.Fatalf("unread = %q", ui.SSEEventUnread)
+	}
+	if ui.SSEEventConversationList != "conversation-list" {
+		t.Fatalf("list = %q", ui.SSEEventConversationList)
+	}
+	if got := ui.SSEEventConversation(5); got != "conversation-5" {
+		t.Fatalf("conversation = %q", got)
+	}
+}
+
+func TestConversationSSESink(t *testing.T) {
+	var buf bytes.Buffer
+	if err := ui.ConversationSSESink(5).Render(&buf); err != nil {
+		t.Fatal(err)
+	}
+	html := buf.String()
+	for _, want := range []string{
+		`id="conversation-5-sse"`,
+		`sse-swap="conversation-5"`,
+		`hx-swap="none"`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("missing %q in:\n%s", want, html)
+		}
+	}
+}
+
+func TestUnreadAndListSSESinks(t *testing.T) {
+	var buf bytes.Buffer
+	if err := ui.UnreadSSESink().Render(&buf); err != nil {
+		t.Fatal(err)
+	}
+	unread := buf.String()
+	if !strings.Contains(unread, `sse-swap="unread"`) {
+		t.Fatalf("unread sink: %s", unread)
+	}
+
+	buf.Reset()
+	if err := ui.ConversationListSSESink().Render(&buf); err != nil {
+		t.Fatal(err)
+	}
+	list := buf.String()
+	if !strings.Contains(list, `sse-swap="conversation-list"`) {
+		t.Fatalf("list sink: %s", list)
 	}
 }

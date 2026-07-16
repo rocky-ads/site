@@ -65,10 +65,9 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
 ### JavaScript
 **No custom JavaScript is used in this application.** The frontend is intentionally JavaScript-free except for HTMX, which provides all necessary interactivity through HTML attributes.
 
-- **HTMX v4.0.0-beta5** - HTML-over-the-wire library (only JavaScript dependency)
-  - Server-sent events (SSE) extension `hx-sse` (bundled with htmx 4.0.0-beta5)
+- **HTMX v2.0.10** - HTML-over-the-wire library (only JavaScript dependency)
+  - Server-sent events (SSE) extension v2.2.4
   - Self-hosted in `static/js/` (first-party scripts; avoids CDN blocking in privacy browsers)
-  - Compat config: `implicitInheritance` + `noSwap` for 4xx/5xx (see `meta name="htmx-config"`)
   - Enables dynamic HTML updates without full page reloads
   - All interactivity handled declaratively via HTML attributes
   - **HATEOAS (Hypermedia As The Engine Of Application State)** - Application state is driven entirely by hypermedia (HTML links, forms, and responses) rather than client-side state management or hardcoded URLs. The server controls application flow by returning HTML with embedded links and forms that represent available state transitions.

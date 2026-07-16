@@ -296,7 +296,7 @@ func messageButton(adID int) g.Node {
 		Class:    "dark:invert dark:opacity-80",
 		Attrs: []g.Node{
 			hx.Get(fmt.Sprintf("/auth/ad/%d/new-conversation", adID)),
-			hx.Target("body"),
+			hx.Target("#page-content"),
 			hx.Swap("beforeend"),
 		},
 	})

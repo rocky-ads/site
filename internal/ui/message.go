@@ -142,43 +142,28 @@ func MessageTimeline(messages []MessageItemData,
 	return nodes
 }
 
+// conversationMessagesSelector is the inner list (append / OOB target).
+// The outer #conversation-N-messages scrollport uses column-reverse so
+// scrollTop=0 shows the newest messages (go-chat pattern).
 func conversationMessagesSelector(conversationID int) string {
-	return fmt.Sprintf("#conversation-%d-messages", conversationID)
+	return fmt.Sprintf("#conversation-%d-messages-list", conversationID)
 }
 
-func conversationMessagesAppendSwap(conversationID int) string {
-	// scroll:bottom alone scrolls the swapped node; name the container
-	// explicitly so the overflow-y-auto journal scrolls to the bottom.
-	return fmt.Sprintf("beforeend scroll:%s:bottom",
-		conversationMessagesSelector(conversationID))
+func conversationMessagesAppendSwap() string {
+	return "beforeend"
 }
 
-func conversationMessagesScrollOnOOB() g.Node {
-	// hx-swap-oob cannot combine beforeend:#target with scroll modifiers
-	// (HTMX splits on the first colon), so SSE appends scroll here.
-	return g.Attr("hx-on:htmx:oob-after-swap",
-		"this.scrollTop=this.scrollHeight")
-}
-
-func conversationModalScrollOnLoad(conversationID int) g.Node {
-	// htmx:load fires on swapped roots (modal), not nested descendants, so
-	// find the messages scroller from the modal and scroll after layout.
-	sel := conversationMessagesSelector(conversationID)
-	return g.Attr("hx-on::load", fmt.Sprintf(
-		`const el=this.querySelector(%q);console.log('[chat-scroll] load',{modal:this.id,found:!!el,sel:%q,clientHeight:el&&el.clientHeight,scrollHeight:el&&el.scrollHeight,scrollTop:el&&el.scrollTop});if(!el)return;requestAnimationFrame(()=>{console.log('[chat-scroll] raf1',{clientHeight:el.clientHeight,scrollHeight:el.scrollHeight,scrollTop:el.scrollTop});requestAnimationFrame(()=>{console.log('[chat-scroll] raf2 before',{clientHeight:el.clientHeight,scrollHeight:el.scrollHeight,scrollTop:el.scrollTop});el.scrollTop=el.scrollHeight;console.log('[chat-scroll] raf2 after',{clientHeight:el.clientHeight,scrollHeight:el.scrollHeight,scrollTop:el.scrollTop});setTimeout(()=>{console.log('[chat-scroll] t+50',{clientHeight:el.clientHeight,scrollHeight:el.scrollHeight,scrollTop:el.scrollTop})},50)})})`,
-		sel, sel))
+// Pin the column-reverse scrollport to newest after local or OOB appends.
+func conversationMessagesScrollPin() g.Node {
+	return g.Group([]g.Node{
+		g.Attr("hx-on::after-settle", "this.parentElement.scrollTop=0"),
+		g.Attr("hx-on:htmx:oob-after-swap", "this.parentElement.scrollTop=0"),
+	})
 }
 
 func ConversationMessageAppendOOB(conversationID int) g.Node {
 	return hx.SwapOOB(fmt.Sprintf(
 		"beforeend:%s", conversationMessagesSelector(conversationID)))
-}
-
-func ConversationMessagesSentinel(conversationID int) g.Node {
-	return Div(
-		ID(fmt.Sprintf("conversation-%d-sentinel", conversationID)),
-		g.Attr("style", "display: none;"),
-	)
 }
 
 // ConversationEmptyMessageDeleteSwapOOB removes the empty-state placeholder
@@ -192,29 +177,32 @@ func ConversationEmptyMessageDeleteSwapOOB(conversationID int) g.Node {
 
 func ConversationMessagesArea(conversationID int, canPost bool,
 	messageNodes []g.Node, extraAttrs ...g.Node) g.Node {
-	attrs := append([]g.Node{
-		ID(fmt.Sprintf("conversation-%d-messages", conversationID)),
-		Class("flex-1 overflow-y-auto p-4 space-y-2"),
-		conversationMessagesScrollOnOOB(),
+	listAttrs := append([]g.Node{
+		ID(fmt.Sprintf("conversation-%d-messages-list", conversationID)),
+		Class("flex flex-col space-y-2"),
+		conversationMessagesScrollPin(),
 	}, extraAttrs...)
 	return Div(
-		g.Group(attrs),
-		g.If(len(messageNodes) == 0,
-			Div(
-				ID(fmt.Sprintf("conversation-%d-empty-message", conversationID)),
-				Class("text-center text-zinc-500 dark:text-zinc-400 py-8"),
-				g.If(canPost,
-					g.Text("No messages yet. Start the conversation!"),
-				),
-				g.If(!canPost,
-					g.Text("No messages yet."),
+		ID(fmt.Sprintf("conversation-%d-messages", conversationID)),
+		Class("flex-1 min-h-0 overflow-y-auto flex flex-col-reverse p-4"),
+		Div(
+			g.Group(listAttrs),
+			g.If(len(messageNodes) == 0,
+				Div(
+					ID(fmt.Sprintf("conversation-%d-empty-message", conversationID)),
+					Class("text-center text-zinc-500 dark:text-zinc-400 py-8"),
+					g.If(canPost,
+						g.Text("No messages yet. Start the conversation!"),
+					),
+					g.If(!canPost,
+						g.Text("No messages yet."),
+					),
 				),
 			),
+			g.If(len(messageNodes) > 0,
+				g.Group(messageNodes),
+			),
 		),
-		g.If(len(messageNodes) > 0,
-			g.Group(messageNodes),
-		),
-		ConversationMessagesSentinel(conversationID),
 	)
 }
 
@@ -251,8 +239,8 @@ func ConversationMessageActionsBanner(d ConversationModalData,
 
 func ConversationMessagesPanel(d ConversationModalData) g.Node {
 	return Div(
-		Class("flex-1 flex flex-col"),
-		Style("min-height: 0"),
+		Class("flex-1 flex flex-col min-h-0"),
+		ConversationSSESink(d.ConversationID),
 		ConversationMessageActionsBanner(d),
 		ConversationMessagesArea(d.ConversationID, d.CanPost, d.MessageNodes),
 	)
@@ -263,8 +251,8 @@ func ConversationMessagesSelector(conversationID int) string {
 }
 
 // ConversationMessagesAppendSwapForTest exposes the append swap spec for tests.
-func ConversationMessagesAppendSwapForTest(conversationID int) string {
-	return conversationMessagesAppendSwap(conversationID)
+func ConversationMessagesAppendSwapForTest() string {
+	return conversationMessagesAppendSwap()
 }
 
 func ConversationMessageActionsSwapOOB(d ConversationModalData) g.Node {
@@ -325,7 +313,7 @@ func ConversationForm(conversationID, adID int, csrfToken string,
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
 			hx.Include("this"),
 			hx.Target(conversationMessagesSelector(conversationID)),
-			hx.Swap(conversationMessagesAppendSwap(conversationID)),
+			hx.Swap(conversationMessagesAppendSwap()),
 		)
 	}
 	return Form(
@@ -374,7 +362,6 @@ func ConversationModalSwapOOB(d ConversationModalData) g.Node {
 	return Div(
 		ID(modalID),
 		hx.SwapOOB("outerHTML"),
-		conversationModalScrollOnLoad(d.ConversationID),
 		Class("fixed inset-0 flex items-center justify-center z-50 p-8 pointer-events-none"),
 		Div(
 			Class("bg-white dark:bg-zinc-800 rounded-lg w-full max-w-lg shadow-2xl border-2 border-zinc-300 dark:border-zinc-600 flex flex-col pointer-events-auto"),
@@ -461,7 +448,6 @@ func ConversationModalWithRock(d ConversationModalData) g.Node {
 		modalBackdrop(modalName),
 		Div(
 			ID(modalName+"-modal"),
-			conversationModalScrollOnLoad(d.ConversationID),
 			Class("fixed inset-0 flex items-center justify-center z-50 p-8 pointer-events-none"),
 			Div(
 				Class("bg-white dark:bg-zinc-800 rounded-lg w-full max-w-lg shadow-2xl border-2 border-zinc-300 dark:border-zinc-600 flex flex-col pointer-events-auto"),
@@ -554,7 +540,7 @@ func ConversationListItem(d ConversationListItemData) g.Node {
 		ID(fmt.Sprintf("conversation-item-%d", d.ConversationID)),
 		Class("border-b border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer transition-colors"),
 		hx.Get(fmt.Sprintf("/auth/conversation/%d", d.ConversationID)),
-		hx.Target("body"),
+		hx.Target("#page-content"),
 		hx.Swap("beforeend"),
 		hx.Trigger("click[!closest(.rock-icon-container)]"),
 		Div(
@@ -633,6 +619,7 @@ func MessagesPage(items []ConversationListItemData) []g.Node {
 
 	return []g.Node{
 		pageTitle("Messages"),
+		ConversationListSSESink(),
 		Div(
 			Class("mt-6"),
 			Div(

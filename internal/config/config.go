@@ -64,7 +64,7 @@ const (
 
 	// HTMX scripts (self-hosted for privacy browsers that block third-party CDNs)
 	HTMXURL    = "/js/htmx.min.js"
-	HTMXSSEURL = "/js/hx-sse.min.js"
+	HTMXSSEURL = "/js/htmx-ext-sse.min.js"
 
 	// Public links
 	GitHubRepoURL = "https://github.com/rocky-ads/site"
