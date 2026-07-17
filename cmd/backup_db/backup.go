@@ -9,6 +9,7 @@ import (
 
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/imagestore"
+	"github.com/rocky-ads/site/internal/journal"
 	"github.com/rocky-ads/site/internal/logger"
 )
 
@@ -57,11 +58,8 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 	var imageClickDB []userAdImageClickDBRow
 	var facetDB []adFacetDBRow
 	var convDB []conversationDBRow
-	var msgDB []messageDBRow
 	var opinionDB []rockOpinionDBRow
 
-	// One-time: backup reads prod schema at 521a095 (messages table, no
-	// journal). Restore writes current schema (journal on conversations).
 	if len(adRefs) > 0 {
 		clause, args := intInClause(adRefs)
 		if err := db.Select(&bookmarkDB, fmt.Sprintf(`
@@ -87,7 +85,7 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 		if err := db.Select(&convDB, fmt.Sprintf(`
 			SELECT id, ad_id, owner_id, inquirer_id,
 			       owner_has_unread, inquirer_has_unread,
-			       rock_thrower_id, rock_thrown_at
+			       rock_thrower_id, rock_thrown_at, journal
 			FROM conversations WHERE ad_id IN (%s)
 			ORDER BY id`, clause), args...); err != nil {
 			return fmt.Errorf("query conversations: %w", err)
@@ -114,18 +112,27 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 	userIDs = uniqueInts(userIDs)
 	locationIDs = uniqueInts(locationIDs)
 
+	var msgDB []messageDBRow
+	for _, c := range convDB {
+		for _, e := range journal.Parse(c.Journal) {
+			if e.Kind != journal.Message {
+				continue
+			}
+			msgDB = append(msgDB, messageDBRow{
+				ConversationID: c.ID,
+				SenderID:       e.UserID,
+				Content:        e.Body,
+				CreatedAt:      e.At,
+			})
+		}
+	}
+
 	if len(convIDToRef) > 0 {
 		convIDs := make([]int, 0, len(convIDToRef))
 		for id := range convIDToRef {
 			convIDs = append(convIDs, id)
 		}
 		clause, args := intInClause(convIDs)
-		if err := db.Select(&msgDB, fmt.Sprintf(`
-			SELECT id, conversation_id, sender_id, content, created_at
-			FROM messages WHERE conversation_id IN (%s)
-			ORDER BY created_at, id`, clause), args...); err != nil {
-			return fmt.Errorf("query messages: %w", err)
-		}
 		if err := db.Select(&opinionDB, fmt.Sprintf(`
 			SELECT conversation_id, generated_at, summary, assessment,
 			       assessment_detail, resolution, reasoning

@@ -239,6 +239,7 @@ type conversationDBRow struct {
 	InquirerHasUnread int        `db:"inquirer_has_unread"`
 	RockThrowerID     *int       `db:"rock_thrower_id"`
 	RockThrownAt      *time.Time `db:"rock_thrown_at"`
+	Journal           string     `db:"journal"`
 }
 
 type MessageRow struct {
