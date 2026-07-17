@@ -133,7 +133,7 @@ func recentAdEmbeddingIDs(categoryID int) ([]int, error) {
 		SELECT COALESCE(json_agg(id), '[]'::json)
 		FROM (
 			SELECT id FROM ads
-			WHERE deleted_at IS NULL
+			WHERE inactive_at IS NULL AND deleted_at IS NULL
 			  AND embedding IS NOT NULL
 			  AND ($1 = 0 OR category_id = $1)
 			ORDER BY created_at DESC

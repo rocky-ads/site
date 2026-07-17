@@ -8,13 +8,19 @@ import (
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/message"
+	"github.com/rocky-ads/site/internal/user"
 )
 
 // ShouldSuppressSMS checks if SMS should be suppressed for a recipient
 // Returns true if:
+// - Recipient account is deleted
 // - Last SMS was sent within the suppression window (10 minutes)
 // - User has read all conversations (no unread messages)
 func ShouldSuppressSMS(recipientUserID int) (bool, error) {
+	if !user.Exists(recipientUserID) {
+		return true, nil
+	}
+
 	// Check if last SMS was sent within suppression window
 	lastSMSSent, err := getLastSMSSent(recipientUserID)
 	if err != nil {

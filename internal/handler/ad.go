@@ -12,6 +12,7 @@ import (
 	"github.com/rocky-ads/site/internal/message"
 	"github.com/rocky-ads/site/internal/param"
 	"github.com/rocky-ads/site/internal/rock"
+	"github.com/rocky-ads/site/internal/rockopinion"
 	"github.com/rocky-ads/site/internal/ui"
 	"github.com/rocky-ads/site/internal/user"
 	"github.com/rocky-ads/site/internal/vector"
@@ -35,15 +36,15 @@ func AdHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	// If ad is deleted and user is not the owner, show deleted message
-	if a.IsDeleted() && a.UserID != userID {
-		return renderPage(c, "Ad Deleted", ui.AdDeleted())
+	// If ad is not live and user is not the owner, show unavailable message
+	if !a.IsActive() && a.UserID != userID {
+		return renderPage(c, "Ad Unavailable", ui.AdUnavailable())
 	}
 
 	// Update the ad category cookie based on the ad
 	cookie.SetCategoryID(c, a.CategoryID)
 
-	if !a.IsDeleted() && userID != 0 {
+	if a.IsActive() && userID != 0 {
 		_ = ad.IncrementAdClickForUser(adID, userID)
 	}
 
@@ -92,7 +93,9 @@ func adDetailFrom(a ad.Ad, viewerUserID int, reachable, isTest bool) ui.AdDetail
 		DescriptionHistory:  history,
 		CreatedAt:           a.CreatedAt,
 		Bookmarked:          a.Bookmarked,
-		Active:              !a.IsDeleted(),
+		Active:              a.IsActive(),
+		Inactive:            a.IsInactive(),
+		Deleted:             a.IsDeleted(),
 		IsTest:              isTest,
 		Reachable:           reachable,
 		RockCount:           a.RockCount,
@@ -160,7 +163,7 @@ func AdShareHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
-	if a.IsDeleted() && a.UserID != userID {
+	if !a.IsActive() && a.UserID != userID {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
 
@@ -183,6 +186,59 @@ func AdShareCopyHandler(c *fiber.Ctx) error {
 	return render(c, ui.CopyButton(path))
 }
 
+func AdRemoveModalHandler(c *fiber.Ctx) error {
+	adID, err := param.GetAdID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
+	}
+
+	userID := local.GetUserID(c)
+	tz := cookie.GetTimezone(c)
+	a, err := ad.GetAd(userID, adID, tz)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
+	}
+	if a.UserID != userID {
+		return fiber.NewError(fiber.StatusForbidden, "You are not the owner of this ad")
+	}
+	if !a.IsActive() {
+		return fiber.NewError(fiber.StatusBadRequest, "Ad is not active")
+	}
+
+	csrfToken := local.GetCSRFToken(c)
+	return render(c, ui.AdRemoveModal(adID, csrfToken))
+}
+
+func PauseAdHandler(c *fiber.Ctx) error {
+	adID, err := param.GetAdID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
+	}
+
+	userID := local.GetUserID(c)
+	tz := cookie.GetTimezone(c)
+	a, err := ad.GetAd(userID, adID, tz)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
+	}
+	if a.UserID != userID {
+		return fiber.NewError(fiber.StatusForbidden, "You are not the owner of this ad")
+	}
+	if !a.IsActive() {
+		return fiber.NewError(fiber.StatusBadRequest, "Ad is not active")
+	}
+
+	if err := ad.Pause(adID); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to pause ad")
+	}
+	_ = vector.DeleteAdEmbedding(adID)
+	_ = rock.UnthrowActiveForAd(adID)
+	_ = rockopinion.InvalidateForAd(adID)
+
+	c.Set("HX-Redirect", fmt.Sprintf("/ad/%d", adID))
+	return c.SendStatus(fiber.StatusOK)
+}
+
 func DeleteAdHandler(c *fiber.Ctx) error {
 	adID, err := param.GetAdID(c)
 	if err != nil {
@@ -192,24 +248,25 @@ func DeleteAdHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
 	tz := cookie.GetTimezone(c)
 
-	// Get ad to verify ownership
 	a, err := ad.GetAd(userID, adID, tz)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
 
-	// Check ownership
 	if a.UserID != userID {
 		return fiber.NewError(fiber.StatusForbidden, "You are not the owner of this ad")
 	}
+	if a.IsDeleted() {
+		return fiber.NewError(fiber.StatusBadRequest, "Ad is already deleted")
+	}
 
-	// Delete the ad
-	if err := ad.Delete(adID); err != nil {
+	if err := ad.PermanentlyDelete(adID); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to delete ad")
 	}
 	_ = vector.DeleteAdEmbedding(adID)
+	_ = rock.UnthrowActiveForAd(adID)
+	_ = rockopinion.InvalidateForAd(adID)
 
-	// Redirect to the ad page
 	c.Set("HX-Redirect", fmt.Sprintf("/ad/%d", adID))
 	return c.SendStatus(fiber.StatusOK)
 }
@@ -223,24 +280,23 @@ func RestoreAdHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
 	tz := cookie.GetTimezone(c)
 
-	// Get ad to verify ownership
 	a, err := ad.GetAd(userID, adID, tz)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
 
-	// Check ownership
 	if a.UserID != userID {
 		return fiber.NewError(fiber.StatusForbidden, "You are not the owner of this ad")
 	}
+	if !a.IsInactive() {
+		return fiber.NewError(fiber.StatusBadRequest, "Only paused ads can be restored")
+	}
 
-	// Restore the ad
-	if err := ad.Restore(adID); err != nil {
+	if err := ad.Activate(adID); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to restore ad")
 	}
 	vector.QueueAd(adID)
 
-	// Redirect to the ad page
 	c.Set("HX-Redirect", fmt.Sprintf("/ad/%d", adID))
 	return c.SendStatus(fiber.StatusOK)
 }

@@ -319,7 +319,7 @@ func ConversationForm(conversationID, adID int, csrfToken string,
 					ID(fmt.Sprintf("conversation-%d-content-input", conversationID)),
 					Type("text"),
 					Name("content"),
-					Placeholder("Read-only conversation"),
+					Placeholder("Messaging closed"),
 					Disabled(),
 					Class("flex-1 px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 cursor-not-allowed"),
 				),
@@ -514,6 +514,17 @@ func ConversationModalWithRock(d ConversationModalData) g.Node {
 	})
 }
 
+func conversationPeerName(userID int, name string, deleted bool,
+	rockCount int) g.Node {
+	if deleted {
+		return Span(
+			Class("text-zinc-500 dark:text-zinc-400"),
+			g.Text(name),
+		)
+	}
+	return UserNameLink(userID, name, StaticRockIcons(rockCount))
+}
+
 func ConversationListItem(d ConversationListItemData) g.Node {
 	lastMessagePreview := d.LastMessageContent
 	if len(lastMessagePreview) > 50 {
@@ -555,6 +566,12 @@ func ConversationListItem(d ConversationListItemData) g.Node {
 					g.Text(timeStr),
 				),
 			),
+			g.If(d.StatusNote != "",
+				P(
+					Class("text-xs text-amber-700 dark:text-amber-400 mb-2"),
+					g.Text(d.StatusNote),
+				),
+			),
 			Div(
 				Class("flex items-center justify-between"),
 				Span(
@@ -562,15 +579,15 @@ func ConversationListItem(d ConversationListItemData) g.Node {
 					g.If(d.InquirerID == d.CurrentUserID,
 						g.Group([]g.Node{
 							g.Text("To: "),
-							UserNameLink(d.OwnerID, d.OtherUserName,
-								StaticRockIcons(d.OtherUserRockCount)),
+							conversationPeerName(d.OwnerID, d.OtherUserName,
+								d.OtherUserDeleted, d.OtherUserRockCount),
 						}),
 					),
 					g.If(d.OwnerID == d.CurrentUserID,
 						g.Group([]g.Node{
 							g.Text("From: "),
-							UserNameLink(d.InquirerID, d.OtherUserName,
-								StaticRockIcons(d.OtherUserRockCount)),
+							conversationPeerName(d.InquirerID, d.OtherUserName,
+								d.OtherUserDeleted, d.OtherUserRockCount),
 						}),
 					),
 				),

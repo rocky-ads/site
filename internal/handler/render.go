@@ -155,7 +155,7 @@ func adCardFrom(a ad.Ad, viewerUserID int, tz *time.Location) ui.AdCard {
 		priceDisplay, a.Title,
 		ad.AdLocationDisplay(a, viewerUserID), adFacetLabel(a),
 		hasPrice, a.CreatedAt.In(tz),
-		!a.IsDeleted(), a.Bookmarked,
+		a.IsActive(), a.Bookmarked,
 	)
 }
 

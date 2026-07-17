@@ -25,7 +25,7 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 
 	var adRows []adDBRow
 	err = db.Select(&adRows, `
-		SELECT id, category_id, title, description, created_at, deleted_at,
+		SELECT id, category_id, title, description, created_at, inactive_at, deleted_at,
 		       user_id, image_count, location_id, tags
 		FROM ads
 		WHERE user_id != $1
@@ -197,6 +197,7 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 			Title:       a.Title,
 			Description: a.Description,
 			CreatedAt:   a.CreatedAt,
+			InactiveAt:  a.InactiveAt,
 			DeletedAt:   a.DeletedAt,
 			OwnerHash:   userIDToHash[a.UserID],
 			ImageCount:  a.ImageCount,

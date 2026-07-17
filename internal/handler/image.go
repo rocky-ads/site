@@ -105,7 +105,7 @@ func adImageCount(c *fiber.Ctx, adID int) (int, error) {
 	if err != nil {
 		return 0, fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
-	if a.IsDeleted() && a.UserID != userID {
+	if !a.IsActive() && a.UserID != userID {
 		return 0, fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
 	return a.ImageCount, nil

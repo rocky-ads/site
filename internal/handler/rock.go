@@ -31,6 +31,9 @@ func ThrowRockHandler(c *fiber.Ctx) error {
 	if conv.OwnerID != currentUserID && conv.InquirerID != currentUserID {
 		return fiber.NewError(fiber.StatusForbidden, "Only conversation participants can throw rocks")
 	}
+	if !message.MessagingAllowed(conv) {
+		return fiber.NewError(fiber.StatusBadRequest, "Messaging is closed for this conversation")
+	}
 
 	err = rock.ThrowRock(currentUserID, conversationID)
 	if err != nil {

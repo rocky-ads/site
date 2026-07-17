@@ -16,6 +16,7 @@ import (
 	"github.com/rocky-ads/site/internal/rockopinion"
 	"github.com/rocky-ads/site/internal/service/sms"
 	"github.com/rocky-ads/site/internal/ui"
+	"github.com/rocky-ads/site/internal/user"
 	g "maragu.dev/gomponents"
 )
 
@@ -138,6 +139,8 @@ func conversationListItemFromConv(conv message.ConversationWithLastMessage,
 		HasUnread:          conv.HasUnread,
 		RockCount:          conv.RockCount,
 		OtherUserRockCount: conv.OtherUserRockCount,
+		OtherUserDeleted:   conv.OtherUserDeleted,
+		StatusNote:         conv.StatusNote,
 	}
 }
 
@@ -340,6 +343,9 @@ func sendMessageAndRenderUpdate(c *fiber.Ctx, conv message.Conversation,
 	// Step 1: Update database - if it fails, stop
 	msg, err := message.CreateMessage(conv.ID, currentUserID, content)
 	if err != nil {
+		if errors.Is(err, message.ErrMessagingClosed) {
+			return fiber.NewError(fiber.StatusBadRequest, "Messaging is closed for this conversation")
+		}
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to send message")
 	}
 	if err := rockopinion.Invalidate(conv.ID); err != nil {
@@ -461,6 +467,9 @@ func MessageModalHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
+	if !a.IsActive() {
+		return fiber.NewError(fiber.StatusBadRequest, "Cannot message an inactive or deleted ad")
+	}
 
 	if a.UserID == currentUserID {
 		return fiber.NewError(fiber.StatusForbidden, "You cannot message your own ad")
@@ -501,6 +510,12 @@ func SendMessageHandler(c *fiber.Ctx) error {
 	a, err := ad.GetAd(currentUserID, adID, tz)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
+	}
+	if !a.IsActive() {
+		return fiber.NewError(fiber.StatusBadRequest, "Cannot message an inactive or deleted ad")
+	}
+	if !user.Exists(a.UserID) {
+		return fiber.NewError(fiber.StatusBadRequest, "This account is no longer available")
 	}
 
 	// Try to get existing conversation

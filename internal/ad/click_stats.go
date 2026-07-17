@@ -127,7 +127,7 @@ func GetTopAdsByClicks(limit int) ([]TopAdClick, error) {
 			FROM user_ad_image_clicks
 			GROUP BY ad_id
 		) ic ON ic.ad_id = a.id
-		WHERE a.deleted_at IS NULL
+		WHERE a.inactive_at IS NULL AND a.deleted_at IS NULL
 		  AND (ac.ad_id IS NOT NULL OR ic.ad_id IS NOT NULL)
 		ORDER BY
 			(COALESCE(ac.ad_views, 0) + COALESCE(ic.image_clicks, 0)) DESC,
@@ -150,7 +150,7 @@ func GetTopImagesByClicks(limit int) ([]TopImageClick, error) {
 			SUM(uaic.click_count) AS clicks,
 			MAX(uaic.last_clicked_at) AS last_clicked_at
 		FROM user_ad_image_clicks uaic
-		JOIN ads a ON a.id = uaic.ad_id AND a.deleted_at IS NULL
+		JOIN ads a ON a.id = uaic.ad_id AND a.inactive_at IS NULL AND a.deleted_at IS NULL
 		GROUP BY uaic.ad_id, a.title, uaic.image_index
 		ORDER BY clicks DESC, last_clicked_at DESC NULLS LAST
 		LIMIT $1`, limit)
@@ -174,7 +174,7 @@ func GetRecentClickActivity(limit int) ([]RecentClick, error) {
 				uac.click_count
 			FROM user_ad_clicks uac
 			JOIN ads a ON a.id = uac.ad_id
-			WHERE a.deleted_at IS NULL
+			WHERE a.inactive_at IS NULL AND a.deleted_at IS NULL
 
 			UNION ALL
 
@@ -188,7 +188,7 @@ func GetRecentClickActivity(limit int) ([]RecentClick, error) {
 				uaic.click_count
 			FROM user_ad_image_clicks uaic
 			JOIN ads a ON a.id = uaic.ad_id
-			WHERE a.deleted_at IS NULL
+			WHERE a.inactive_at IS NULL AND a.deleted_at IS NULL
 		) activity
 		ORDER BY last_clicked_at DESC
 		LIMIT $1`, limit)

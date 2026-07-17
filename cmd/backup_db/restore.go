@@ -121,11 +121,11 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 		var newID int
 		err := db.QueryRow(`
 			INSERT INTO ads (
-				category_id, title, description, created_at, deleted_at,
+				category_id, title, description, created_at, inactive_at, deleted_at,
 				user_id, image_count, location_id, tags
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 			RETURNING id`,
-			a.CategoryID, a.Title, a.Description, a.CreatedAt, a.DeletedAt,
+			a.CategoryID, a.Title, a.Description, a.CreatedAt, a.InactiveAt, a.DeletedAt,
 			ownerID, a.ImageCount, locationID, a.Tags,
 		).Scan(&newID)
 		if err != nil {

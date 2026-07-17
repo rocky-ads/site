@@ -45,6 +45,8 @@ type AdDetail struct {
 	CreatedAt           time.Time
 	Bookmarked          bool
 	Active              bool
+	Inactive            bool
+	Deleted             bool
 	IsTest              bool
 	Reachable           bool
 	RockCount           int
@@ -105,6 +107,8 @@ type ConversationListItemData struct {
 	HasUnread          bool
 	RockCount          int
 	OtherUserRockCount int
+	OtherUserDeleted   bool
+	StatusNote         string
 }
 
 // CategoryOption holds presentation fields for a category picker item.

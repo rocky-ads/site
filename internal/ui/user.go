@@ -223,6 +223,7 @@ func MyAdsTabs(activeTab string) g.Node {
 			Class("flex space-x-8"),
 			myAdsTab("Bookmarked", "bookmarked", activeTab == "bookmarked"),
 			myAdsTab("Active", "active", activeTab == "active"),
+			myAdsTab("Paused", "inactive", activeTab == "inactive"),
 			myAdsTab("Deleted", "deleted", activeTab == "deleted"),
 		),
 	)
@@ -418,21 +419,72 @@ func SettingsPage(name, phoneE64 string, smsOptedOut bool) []g.Node {
 				g.Text("Permanently delete your account. This action cannot be undone."),
 			),
 			Form(
+				ID("delete-account-form"),
 				Class("space-y-4"),
-				hx.Post("/auth/user/settings/delete"),
-				hx.Swap("none"),
 				labeledPasswordField("Password", "password", "current-password", false),
 				settingsFormActions(buttonProps{
-					Type:  "submit",
+					Type:  "button",
 					Text:  "Delete My Account",
 					Class: "bg-red-600 hover:bg-red-700",
 					Attrs: []g.Node{
-						hx.Confirm("Are you sure you want to permanently delete your account? This cannot be undone."),
+						hx.Get("/auth/user/settings/delete-confirm"),
+						hx.Target("body"),
+						hx.Swap("beforeend"),
 					},
 				}, SettingsDeleteAccountErrorID),
 			),
 		),
 	}
+}
+
+func DeleteAccountConfirmModal(csrfToken string) g.Node {
+	csrfHeader := fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)
+	return g.Group([]g.Node{
+		modalBackdrop("delete-account"),
+		Div(
+			ID("delete-account-modal"),
+			Class("fixed inset-0 flex items-center justify-center z-50 p-8 pointer-events-none"),
+			Div(
+				Class("bg-white dark:bg-zinc-800 rounded-lg w-full max-w-md shadow-2xl border-2 border-zinc-300 dark:border-zinc-600 flex flex-col pointer-events-auto"),
+				Div(
+					Class("flex items-center justify-between p-6 border-b border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
+					H3(Class("text-xl font-bold text-zinc-900 dark:text-zinc-200"),
+						g.Text("Delete account?")),
+					modalClose("delete-account"),
+				),
+				Div(
+					Class("p-6 flex flex-col gap-4"),
+					P(
+						Class("text-sm text-zinc-600 dark:text-zinc-400"),
+						g.Text("Are you sure you want to permanently delete your account? Your ads will be permanently deleted. This cannot be undone."),
+					),
+					Div(
+						Class("flex flex-col gap-2 sm:flex-row sm:justify-end"),
+						standardButton(buttonProps{
+							Type:  "button",
+							Text:  "Cancel",
+							Class: "bg-zinc-500 hover:bg-zinc-600 w-full sm:w-auto text-center",
+							Attrs: []g.Node{
+								hx.Get("/api/modal-remove/delete-account"),
+								hx.Swap("none"),
+							},
+						}),
+						standardButton(buttonProps{
+							Type:  "button",
+							Text:  "Delete Forever",
+							Class: "bg-red-600 hover:bg-red-700 w-full sm:w-auto text-center",
+							Attrs: []g.Node{
+								hx.Post("/auth/user/settings/delete"),
+								hx.Headers(csrfHeader),
+								hx.Include("#delete-account-form"),
+								hx.Swap("none"),
+							},
+						}),
+					),
+				),
+			),
+		),
+	})
 }
 
 func aboutIconLink(href, icon, alt string, external bool) g.Node {

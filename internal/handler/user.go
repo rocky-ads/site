@@ -60,7 +60,8 @@ func UserMyAdsHandler(c *fiber.Ctx) error {
 
 func UserMyAdsTabHandler(c *fiber.Ctx) error {
 	tabID := c.Params("tab")
-	if tabID != "bookmarked" && tabID != "active" && tabID != "deleted" {
+	if tabID != "bookmarked" && tabID != "active" &&
+		tabID != "inactive" && tabID != "deleted" {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid tab")
 	}
 	return userMyAdsTabHandler(c, tabID)
@@ -143,6 +144,11 @@ func ChangePasswordHandler(c *fiber.Ctx) error {
 	logout(c)
 	c.Set("HX-Redirect", "/login")
 	return c.SendStatus(fiber.StatusOK)
+}
+
+func DeleteAccountConfirmModalHandler(c *fiber.Ctx) error {
+	csrfToken := local.GetCSRFToken(c)
+	return render(c, ui.DeleteAccountConfirmModal(csrfToken))
 }
 
 func DeleteAccountHandler(c *fiber.Ctx) error {

@@ -43,7 +43,7 @@ func getUserActivities(userID, categoryID, limit int) ([]AdActivity, error) {
 					FROM bookmarks b
 					JOIN ads a ON b.ad_id = a.id
 					WHERE b.user_id = $1
-					  AND a.deleted_at IS NULL
+					  AND a.inactive_at IS NULL AND a.deleted_at IS NULL
 					  AND a.category_id = $2
 					  AND a.embedding IS NOT NULL
 
@@ -54,7 +54,7 @@ func getUserActivities(userID, categoryID, limit int) ([]AdActivity, error) {
 					FROM user_ad_clicks uac
 					JOIN ads a ON uac.ad_id = a.id
 					WHERE uac.user_id = $1
-					  AND a.deleted_at IS NULL
+					  AND a.inactive_at IS NULL AND a.deleted_at IS NULL
 					  AND a.category_id = $2
 					  AND a.embedding IS NOT NULL
 
@@ -65,7 +65,7 @@ func getUserActivities(userID, categoryID, limit int) ([]AdActivity, error) {
 					FROM user_ad_image_clicks uaic
 					JOIN ads a ON uaic.ad_id = a.id
 					WHERE uaic.user_id = $1
-					  AND a.deleted_at IS NULL
+					  AND a.inactive_at IS NULL AND a.deleted_at IS NULL
 					  AND a.category_id = $2
 					  AND a.embedding IS NOT NULL
 
@@ -75,7 +75,7 @@ func getUserActivities(userID, categoryID, limit int) ([]AdActivity, error) {
 						'ad_created' AS activity_type
 					FROM ads a
 					WHERE a.user_id = $1
-					  AND a.deleted_at IS NULL
+					  AND a.inactive_at IS NULL AND a.deleted_at IS NULL
 					  AND a.category_id = $2
 					  AND a.embedding IS NOT NULL
 				) combined

@@ -59,7 +59,7 @@ func GetForEmbedding(adID int) (EmbeddingInput, error) {
 			), 0) AS rock_count
 		FROM ads a
 		LEFT JOIN locations l ON a.location_id = l.id
-		WHERE a.id = $1 AND a.deleted_at IS NULL`
+		WHERE a.id = $1 AND a.inactive_at IS NULL AND a.deleted_at IS NULL`
 	var row struct {
 		ID          int     `db:"id"`
 		CategoryID  int     `db:"category_id"`
@@ -128,7 +128,7 @@ func GetAdsWithoutVectors() ([]int, error) {
 	err := db.QueryJSON(&ids, `
 		SELECT COALESCE(json_agg(id), '[]'::json)
 		FROM ads
-		WHERE deleted_at IS NULL AND embedding IS NULL`)
+		WHERE inactive_at IS NULL AND deleted_at IS NULL AND embedding IS NULL`)
 	return ids, err
 }
 

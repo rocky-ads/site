@@ -40,7 +40,7 @@ func getSiteActivities(categoryID int, _ string, limit int) ([]AdActivity, error
 						a.embedding, 'bookmark' AS activity_type
 					FROM bookmarks b
 					JOIN ads a ON b.ad_id = a.id
-					WHERE a.deleted_at IS NULL
+					WHERE a.inactive_at IS NULL AND a.deleted_at IS NULL
 					  AND a.category_id = $1
 					  AND a.embedding IS NOT NULL
 
@@ -50,7 +50,7 @@ func getSiteActivities(categoryID int, _ string, limit int) ([]AdActivity, error
 						a.embedding, 'ad_click' AS activity_type
 					FROM user_ad_clicks uac
 					JOIN ads a ON uac.ad_id = a.id
-					WHERE a.deleted_at IS NULL
+					WHERE a.inactive_at IS NULL AND a.deleted_at IS NULL
 					  AND a.category_id = $1
 					  AND a.embedding IS NOT NULL
 
@@ -60,7 +60,7 @@ func getSiteActivities(categoryID int, _ string, limit int) ([]AdActivity, error
 						a.embedding, 'image_click' AS activity_type
 					FROM user_ad_image_clicks uaic
 					JOIN ads a ON uaic.ad_id = a.id
-					WHERE a.deleted_at IS NULL
+					WHERE a.inactive_at IS NULL AND a.deleted_at IS NULL
 					  AND a.category_id = $1
 					  AND a.embedding IS NOT NULL
 				) combined

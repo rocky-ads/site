@@ -35,8 +35,8 @@ func EditSuggestionsHandler(c *fiber.Ctx) error {
 	if a.UserID != userID {
 		return fiber.NewError(fiber.StatusForbidden, "You are not the owner of this ad")
 	}
-	if a.IsDeleted() {
-		return fiber.NewError(fiber.StatusBadRequest, "Cannot edit a deleted ad")
+	if !a.IsActive() {
+		return fiber.NewError(fiber.StatusBadRequest, "Cannot edit a deleted or inactive ad")
 	}
 
 	category := ad.GetCategory(a.CategoryID)

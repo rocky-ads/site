@@ -34,8 +34,8 @@ func UpdateAd(input UpdateInput) error {
 	if a.UserID != input.UserID {
 		return fmt.Errorf("you are not the owner of this ad")
 	}
-	if a.IsDeleted() {
-		return fmt.Errorf("cannot edit a deleted ad")
+	if !a.IsActive() {
+		return fmt.Errorf("cannot edit a deleted or inactive ad")
 	}
 
 	category := GetCategory(a.CategoryID)
@@ -141,7 +141,8 @@ func UpdateAd(input UpdateInput) error {
 	_, err = tx.Exec(
 		`UPDATE ads SET title = $1, description = $2, location_id = $3, tags = $4,
 		 image_count = $5
-		 WHERE id = $6 AND user_id = $7 AND deleted_at IS NULL`,
+		 WHERE id = $6 AND user_id = $7
+		   AND inactive_at IS NULL AND deleted_at IS NULL`,
 		title, desc, locationID, tagsJSON(newSuggestions), newImageCount,
 		input.AdID, input.UserID,
 	)

@@ -264,3 +264,76 @@ func GetConversationIDForUserRockByOrdinal(userID int, ordinal int) (int, error)
 	}
 	return conversationID, nil
 }
+
+// UnthrowActiveForAd clears active rocks on all conversations for an ad.
+func UnthrowActiveForAd(adID int) error {
+	rows, err := db.Query(`
+		SELECT id, rock_thrower_id, journal
+		FROM conversations
+		WHERE ad_id = $1 AND rock_thrower_id IS NOT NULL
+	`, adID)
+	if err != nil {
+		return fmt.Errorf("failed to list rocks for ad: %w", err)
+	}
+	defer rows.Close()
+	return unthrowRows(rows)
+}
+
+// UnthrowActiveForUser clears rocks thrown by or bound to the user.
+func UnthrowActiveForUser(userID int) error {
+	rows, err := db.Query(`
+		SELECT id, rock_thrower_id, journal
+		FROM conversations
+		WHERE rock_thrower_id IS NOT NULL
+		  AND (
+			rock_thrower_id = $1
+			OR (inquirer_id = $1 AND rock_thrower_id = owner_id)
+		  )
+	`, userID)
+	if err != nil {
+		return fmt.Errorf("failed to list rocks for user: %w", err)
+	}
+	defer rows.Close()
+	return unthrowRows(rows)
+}
+
+func unthrowRows(rows *sql.Rows) error {
+	type rockRow struct {
+		id      int
+		thrower int
+		journal string
+	}
+	var list []rockRow
+	for rows.Next() {
+		var r rockRow
+		if err := rows.Scan(&r.id, &r.thrower, &r.journal); err != nil {
+			return fmt.Errorf("failed to scan rock row: %w", err)
+		}
+		list = append(list, r)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, r := range list {
+		if err := forceUnthrow(r.id, r.thrower, r.journal); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func forceUnthrow(conversationID, throwerID int, j string) error {
+	now := time.Now().UTC()
+	newJournal := journal.AppendRock(j, journal.RockUnthrown, throwerID, now,
+		time.UTC)
+	_, err := db.Exec(`
+		UPDATE conversations
+		SET rock_thrower_id = NULL, rock_thrown_at = NULL,
+			journal = $1, updated_at = $2
+		WHERE id = $3 AND rock_thrower_id IS NOT NULL
+	`, newJournal, now, conversationID)
+	if err != nil {
+		return fmt.Errorf("failed to force-unthrow rock: %w", err)
+	}
+	return nil
+}

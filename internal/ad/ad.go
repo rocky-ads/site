@@ -16,6 +16,7 @@ type Ad struct {
 	Title       string     `db:"title"`
 	Description string     `db:"description"`
 	CreatedAt   time.Time  `db:"created_at"`
+	InactiveAt  *time.Time `db:"inactive_at"`
 	DeletedAt   *time.Time `db:"deleted_at"`
 	UserID      int        `db:"user_id"`
 	ImageCount  int        `db:"image_count"`
@@ -36,6 +37,14 @@ type Ad struct {
 
 	// Tags selected for the ad; loaded lazily on ad detail (ads.tags JSON)
 	Tags []Suggestion
+}
+
+func (a Ad) IsActive() bool {
+	return a.InactiveAt == nil && a.DeletedAt == nil
+}
+
+func (a Ad) IsInactive() bool {
+	return a.InactiveAt != nil && a.DeletedAt == nil
 }
 
 func (a Ad) IsDeleted() bool {
@@ -76,6 +85,7 @@ func GetAds(userID int, ids []int, tz *time.Location) ([]Ad, error) {
 			a.title,
 			a.description,
 			a.created_at,
+			a.inactive_at,
 			a.deleted_at,
 			a.user_id,
 			a.image_count,
@@ -109,6 +119,10 @@ func GetAds(userID int, ids []int, tz *time.Location) ([]Ad, error) {
 	// Convert timestamps to local timezone
 	for i := range ads {
 		ads[i].CreatedAt = ads[i].CreatedAt.In(tz)
+		if ads[i].InactiveAt != nil {
+			converted := (*ads[i].InactiveAt).In(tz)
+			ads[i].InactiveAt = &converted
+		}
 		if ads[i].DeletedAt != nil {
 			converted := (*ads[i].DeletedAt).In(tz)
 			ads[i].DeletedAt = &converted
@@ -187,7 +201,7 @@ func GetAd(userID int, id int, tz *time.Location) (Ad, error) {
 }
 
 // GetUserAdIDs returns ad IDs for a user based on filter type
-// filterType: "bookmarked", "active", or "deleted"
+// filterType: "bookmarked", "active", "inactive", or "deleted"
 func GetUserAdIDs(userID int, filterType string) ([]int, error) {
 	var query string
 	var args []any
@@ -198,14 +212,23 @@ func GetUserAdIDs(userID int, filterType string) ([]int, error) {
 			SELECT COALESCE(json_agg(a.id ORDER BY a.created_at DESC), '[]'::json)
 			FROM ads a
 			JOIN bookmarks b ON a.id = b.ad_id
-			WHERE b.user_id = $1 AND a.deleted_at IS NULL
+			WHERE b.user_id = $1
+			  AND a.inactive_at IS NULL AND a.deleted_at IS NULL
 		`
 		args = []any{userID}
 	case "active":
 		query = `
 			SELECT COALESCE(json_agg(id ORDER BY created_at DESC), '[]'::json)
 			FROM ads
-			WHERE user_id = $1 AND deleted_at IS NULL
+			WHERE user_id = $1
+			  AND inactive_at IS NULL AND deleted_at IS NULL
+		`
+		args = []any{userID}
+	case "inactive":
+		query = `
+			SELECT COALESCE(json_agg(id ORDER BY inactive_at DESC), '[]'::json)
+			FROM ads
+			WHERE user_id = $1 AND inactive_at IS NOT NULL AND deleted_at IS NULL
 		`
 		args = []any{userID}
 	case "deleted":
@@ -224,25 +247,54 @@ func GetUserAdIDs(userID int, filterType string) ([]int, error) {
 	return adIDs, err
 }
 
-// CountActiveAdsByUser returns the number of non-deleted ads for a user
+// CountActiveAdsByUser returns the number of live ads for a user
 func CountActiveAdsByUser(userID int) (int, error) {
 	var n int
 	err := db.QueryRow(
-		"SELECT COUNT(*) FROM ads WHERE user_id = $1 AND deleted_at IS NULL",
+		"SELECT COUNT(*) FROM ads WHERE user_id = $1 AND inactive_at IS NULL AND deleted_at IS NULL",
 		userID,
 	).Scan(&n)
 	return n, err
 }
 
-func Delete(id int) error {
-	_, err := db.Exec(
-		"UPDATE ads SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1",
-		id,
-	)
+// Pause hides an ad from listings; the owner can activate it again.
+func Pause(id int) error {
+	_, err := db.Exec(`
+		UPDATE ads
+		SET inactive_at = CURRENT_TIMESTAMP
+		WHERE id = $1 AND deleted_at IS NULL AND inactive_at IS NULL
+	`, id)
 	return err
 }
 
-func Restore(id int) error {
-	_, err := db.Exec("UPDATE ads SET deleted_at = NULL WHERE id = $1", id)
+// Activate restores an inactive ad to live listings.
+func Activate(id int) error {
+	_, err := db.Exec(`
+		UPDATE ads
+		SET inactive_at = NULL
+		WHERE id = $1 AND deleted_at IS NULL AND inactive_at IS NOT NULL
+	`, id)
 	return err
+}
+
+// PermanentlyDelete soft-deletes an ad as a zombie that cannot be restored.
+func PermanentlyDelete(id int) error {
+	_, err := db.Exec(`
+		UPDATE ads
+		SET deleted_at = CURRENT_TIMESTAMP, inactive_at = NULL
+		WHERE id = $1 AND deleted_at IS NULL
+	`, id)
+	return err
+}
+
+// PermanentlyDeleteByUser soft-deletes all non-zombie ads owned by userID.
+func PermanentlyDeleteByUser(userID int) ([]int, error) {
+	var ids []int
+	err := db.Select(&ids, `
+		UPDATE ads
+		SET deleted_at = CURRENT_TIMESTAMP, inactive_at = NULL
+		WHERE user_id = $1 AND deleted_at IS NULL
+		RETURNING id
+	`, userID)
+	return ids, err
 }

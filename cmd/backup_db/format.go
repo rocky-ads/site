@@ -143,6 +143,7 @@ type AdRow struct {
 	Title       string     `json:"title" db:"title"`
 	Description string     `json:"description" db:"description"`
 	CreatedAt   time.Time  `json:"created_at" db:"created_at"`
+	InactiveAt  *time.Time `json:"inactive_at,omitempty" db:"inactive_at"`
 	DeletedAt   *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
 	OwnerHash   string     `json:"owner_hash"`
 	ImageCount  int        `json:"image_count" db:"image_count"`
@@ -156,6 +157,7 @@ type adDBRow struct {
 	Title       string     `db:"title"`
 	Description string     `db:"description"`
 	CreatedAt   time.Time  `db:"created_at"`
+	InactiveAt  *time.Time `db:"inactive_at"`
 	DeletedAt   *time.Time `db:"deleted_at"`
 	UserID      int        `db:"user_id"`
 	ImageCount  int        `db:"image_count"`

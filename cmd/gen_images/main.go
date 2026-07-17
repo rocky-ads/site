@@ -234,7 +234,7 @@ func getAds(startID, limit int) ([]ad.Ad, error) {
 			0 AS bookmarked
 		FROM ads a
 		LEFT JOIN locations l ON a.location_id = l.id
-		WHERE a.deleted_at IS NULL
+		WHERE a.inactive_at IS NULL AND a.deleted_at IS NULL
 	`
 	args := []any{}
 	if startID > 0 {

@@ -127,7 +127,7 @@ func adTitlesByIDs(ids []int) (map[int]string, error) {
 			'[]'::json
 		)
 		FROM ads
-		WHERE deleted_at IS NULL AND id IN (%s)`,
+		WHERE inactive_at IS NULL AND deleted_at IS NULL AND id IN (%s)`,
 		strings.Join(ph, ","),
 	)
 	var rows []titleRow

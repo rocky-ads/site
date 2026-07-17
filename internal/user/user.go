@@ -12,6 +12,8 @@ import (
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/password"
 	"github.com/rocky-ads/site/internal/phoneverification"
+	"github.com/rocky-ads/site/internal/rock"
+	"github.com/rocky-ads/site/internal/vector"
 )
 
 // UserStatus represents the status of a user
@@ -352,8 +354,87 @@ func GetAllUsers(sortBy string, sortOrder string) ([]User, error) {
 
 func DeleteUser(userID int) error {
 	now := time.Now()
-	_, err := db.Exec("UPDATE users SET deleted_at = $1 WHERE id = $2", now, userID)
-	return err
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(
+		"UPDATE users SET deleted_at = $1 WHERE id = $2", now, userID,
+	)
+	if err != nil {
+		return err
+	}
+
+	rows, err := tx.Query(`
+		SELECT id FROM ads
+		WHERE user_id = $1 AND deleted_at IS NULL
+	`, userID)
+	if err != nil {
+		return err
+	}
+	var adIDs []int
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return err
+		}
+		adIDs = append(adIDs, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		UPDATE ads
+		SET deleted_at = $1, inactive_at = NULL
+		WHERE user_id = $2 AND deleted_at IS NULL
+	`, now, userID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		UPDATE conversations SET owner_has_unread = 0 WHERE owner_id = $1
+	`, userID)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`
+		UPDATE conversations SET inquirer_has_unread = 0 WHERE inquirer_id = $1
+	`, userID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		UPDATE sms_notification_queue
+		SET status = 'suppressed', processed_at = $1
+		WHERE recipient_user_id = $2 AND status = 'pending'
+	`, now, userID)
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	_ = rock.UnthrowActiveForUser(userID)
+	for _, adID := range adIDs {
+		_ = rock.UnthrowActiveForAd(adID)
+		_ = vector.DeleteAdEmbedding(adID)
+		_, _ = db.Exec(`
+			DELETE FROM rock_opinions
+			WHERE conversation_id IN (
+				SELECT id FROM conversations WHERE ad_id = $1
+			)
+		`, adID)
+	}
+	return nil
 }
 
 func RestoreUser(userID int) error {

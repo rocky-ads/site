@@ -227,11 +227,19 @@ func AdListNode(userID, adID int, priceDisplay, title, location,
 }
 
 func deletedWatermark() g.Node {
+	return statusWatermark("DELETED")
+}
+
+func pausedWatermark() g.Node {
+	return statusWatermark("PAUSED")
+}
+
+func statusWatermark(text string) g.Node {
 	return Div(
 		Class("absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center pointer-events-none z-50"),
 		Div(
 			Class("font-bold text-8xl text-red-500 transform rotate-[-45deg]"),
-			g.Text("DELETED"),
+			g.Text(text),
 		),
 	)
 }
@@ -259,17 +267,15 @@ func shareButton(adID int) g.Node {
 	})
 }
 
-func deleteButton(adID int, csrfToken string) g.Node {
+func deleteButton(adID int) g.Node {
 	return iconButton(buttonProps{
 		ImageSrc: "/images/trashcan.svg",
-		Alt:      "Delete Ad",
+		Alt:      "Remove Ad",
 		Class:    "dark:invert dark:opacity-80",
 		Attrs: []g.Node{
-			hx.Delete(fmt.Sprintf("/auth/ad/%d/delete", adID)),
-			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
+			hx.Get(fmt.Sprintf("/auth/ad/%d/remove-modal", adID)),
 			hx.Target("body"),
-			hx.Swap("outerHTML"),
-			g.Attr("hx-confirm", "Are you sure you want to delete this ad?"),
+			hx.Swap("beforeend"),
 		},
 	})
 }
@@ -284,7 +290,7 @@ func restoreButton(adID int, csrfToken string) g.Node {
 			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
 			hx.Target("body"),
 			hx.Swap("outerHTML"),
-			g.Attr("hx-confirm", "Are you sure you want to restore this ad?"),
+			g.Attr("hx-confirm", "Are you sure you want to restore this paused ad?"),
 		},
 	})
 }
@@ -302,7 +308,7 @@ func messageButton(adID int) g.Node {
 	})
 }
 
-func adButtons(adID, userID, ownerID int, bookmarked, active, reachable bool,
+func adButtons(adID, userID, ownerID int, bookmarked, active, inactive, reachable bool,
 	csrfToken string) g.Node {
 	isOwner := local.IsLoggedIn(userID) && userID == ownerID
 	return Div(
@@ -310,8 +316,8 @@ func adButtons(adID, userID, ownerID int, bookmarked, active, reachable bool,
 		g.If(local.IsLoggedIn(userID), BookmarkButton(adID, bookmarked, csrfToken)),
 		g.If(active && local.IsLoggedIn(userID) && reachable && !isOwner, messageButton(adID)),
 		g.If(active && isOwner, editButton(adID)),
-		g.If(active && isOwner, deleteButton(adID, csrfToken)),
-		g.If(!active && isOwner, restoreButton(adID, csrfToken)),
+		g.If(active && isOwner, deleteButton(adID)),
+		g.If(inactive && isOwner, restoreButton(adID, csrfToken)),
 		shareButton(adID),
 	)
 }
@@ -431,7 +437,8 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 				g.If(d.ImageCount == 0, noImage("h-32 w-full")),
 				g.If(time.Since(d.CreatedAt) < 4*time.Hour, newBadgeImageOverlay()),
 			),
-			g.If(!d.Active, deletedWatermark()),
+			g.If(d.Deleted, deletedWatermark()),
+			g.If(d.Inactive, pausedWatermark()),
 			g.If(d.IsTest && d.Active, testWatermark()),
 			Div(
 				Class("p-6 flex flex-col bg-white dark:bg-zinc-800"),
@@ -442,7 +449,7 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 						g.If(d.RockCount > 0, RockIcons(d.ID, d.RockCount)),
 						adCardTitle(d.Title, d.FacetLabel),
 					),
-					adButtons(d.ID, userID, d.OwnerID, d.Bookmarked, d.Active, d.Reachable, csrfToken),
+					adButtons(d.ID, userID, d.OwnerID, d.Bookmarked, d.Active, d.Inactive, d.Reachable, csrfToken),
 				),
 				Div(
 					Class("flex items-center gap-2 min-w-0"),
@@ -531,7 +538,7 @@ func descriptionHistoryEntry(adID int, e AdHistoryEntry) g.Node {
 	)
 }
 
-func AdDeleted() []g.Node {
+func AdUnavailable() []g.Node {
 	return []g.Node{
 		Div(
 			Class("text-center py-16"),
@@ -539,17 +546,17 @@ func AdDeleted() []g.Node {
 				Class("mb-6 flex justify-center"),
 				Img(
 					Src("/images/trashcan.svg"),
-					Alt("Deleted"),
+					Alt("Unavailable"),
 					Class("w-24 h-24"),
 				),
 			),
 			H2(
 				Class("text-3xl font-bold mb-4"),
-				g.Text("Ad Deleted"),
+				g.Text("Ad Unavailable"),
 			),
 			P(
 				Class("text-lg text-zinc-600 dark:text-zinc-400 mb-8"),
-				g.Text("This ad has been deleted by the owner and is no longer available."),
+				g.Text("This ad is no longer available."),
 			),
 			standardButton(buttonProps{
 				Text: "Back to Home",
@@ -557,6 +564,63 @@ func AdDeleted() []g.Node {
 			}),
 		),
 	}
+}
+
+func AdRemoveModal(adID int, csrfToken string) g.Node {
+	csrfHeader := fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)
+	return g.Group([]g.Node{
+		modalBackdrop("ad-remove"),
+		Div(
+			ID("ad-remove-modal"),
+			Class("fixed inset-0 flex items-center justify-center z-50 p-8 pointer-events-none"),
+			Div(
+				Class("bg-white dark:bg-zinc-800 rounded-lg w-full max-w-md shadow-2xl border-2 border-zinc-300 dark:border-zinc-600 flex flex-col pointer-events-auto"),
+				Div(
+					Class("flex items-center justify-between p-6 border-b border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
+					H3(Class("text-xl font-bold text-zinc-900 dark:text-zinc-200"), g.Text("Pause or delete?")),
+					modalClose("ad-remove"),
+				),
+				Div(
+					Class("p-6 flex flex-col gap-6"),
+					Div(
+						Class("flex flex-col gap-2"),
+						H4(Class("font-semibold text-zinc-900 dark:text-zinc-200"), g.Text("Pause ad")),
+						P(
+							Class("text-sm text-zinc-600 dark:text-zinc-400"),
+							g.Text("Hide this ad from search and listings. You can turn it back on later from My Ads."),
+						),
+						standardButton(buttonProps{
+							Text:  "Pause Ad",
+							Class: "bg-amber-600 hover:bg-amber-700 w-full text-center",
+							Attrs: []g.Node{
+								hx.Post(fmt.Sprintf("/auth/ad/%d/pause", adID)),
+								hx.Headers(csrfHeader),
+								hx.Swap("none"),
+							},
+						}),
+					),
+					Div(
+						Class("flex flex-col gap-2"),
+						H4(Class("font-semibold text-zinc-900 dark:text-zinc-200"), g.Text("Delete forever")),
+						P(
+							Class("text-sm text-zinc-600 dark:text-zinc-400"),
+							g.Text("Permanently remove this ad. It cannot be restored. Existing conversations stay in your inbox but messaging will stop."),
+						),
+						standardButton(buttonProps{
+							Text:  "Delete Forever",
+							Class: "bg-red-600 hover:bg-red-700 w-full text-center",
+							Attrs: []g.Node{
+								hx.Delete(fmt.Sprintf("/auth/ad/%d/delete", adID)),
+								hx.Headers(csrfHeader),
+								hx.Swap("none"),
+								g.Attr("hx-confirm", "Permanently delete this ad? This cannot be undone."),
+							},
+						}),
+					),
+				),
+			),
+		),
+	})
 }
 
 func imagesField(maxImagesPerAd int) g.Node {

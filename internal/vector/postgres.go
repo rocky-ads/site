@@ -62,7 +62,7 @@ func QuerySimilarAdIDs(embedding []float32, whereClause string, whereArgs []any,
 	argIndex := 3
 	filterWhere := whereClause
 	whereSQL := `embedding IS NOT NULL
-		  AND deleted_at IS NULL
+		  AND inactive_at IS NULL AND deleted_at IS NULL
 		  AND (embedding <=> $1::vector) < $2`
 	if whereClause != "" {
 		whereClause = replacePlaceholders(whereClause, argIndex)
@@ -200,7 +200,7 @@ func GetAdEmbeddings(adIDs []int) ([][]float32, error) {
 
 func logVectorSearchDiagnostics(vec pgvector.Vector, whereClause string,
 	whereArgs []any, threshold float64) {
-	baseWhere := `embedding IS NOT NULL AND deleted_at IS NULL`
+	baseWhere := `embedding IS NOT NULL AND inactive_at IS NULL AND deleted_at IS NULL`
 	if whereClause != "" {
 		filterClause := replacePlaceholders(whereClause, 3)
 		baseWhere += " AND " + filterClause
@@ -224,7 +224,7 @@ func logVectorSearchDiagnostics(vec pgvector.Vector, whereClause string,
 		return
 	}
 
-	nearestWhere := `embedding IS NOT NULL AND deleted_at IS NULL`
+	nearestWhere := `embedding IS NOT NULL AND inactive_at IS NULL AND deleted_at IS NULL`
 	if whereClause != "" {
 		nearestWhere += " AND " + replacePlaceholders(whereClause, 2)
 	}

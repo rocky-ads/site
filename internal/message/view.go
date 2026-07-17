@@ -62,15 +62,15 @@ func OpenConversation(conversationID, userID int) (Conversation, bool, error) {
 
 func OwnerAndInquirerNames(conv Conversation) (ownerName, inquirerName string,
 	err error) {
-	owner, err := user.GetByID(conv.OwnerID)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to get owner name: %w", err)
+	return displayName(conv.OwnerID), displayName(conv.InquirerID), nil
+}
+
+func displayName(userID int) string {
+	u, err := user.GetByID(userID)
+	if err == nil {
+		return u.Name
 	}
-	inquirer, err := user.GetByID(conv.InquirerID)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to get inquirer name: %w", err)
-	}
-	return owner.Name, inquirer.Name, nil
+	return DeletedAccountName
 }
 
 func OtherUserName(conv Conversation, currentUserID int) (string, error) {
@@ -80,11 +80,7 @@ func OtherUserName(conv Conversation, currentUserID int) (string, error) {
 	} else {
 		otherUserID = conv.OwnerID
 	}
-	u, err := user.GetByID(otherUserID)
-	if err != nil {
-		return "", err
-	}
-	return u.Name, nil
+	return displayName(otherUserID), nil
 }
 
 func BuildConversationModal(conv Conversation, currentUserID int,
@@ -109,8 +105,9 @@ func BuildConversationModal(conv Conversation, currentUserID int,
 		Messages:          []Message{},
 	}
 
+	messagingOK := MessagingAllowed(conv)
 	if conv.ID == 0 {
-		view.CanPost = true
+		view.CanPost = messagingOK && a.IsActive()
 		return view, nil
 	}
 
@@ -121,9 +118,9 @@ func BuildConversationModal(conv Conversation, currentUserID int,
 	if err != nil {
 		return ConversationModalView{}, fmt.Errorf("failed to check permissions: %w", err)
 	}
-	view.CanPost = canPost
+	view.CanPost = canPost && messagingOK
 
-	hasThrown, canThrow := rockThrowPermissions(conv.ID, currentUserID, canPost)
+	hasThrown, canThrow := rockThrowPermissions(conv.ID, currentUserID, view.CanPost)
 	view.HasThrownRock = hasThrown
 	view.CanThrowRock = canThrow
 
