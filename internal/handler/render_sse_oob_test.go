@@ -74,8 +74,6 @@ func TestConversationMessagesAreaStructure(t *testing.T) {
 		`id="conversation-5-messages"`,
 		`flex-col-reverse`,
 		`id="conversation-5-messages-list"`,
-		`hx-on::after-settle="this.parentElement.scrollTop=0"`,
-		`hx-on:htmx:oob-after-swap="this.parentElement.scrollTop=0"`,
 		`conversation-5-empty-message`,
 	} {
 		if !strings.Contains(html, want) {

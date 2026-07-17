@@ -153,14 +153,6 @@ func conversationMessagesAppendSwap() string {
 	return "beforeend"
 }
 
-// Pin the column-reverse scrollport to newest after local or OOB appends.
-func conversationMessagesScrollPin() g.Node {
-	return g.Group([]g.Node{
-		g.Attr("hx-on::after-settle", "this.parentElement.scrollTop=0"),
-		g.Attr("hx-on:htmx:oob-after-swap", "this.parentElement.scrollTop=0"),
-	})
-}
-
 func ConversationMessageAppendOOB(conversationID int) g.Node {
 	return hx.SwapOOB(fmt.Sprintf(
 		"beforeend:%s", conversationMessagesSelector(conversationID)))
@@ -180,7 +172,6 @@ func ConversationMessagesArea(conversationID int, canPost bool,
 	listAttrs := append([]g.Node{
 		ID(fmt.Sprintf("conversation-%d-messages-list", conversationID)),
 		Class("flex flex-col space-y-2"),
-		conversationMessagesScrollPin(),
 	}, extraAttrs...)
 	return Div(
 		ID(fmt.Sprintf("conversation-%d-messages", conversationID)),
@@ -542,7 +533,6 @@ func ConversationListItem(d ConversationListItemData) g.Node {
 		hx.Get(fmt.Sprintf("/auth/conversation/%d", d.ConversationID)),
 		hx.Target("#page-content"),
 		hx.Swap("beforeend"),
-		hx.Trigger("click[!closest(.rock-icon-container)]"),
 		Div(
 			Class("p-4"),
 			Div(
@@ -554,7 +544,7 @@ func ConversationListItem(d ConversationListItemData) g.Node {
 							Class("bg-green-500 rounded-full w-2 h-2 flex-shrink-0"),
 						),
 					),
-					g.If(d.RockCount > 0, RockIcons(d.AdID, d.RockCount)),
+					g.If(d.RockCount > 0, StaticRockIcons(d.RockCount)),
 					Span(
 						Class("text-lg font-semibold text-zinc-900 dark:text-zinc-200"),
 						g.Text(d.AdTitle),
@@ -572,13 +562,15 @@ func ConversationListItem(d ConversationListItemData) g.Node {
 					g.If(d.InquirerID == d.CurrentUserID,
 						g.Group([]g.Node{
 							g.Text("To: "),
-							UserNameLink(d.OwnerID, d.OtherUserName, UserRockIcons(d.OwnerID, d.OtherUserRockCount)),
+							UserNameLink(d.OwnerID, d.OtherUserName,
+								StaticRockIcons(d.OtherUserRockCount)),
 						}),
 					),
 					g.If(d.OwnerID == d.CurrentUserID,
 						g.Group([]g.Node{
 							g.Text("From: "),
-							UserNameLink(d.InquirerID, d.OtherUserName, UserRockIcons(d.InquirerID, d.OtherUserRockCount)),
+							UserNameLink(d.InquirerID, d.OtherUserName,
+								StaticRockIcons(d.OtherUserRockCount)),
 						}),
 					),
 				),

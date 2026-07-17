@@ -53,6 +53,21 @@ func UserRockIcons(userID int, rockCount int) g.Node {
 	return renderRockIconsByOrdinal(rockCount, "/auth/user/%d/rock/%d", userID)
 }
 
+func StaticRockIcons(rockCount int) g.Node {
+	icons := make([]g.Node, 0, rockCount)
+	for range rockCount {
+		icons = append(icons, Img(
+			Src("/images/rock.svg"),
+			Alt("Rock thrown"),
+			Class("w-5 h-5 flex-shrink-0"),
+		))
+	}
+	return Span(
+		Class("inline-flex items-center gap-0.5"),
+		g.Group(icons),
+	)
+}
+
 func rockThrowLinkContent(thrown bool) g.Node {
 	plungerClass := "rock-plunger"
 	if thrown {
