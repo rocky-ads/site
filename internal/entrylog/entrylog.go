@@ -9,8 +9,25 @@ import (
 const (
 	Marker = "\u001e"
 
-	TimestampLayout = "2006-01-02 03:04:05 PM MST"
+	// Numeric offset so Parse is independent of time.Local (MST abbreviations
+	// like PDT are only resolved when Local knows them; CI is usually UTC).
+	TimestampLayout = "2006-01-02 03:04:05 PM -0700"
+	legacyLayout    = "2006-01-02 03:04:05 PM MST"
 )
+
+// Fixed offsets for legacy journal/ad timestamps that used MST abbreviations.
+var legacyZones = map[string]*time.Location{
+	"UTC": time.UTC,
+	"GMT": time.UTC,
+	"PDT": time.FixedZone("PDT", -7*60*60),
+	"PST": time.FixedZone("PST", -8*60*60),
+	"MDT": time.FixedZone("MDT", -6*60*60),
+	"MST": time.FixedZone("MST", -7*60*60),
+	"CDT": time.FixedZone("CDT", -5*60*60),
+	"CST": time.FixedZone("CST", -6*60*60),
+	"EDT": time.FixedZone("EDT", -4*60*60),
+	"EST": time.FixedZone("EST", -5*60*60),
+}
 
 // Block is one parsed marker-delimited entry.
 type Block struct {
@@ -49,7 +66,22 @@ func FormatTimestamp(at time.Time, tz *time.Location) string {
 }
 
 func ParseTimestamp(s string) (time.Time, error) {
-	return time.Parse(TimestampLayout, s)
+	if t, err := time.Parse(TimestampLayout, s); err == nil {
+		return t, nil
+	}
+	return parseLegacyTimestamp(s)
+}
+
+func parseLegacyTimestamp(s string) (time.Time, error) {
+	abbr := s
+	if i := strings.LastIndexByte(s, ' '); i >= 0 {
+		abbr = s[i+1:]
+	}
+	loc, ok := legacyZones[abbr]
+	if !ok {
+		return time.Parse(legacyLayout, s)
+	}
+	return time.ParseInLocation(legacyLayout, s, loc)
 }
 
 func BuildBlock(label, meta, body string, at time.Time,
