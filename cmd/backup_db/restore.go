@@ -250,18 +250,21 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 			}
 			rockThrowerID = id
 		}
+		msgs := msgsByConv[c.Ref]
+		journalText := buildConversationJournal(c, msgs, userHashToID)
+		updatedAt := conversationUpdatedAt(c, msgs)
 		var newID int
 		err := db.QueryRow(`
 			INSERT INTO conversations (
 				ad_id, owner_id, inquirer_id,
 				owner_has_unread, inquirer_has_unread,
-				rock_thrower_id, rock_thrown_at, journal
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+				rock_thrower_id, rock_thrown_at, journal, updated_at
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 			RETURNING id`,
 			adID, ownerID, inquirerID,
 			c.OwnerHasUnread, c.InquirerHasUnread,
 			rockThrowerID, c.RockThrownAt,
-			buildConversationJournal(c, msgsByConv[c.Ref], userHashToID),
+			journalText, updatedAt,
 		).Scan(&newID)
 		if err != nil {
 			return fmt.Errorf("insert conversation ref %d: %w", c.Ref, err)
@@ -408,6 +411,22 @@ func buildConversationJournal(c ConversationRow, msgs []MessageRow,
 		j = e.append(j)
 	}
 	return j
+}
+
+func conversationUpdatedAt(c ConversationRow, msgs []MessageRow) time.Time {
+	var t time.Time
+	if c.RockThrownAt != nil {
+		t = *c.RockThrownAt
+	}
+	for _, m := range msgs {
+		if m.CreatedAt.After(t) {
+			t = m.CreatedAt
+		}
+	}
+	if t.IsZero() {
+		return time.Now().UTC()
+	}
+	return t.UTC()
 }
 
 func syncIdentitySequences() error {
