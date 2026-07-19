@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/logger"
+	"github.com/rocky-ads/site/internal/message"
 	"github.com/rocky-ads/site/internal/service/sms"
 	"github.com/rocky-ads/site/internal/ui"
 	"github.com/rocky-ads/site/internal/user"
@@ -149,6 +150,14 @@ func AdminUserDeleteHandler(c *fiber.Ctx) error {
 	if err := user.DeleteUser(userID); err != nil {
 		logger.Error("Failed to delete user", "error", err, "userID", userID)
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to delete user")
+	}
+
+	convs, err := message.CloseConversationsForDeletedAccount(userID)
+	if err != nil {
+		logger.Error("Failed to close conversations for deleted account",
+			"error", err, "userID", userID)
+	} else {
+		NotifyConversationsClosed(convs, userID)
 	}
 
 	return refreshUserRow(c)

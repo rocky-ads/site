@@ -22,8 +22,11 @@ type ConversationModalView struct {
 	AdTitle           string
 	OwnerName         string
 	InquirerName      string
+	OwnerDeleted      bool
+	InquirerDeleted   bool
 	Messages          []Message
 	RockEvents        []RockJournalEvent
+	CloseEvents       []CloseJournalEvent
 	InquirerRockCount int
 	OwnerRockCount    int
 	CanPost           bool
@@ -62,15 +65,21 @@ func OpenConversation(conversationID, userID int) (Conversation, bool, error) {
 
 func OwnerAndInquirerNames(conv Conversation) (ownerName, inquirerName string,
 	err error) {
-	return displayName(conv.OwnerID), displayName(conv.InquirerID), nil
+	ownerName, _ = displayName(conv.OwnerID)
+	inquirerName, _ = displayName(conv.InquirerID)
+	return ownerName, inquirerName, nil
 }
 
-func displayName(userID int) string {
-	u, err := user.GetByID(userID)
-	if err == nil {
-		return u.Name
+func displayName(userID int) (name string, deleted bool) {
+	u, err := user.GetByIDIncludingDeleted(userID)
+	if err != nil {
+		return "Unknown", true
 	}
-	return DeletedAccountName
+	return u.Name, u.DeletedAt != nil
+}
+
+func DisplayName(userID int) (name string, deleted bool) {
+	return displayName(userID)
 }
 
 func OtherUserName(conv Conversation, currentUserID int) (string, error) {
@@ -80,7 +89,8 @@ func OtherUserName(conv Conversation, currentUserID int) (string, error) {
 	} else {
 		otherUserID = conv.OwnerID
 	}
-	return displayName(otherUserID), nil
+	name, _ := displayName(otherUserID)
+	return name, nil
 }
 
 func BuildConversationModal(conv Conversation, currentUserID int,
@@ -90,16 +100,16 @@ func BuildConversationModal(conv Conversation, currentUserID int,
 		return ConversationModalView{}, fmt.Errorf("%w: %v", ErrModalAdNotFound, err)
 	}
 
-	ownerName, inquirerName, err := OwnerAndInquirerNames(conv)
-	if err != nil {
-		return ConversationModalView{}, err
-	}
+	ownerName, ownerDeleted := displayName(conv.OwnerID)
+	inquirerName, inquirerDeleted := displayName(conv.InquirerID)
 
 	view := ConversationModalView{
 		Conversation:      conv,
 		AdTitle:           a.Title,
 		OwnerName:         ownerName,
 		InquirerName:      inquirerName,
+		OwnerDeleted:      ownerDeleted,
+		InquirerDeleted:   inquirerDeleted,
 		InquirerRockCount: rockCountForUser(conv.InquirerID),
 		OwnerRockCount:    rockCountForUser(conv.OwnerID),
 		Messages:          []Message{},
@@ -113,6 +123,7 @@ func BuildConversationModal(conv Conversation, currentUserID int,
 
 	view.Messages = MessagesFromJournal(conv.ID, conv.Journal, tz)
 	view.RockEvents = RockEventsFromJournal(conv.Journal, tz)
+	view.CloseEvents = CloseEventsFromJournal(conv.Journal, tz)
 
 	canPost, err := CanUserPost(conv.ID, currentUserID)
 	if err != nil {

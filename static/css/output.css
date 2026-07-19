@@ -23,11 +23,12 @@
     --color-amber-50: oklch(98.7% 0.022 95.277);
     --color-amber-100: oklch(96.2% 0.059 95.617);
     --color-amber-200: oklch(92.4% 0.12 95.746);
-    --color-amber-400: oklch(82.8% 0.189 84.429);
+    --color-amber-300: oklch(87.9% 0.169 91.605);
     --color-amber-600: oklch(66.6% 0.179 58.318);
     --color-amber-700: oklch(55.5% 0.163 48.998);
     --color-amber-800: oklch(47.3% 0.137 46.201);
     --color-amber-900: oklch(41.4% 0.112 45.904);
+    --color-amber-950: oklch(27.9% 0.077 45.635);
     --color-yellow-50: oklch(98.7% 0.026 102.212);
     --color-yellow-100: oklch(97.3% 0.071 103.193);
     --color-yellow-200: oklch(94.5% 0.129 101.54);
@@ -657,6 +658,9 @@
   .max-w-\[80px\] {
     max-width: 80px;
   }
+  .max-w-\[90\%\] {
+    max-width: 90%;
+  }
   .max-w-full {
     max-width: 100%;
   }
@@ -960,6 +964,9 @@
   }
   .border-amber-200 {
     border-color: var(--color-amber-200);
+  }
+  .border-amber-300 {
+    border-color: var(--color-amber-300);
   }
   .border-blue-200 {
     border-color: var(--color-blue-200);
@@ -1368,9 +1375,6 @@
   }
   .whitespace-pre-wrap {
     white-space: pre-wrap;
-  }
-  .text-amber-700 {
-    color: var(--color-amber-700);
   }
   .text-amber-800 {
     color: var(--color-amber-800);
@@ -1928,6 +1932,11 @@
       }
     }
   }
+  .dark\:border-amber-700 {
+    @media (prefers-color-scheme: dark) {
+      border-color: var(--color-amber-700);
+    }
+  }
   .dark\:border-amber-800 {
     @media (prefers-color-scheme: dark) {
       border-color: var(--color-amber-800);
@@ -2008,6 +2017,14 @@
       background-color: color-mix(in srgb, oklch(41.4% 0.112 45.904) 20%, transparent);
       @supports (color: color-mix(in lab, red, red)) {
         background-color: color-mix(in oklab, var(--color-amber-900) 20%, transparent);
+      }
+    }
+  }
+  .dark\:bg-amber-950\/40 {
+    @media (prefers-color-scheme: dark) {
+      background-color: color-mix(in srgb, oklch(27.9% 0.077 45.635) 40%, transparent);
+      @supports (color: color-mix(in lab, red, red)) {
+        background-color: color-mix(in oklab, var(--color-amber-950) 40%, transparent);
       }
     }
   }
@@ -2189,11 +2206,6 @@
   .dark\:text-amber-200 {
     @media (prefers-color-scheme: dark) {
       color: var(--color-amber-200);
-    }
-  }
-  .dark\:text-amber-400 {
-    @media (prefers-color-scheme: dark) {
-      color: var(--color-amber-400);
     }
   }
   .dark\:text-blue-100 {

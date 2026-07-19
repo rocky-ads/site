@@ -30,6 +30,7 @@ const (
 func conversationModalData(conv message.Conversation, currentUserID,
 	inquirerRockCount, ownerRockCount int, adTitle, ownerName, inquirerName,
 	csrfToken string, canPost, hasThrownRock, canThrowRock bool,
+	ownerDeleted, inquirerDeleted bool,
 	messageNodes []g.Node, targetModalID string) ui.ConversationModalData {
 	return ui.ConversationModalData{
 		ConversationID:    conv.ID,
@@ -42,6 +43,8 @@ func conversationModalData(conv message.Conversation, currentUserID,
 		AdTitle:           adTitle,
 		OwnerName:         ownerName,
 		InquirerName:      inquirerName,
+		OwnerDeleted:      ownerDeleted,
+		InquirerDeleted:   inquirerDeleted,
 		CSRFToken:         csrfToken,
 		CanPost:           canPost,
 		HasThrownRock:     hasThrownRock,
@@ -89,13 +92,26 @@ func rockEventsFromView(view message.ConversationModalView,
 	return events
 }
 
+func closeEventData(event message.CloseJournalEvent) ui.CloseEventData {
+	name, _ := message.DisplayName(event.UserID)
+	return ui.CloseEventData{
+		Text:    message.CloseEventText(event.Kind, name),
+		EventAt: event.CreatedAt,
+	}
+}
+
 func messageTimelineFromView(view message.ConversationModalView,
 	currentUserID int, tz *time.Location) []g.Node {
 	msgs := make([]ui.MessageItemData, len(view.Messages))
 	for i, msg := range view.Messages {
 		msgs[i] = messageItemData(msg, currentUserID, tz)
 	}
-	return ui.MessageTimeline(msgs, rockEventsFromView(view, currentUserID))
+	closes := make([]ui.CloseEventData, len(view.CloseEvents))
+	for i, event := range view.CloseEvents {
+		closes[i] = closeEventData(event)
+	}
+	return ui.MessageTimeline(msgs, rockEventsFromView(view, currentUserID),
+		closes)
 }
 
 func conversationListItemData(conversationID, adID, ownerID, inquirerID,
@@ -140,7 +156,6 @@ func conversationListItemFromConv(conv message.ConversationWithLastMessage,
 		RockCount:          conv.RockCount,
 		OtherUserRockCount: conv.OtherUserRockCount,
 		OtherUserDeleted:   conv.OtherUserDeleted,
-		StatusNote:         conv.StatusNote,
 	}
 }
 
@@ -151,6 +166,7 @@ func conversationModalDataFromView(view message.ConversationModalView,
 		view.InquirerRockCount, view.OwnerRockCount,
 		view.AdTitle, view.OwnerName, view.InquirerName, csrfToken,
 		view.CanPost, view.HasThrownRock, view.CanThrowRock,
+		view.OwnerDeleted, view.InquirerDeleted,
 		messageNodes, targetModalID,
 	)
 }
@@ -257,6 +273,129 @@ func sendRockEventSSE(conv message.Conversation, throwerID int) {
 	SendSSEEvent(recipientID, SSEEvent{
 		Event: ui.SSEEventConversation(conv.ID),
 		Data:  modalHTML,
+	})
+}
+
+func NotifyConversationsClosed(convs []message.Conversation, actorID int) {
+	for _, conv := range convs {
+		sendConversationStatusSSE(conv, actorID)
+	}
+}
+
+func NotifyConversationsStatus(convs []message.Conversation, actorID int) {
+	for _, conv := range convs {
+		sendConversationStatusSSE(conv, actorID)
+	}
+}
+
+func sendConversationStatusSSE(conv message.Conversation, actorID int) {
+	recipientID := message.OtherParticipantID(conv, actorID)
+	if recipientID == 0 || recipientID == actorID {
+		return
+	}
+
+	tz := time.UTC
+	events := message.CloseEventsFromJournal(conv.Journal, tz)
+	if len(events) == 0 {
+		return
+	}
+	last := events[len(events)-1]
+
+	view, err := message.BuildConversationModal(conv, recipientID, tz)
+	if err != nil {
+		logger.Error("Failed to build modal for status SSE", "error", err,
+			"conversationID", conv.ID, "recipientID", recipientID)
+		return
+	}
+
+	clearEmpty := len(view.Messages) == 0 &&
+		len(view.RockEvents) == 0 && len(view.CloseEvents) == 1
+
+	nodes := []g.Node{
+		ui.CloseEventMessage(closeEventData(last),
+			ui.ConversationMessageAppendOOB(conv.ID)),
+		ui.ConversationFormSwapOOB(conv.ID, conv.AdID, "", view.CanPost),
+		ui.ConversationMessageActionsSwapOOB(
+			conversationModalDataFromView(view, recipientID, "", "", nil)),
+	}
+	if clearEmpty {
+		nodes = append(nodes,
+			ui.ConversationEmptyMessageDeleteSwapOOB(conv.ID))
+	}
+
+	modalHTML, err := renderToString(g.Group(nodes))
+	if err != nil {
+		logger.Error("Failed to render status SSE", "error", err,
+			"conversationID", conv.ID, "recipientID", recipientID)
+		return
+	}
+
+	SendSSEEvent(recipientID, SSEEvent{
+		Event: ui.SSEEventConversation(conv.ID),
+		Data:  modalHTML,
+	})
+
+	sendClosedConversationListItemUpdate(conv, recipientID)
+}
+
+func sendClosedConversationListItemUpdate(conv message.Conversation,
+	viewerID int) {
+	tz := time.UTC
+	a, err := ad.GetAd(viewerID, conv.AdID, tz)
+	if err != nil {
+		logger.Error("Failed to get ad for close list SSE", "error", err,
+			"conversationID", conv.ID)
+		return
+	}
+	otherUserName, err := message.OtherUserName(conv, viewerID)
+	if err != nil {
+		logger.Error("Failed to get other user name for close list SSE",
+			"error", err, "conversationID", conv.ID)
+		return
+	}
+	otherUserID := message.OtherParticipantID(conv, viewerID)
+	otherUserRockCount, _ := rock.GetRockCountForUser(otherUserID)
+	_, otherDeleted := message.DisplayName(otherUserID)
+
+	content, at, ok := message.LastMessagePreview(conv.Journal)
+	var lastMessageAt *time.Time
+	if ok {
+		t := at.In(tz)
+		lastMessageAt = &t
+	}
+
+	hasUnread := false
+	if conv.OwnerID == viewerID {
+		hasUnread = conv.OwnerHasUnread
+	} else if conv.InquirerID == viewerID {
+		hasUnread = conv.InquirerHasUnread
+	}
+
+	item := ui.ConversationListItem(ui.ConversationListItemData{
+		ConversationID:     conv.ID,
+		AdID:               conv.AdID,
+		OwnerID:            conv.OwnerID,
+		InquirerID:         conv.InquirerID,
+		CurrentUserID:      viewerID,
+		AdTitle:            a.Title,
+		LastMessageContent: content,
+		OtherUserName:      otherUserName,
+		LastMessageAt:      lastMessageAt,
+		UpdatedAt:          conv.UpdatedAt.In(tz),
+		HasUnread:          hasUnread,
+		RockCount:          a.RockCount,
+		OtherUserRockCount: otherUserRockCount,
+		OtherUserDeleted:   otherDeleted,
+	})
+	itemHTML, err := renderToString(ui.ConversationListItemSwapOOB(conv.ID, item))
+	if err != nil {
+		logger.Error("Failed to render close list SSE", "error", err,
+			"conversationID", conv.ID)
+		return
+	}
+	SendSSEEvent(viewerID, SSEEvent{
+		Event: ui.SSEEventConversationList,
+		Data:  itemHTML,
 	})
 }
 

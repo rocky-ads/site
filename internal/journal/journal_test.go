@@ -60,6 +60,45 @@ func TestAppendOldestFirst(t *testing.T) {
 	}
 }
 
+func TestAppendAndParseClose(t *testing.T) {
+	loc := time.UTC
+	t1 := time.Date(2026, 7, 10, 22, 33, 0, 0, loc)
+	t2 := time.Date(2026, 7, 10, 22, 40, 0, 0, loc)
+
+	j := AppendMessage("", 12, "hello", t1, loc)
+	j = AppendClose(j, AdDeleted, 34, t2, loc)
+
+	entries := Parse(j)
+	if len(entries) != 2 {
+		t.Fatalf("got %d entries, want 2", len(entries))
+	}
+	if entries[1].Kind != AdDeleted || entries[1].UserID != 34 {
+		t.Fatalf("close entry: %+v", entries[1])
+	}
+	if !strings.Contains(j, "ad deleted  user:34") {
+		t.Errorf("missing ad deleted: %q", j)
+	}
+}
+
+func TestAppendAndParsePause(t *testing.T) {
+	loc := time.UTC
+	t1 := time.Date(2026, 7, 10, 22, 33, 0, 0, loc)
+	t2 := time.Date(2026, 7, 10, 22, 40, 0, 0, loc)
+	t3 := time.Date(2026, 7, 10, 22, 45, 0, 0, loc)
+
+	j := AppendMessage("", 12, "hello", t1, loc)
+	j = AppendClose(j, AdPaused, 34, t2, loc)
+	j = AppendClose(j, AdUnpaused, 34, t3, loc)
+
+	entries := Parse(j)
+	if len(entries) != 3 {
+		t.Fatalf("got %d entries, want 3", len(entries))
+	}
+	if entries[1].Kind != AdPaused || entries[2].Kind != AdUnpaused {
+		t.Fatalf("kinds: %+v %+v", entries[1], entries[2])
+	}
+}
+
 func TestLastMessagePreviewSkipsRock(t *testing.T) {
 	loc := time.UTC
 	t1 := time.Date(2026, 7, 10, 22, 33, 0, 0, loc)

@@ -10,9 +10,13 @@ import (
 )
 
 const (
-	Message      = "message"
-	RockThrown   = "rock thrown"
-	RockUnthrown = "rock unthrown"
+	Message        = "message"
+	RockThrown     = "rock thrown"
+	RockUnthrown   = "rock unthrown"
+	AccountDeleted = "account deleted"
+	AdDeleted      = "ad deleted"
+	AdPaused       = "ad paused"
+	AdUnpaused     = "ad unpaused"
 )
 
 type Entry struct {
@@ -39,12 +43,19 @@ func AppendRock(j, kind string, userID int, at time.Time,
 	return entrylog.Append(j, kind, meta, "", at, tz)
 }
 
+func AppendClose(j, kind string, userID int, at time.Time,
+	tz *time.Location) string {
+	meta := fmt.Sprintf("user:%d", userID)
+	return entrylog.Append(j, kind, meta, "", at, tz)
+}
+
 func Parse(j string) []Entry {
 	blocks := entrylog.Parse(j)
 	var entries []Entry
 	for _, b := range blocks {
 		switch b.Label {
-		case Message, RockThrown, RockUnthrown:
+		case Message, RockThrown, RockUnthrown, AccountDeleted, AdDeleted,
+			AdPaused, AdUnpaused:
 			entries = append(entries, Entry{
 				Kind:   b.Label,
 				At:     b.At,

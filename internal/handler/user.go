@@ -172,6 +172,14 @@ func DeleteAccountHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to delete account")
 	}
 
+	convs, err := message.CloseConversationsForDeletedAccount(userID)
+	if err != nil {
+		logger.Error("Failed to close conversations for deleted account",
+			"error", err, "userID", userID)
+	} else {
+		NotifyConversationsClosed(convs, userID)
+	}
+
 	logout(c)
 	c.Set("HX-Redirect", "/")
 	return c.SendStatus(fiber.StatusOK)

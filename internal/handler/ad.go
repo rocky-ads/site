@@ -9,6 +9,7 @@ import (
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/local"
+	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/message"
 	"github.com/rocky-ads/site/internal/param"
 	"github.com/rocky-ads/site/internal/rock"
@@ -235,6 +236,14 @@ func PauseAdHandler(c *fiber.Ctx) error {
 	_ = rock.UnthrowActiveForAd(adID)
 	_ = rockopinion.InvalidateForAd(adID)
 
+	convs, err := message.SuspendConversationsForPausedAd(adID, userID)
+	if err != nil {
+		logger.Error("Failed to suspend conversations for paused ad",
+			"error", err, "adID", adID)
+	} else {
+		NotifyConversationsStatus(convs, userID)
+	}
+
 	c.Set("HX-Redirect", fmt.Sprintf("/ad/%d", adID))
 	return c.SendStatus(fiber.StatusOK)
 }
@@ -267,6 +276,14 @@ func DeleteAdHandler(c *fiber.Ctx) error {
 	_ = rock.UnthrowActiveForAd(adID)
 	_ = rockopinion.InvalidateForAd(adID)
 
+	convs, err := message.CloseConversationsForDeletedAd(adID, userID)
+	if err != nil {
+		logger.Error("Failed to close conversations for deleted ad",
+			"error", err, "adID", adID)
+	} else {
+		NotifyConversationsClosed(convs, userID)
+	}
+
 	c.Set("HX-Redirect", fmt.Sprintf("/ad/%d", adID))
 	return c.SendStatus(fiber.StatusOK)
 }
@@ -296,6 +313,14 @@ func RestoreAdHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to restore ad")
 	}
 	vector.QueueAd(adID)
+
+	convs, err := message.ResumeConversationsForUnpausedAd(adID, userID)
+	if err != nil {
+		logger.Error("Failed to resume conversations for unpaused ad",
+			"error", err, "adID", adID)
+	} else {
+		NotifyConversationsStatus(convs, userID)
+	}
 
 	c.Set("HX-Redirect", fmt.Sprintf("/ad/%d", adID))
 	return c.SendStatus(fiber.StatusOK)

@@ -37,3 +37,36 @@ func TestMessagesAndRockEventsFromJournal(t *testing.T) {
 		t.Errorf("event: %+v", events[0])
 	}
 }
+
+func TestCloseEventsFromJournal(t *testing.T) {
+	loc := time.UTC
+	t1 := time.Date(2026, 7, 10, 22, 33, 0, 0, loc)
+	t2 := time.Date(2026, 7, 10, 22, 40, 0, 0, loc)
+
+	j := journal.AppendMessage("", 12, "hello", t1, loc)
+	j = journal.AppendClose(j, journal.AccountDeleted, 34, t2, loc)
+
+	closes := CloseEventsFromJournal(j, loc)
+	if len(closes) != 1 {
+		t.Fatalf("closes = %d, want 1", len(closes))
+	}
+	if closes[0].Kind != "account" || closes[0].UserID != 34 {
+		t.Errorf("close: %+v", closes[0])
+	}
+	if CloseEventText("account", "Bob") !=
+		"User Bob deleted their account and all their ads, so this conversation is done" {
+		t.Errorf("unexpected account text")
+	}
+	if CloseEventText("ad", "Bob") !=
+		"Ad owner Bob deleted this ad, so this conversation is done" {
+		t.Errorf("unexpected ad text")
+	}
+	if CloseEventText("paused", "Bob") !=
+		"Ad owner Bob paused this ad, so this conversation is suspended" {
+		t.Errorf("unexpected paused text")
+	}
+	if CloseEventText("unpaused", "Bob") !=
+		"Ad owner Bob unpaused this ad, so this conversation can continue" {
+		t.Errorf("unexpected unpaused text")
+	}
+}

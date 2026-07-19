@@ -82,6 +82,8 @@ type ConversationModalData struct {
 	AdTitle           string
 	OwnerName         string
 	InquirerName      string
+	OwnerDeleted      bool
+	InquirerDeleted   bool
 	CSRFToken         string
 	CanPost           bool
 	HasThrownRock     bool
@@ -108,7 +110,6 @@ type ConversationListItemData struct {
 	RockCount          int
 	OtherUserRockCount int
 	OtherUserDeleted   bool
-	StatusNote         string
 }
 
 // CategoryOption holds presentation fields for a category picker item.
@@ -154,6 +155,13 @@ type RockEventData struct {
 	EventAt       time.Time
 	OwnerID       int
 	InquirerID    int
+}
+
+// CloseEventData holds presentation fields for an ad/account close journal entry.
+// EventAt is in the viewer's timezone.
+type CloseEventData struct {
+	Text    string
+	EventAt time.Time
 }
 
 // QueueStats holds SMS queue counts for the admin dashboard.

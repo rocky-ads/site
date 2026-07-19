@@ -48,19 +48,14 @@ type ConversationWithLastMessage struct {
 	OtherUserID        int        `db:"other_user_id"`
 	HasUnread          bool       `db:"has_unread"`
 	RockCount          int        `db:"rock_count"`
-	AdInactiveAt       *time.Time `db:"ad_inactive_at"`
-	AdDeletedAt        *time.Time `db:"ad_deleted_at"`
 	OtherUserName      string
 	OtherUserRockCount int
 	OtherUserDeleted   bool
-	StatusNote         string
 }
 
 var ErrConversationNotFound = errors.New("conversation not found")
 var ErrNotParticipant = errors.New("user is not a participant in this conversation")
 var ErrMessagingClosed = errors.New("messaging is closed for this conversation")
-
-const DeletedAccountName = "Deleted Account"
 
 func applyJournalDerivedTimes(conv *Conversation) {
 	if at, ok := FirstEntryAt(conv.Journal); ok {
@@ -302,8 +297,6 @@ func GetUserConversations(userID int,
 			c.journal,
 			c.updated_at,
 			a.title AS ad_title,
-			a.inactive_at AS ad_inactive_at,
-			a.deleted_at AS ad_deleted_at,
 			COALESCE((
 				SELECT COUNT(*)
 				FROM conversations c2
@@ -335,8 +328,6 @@ func GetUserConversations(userID int,
 		var conv ConversationWithLastMessage
 		var rockThrowerID sql.NullInt64
 		var rockThrownAt sql.NullTime
-		var adInactiveAt sql.NullTime
-		var adDeletedAt sql.NullTime
 
 		err := rows.Scan(
 			&conv.ID,
@@ -350,8 +341,6 @@ func GetUserConversations(userID int,
 			&conv.Journal,
 			&conv.UpdatedAt,
 			&conv.AdTitle,
-			&adInactiveAt,
-			&adDeletedAt,
 			&conv.RockCount,
 			&conv.OtherUserID,
 			&conv.HasUnread,
@@ -366,14 +355,6 @@ func GetUserConversations(userID int,
 		}
 		if rockThrownAt.Valid {
 			conv.RockThrownAt = &rockThrownAt.Time
-		}
-		if adInactiveAt.Valid {
-			t := adInactiveAt.Time
-			conv.AdInactiveAt = &t
-		}
-		if adDeletedAt.Valid {
-			t := adDeletedAt.Time
-			conv.AdDeletedAt = &t
 		}
 		applyJournalDerivedTimes(&conv.Conversation)
 
@@ -418,13 +399,11 @@ func enrichConversationListItems(conversations []ConversationWithLastMessage) {
 	deleted := make(map[int]bool, len(otherIDs))
 	rockCounts := make(map[int]int, len(otherIDs))
 	for id := range otherIDs {
-		if u, err := user.GetByID(id); err == nil {
+		if u, err := user.GetByIDIncludingDeleted(id); err == nil {
 			names[id] = u.Name
-		} else if _, err := user.GetByIDIncludingDeleted(id); err == nil {
-			names[id] = DeletedAccountName
-			deleted[id] = true
+			deleted[id] = u.DeletedAt != nil
 		} else {
-			names[id] = DeletedAccountName
+			names[id] = "Unknown"
 			deleted[id] = true
 		}
 		count, err := rock.GetRockCountForUser(id)
@@ -438,25 +417,7 @@ func enrichConversationListItems(conversations []ConversationWithLastMessage) {
 		conversations[i].OtherUserName = names[id]
 		conversations[i].OtherUserDeleted = deleted[id]
 		conversations[i].OtherUserRockCount = rockCounts[id]
-		conversations[i].StatusNote = conversationStatusNote(
-			conversations[i].AdDeletedAt != nil,
-			conversations[i].AdInactiveAt != nil,
-			deleted[id],
-		)
 	}
-}
-
-func conversationStatusNote(adDeleted, adInactive, otherDeleted bool) string {
-	var parts []string
-	if adDeleted {
-		parts = append(parts, "Ad deleted")
-	} else if adInactive {
-		parts = append(parts, "Ad paused")
-	}
-	if otherDeleted {
-		parts = append(parts, "Account deleted")
-	}
-	return strings.Join(parts, " · ")
 }
 
 func GetConversationMessages(conversationID, userID int,

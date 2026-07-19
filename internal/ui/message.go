@@ -112,32 +112,60 @@ func RockEventMessage(d RockEventData, attrs ...g.Node) g.Node {
 	)
 }
 
-// MessageTimeline renders chat messages with rock journal entries inserted
-// chronologically. Message and rock timestamps must already be in the viewer's
-// timezone.
-func MessageTimeline(messages []MessageItemData,
-	rocks []RockEventData) []g.Node {
-	if len(rocks) == 0 {
-		nodes := make([]g.Node, len(messages))
-		for i, m := range messages {
-			nodes[i] = MessageItem(m)
-		}
-		return nodes
-	}
+// CloseEventMessage renders a journal entry for ad/account deletion.
+func CloseEventMessage(d CloseEventData, attrs ...g.Node) g.Node {
+	fullTimestamp := d.EventAt.Format("2006-01-02 03:04:05 PM MST")
+	allAttrs := append([]g.Node{
+		Class("flex justify-center mb-3 mt-2"),
+		Title(fullTimestamp),
+	}, attrs...)
+	return Div(
+		g.Group(allAttrs),
+		Div(
+			Class("max-w-[90%] text-center"),
+			Div(
+				Class("px-4 py-3 rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-sm text-amber-900 dark:text-amber-200"),
+				g.Text(d.Text),
+			),
+			Div(
+				Class("text-xs text-zinc-500 dark:text-zinc-500 mt-1"),
+				g.Text(formatMessageTime(d.EventAt)),
+			),
+		),
+	)
+}
 
+// MessageTimeline renders chat messages with rock and close journal entries
+// inserted chronologically. Timestamps must already be in the viewer's timezone.
+func MessageTimeline(messages []MessageItemData,
+	rocks []RockEventData, closes []CloseEventData) []g.Node {
 	var nodes []g.Node
-	ri, mi := 0, 0
-	for ri < len(rocks) || mi < len(messages) {
-		useRock := mi >= len(messages) ||
-			(ri < len(rocks) &&
-				!rocks[ri].EventAt.After(messages[mi].CreatedAt))
-		if useRock {
+	ri, mi, ci := 0, 0, 0
+	for ri < len(rocks) || mi < len(messages) || ci < len(closes) {
+		var nextAt time.Time
+		pick := -1 // 0=msg, 1=rock, 2=close
+		if mi < len(messages) {
+			nextAt = messages[mi].CreatedAt
+			pick = 0
+		}
+		if ri < len(rocks) && (pick < 0 || !rocks[ri].EventAt.After(nextAt)) {
+			nextAt = rocks[ri].EventAt
+			pick = 1
+		}
+		if ci < len(closes) && (pick < 0 || !closes[ci].EventAt.After(nextAt)) {
+			pick = 2
+		}
+		switch pick {
+		case 0:
+			nodes = append(nodes, MessageItem(messages[mi]))
+			mi++
+		case 1:
 			nodes = append(nodes, RockEventMessage(rocks[ri]))
 			ri++
-			continue
+		case 2:
+			nodes = append(nodes, CloseEventMessage(closes[ci]))
+			ci++
 		}
-		nodes = append(nodes, MessageItem(messages[mi]))
-		mi++
 	}
 	return nodes
 }
@@ -284,12 +312,13 @@ func ConversationContentInputClearSwapOOB(conversationID int) g.Node {
 }
 
 func ConversationForm(conversationID, adID int, csrfToken string,
-	canPost bool) g.Node {
+	canPost bool, extraAttrs ...g.Node) g.Node {
 	modalName := fmt.Sprintf("conversation-%d", conversationID)
 	attrs := []g.Node{
 		ID(fmt.Sprintf("%s-form", modalName)),
 		Class("p-4 border-t border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
 	}
+	attrs = append(attrs, extraAttrs...)
 	if canPost {
 		var postURL string
 		if conversationID == 0 {
@@ -301,11 +330,15 @@ func ConversationForm(conversationID, adID int, csrfToken string,
 		}
 		attrs = append(attrs,
 			hx.Post(postURL),
-			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
 			hx.Include("this"),
 			hx.Target(conversationMessagesSelector(conversationID)),
 			hx.Swap(conversationMessagesAppendSwap()),
 		)
+		if csrfToken != "" {
+			attrs = append(attrs,
+				hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
+			)
+		}
 	}
 	return Form(
 		g.Group(attrs),
@@ -333,6 +366,12 @@ func ConversationForm(conversationID, adID int, csrfToken string,
 			),
 		),
 	)
+}
+
+func ConversationFormSwapOOB(conversationID, adID int, csrfToken string,
+	canPost bool) g.Node {
+	return ConversationForm(conversationID, adID, csrfToken, canPost,
+		hx.SwapOOB("outerHTML"))
 }
 
 // ConversationModalSwapOOB returns the modal div with hx-swap-oob="outerHTML".
@@ -370,11 +409,13 @@ func ConversationModalSwapOOB(d ConversationModalData) g.Node {
 						Class("text-sm text-zinc-600 dark:text-zinc-400"),
 						Span(Class("font-semibold"), g.Text("From: ")),
 						UserRockIcons(d.InquirerID, d.InquirerRockCount),
-						UserNameLink(d.InquirerID, d.InquirerName),
+						conversationParticipantName(d.InquirerID, d.InquirerName,
+							d.InquirerDeleted),
 						g.Text(", "),
 						Span(Class("font-semibold"), g.Text("To: ")),
 						UserRockIcons(d.OwnerID, d.OwnerRockCount),
-						UserNameLink(d.OwnerID, d.OwnerName),
+						conversationParticipantName(d.OwnerID, d.OwnerName,
+							d.OwnerDeleted),
 						g.Text(" (ad owner)"),
 						g.If(!d.CanPost && (d.OwnerID != d.CurrentUserID && d.InquirerID != d.CurrentUserID),
 							Span(
@@ -389,14 +430,22 @@ func ConversationModalSwapOOB(d ConversationModalData) g.Node {
 							g.Text("Rock thrown by: "),
 							g.If(rockUserID == d.CurrentUserID,
 								Span(Class("text-blue-600 dark:text-blue-400 font-medium"),
-									g.If(rockUserID == d.OwnerID, UserNameLink(d.OwnerID, d.OwnerName)),
-									g.If(rockUserID == d.InquirerID, UserNameLink(d.InquirerID, d.InquirerName)),
+									g.If(rockUserID == d.OwnerID,
+										conversationParticipantName(d.OwnerID,
+											d.OwnerName, d.OwnerDeleted)),
+									g.If(rockUserID == d.InquirerID,
+										conversationParticipantName(d.InquirerID,
+											d.InquirerName, d.InquirerDeleted)),
 								),
 							),
 							g.If(rockUserID != d.CurrentUserID,
 								Span(Class("text-zinc-700 dark:text-zinc-300 font-medium"),
-									g.If(rockUserID == d.OwnerID, UserNameLink(d.OwnerID, d.OwnerName)),
-									g.If(rockUserID == d.InquirerID, UserNameLink(d.InquirerID, d.InquirerName)),
+									g.If(rockUserID == d.OwnerID,
+										conversationParticipantName(d.OwnerID,
+											d.OwnerName, d.OwnerDeleted)),
+									g.If(rockUserID == d.InquirerID,
+										conversationParticipantName(d.InquirerID,
+											d.InquirerName, d.InquirerDeleted)),
 								),
 							),
 						),
@@ -456,11 +505,13 @@ func ConversationModalWithRock(d ConversationModalData) g.Node {
 							Class("text-sm text-zinc-600 dark:text-zinc-400"),
 							Span(Class("font-semibold"), g.Text("From: ")),
 							UserRockIcons(d.InquirerID, d.InquirerRockCount),
-							UserNameLink(d.InquirerID, d.InquirerName),
+							conversationParticipantName(d.InquirerID, d.InquirerName,
+								d.InquirerDeleted),
 							g.Text(", "),
 							Span(Class("font-semibold"), g.Text("To: ")),
 							UserRockIcons(d.OwnerID, d.OwnerRockCount),
-							UserNameLink(d.OwnerID, d.OwnerName),
+							conversationParticipantName(d.OwnerID, d.OwnerName,
+								d.OwnerDeleted),
 							g.Text(" (ad owner)"),
 							g.If(!d.CanPost && (d.OwnerID != d.CurrentUserID && d.InquirerID != d.CurrentUserID),
 								Span(
@@ -475,14 +526,22 @@ func ConversationModalWithRock(d ConversationModalData) g.Node {
 								g.Text("Rock thrown by: "),
 								g.If(rockUserID == d.CurrentUserID,
 									Span(Class("text-blue-600 dark:text-blue-400 font-medium"),
-										g.If(rockUserID == d.OwnerID, UserNameLink(d.OwnerID, d.OwnerName)),
-										g.If(rockUserID == d.InquirerID, UserNameLink(d.InquirerID, d.InquirerName)),
+										g.If(rockUserID == d.OwnerID,
+											conversationParticipantName(d.OwnerID,
+												d.OwnerName, d.OwnerDeleted)),
+										g.If(rockUserID == d.InquirerID,
+											conversationParticipantName(d.InquirerID,
+												d.InquirerName, d.InquirerDeleted)),
 									),
 								),
 								g.If(rockUserID != d.CurrentUserID,
 									Span(Class("text-zinc-700 dark:text-zinc-300 font-medium"),
-										g.If(rockUserID == d.OwnerID, UserNameLink(d.OwnerID, d.OwnerName)),
-										g.If(rockUserID == d.InquirerID, UserNameLink(d.InquirerID, d.InquirerName)),
+										g.If(rockUserID == d.OwnerID,
+											conversationParticipantName(d.OwnerID,
+												d.OwnerName, d.OwnerDeleted)),
+										g.If(rockUserID == d.InquirerID,
+											conversationParticipantName(d.InquirerID,
+												d.InquirerName, d.InquirerDeleted)),
 									),
 								),
 							),
@@ -525,6 +584,16 @@ func conversationPeerName(userID int, name string, deleted bool,
 	return UserNameLink(userID, name, StaticRockIcons(rockCount))
 }
 
+func conversationParticipantName(userID int, name string, deleted bool) g.Node {
+	if deleted {
+		return Span(
+			Class("text-zinc-500 dark:text-zinc-400"),
+			g.Text(name),
+		)
+	}
+	return UserNameLink(userID, name)
+}
+
 func ConversationListItem(d ConversationListItemData) g.Node {
 	lastMessagePreview := d.LastMessageContent
 	if len(lastMessagePreview) > 50 {
@@ -564,12 +633,6 @@ func ConversationListItem(d ConversationListItemData) g.Node {
 				Span(
 					Class("text-xs text-zinc-500 dark:text-zinc-400 ml-4 flex-shrink-0"),
 					g.Text(timeStr),
-				),
-			),
-			g.If(d.StatusNote != "",
-				P(
-					Class("text-xs text-amber-700 dark:text-amber-400 mb-2"),
-					g.Text(d.StatusNote),
 				),
 			),
 			Div(

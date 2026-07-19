@@ -7,9 +7,13 @@ import (
 )
 
 const (
-	JournalMessage      = journal.Message
-	JournalRockThrown   = journal.RockThrown
-	JournalRockUnthrown = journal.RockUnthrown
+	JournalMessage        = journal.Message
+	JournalRockThrown     = journal.RockThrown
+	JournalRockUnthrown   = journal.RockUnthrown
+	JournalAccountDeleted = journal.AccountDeleted
+	JournalAdDeleted      = journal.AdDeleted
+	JournalAdPaused       = journal.AdPaused
+	JournalAdUnpaused     = journal.AdUnpaused
 )
 
 type JournalEntry = journal.Entry
@@ -26,6 +30,11 @@ func AppendMessageEntry(j string, senderID int, body string, at time.Time,
 
 func AppendRockEntry(j, kind string, userID int, at time.Time, tz *time.Location) string {
 	return journal.AppendRock(j, kind, userID, at, tz)
+}
+
+func AppendCloseEntry(j, kind string, userID int, at time.Time,
+	tz *time.Location) string {
+	return journal.AppendClose(j, kind, userID, at, tz)
 }
 
 func ParseJournal(j string) []JournalEntry {
@@ -89,6 +98,43 @@ func RockEventsFromJournal(j string, tz *time.Location) []RockJournalEvent {
 			at = at.In(tz)
 		}
 		events = append(events, RockJournalEvent{
+			UserID:    e.UserID,
+			Kind:      kind,
+			CreatedAt: at,
+		})
+	}
+	return events
+}
+
+// CloseJournalEvent is an ad/account deletion timeline entry from the journal.
+type CloseJournalEvent struct {
+	UserID    int
+	Kind      string
+	CreatedAt time.Time
+}
+
+func CloseEventsFromJournal(j string, tz *time.Location) []CloseJournalEvent {
+	entries := journal.Parse(j)
+	var events []CloseJournalEvent
+	for _, e := range entries {
+		var kind string
+		switch e.Kind {
+		case journal.AccountDeleted:
+			kind = "account"
+		case journal.AdDeleted:
+			kind = "ad"
+		case journal.AdPaused:
+			kind = "paused"
+		case journal.AdUnpaused:
+			kind = "unpaused"
+		default:
+			continue
+		}
+		at := e.At
+		if tz != nil {
+			at = at.In(tz)
+		}
+		events = append(events, CloseJournalEvent{
 			UserID:    e.UserID,
 			Kind:      kind,
 			CreatedAt: at,
