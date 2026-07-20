@@ -56,7 +56,7 @@ const (
 	MaxRockCount           = 2 // Maximum rock count to allow in search results
 	MaxOutstandingRocks    = 3 // Rocks granted at signup; max a user can have thrown at once
 	DefaultAdCategoryName  = "Car & Truck Parts"
-	MaxAdTitleLength       = 35   // Maximum length for ad title
+	MaxAdTitleLength       = 64   // Maximum length for ad title
 	MaxAdDescriptionLength = 1000 // Maximum length for ad description
 
 	// Password/Argon2 configuration

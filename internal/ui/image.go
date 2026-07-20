@@ -388,9 +388,12 @@ func ImageNodeWithThumbnails(adID, count, current int, size, heightClass string,
 
 	return Div(
 		ID(containerID),
-		Class("relative group"),
-		imageWrapper,
-		g.If(count > 1, imageNav(adID, current, count, size, heightClass, clickable)),
+		Class("group"),
+		Div(
+			Class("relative"),
+			imageWrapper,
+			g.If(count > 1, imageNav(adID, current, count, size, heightClass, clickable)),
+		),
 		g.If(count > 1, ImageThumbnails(adID, current, count, "160w", heightClass, clickable)),
 	)
 }
