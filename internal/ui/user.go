@@ -270,6 +270,7 @@ func MyAdsContent(activeTab string, adNodes []g.Node) g.Node {
 
 const (
 	SettingsChangePasswordErrorID = "change-password-error"
+	SettingsChangePhoneErrorID    = "change-phone-error"
 	SettingsDeleteAccountErrorID  = "delete-account-error"
 )
 
@@ -311,7 +312,10 @@ func settingsUserAvatar(userName string) g.Node {
 }
 
 func settingsAccountSection(userName, phoneE64 string) g.Node {
-	return settingsSection("Account",
+	return Div(
+		ID("settings-account"),
+		Class("mt-8 p-6 border border-zinc-200 dark:border-zinc-700 rounded-lg"),
+		H2(Class("text-xl font-semibold mb-4"), g.Text("Account")),
 		Div(
 			Class("space-y-4"),
 			settingsAccountRow("Username",
@@ -393,6 +397,7 @@ func SettingsPage(name, phoneE64 string, smsOptedOut bool) []g.Node {
 		pageTitle("Settings"),
 		settingsAccountSection(name, phoneE64),
 		NotificationsSection(smsOptedOut),
+		ChangePhoneSection(),
 		settingsSection("Change Password",
 			Form(
 				Class("space-y-4"),
@@ -416,7 +421,9 @@ func SettingsPage(name, phoneE64 string, smsOptedOut bool) []g.Node {
 		settingsSection("Delete Account",
 			P(
 				Class("text-sm text-zinc-600 dark:text-zinc-400 mb-4"),
-				g.Text("Permanently delete your account. This action cannot be undone."),
+				g.Text("Permanently delete your account. Your username cannot be "+
+					"reused. Your ads are permanently deleted. Your phone number "+
+					"will be held for 10 days before it can be registered again."),
 			),
 			Form(
 				ID("delete-account-form"),
@@ -435,6 +442,144 @@ func SettingsPage(name, phoneE64 string, smsOptedOut bool) []g.Node {
 			),
 		),
 	}
+}
+
+func ChangePhoneSection() g.Node {
+	return Div(
+		ID("change-phone-section"),
+		Class("mt-8 p-6 border border-zinc-200 dark:border-zinc-700 rounded-lg"),
+		H2(Class("text-xl font-semibold mb-4"), g.Text("Change Phone Number")),
+		P(
+			Class("text-sm text-zinc-600 dark:text-zinc-400 mb-4"),
+			g.Text("Enter your current password and a new phone number. "+
+				"We will send a verification code to the new number."),
+		),
+		ChangePhoneRequestForm(),
+	)
+}
+
+func ChangePhoneRequestForm() g.Node {
+	return Form(
+		Class("space-y-4"),
+		hx.Post("/auth/user/settings/phone"),
+		hx.Swap("none"),
+		labeledPasswordField("Current Password", "current_password",
+			"current-password", false),
+		Div(
+			Div(
+				Class("flex items-baseline justify-between mb-1"),
+				Label(
+					Class("text-base font-medium"),
+					For("new-phone"),
+					g.Text("New Phone Number"),
+				),
+			),
+			Input(
+				Class(textFieldClass),
+				Type("tel"),
+				Name("phone"),
+				ID("new-phone"),
+				MinLength("10"),
+				MaxLength("20"),
+				g.Attr("placeholder", "+12025550123 or 202-555-0123"),
+				g.Attr("pattern", "^\\+?[\\d\\s\\-\\(\\)\\.]{10,20}$"),
+				g.Attr("autocomplete", "tel"),
+				Required(),
+			),
+		),
+		settingsFormActions(buttonProps{
+			Type: "submit",
+			Text: "Send Verification Code",
+		}, SettingsChangePhoneErrorID),
+	)
+}
+
+func ChangePhoneVerifySection(phoneE64 string) g.Node {
+	return Div(
+		ID("change-phone-section"),
+		Class("mt-8 p-6 border border-zinc-200 dark:border-zinc-700 rounded-lg"),
+		hx.SwapOOB("outerHTML"),
+		H2(Class("text-xl font-semibold mb-4"), g.Text("Change Phone Number")),
+		Form(
+			Class("space-y-4"),
+			hx.Post("/auth/user/settings/phone/verify"),
+			hx.Swap("none"),
+			Input(Type("hidden"), Name("phone"), Value(phoneE64)),
+			P(
+				Class("text-sm text-zinc-600 dark:text-zinc-400"),
+				g.Text("We've sent a verification code to your new phone number. "+
+					"Enter it below to finish changing your number."),
+			),
+			Label(
+				Class("block text-base font-medium mb-2"),
+				For("change-phone-code"),
+				g.Text("Verification Code"),
+			),
+			Input(
+				ID("change-phone-code"),
+				Class("max-w-xs w-full p-4 border-2 border-zinc-300 "+
+					"dark:border-zinc-600 rounded-md text-center text-2xl "+
+					"font-mono tracking-widest focus:border-blue-500 "+
+					"dark:focus:border-blue-400 focus:outline-none "+
+					"dark:bg-zinc-800 dark:text-zinc-200 block"),
+				Type("text"),
+				Name("code"),
+				g.Attr("autocomplete", "one-time-code"),
+				g.Attr("inputmode", "numeric"),
+				g.Attr("pattern", "[0-9]*"),
+				g.Attr("maxlength", "6"),
+				g.Attr("placeholder", "000000"),
+				Autofocus(),
+				Required(),
+			),
+			settingsFormActions(buttonProps{
+				Type: "submit",
+				Text: "Verify and Update Phone",
+			}, SettingsChangePhoneErrorID),
+		),
+	)
+}
+
+func ChangePhoneSuccess(userName, phoneE64 string) g.Node {
+	return g.Group([]g.Node{
+		Div(
+			ID("settings-account"),
+			Class("mt-8 p-6 border border-zinc-200 dark:border-zinc-700 rounded-lg"),
+			hx.SwapOOB("outerHTML"),
+			H2(Class("text-xl font-semibold mb-4"), g.Text("Account")),
+			Div(
+				Class("space-y-4"),
+				settingsAccountRow("Username",
+					Div(
+						Class("flex items-center gap-2 min-w-0"),
+						settingsUserAvatar(userName),
+						Span(
+							Class("text-zinc-900 dark:text-zinc-100 font-medium"),
+							g.Text(userName),
+						),
+					),
+				),
+				settingsAccountRow("Phone",
+					Span(
+						Class("text-zinc-900 dark:text-zinc-100"),
+						g.Text(phoneformat.Display(phoneE64)),
+					),
+				),
+			),
+		),
+		Div(
+			ID("change-phone-section"),
+			Class("mt-8 p-6 border border-zinc-200 dark:border-zinc-700 rounded-lg"),
+			hx.SwapOOB("outerHTML"),
+			H2(Class("text-xl font-semibold mb-4"), g.Text("Change Phone Number")),
+			P(
+				Class("text-sm text-green-600 dark:text-green-400 mb-4"),
+				g.Text("Phone number updated to "+
+					phoneformat.Display(phoneE64)+"."),
+			),
+			ChangePhoneRequestForm(),
+		),
+	})
 }
 
 func DeleteAccountConfirmModal(csrfToken string) g.Node {
@@ -456,7 +601,7 @@ func DeleteAccountConfirmModal(csrfToken string) g.Node {
 					Class("p-6 flex flex-col gap-4"),
 					P(
 						Class("text-sm text-zinc-600 dark:text-zinc-400"),
-						g.Text("Are you sure you want to permanently delete your account? Your ads will be permanently deleted. This cannot be undone."),
+						g.Text("Are you sure you want to permanently delete your account? Your username cannot be reused. Your ads will be permanently deleted. Your phone number will be held for 10 days before it can be registered again."),
 					),
 					Div(
 						Class("flex flex-col gap-2 sm:flex-row sm:justify-end"),

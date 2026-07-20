@@ -170,44 +170,169 @@ func GetByName(name string) (User, error) {
 	return getUserBy("name_hash = $1 AND deleted_at IS NULL", nameHash)
 }
 
-// ErrUserAlreadyExists is returned when attempting to create a user that already exists
-var ErrUserAlreadyExists = errors.New("user already exists")
+var (
+	// ErrUserAlreadyExists is returned when username or live phone is taken.
+	ErrUserAlreadyExists = errors.New("user already exists")
+	// ErrPhoneSame is returned when changing to the current phone number.
+	ErrPhoneSame = errors.New("phone number is unchanged")
+)
+
+// PhoneHoldDuration is how long a deleted account's phone stays unavailable.
+const PhoneHoldDuration = 10 * 24 * time.Hour
+
+// PhoneStatus describes whether a phone may be claimed.
+type PhoneStatus int
+
+const (
+	PhoneAvailable PhoneStatus = iota
+	PhoneActive
+	PhoneHeld
+)
+
+// PhoneAvailability is the result of checking whether a phone can be used.
+type PhoneAvailability struct {
+	Status        PhoneStatus
+	DaysRemaining int
+}
+
+// PhoneHoldError is returned when a phone is within the post-delete hold.
+type PhoneHoldError struct {
+	DaysRemaining int
+}
+
+func (e *PhoneHoldError) Error() string {
+	n := e.DaysRemaining
+	if n < 1 {
+		n = 1
+	}
+	if n == 1 {
+		return "This phone number will be available in 1 day. Please come back then."
+	}
+	return fmt.Sprintf(
+		"This phone number will be available in %d days. Please come back then.",
+		n,
+	)
+}
+
+// UsernameTaken reports whether username is reserved, including deleted users.
+func UsernameTaken(username string) (bool, error) {
+	nameHash := db.HashString(username)
+	var id int
+	err := db.QueryRow(`
+		SELECT id FROM users WHERE name_hash = $1 LIMIT 1
+	`, nameHash).Scan(&id)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return false, err
+}
+
+// CheckPhoneAvailability reports whether phoneE64 can be claimed.
+// excludeUserID skips that live user (for change-phone on the same account).
+func CheckPhoneAvailability(phoneE64 string,
+	excludeUserID int) (PhoneAvailability, error) {
+	phoneHash := db.HashString(phoneE64)
+
+	var activeID int
+	err := db.QueryRow(`
+		SELECT id FROM users
+		WHERE phone_hash = $1 AND deleted_at IS NULL
+		LIMIT 1
+	`, phoneHash).Scan(&activeID)
+	if err == nil {
+		if excludeUserID != 0 && activeID == excludeUserID {
+			return PhoneAvailability{Status: PhoneAvailable}, nil
+		}
+		return PhoneAvailability{Status: PhoneActive}, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return PhoneAvailability{}, err
+	}
+
+	var deletedAt time.Time
+	err = db.QueryRow(`
+		SELECT deleted_at FROM users
+		WHERE phone_hash = $1
+			AND deleted_at IS NOT NULL
+			AND deleted_at > $2
+		ORDER BY deleted_at DESC
+		LIMIT 1
+	`, phoneHash, time.Now().UTC().Add(-PhoneHoldDuration)).Scan(&deletedAt)
+	if err == nil {
+		holdUntil := deletedAt.Add(PhoneHoldDuration)
+		return PhoneAvailability{
+			Status:        PhoneHeld,
+			DaysRemaining: holdDaysRemaining(holdUntil),
+		}, nil
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		return PhoneAvailability{Status: PhoneAvailable}, nil
+	}
+	return PhoneAvailability{}, err
+}
+
+func holdDaysRemaining(holdUntil time.Time) int {
+	remaining := time.Until(holdUntil)
+	if remaining <= 0 {
+		return 0
+	}
+	days := int(remaining.Hours() / 24)
+	if remaining > time.Duration(days)*24*time.Hour {
+		days++
+	}
+	if days < 1 {
+		days = 1
+	}
+	return days
+}
+
+func phoneAvailabilityError(a PhoneAvailability) error {
+	switch a.Status {
+	case PhoneActive:
+		return ErrUserAlreadyExists
+	case PhoneHeld:
+		return &PhoneHoldError{DaysRemaining: a.DaysRemaining}
+	default:
+		return nil
+	}
+}
 
 // CreateUser creates a new user with phone verification in a transaction.
-// It checks for existing users (including archived), creates the user, marks the phone as verified,
-// and cleans up verification codes. Returns the created user or an error.
+// Usernames are reserved forever (including deleted). Phones may be reused
+// after the post-delete hold once no live user holds them.
 func CreateUser(username, phoneE64, plainPassword string) (User, error) {
-
-	// Hash password
 	passwordHash, passwordSalt, err := password.HashPassword(plainPassword)
 	if err != nil {
 		return User{}, fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	// Start a transaction
+	taken, err := UsernameTaken(username)
+	if err != nil {
+		return User{}, fmt.Errorf("failed to check username: %w", err)
+	}
+	if taken {
+		return User{}, ErrUserAlreadyExists
+	}
+
+	avail, err := CheckPhoneAvailability(phoneE64, 0)
+	if err != nil {
+		return User{}, fmt.Errorf("failed to check phone: %w", err)
+	}
+	if err := phoneAvailabilityError(avail); err != nil {
+		return User{}, err
+	}
+
 	tx, err := db.Begin()
 	if err != nil {
 		return User{}, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	// Check if user already exists (including archived users)
 	nameHash := db.HashString(username)
 	phoneHash := db.HashString(phoneE64)
-
-	var existingUserID int
-	err = tx.QueryRow(`
-		SELECT id FROM users 
-		WHERE name_hash = $1 OR phone_hash = $2
-		LIMIT 1
-	`, nameHash, phoneHash).Scan(&existingUserID)
-	if err == nil {
-		// User exists (including archived)
-		return User{}, ErrUserAlreadyExists
-	} else if err != sql.ErrNoRows {
-		// Database error
-		return User{}, fmt.Errorf("failed to check for existing user: %w", err)
-	}
 
 	var userID int
 	err = tx.QueryRow(`
@@ -225,7 +350,6 @@ func CreateUser(username, phoneE64, plainPassword string) (User, error) {
 		return User{}, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	// Encrypt name
 	encryptedName, nameNonce, err := EncryptName(int(userID), username)
 	if err != nil {
 		return User{}, fmt.Errorf("failed to encrypt name: %w", err)
@@ -233,7 +357,6 @@ func CreateUser(username, phoneE64, plainPassword string) (User, error) {
 	encryptedNameBytes, _ := base64.StdEncoding.DecodeString(encryptedName)
 	nameNonceBytes, _ := base64.StdEncoding.DecodeString(nameNonce)
 
-	// Encrypt phone
 	encryptedPhone, phoneNonce, err := EncryptPhone(int(userID), phoneE64)
 	if err != nil {
 		return User{}, fmt.Errorf("failed to encrypt phone: %w", err)
@@ -241,7 +364,6 @@ func CreateUser(username, phoneE64, plainPassword string) (User, error) {
 	encryptedPhoneBytes, _ := base64.StdEncoding.DecodeString(encryptedPhone)
 	phoneNonceBytes, _ := base64.StdEncoding.DecodeString(phoneNonce)
 
-	// Update user with encrypted fields and mark phone as verified
 	_, err = tx.Exec(`
 		UPDATE users SET
 			encrypted_name = $1, name_nonce = $2,
@@ -255,23 +377,72 @@ func CreateUser(username, phoneE64, plainPassword string) (User, error) {
 		return User{}, fmt.Errorf("failed to update user with encrypted fields: %w", err)
 	}
 
-	// Cleanup registration validation codes
-	if err := phoneverification.InvalidateCodesTx(tx, phoneE64); err != nil {
+	if err := phoneverification.InvalidateCodesTx(tx, phoneE64,
+		phoneverification.PurposeRegister, nil); err != nil {
 		return User{}, fmt.Errorf("failed to cleanup verification codes: %w", err)
 	}
 
-	// Commit the transaction
 	if err := tx.Commit(); err != nil {
 		return User{}, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	// Get the created user
 	u, err := GetByID(int(userID))
 	if err != nil {
 		return User{}, fmt.Errorf("failed to get created user: %w", err)
 	}
 
 	return u, nil
+}
+
+// UpdatePhone changes a live user's phone after availability checks.
+func UpdatePhone(userID int, phoneE64 string) error {
+	u, err := GetByID(userID)
+	if err != nil {
+		return err
+	}
+	if u.PhoneE64 == phoneE64 {
+		return ErrPhoneSame
+	}
+
+	avail, err := CheckPhoneAvailability(phoneE64, userID)
+	if err != nil {
+		return fmt.Errorf("failed to check phone: %w", err)
+	}
+	if err := phoneAvailabilityError(avail); err != nil {
+		return err
+	}
+
+	encryptedPhone, phoneNonce, err := EncryptPhone(userID, phoneE64)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt phone: %w", err)
+	}
+	encryptedPhoneBytes, _ := base64.StdEncoding.DecodeString(encryptedPhone)
+	phoneNonceBytes, _ := base64.StdEncoding.DecodeString(phoneNonce)
+	phoneHash := db.HashString(phoneE64)
+
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`
+		UPDATE users SET
+			encrypted_phone = $1, phone_nonce = $2, phone_hash = $3,
+			phone_verified = 1
+		WHERE id = $4 AND deleted_at IS NULL
+	`, encryptedPhoneBytes, phoneNonceBytes, phoneHash, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update phone: %w", err)
+	}
+
+	uid := userID
+	if err := phoneverification.InvalidateCodesTx(tx, phoneE64,
+		phoneverification.PurposeChangePhone, &uid); err != nil {
+		return fmt.Errorf("failed to cleanup verification codes: %w", err)
+	}
+
+	return tx.Commit()
 }
 
 func SetSMSOptOut(userID int, optedOut bool) error {
@@ -435,11 +606,6 @@ func DeleteUser(userID int) error {
 		`, adID)
 	}
 	return nil
-}
-
-func RestoreUser(userID int) error {
-	_, err := db.Exec("UPDATE users SET deleted_at = NULL WHERE id = $1", userID)
-	return err
 }
 
 func PromoteToAdmin(userID int) error {

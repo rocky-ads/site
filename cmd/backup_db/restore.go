@@ -80,8 +80,25 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 		return nil
 	}
 
+	// One-time bridge: old DBs (global unique phone_hash, verification
+	// without purpose) → current schema before importing archive rows.
+	if err := migratePhoneLifecycleSchema(false); err != nil {
+		return fmt.Errorf("migrate phone lifecycle schema: %w", err)
+	}
+
 	sort.Slice(ads, func(i, j int) bool {
 		return ads[i].Ref < ads[j].Ref
+	})
+
+	// Live users before deleted so a recycled phone_hash never collides
+	// with an active row on a partially-migrated target DB.
+	sort.SliceStable(users, func(i, j int) bool {
+		iDel := users[i].DeletedAt != nil
+		jDel := users[j].DeletedAt != nil
+		if iDel != jDel {
+			return !iDel && jDel
+		}
+		return false
 	})
 
 	userHashToID := make(map[string]int, len(users))

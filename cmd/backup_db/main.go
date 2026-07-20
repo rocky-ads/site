@@ -36,6 +36,8 @@ func main() {
 		runBackupCmd(os.Args[2:])
 	case "restore":
 		runRestoreCmd(os.Args[2:])
+	case "migrate-schema":
+		runMigrateSchemaCmd(os.Args[2:])
 	default:
 		printUsage()
 		os.Exit(1)
@@ -78,9 +80,23 @@ func runRestoreCmd(args []string) {
 	}
 }
 
+func runMigrateSchemaCmd(args []string) {
+	fs := flag.NewFlagSet("migrate-schema", flag.ExitOnError)
+	dryRun := fs.Bool("dry-run", false, "Preview without altering")
+	fs.Parse(args)
+	if err := migratePhoneLifecycleSchema(*dryRun); err != nil {
+		logger.Fatal("Schema migration failed", "error", err)
+	}
+}
+
 func printUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  backup_db backup  -out <dir> [-dry-run] [-verbose]
-  backup_db restore -from <dir> [-dry-run] [-verbose]
+  backup_db backup         -out <dir> [-dry-run] [-verbose]
+  backup_db restore        -from <dir> [-dry-run] [-verbose]
+  backup_db migrate-schema [-dry-run]
+
+migrate-schema is a one-time upgrade from the pre-phone-lifecycle schema
+(global unique phone_hash; phone_verification without purpose) to the current
+schema. restore also runs it idempotently before importing.
 `)
 }

@@ -37,6 +37,12 @@ backup_db restore -from /workspace/backups/prod
 
 `restore` requires `USER_ENCRYPTION_KEY` to re-encrypt user data under new IDs. If the backup came from an environment with a different key, set `BACKUP_USER_ENCRYPTION_KEY` to the source key for decrypt; encrypt always uses `USER_ENCRYPTION_KEY`.
 
+`restore` also runs an idempotent one-time schema bridge (`migrate-schema`) so a target DB still on the old phone lifecycle constraints (global unique `phone_hash`; `phone_verification` without `purpose` / `user_id`) is upgraded before import. To upgrade an in-place DB without restore:
+
+```bash
+backup_db migrate-schema
+```
+
 Backups are persisted under `./backups` on the host via the docker-compose volume mount.
 
 ## Ad images
@@ -75,7 +81,7 @@ See the [MinIO Client documentation](https://docs.min.io/docs/minio-client-quick
 | Binary | Purpose |
 |--------|---------|
 | `seed_db` | Drop/recreate schema and import seed data |
-| `backup_db` | Backup/restore non-test ads (DB rows + MinIO images) |
+| `backup_db` | Backup/restore non-test ads (DB rows + MinIO images); one-time `migrate-schema` |
 | `migrate_images` | One-time upload of local ad image files to MinIO |
 | `quote_server` | Quote-of-the-day page on port 10000 |
 | `mc` | MinIO command-line client |

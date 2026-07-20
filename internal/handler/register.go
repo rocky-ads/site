@@ -148,16 +148,29 @@ func RegisterStep1Handler(c *fiber.Ctx) error {
 
 	// TODO timing attack protection
 
-	// Check for existing username
-	if _, err := user.GetByName(username); err == nil {
+	taken, err := user.UsernameTaken(username)
+	if err != nil {
+		logger.Error("Failed to check username", "error", err)
+		return showError(c, "Unable to complete registration. Please try again.")
+	}
+	if taken {
 		return showError(c,
 			"Unable to complete registration with these credentials. Please try different information.")
 	}
 
-	// Check for existing phone
-	if _, err := user.GetByPhoneE64(phoneE64); err == nil {
+	avail, err := user.CheckPhoneAvailability(phoneE64, 0)
+	if err != nil {
+		logger.Error("Failed to check phone", "error", err)
+		return showError(c, "Unable to complete registration. Please try again.")
+	}
+	switch avail.Status {
+	case user.PhoneActive:
 		return showError(c,
 			"Unable to complete registration with these credentials. Please try different information.")
+	case user.PhoneHeld:
+		return showError(c, (&user.PhoneHoldError{
+			DaysRemaining: avail.DaysRemaining,
+		}).Error())
 	}
 
 	resp, err := screenUsername(username)
@@ -179,7 +192,8 @@ func RegisterStep1Handler(c *fiber.Ctx) error {
 		return showError(c, "Unable to generate verification code. Please try again.")
 	}
 
-	err = phoneverification.StoreCode(phoneE64, code)
+	err = phoneverification.StoreCode(phoneE64, code,
+		phoneverification.PurposeRegister, nil)
 	if err != nil {
 		logger.Error("Failed to store verification code",
 			"error", err, "phone", phoneE64)
@@ -228,7 +242,8 @@ func RegisterStep2Handler(c *fiber.Ctx) error {
 		return render(c, ui.RegisterPassword(username, phoneE64))
 	}
 
-	valid, err := phoneverification.ValidateCode(phoneE64, code)
+	valid, err := phoneverification.ValidateCode(phoneE64, code,
+		phoneverification.PurposeRegister, nil)
 	if err != nil {
 		logger.Warn("Verification code validation error",
 			"error", err, "phone", phoneE64)
@@ -275,6 +290,10 @@ func RegisterStep3Handler(c *fiber.Ctx) error {
 
 	u, err := user.CreateUser(username, phoneE64, passwd)
 	if err != nil {
+		var holdErr *user.PhoneHoldError
+		if errors.As(err, &holdErr) {
+			return showError(c, holdErr.Error())
+		}
 		if errors.Is(err, user.ErrUserAlreadyExists) {
 			return showError(c,
 				"Unable to complete registration with these credentials. Please try different information.")

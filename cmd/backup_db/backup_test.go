@@ -276,3 +276,108 @@ func TestBackupRestoreRoundTrip(t *testing.T) {
 		t.Fatal("expected NULL embedding after restore")
 	}
 }
+
+func TestMigratePhoneLifecycleSchema(t *testing.T) {
+	if err := testdb.InitSchema(); err != nil {
+		t.Fatalf("init schema: %v", err)
+	}
+
+	// Simulate pre-lifecycle schema: global unique phone_hash, verification
+	// without purpose/user_id.
+	_, err := db.Exec(`DROP INDEX IF EXISTS idx_users_phone_hash_active`)
+	if err != nil {
+		t.Fatalf("drop partial index: %v", err)
+	}
+	_, err = db.Exec(`
+		ALTER TABLE users ADD CONSTRAINT users_phone_hash_key UNIQUE (phone_hash)
+	`)
+	if err != nil {
+		t.Fatalf("add old unique: %v", err)
+	}
+	_, err = db.Exec(`
+		ALTER TABLE phone_verification
+		DROP COLUMN IF EXISTS purpose CASCADE,
+		DROP COLUMN IF EXISTS user_id CASCADE
+	`)
+	if err != nil {
+		t.Fatalf("drop purpose columns: %v", err)
+	}
+
+	_, err = db.Exec(`
+		INSERT INTO phone_verification (phone_e64, verification_code, attempts)
+		VALUES ('+15559870000', '123456', 0)
+	`)
+	if err != nil {
+		t.Fatalf("insert old verification row: %v", err)
+	}
+
+	needsPhone, err := needsPhoneHashPartialUnique()
+	if err != nil || !needsPhone {
+		t.Fatalf("expected phone migrate needed, needs=%v err=%v", needsPhone, err)
+	}
+	needsPV, err := needsPhoneVerificationPurpose()
+	if err != nil || !needsPV {
+		t.Fatalf("expected pv migrate needed, needs=%v err=%v", needsPV, err)
+	}
+
+	if err := migratePhoneLifecycleSchema(false); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	needsPhone, err = needsPhoneHashPartialUnique()
+	if err != nil || needsPhone {
+		t.Fatalf("phone migrate should be done, needs=%v err=%v", needsPhone, err)
+	}
+	needsPV, err = needsPhoneVerificationPurpose()
+	if err != nil || needsPV {
+		t.Fatalf("pv migrate should be done, needs=%v err=%v", needsPV, err)
+	}
+
+	var leftover int
+	err = db.QueryRow(`SELECT COUNT(*) FROM phone_verification`).Scan(&leftover)
+	if err != nil {
+		t.Fatalf("count verification: %v", err)
+	}
+	if leftover != 0 {
+		t.Fatalf("expected verification cleared, got %d", leftover)
+	}
+
+	// Live + deleted may share phone_hash after migration.
+	_, err = db.Exec(`
+		INSERT INTO users (
+			encrypted_name, name_nonce, name_hash,
+			password_hash, password_salt, password_algo,
+			encrypted_phone, phone_nonce, phone_hash,
+			phone_verified, deleted_at
+		) VALUES (
+			'\x00', '\x00', 'migrate-live-name',
+			'h', 's', 'argon2id',
+			'\x00', '\x00', 'shared-phone-hash',
+			1, NULL
+		)
+	`)
+	if err != nil {
+		t.Fatalf("insert live user: %v", err)
+	}
+	_, err = db.Exec(`
+		INSERT INTO users (
+			encrypted_name, name_nonce, name_hash,
+			password_hash, password_salt, password_algo,
+			encrypted_phone, phone_nonce, phone_hash,
+			phone_verified, deleted_at
+		) VALUES (
+			'\x00', '\x00', 'migrate-deleted-name',
+			'h', 's', 'argon2id',
+			'\x00', '\x00', 'shared-phone-hash',
+			1, CURRENT_TIMESTAMP
+		)
+	`)
+	if err != nil {
+		t.Fatalf("insert deleted user with same phone: %v", err)
+	}
+
+	// Idempotent second run.
+	if err := migratePhoneLifecycleSchema(false); err != nil {
+		t.Fatalf("second migrate: %v", err)
+	}
+}

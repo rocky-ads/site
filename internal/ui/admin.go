@@ -533,54 +533,45 @@ func userActions(u UserRowData, currentUserID int) g.Node {
 	rowID := fmt.Sprintf("user-row-%d", u.ID)
 
 	if u.DeletedAt != nil {
-		actions = append(actions,
-			actionIconButton(
-				"/images/restore.svg",
-				"Restore user",
-				fmt.Sprintf("/admin/user/%d/restore", u.ID),
-				fmt.Sprintf("Are you sure you want to restore user %s?", u.Name),
-				"text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300",
-				rowID,
-			),
-		)
-	} else {
-		actions = append(actions,
-			actionIconButton(
-				"/images/trashcan.svg",
-				"Delete user",
-				fmt.Sprintf("/admin/user/%d/delete", u.ID),
-				fmt.Sprintf("Are you sure you want to delete user %s?", u.Name),
-				"text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300",
-				rowID,
-			),
-		)
+		return Div(Class("flex items-center flex-wrap gap-1"))
+	}
 
-		if u.IsAdmin {
-			// Don't show demote button if user is trying to demote themselves
-			if u.ID != currentUserID {
-				actions = append(actions,
-					actionIconButton(
-						"/images/demote.svg",
-						"Demote from admin",
-						fmt.Sprintf("/admin/user/%d/demote", u.ID),
-						fmt.Sprintf("Are you sure you want to demote user %s from admin?", u.Name),
-						"text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300",
-						rowID,
-					),
-				)
-			}
-		} else {
+	actions = append(actions,
+		actionIconButton(
+			"/images/trashcan.svg",
+			"Delete user",
+			fmt.Sprintf("/admin/user/%d/delete", u.ID),
+			fmt.Sprintf("Are you sure you want to delete user %s?", u.Name),
+			"text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300",
+			rowID,
+		),
+	)
+
+	if u.IsAdmin {
+		// Don't show demote button if user is trying to demote themselves
+		if u.ID != currentUserID {
 			actions = append(actions,
 				actionIconButton(
-					"/images/promote.svg",
-					"Promote to admin",
-					fmt.Sprintf("/admin/user/%d/promote", u.ID),
-					fmt.Sprintf("Are you sure you want to promote user %s to admin?", u.Name),
-					"text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300",
+					"/images/demote.svg",
+					"Demote from admin",
+					fmt.Sprintf("/admin/user/%d/demote", u.ID),
+					fmt.Sprintf("Are you sure you want to demote user %s from admin?", u.Name),
+					"text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300",
 					rowID,
 				),
 			)
 		}
+	} else {
+		actions = append(actions,
+			actionIconButton(
+				"/images/promote.svg",
+				"Promote to admin",
+				fmt.Sprintf("/admin/user/%d/promote", u.ID),
+				fmt.Sprintf("Are you sure you want to promote user %s to admin?", u.Name),
+				"text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300",
+				rowID,
+			),
+		)
 	}
 
 	return Div(

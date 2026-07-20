@@ -163,20 +163,6 @@ func AdminUserDeleteHandler(c *fiber.Ctx) error {
 	return refreshUserRow(c)
 }
 
-func AdminUserRestoreHandler(c *fiber.Ctx) error {
-	userID, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid user ID")
-	}
-
-	if err := user.RestoreUser(userID); err != nil {
-		logger.Error("Failed to restore user", "error", err, "userID", userID)
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to restore user")
-	}
-
-	return refreshUserRow(c)
-}
-
 func AdminUserPromoteHandler(c *fiber.Ctx) error {
 	userID, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
