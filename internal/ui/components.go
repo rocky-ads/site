@@ -236,11 +236,19 @@ func iconButton(props buttonProps) g.Node {
 
 func checkbox(name string, value string, label string, checked bool,
 	disabled bool, attrs ...g.Node) g.Node {
+	inputClass := "mt-0.5 h-5 w-5 shrink-0 accent-blue-600 cursor-pointer"
+	labelClass := "text-sm leading-snug text-zinc-600 dark:text-zinc-300 cursor-pointer"
+	if disabled {
+		inputClass += " opacity-50 cursor-not-allowed"
+		labelClass = "text-sm leading-snug text-zinc-400"
+	}
+
 	inputAttrs := []g.Node{
 		Type("checkbox"),
 		Name(name),
 		Value(value),
 		ID(name + "-" + value),
+		Class(inputClass),
 	}
 
 	if checked {
@@ -248,21 +256,18 @@ func checkbox(name string, value string, label string, checked bool,
 	}
 	if disabled {
 		inputAttrs = append(inputAttrs, Disabled())
-		inputAttrs = append(inputAttrs, g.Attr("class", "opacity-50 cursor-not-allowed"))
 	}
 
 	inputAttrs = append(inputAttrs, attrs...)
 
-	labelNode := Label(
-		For(name+"-"+value),
-		g.If(disabled, Class("text-zinc-400")),
-		g.Text(label),
-	)
-
 	return Div(
-		Class("flex items-center space-x-2"),
+		Class("flex items-start gap-3"),
 		Input(inputAttrs...),
-		labelNode,
+		Label(
+			For(name+"-"+value),
+			Class(labelClass),
+			g.Text(label),
+		),
 	)
 }
 
@@ -288,7 +293,7 @@ func inputText(name, placeholder string, isRequired bool,
 	inputAttrs := []g.Node{
 		Type("text"),
 		Name(name),
-		Class("w-full p-2 border rounded-md"),
+		Class(textFieldClass),
 		Placeholder(placeholder),
 		g.If(isRequired, Required()),
 	}

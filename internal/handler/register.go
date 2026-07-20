@@ -38,7 +38,7 @@ var RegistrationRateLimiter = limiter.New(limiter.Config{
 
 func RegisterHandler(c *fiber.Ctx) error {
 	logout(c)
-	return renderPage(c, "Register", ui.RegisterPage())
+	return renderPage(c, "Register", ui.RegisterPage(c.Query("username")))
 }
 
 // validateUsername validates that a username follows conventions

@@ -24,7 +24,7 @@ func phoneInput() g.Node {
 			),
 		),
 		Input(
-			Class("w-full p-2 border rounded-md"),
+			Class(textFieldClass),
 			Type("tel"),
 			Name("phone"),
 			ID("phone"),
@@ -43,28 +43,20 @@ func phoneInput() g.Node {
 }
 
 func offers() g.Node {
-	return Div(
-		Class("space-y-3"),
-		checkbox("offers", "true", "I agree to receive informational text messages", false, false, Required()),
-		Div(
-			Class("text-xs text-zinc-600 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-800 p-3 rounded border dark:border-zinc-700 space-y-2"),
-			P(
-				g.Text("By providing your phone number you agree to receive informational text messages from "+config.ServerName+"."),
-			),
-			P(
-				g.Text("Message frequency will vary. Msg & data rates may apply. Reply HELP for help or STOP to cancel. We only use your phone for essential communications and verification."),
-			),
-		),
-	)
+	label := "I agree to receive informational text messages from " +
+		config.ServerName +
+		". Message frequency varies. Message and data rates may apply. " +
+		"Reply STOP to cancel."
+	return checkbox("offers", "true", label, false, false, Required())
 }
 
-func RegisterForm() g.Node {
+func RegisterForm(username string) g.Node {
 	return Form(
 		Class("space-y-8 mt-8"),
 		ID("registerForm"),
 		hx.Post("/api/register/step1"),
 		hx.Swap("none"),
-		userNameInput(true, "username", true),
+		userNameInput(true, "username", true, username),
 		phoneInput(),
 		offers(),
 		Div(
@@ -78,10 +70,10 @@ func RegisterForm() g.Node {
 	)
 }
 
-func RegisterPage() []g.Node {
+func RegisterPage(username string) []g.Node {
 	return []g.Node{
 		pageTitle("Register"),
-		RegisterForm(),
+		RegisterForm(username),
 	}
 }
 

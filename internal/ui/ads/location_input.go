@@ -5,9 +5,12 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-const fieldInputClass = "w-full p-2 border border-zinc-300 dark:border-zinc-600 rounded-md " +
-	"bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 " +
-	"placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
+const (
+	controlClass = "p-2 border border-zinc-300 dark:border-zinc-600 rounded-md " +
+		"bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 " +
+		"placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
+	fieldInputClass = "w-full " + controlClass
+)
 
 // LocationInput renders the shared location text field (search and new-ad forms).
 func LocationInput(id, name, value, placeholder string,

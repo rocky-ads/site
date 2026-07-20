@@ -82,7 +82,7 @@ func (f adFields) formSelect(d facet.Def) g.Node {
 	return Select(
 		Name(d.Key),
 		ID(f.cfg.fieldID(d.Key)),
-		Class("w-36 p-2 border rounded-md"),
+		Class("w-36 "+controlClass),
 		g.Group(opts),
 	)
 }
@@ -120,7 +120,7 @@ func (f adFields) formDate(d facet.Def) g.Node {
 		Type("date"),
 		Name(d.Key),
 		ID(f.cfg.fieldID(d.Key)),
-		Class("p-2 border rounded-md"),
+		Class(controlClass),
 	}
 	if v := strings.TrimSpace(f.cfg.Values.Facets[d.Key]); v != "" {
 		attrs = append(attrs, Value(v))
@@ -160,7 +160,7 @@ func (f adFields) facetNumberInput(d facet.Def) g.Node {
 		Type("number"),
 		Name(d.Key),
 		ID(f.cfg.fieldID(d.Key)),
-		Class("w-full p-2 border rounded-md"),
+		Class(fieldInputClass),
 		g.Attr("min", "0"),
 		g.Attr("step", "1"),
 		g.Attr("inputmode", "numeric"),
@@ -181,7 +181,7 @@ func (f adFields) intWithUnitRow(d facet.Def) g.Node {
 		Type("number"),
 		Name(d.Key),
 		ID(f.cfg.fieldID(d.Key)),
-		Class("w-36 p-2 border rounded-md"),
+		Class("w-36 " + controlClass),
 		g.Attr("min", "0"),
 		g.Attr("step", "1"),
 		g.Attr("inputmode", "numeric"),
@@ -208,7 +208,7 @@ func (f adFields) facetUnitSelect(name, selected string, units []string) g.Node 
 	return Select(
 		Name(name),
 		ID(f.cfg.fieldID(name)),
-		Class("p-2 border rounded-md shrink-0"),
+		Class(controlClass+" shrink-0"),
 		g.Group(opts),
 	)
 }
@@ -247,7 +247,7 @@ func (f adFields) titleInput() g.Node {
 		Type("text"),
 		Name("title"),
 		ID(f.cfg.fieldID("title")),
-		Class("w-full p-2 border rounded-md"),
+		Class(fieldInputClass),
 		g.Attr("maxlength", strconv.Itoa(config.MaxAdTitleLength)),
 	}
 	if f.cfg.Values.Title != "" {
@@ -279,7 +279,7 @@ func (f adFields) editDescriptionFields() g.Node {
 			Textarea(
 				Name("description_addition"),
 				ID(f.cfg.fieldID("description-addition")),
-				Class("w-full p-2 border rounded-md"),
+				Class(fieldInputClass),
 				g.Attr("rows", "4"),
 				g.Attr("maxlength", strconv.Itoa(config.MaxAdDescriptionLength)),
 			),
@@ -347,7 +347,7 @@ func AdPriceRow(cfg AdFormConfig, d facet.Def, defaults facet.FormDefaults,
 			Type("number"),
 			Name(d.Key),
 			ID(cfg.fieldID(d.Key)),
-			Class("w-36 p-2 border rounded-md"),
+			Class("w-36 " + controlClass),
 			g.Attr("min", "0"),
 			g.Attr("step", "1"),
 			g.Attr("inputmode", "numeric"),
@@ -412,7 +412,7 @@ func priceCurrencySelect(cfg AdFormConfig, selected string,
 	return Select(
 		Name("price_currency"),
 		ID(cfg.fieldID("price-currency")),
-		Class("w-24 p-2 border rounded-md shrink-0"),
+		Class("w-24 "+controlClass+" shrink-0"),
 		g.Group(opts),
 	)
 }

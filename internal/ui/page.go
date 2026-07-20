@@ -91,27 +91,24 @@ func navLoggedIn(userName string, hasUnread bool) g.Node {
 }
 
 func loginNode() g.Node {
-	return A(Href("/login"), Class("text-blue-600 dark:text-blue-400 hover:underline"), g.Text("Login"))
-}
-
-func registerNode() g.Node {
-	return A(Href("/register"), Class("text-blue-600 dark:text-blue-400 hover:underline"), g.Text("Register"))
+	return A(
+		Href("/login"),
+		Class("inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:underline"),
+		Img(
+			Src("/images/login.svg"),
+			Alt(""),
+			Class("w-5 h-5 dark:invert dark:opacity-80"),
+		),
+		g.Text("Login"),
+	)
 }
 
 func navLoggedOut(currentPath string) g.Node {
 	switch currentPath {
-	case "/login":
-		return registerNode()
-	case "/register":
-		return loginNode()
-	case "/register/verify":
+	case "/login", "/register/verify":
 		return nil
 	default:
-		return Div(
-			Class("flex items-center space-x-4"),
-			loginNode(),
-			registerNode(),
-		)
+		return loginNode()
 	}
 }
 

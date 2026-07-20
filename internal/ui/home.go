@@ -178,7 +178,7 @@ func SearchToggleOOB(searchVisible bool) g.Node {
 
 func searchBox(q string) g.Node {
 	return Input(
-		Class("w-full p-2 border rounded"),
+		Class(textFieldClass),
 		Type("search"),
 		ID("searchBox"),
 		Name("q"),

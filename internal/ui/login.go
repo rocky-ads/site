@@ -6,7 +6,12 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-func userNameInput(showHelp bool, autocomplete string, autofocus bool) g.Node {
+func userNameInput(
+	showHelp bool,
+	autocomplete string,
+	autofocus bool,
+	value string,
+) g.Node {
 	attrs := []g.Node{
 		Type("text"),
 		Name("username"),
@@ -18,6 +23,9 @@ func userNameInput(showHelp bool, autocomplete string, autofocus bool) g.Node {
 	}
 	if autofocus {
 		attrs = append(attrs, Autofocus())
+	}
+	if value != "" {
+		attrs = append(attrs, Value(value))
 	}
 	return Div(
 		labeledTextInput("Username", "username", attrs...),
@@ -37,15 +45,33 @@ func LoginForm() g.Node {
 		Class("space-y-8 mt-8"),
 		hx.Post("/api/login"),
 		hx.Swap("none"),
-		userNameInput(false, "username", true),
+		userNameInput(false, "username", true, ""),
 		passwordInput("current-password"),
 		Div(
-			Class("flex items-center gap-4"),
-			standardButton(buttonProps{
-				Type: "submit",
-				Text: "Login",
-			}),
-			ErrorDiv(""),
+			Class("space-y-3"),
+			Div(
+				Class("flex items-center gap-4"),
+				standardButton(buttonProps{
+					Type: "submit",
+					Text: "Login",
+				}),
+				ErrorDiv(""),
+			),
+			P(
+				Class("text-sm text-zinc-600 dark:text-zinc-400"),
+				g.Text("Don't have an account? "),
+				A(
+					Href("/register"),
+					Class("text-blue-600 dark:text-blue-400 hover:underline"),
+					g.Attr("onclick",
+						"event.preventDefault();"+
+							"var u=document.getElementById('username').value.trim();"+
+							"location.href=u"+
+							"?('/register?username='+encodeURIComponent(u))"+
+							":'/register';"),
+					g.Text("Sign up"),
+				),
+			),
 		),
 	)
 }

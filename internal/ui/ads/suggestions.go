@@ -14,7 +14,7 @@ const (
 
 func descriptionWithSuggestionsBox(cfg AdFormConfig) g.Node {
 	return Div(
-		Class("w-full border rounded-md overflow-hidden"),
+		Class("w-full "+controlClass+" overflow-hidden"),
 		descriptionInput(cfg),
 		suggestionsRow(cfg, cfg.Values.Suggestions),
 	)
@@ -31,7 +31,7 @@ func editDescriptionWithSuggestionsBox(cfg AdFormConfig) g.Node {
 		suggestionsRow(cfg, cfg.Values.Suggestions),
 	}
 	return Div(
-		Class("w-full border rounded-md overflow-hidden"),
+		Class("w-full "+controlClass+" overflow-hidden"),
 		g.Group(nodes),
 	)
 }
@@ -52,7 +52,7 @@ func suggestionsRow(cfg AdFormConfig, selected []SuggestionOption) g.Node {
 		initial = SuggestionsPartial(selected)
 	}
 	return Div(
-		Class("flex items-start gap-2 p-2 border-t"),
+		Class("flex items-start gap-2 p-2 border-t border-zinc-300 dark:border-zinc-600"),
 		Div(
 			Class("shrink-0 flex flex-col gap-2"),
 			suggestionsButton(cfg),
