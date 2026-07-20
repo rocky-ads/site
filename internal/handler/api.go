@@ -42,11 +42,10 @@ func switchCategoryHome(c *fiber.Ctx, categoryID int) {
 }
 
 func categorySwitchRedirect(c *fiber.Ctx) string {
-	redirect := c.Query("return")
-	if redirect == "" || redirect[0] != '/' || (len(redirect) > 1 && redirect[1] == '/') {
-		return "/"
+	if redirect := safeReturnPath(c.Query("return")); redirect != "" {
+		return redirect
 	}
-	return redirect
+	return "/"
 }
 
 func renderFilterPanelResponse(c *fiber.Ctx, state cookie.SearchState) error {

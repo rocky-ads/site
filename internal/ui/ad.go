@@ -301,7 +301,7 @@ func messageButton(adID int) g.Node {
 		Alt:      "Message",
 		Class:    "dark:invert dark:opacity-80",
 		Attrs: []g.Node{
-			hx.Get(fmt.Sprintf("/auth/ad/%d/new-conversation", adID)),
+			hx.Get(fmt.Sprintf("/api/ad/%d/new-conversation", adID)),
 			hx.Target("#page-content"),
 			hx.Swap("beforeend"),
 		},
@@ -314,7 +314,7 @@ func adButtons(adID, userID, ownerID int, bookmarked, active, inactive, reachabl
 	return Div(
 		Class("flex items-center gap-2"),
 		g.If(local.IsLoggedIn(userID), BookmarkButton(adID, bookmarked, csrfToken)),
-		g.If(active && local.IsLoggedIn(userID) && reachable && !isOwner, messageButton(adID)),
+		g.If(active && reachable && !isOwner, messageButton(adID)),
 		g.If(active && isOwner, editButton(adID)),
 		g.If(active && isOwner, deleteButton(adID)),
 		g.If(inactive && isOwner, restoreButton(adID, csrfToken)),
@@ -466,6 +466,7 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 					d.FacetDetails,
 					d.Tags,
 					d.DescriptionHistory,
+					d.ShowLoginForDetails,
 				),
 			),
 		),
@@ -473,7 +474,7 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 }
 
 func descriptionDisplay(adID int, original string, facetDetails []string,
-	tags []string, history []AdHistoryEntry) g.Node {
+	tags []string, history []AdHistoryEntry, showLoginForDetails bool) g.Node {
 	var nodes []g.Node
 	if len(facetDetails) > 0 {
 		nodes = append(nodes, adFacetList(facetDetails))
@@ -493,6 +494,16 @@ func descriptionDisplay(adID int, original string, facetDetails []string,
 		nodes = append(nodes, Div(
 			Class("mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-600 space-y-4"),
 			g.Group(entryNodes),
+		))
+	} else if showLoginForDetails {
+		nodes = append(nodes, Div(
+			Class("mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-600"),
+			A(
+				Href("/login?return="+url.QueryEscape(
+					fmt.Sprintf("/ad/%d", adID))),
+				Class("text-sm text-blue-600 dark:text-blue-400 hover:underline"),
+				g.Text("Login to see more details..."),
+			),
 		))
 	}
 	return Div(Class("text-base mt-4"), g.Group(nodes))

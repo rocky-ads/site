@@ -610,6 +610,10 @@ func MessageModalHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Cannot message an inactive or deleted ad")
 	}
 
+	if !local.IsLoggedIn(currentUserID) {
+		return renderLoggedOutConversationModal(c, a)
+	}
+
 	if a.UserID == currentUserID {
 		return fiber.NewError(fiber.StatusForbidden, "You cannot message your own ad")
 	}
@@ -635,6 +639,28 @@ func MessageModalHandler(c *fiber.Ctx) error {
 	}
 
 	return renderConversationModal(c, conv, currentUserID, tz, csrfToken)
+}
+
+func renderLoggedOutConversationModal(c *fiber.Ctx, a ad.Ad) error {
+	ownerName, ownerDeleted := message.DisplayName(a.UserID)
+	ownerRockCount, err := rock.GetRockCountForUser(a.UserID)
+	if err != nil {
+		ownerRockCount = 0
+	}
+	conv := message.Conversation{
+		ID:         0,
+		AdID:       a.ID,
+		OwnerID:    a.UserID,
+		InquirerID: 0,
+	}
+	data := conversationModalData(
+		conv, 0, 0, ownerRockCount,
+		a.Title, ownerName, "Not logged in",
+		"", false, false, false,
+		ownerDeleted, false, nil, "",
+	)
+	data.DisabledInputPlaceholder = "Login to send a message"
+	return render(c, ui.ConversationModalWithRock(data))
 }
 
 func SendMessageHandler(c *fiber.Ctx) error {

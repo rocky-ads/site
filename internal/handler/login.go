@@ -11,7 +11,8 @@ import (
 )
 
 func LoginHandler(c *fiber.Ctx) error {
-	return renderPage(c, "Login", ui.LoginPage())
+	returnPath := safeReturnPath(c.Query("return"))
+	return renderPage(c, "Login", ui.LoginPage(returnPath))
 }
 
 func clearAuth(c *fiber.Ctx) {
@@ -68,7 +69,6 @@ func LoginSubmitHandler(c *fiber.Ctx) error {
 	cookie.SetJWT(c, token)
 	cookie.SetDistanceUnitForUser(c, u.PhoneE64)
 
-	// Redirect to home page using HTMX
-	c.Set("HX-Redirect", "/")
+	c.Set("HX-Redirect", loginRedirectPath(c.FormValue("return")))
 	return c.SendStatus(fiber.StatusOK)
 }

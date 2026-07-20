@@ -145,6 +145,7 @@ func setupApp() *fiber.App {
 	api.Get("/search/", handler.SearchPageHandler)
 	api.Get("/ad/:id/share", handler.AdShareHandler)
 	api.Get("/ad/share/copy", handler.AdShareCopyHandler)
+	api.Get("/ad/:id/new-conversation", handler.MessageModalHandler)
 
 	api.Get("/category/:category/switch", handler.SwitchCategoryHandler)
 

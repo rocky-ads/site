@@ -40,11 +40,20 @@ func passwordInput(autocomplete string) g.Node {
 	return labeledPasswordField("Password", "password", autocomplete, false)
 }
 
-func LoginForm() g.Node {
-	return Form(
+func LoginForm(returnPath string) g.Node {
+	nodes := []g.Node{
 		Class("space-y-8 mt-8"),
 		hx.Post("/api/login"),
 		hx.Swap("none"),
+	}
+	if returnPath != "" {
+		nodes = append(nodes, Input(
+			Type("hidden"),
+			Name("return"),
+			Value(returnPath),
+		))
+	}
+	nodes = append(nodes,
 		userNameInput(false, "username", true, ""),
 		passwordInput("current-password"),
 		Div(
@@ -74,11 +83,12 @@ func LoginForm() g.Node {
 			),
 		),
 	)
+	return Form(nodes...)
 }
 
-func LoginPage() []g.Node {
+func LoginPage(returnPath string) []g.Node {
 	return []g.Node{
 		pageTitle("Login"),
-		LoginForm(),
+		LoginForm(returnPath),
 	}
 }

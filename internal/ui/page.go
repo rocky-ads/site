@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/rocky-ads/site/internal/config"
@@ -90,9 +91,15 @@ func navLoggedIn(userName string, hasUnread bool) g.Node {
 	)
 }
 
-func loginNode() g.Node {
+func loginNode(returnPath string) g.Node {
+	href := "/login"
+	if returnPath != "" && returnPath != "/login" &&
+		returnPath != "/register" &&
+		!strings.HasPrefix(returnPath, "/register/") {
+		href = "/login?return=" + url.QueryEscape(returnPath)
+	}
 	return A(
-		Href("/login"),
+		Href(href),
 		Class("inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:underline"),
 		Img(
 			Src("/images/login.svg"),
@@ -108,7 +115,7 @@ func navLoggedOut(currentPath string) g.Node {
 	case "/login", "/register/verify":
 		return nil
 	default:
-		return loginNode()
+		return loginNode(currentPath)
 	}
 }
 

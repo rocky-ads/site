@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/rocky-ads/site/internal/local"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -312,7 +313,7 @@ func ConversationContentInputClearSwapOOB(conversationID int) g.Node {
 }
 
 func ConversationForm(conversationID, adID int, csrfToken string,
-	canPost bool, extraAttrs ...g.Node) g.Node {
+	canPost bool, disabledPlaceholder string, extraAttrs ...g.Node) g.Node {
 	modalName := fmt.Sprintf("conversation-%d", conversationID)
 	attrs := []g.Node{
 		ID(fmt.Sprintf("%s-form", modalName)),
@@ -340,6 +341,9 @@ func ConversationForm(conversationID, adID int, csrfToken string,
 			)
 		}
 	}
+	if disabledPlaceholder == "" {
+		disabledPlaceholder = "Messaging closed"
+	}
 	return Form(
 		g.Group(attrs),
 		Div(
@@ -352,7 +356,7 @@ func ConversationForm(conversationID, adID int, csrfToken string,
 					ID(fmt.Sprintf("conversation-%d-content-input", conversationID)),
 					Type("text"),
 					Name("content"),
-					Placeholder("Messaging closed"),
+					Placeholder(disabledPlaceholder),
 					Disabled(),
 					Class("flex-1 px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 cursor-not-allowed"),
 				),
@@ -370,7 +374,7 @@ func ConversationForm(conversationID, adID int, csrfToken string,
 
 func ConversationFormSwapOOB(conversationID, adID int, csrfToken string,
 	canPost bool) g.Node {
-	return ConversationForm(conversationID, adID, csrfToken, canPost,
+	return ConversationForm(conversationID, adID, csrfToken, canPost, "",
 		hx.SwapOOB("outerHTML"))
 }
 
@@ -471,6 +475,7 @@ func ConversationModalSwapOOB(d ConversationModalData) g.Node {
 			ConversationMessagesPanel(d),
 			ConversationForm(
 				d.ConversationID, d.AdID, d.CSRFToken, d.CanPost,
+				d.DisabledInputPlaceholder,
 			),
 		),
 	)
@@ -567,6 +572,7 @@ func ConversationModalWithRock(d ConversationModalData) g.Node {
 				ConversationMessagesPanel(d),
 				ConversationForm(
 					d.ConversationID, d.AdID, d.CSRFToken, d.CanPost,
+					d.DisabledInputPlaceholder,
 				),
 			),
 		),
@@ -585,7 +591,7 @@ func conversationPeerName(userID int, name string, deleted bool,
 }
 
 func conversationParticipantName(userID int, name string, deleted bool) g.Node {
-	if deleted {
+	if deleted || !local.IsLoggedIn(userID) {
 		return Span(
 			Class("text-zinc-500 dark:text-zinc-400"),
 			g.Text(name),

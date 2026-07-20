@@ -122,24 +122,25 @@ func verificationCodeInput() g.Node {
 }
 
 func passwordInput2() g.Node {
-	return labeledPasswordField("Confirm Password", "password2", "off", false)
+	return labeledPasswordField("Confirm Password", "password2", "new-password", false)
 }
 
 func terms() g.Node {
 	linkClass := "text-blue-600 dark:text-blue-400 " +
 		"hover:text-blue-800 dark:hover:text-blue-300 underline"
-	return Label(
-		Class("flex items-start gap-2"),
-		For("terms-accepted"),
+	return Div(
+		Class("flex items-start gap-3"),
 		Input(
 			Type("checkbox"),
 			Name("terms"),
 			Value("accepted"),
 			ID("terms-accepted"),
-			Class("mt-1 shrink-0"),
+			Class("mt-0.5 h-5 w-5 shrink-0 accent-blue-600 cursor-pointer"),
 			Required(),
 		),
-		Span(
+		Label(
+			For("terms-accepted"),
+			Class("text-sm leading-snug text-zinc-600 dark:text-zinc-300 cursor-pointer"),
 			g.Text("I accept the "),
 			A(
 				Href("/terms"),

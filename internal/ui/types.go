@@ -42,6 +42,9 @@ type AdDetail struct {
 	Location            string
 	DescriptionOriginal string
 	DescriptionHistory  []AdHistoryEntry
+	// ShowLoginForDetails is true when edit history exists but is hidden
+	// until the viewer logs in.
+	ShowLoginForDetails bool
 	CreatedAt           time.Time
 	Bookmarked          bool
 	Active              bool
@@ -91,6 +94,8 @@ type ConversationModalData struct {
 	MessageNodes      []g.Node
 	RockThrowerID     *int
 	TargetModalID     string
+	// DisabledInputPlaceholder overrides the closed send-field placeholder.
+	DisabledInputPlaceholder string
 }
 
 // ConversationListItemData holds presentation fields for a messages list row.

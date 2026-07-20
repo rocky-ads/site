@@ -72,6 +72,7 @@ func adDetailFrom(a ad.Ad, viewerUserID int, reachable, isTest bool) ui.AdDetail
 	}
 	desc := ad.ParseDescriptionForDisplay(a.Description)
 	var history []ui.AdHistoryEntry
+	showLoginForDetails := false
 	if local.IsLoggedIn(viewerUserID) {
 		history = make([]ui.AdHistoryEntry, len(desc.History))
 		for i, e := range desc.History {
@@ -81,6 +82,8 @@ func adDetailFrom(a ad.Ad, viewerUserID int, reachable, isTest bool) ui.AdDetail
 				ImageIndices: e.ImageIndices,
 			}
 		}
+	} else if len(desc.History) > 0 {
+		showLoginForDetails = true
 	}
 	return ui.AdDetail{
 		ID:                  a.ID,
@@ -92,6 +95,7 @@ func adDetailFrom(a ad.Ad, viewerUserID int, reachable, isTest bool) ui.AdDetail
 		Location:            ad.AdLocationDisplay(a, viewerUserID),
 		DescriptionOriginal: desc.Original,
 		DescriptionHistory:  history,
+		ShowLoginForDetails: showLoginForDetails,
 		CreatedAt:           a.CreatedAt,
 		Bookmarked:          a.Bookmarked,
 		Active:              a.IsActive(),
