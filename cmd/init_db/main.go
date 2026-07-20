@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/rocky-ads/site/cmd/seed_db/seed"
+	"github.com/rocky-ads/site/cmd/init_db/seed"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/logger"
@@ -59,9 +59,9 @@ func setupDatabase(databaseURL string) error {
 }
 
 func main() {
-	skipTestAds := flag.Bool(
-		"skip-test-ads", false,
-		"Skip loading seed ad data from ad-*.json files",
+	loadSeed := flag.Bool(
+		"load-seed", false,
+		"Also load seed users and ads (categories always load)",
 	)
 	flag.Parse()
 
@@ -91,11 +91,16 @@ func main() {
 	logger.Info("Setup database step", "duration", time.Since(stepStart))
 
 	stepStart = time.Now()
-	logger.Info("Loading seed data...")
-	if err := seed.LoadAllOptions(seed.Options{
-		SkipTestAds: *skipTestAds,
-	}); err != nil {
-		logger.Fatal("Failed to load seed data", "error", err)
+	if *loadSeed {
+		logger.Info("Loading seed data...")
+		if err := seed.LoadAll(); err != nil {
+			logger.Fatal("Failed to load seed data", "error", err)
+		}
+	} else {
+		logger.Info("Loading categories only (skipping users and ads)...")
+		if err := seed.LoadCategories(); err != nil {
+			logger.Fatal("Failed to load categories", "error", err)
+		}
 	}
 	logger.Info("Load seed data step", "duration", time.Since(stepStart))
 	logger.Info("Seed data loaded successfully")

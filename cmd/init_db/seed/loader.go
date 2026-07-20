@@ -37,18 +37,8 @@ type CategoryFiles struct {
 
 var categoryFiles = make(map[string]CategoryFiles)
 
-// Options configures which seed data to load.
-type Options struct {
-	SkipTestAds bool
-}
-
 // LoadAll loads all seed data into the database.
 func LoadAll() error {
-	return LoadAllOptions(Options{})
-}
-
-// LoadAllOptions loads seed data into the database.
-func LoadAllOptions(opts Options) error {
 	startTime := time.Now()
 	if err := LoadUsers(); err != nil {
 		return fmt.Errorf("loading users: %w", err)
@@ -61,15 +51,11 @@ func LoadAllOptions(opts Options) error {
 	}
 	logger.Info("LoadCategories completed", "duration", time.Since(startTime))
 
-	if !opts.SkipTestAds {
-		startTime = time.Now()
-		if err := LoadAds(); err != nil {
-			return fmt.Errorf("loading ads: %w", err)
-		}
-		logger.Info("LoadAds completed", "duration", time.Since(startTime))
-	} else {
-		logger.Info("Skipping test ads")
+	startTime = time.Now()
+	if err := LoadAds(); err != nil {
+		return fmt.Errorf("loading ads: %w", err)
 	}
+	logger.Info("LoadAds completed", "duration", time.Since(startTime))
 
 	if err := syncIdentitySequences(); err != nil {
 		return fmt.Errorf("syncing identity sequences: %w", err)
@@ -125,7 +111,7 @@ type Ad struct {
 
 // LoadUsers loads users from user.json into the users table
 func LoadUsers() error {
-	data, err := os.ReadFile("cmd/seed_db/seed/user.json")
+	data, err := os.ReadFile("cmd/init_db/seed/user.json")
 	if err != nil {
 		return err
 	}
@@ -214,7 +200,7 @@ func LoadUsers() error {
 
 // LoadCategories loads ad-category.json into categories
 func LoadCategories() error {
-	data, err := os.ReadFile("cmd/seed_db/seed/ad-category.json")
+	data, err := os.ReadFile("cmd/init_db/seed/ad-category.json")
 	if err != nil {
 		return err
 	}
@@ -365,7 +351,7 @@ func convertAdJSON(aj adJSON) Ad {
 
 func loadAdsFromFile(categoryID int, filename string, categoryFacets []string,
 	usedIDs map[int]string) error {
-	data, err := os.ReadFile("cmd/seed_db/seed/" + filename)
+	data, err := os.ReadFile("cmd/init_db/seed/" + filename)
 	if err != nil {
 		return err
 	}

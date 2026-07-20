@@ -24,7 +24,7 @@ type categoryJSON struct {
 }
 
 // LoadCategories reads ad-category.json and assigns stable IDs using the
-// same alphabetical ordering as cmd/seed_db. Pass an empty path to use the
+// same alphabetical ordering as cmd/init_db. Pass an empty path to use the
 // embedded category list.
 func LoadCategories(path string) ([]Category, error) {
 	data := embeddedCategoriesJSON

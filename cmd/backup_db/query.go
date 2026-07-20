@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"strings"
-
-	"github.com/rocky-ads/site/internal/db"
 )
 
 func intInClause(ids []int) (string, []any) {
@@ -34,23 +32,4 @@ func uniqueInts(ids []int) []int {
 		out = append(out, id)
 	}
 	return out
-}
-
-// adsHasInactiveAt reports whether ads.inactive_at exists so backup/restore
-// can work against DBs from before the ad lifecycle column was added.
-func adsHasInactiveAt() (bool, error) {
-	var exists bool
-	err := db.QueryRow(`
-		SELECT EXISTS (
-			SELECT 1
-			FROM information_schema.columns
-			WHERE table_schema = 'public'
-			  AND table_name = 'ads'
-			  AND column_name = 'inactive_at'
-		)
-	`).Scan(&exists)
-	if err != nil {
-		return false, fmt.Errorf("check ads.inactive_at: %w", err)
-	}
-	return exists, nil
 }

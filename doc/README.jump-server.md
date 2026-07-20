@@ -14,14 +14,29 @@ With docker-compose (includes Postgres and MinIO):
 docker compose up -d
 ```
 
-## Database seeding
+## Database initialization
 
 ```bash
 export DATABASE_URL="postgres://postgres:postgres@postgres:5432/rockyads?sslmode=disable"
-seed_db
+init_db
 ```
 
-`seed_db` recreates the schema and imports seed data. It sets `image_count` on ads but does **not** upload image files.
+`init_db` recreates the schema and loads categories. It does **not** load seed users or ads unless you pass `-load-seed`. It sets `image_count` on seeded ads but does **not** upload image files.
+
+For local/dev with test users and ads:
+
+```bash
+init_db -load-seed
+```
+
+### Promote a user to admin
+
+After registering a user via the UI (typical without `-load-seed`):
+
+```bash
+set_admin promote <name>
+set_admin demote <name>
+```
 
 ### Backup and restore non-test ads
 
@@ -29,7 +44,7 @@ To preserve production ads across a database rebuild:
 
 ```bash
 backup_db backup -out /workspace/backups/prod
-seed_db
+init_db
 backup_db restore -from /workspace/backups/prod
 ```
 
@@ -80,7 +95,8 @@ See the [MinIO Client documentation](https://docs.min.io/docs/minio-client-quick
 
 | Binary | Purpose |
 |--------|---------|
-| `seed_db` | Drop/recreate schema and import seed data |
+| `init_db` | Drop/recreate schema and categories; `-load-seed` also loads users/ads |
+| `set_admin` | Promote or demote a user by name (`promote` / `demote`) |
 | `backup_db` | Backup/restore non-test ads (DB rows + MinIO images); one-time `migrate-schema` |
 | `migrate_images` | One-time upload of local ad image files to MinIO |
 | `quote_server` | Quote-of-the-day page on port 10000 |

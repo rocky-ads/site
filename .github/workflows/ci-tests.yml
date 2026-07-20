@@ -37,10 +37,10 @@ jobs:
       run: go mod download
 
     - name: Build database rebuild tool
-      run: go build -o seed_db ./cmd/seed_db
+      run: go build -o init_db ./cmd/init_db
 
     - name: Rebuild database with test data
-      run: ./seed_db
+      run: ./init_db -load-seed
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable
         JWT_SECRET: 'test-jwt-secret-key-for-ci-minimum-32-chars-long'

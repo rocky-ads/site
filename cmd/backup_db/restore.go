@@ -80,18 +80,12 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 		return nil
 	}
 
-	// One-time bridge: old DBs (global unique phone_hash, verification
-	// without purpose) → current schema before importing archive rows.
-	if err := migratePhoneLifecycleSchema(false); err != nil {
-		return fmt.Errorf("migrate phone lifecycle schema: %w", err)
-	}
-
 	sort.Slice(ads, func(i, j int) bool {
 		return ads[i].Ref < ads[j].Ref
 	})
 
 	// Live users before deleted so a recycled phone_hash never collides
-	// with an active row on a partially-migrated target DB.
+	// with the partial unique index on live phone_hash.
 	sort.SliceStable(users, func(i, j int) bool {
 		iDel := users[i].DeletedAt != nil
 		jDel := users[j].DeletedAt != nil
@@ -120,10 +114,6 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 	}
 
 	adRefToID := make(map[int]int, len(ads))
-	hasInactiveAt, err := adsHasInactiveAt()
-	if err != nil {
-		return err
-	}
 	for _, a := range ads {
 		ownerID, ok := userHashToID[a.OwnerHash]
 		if !ok {
@@ -140,27 +130,15 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 			locationID = locID
 		}
 		var newID int
-		if hasInactiveAt {
-			err = db.QueryRow(`
-				INSERT INTO ads (
-					category_id, title, description, created_at, inactive_at,
-					deleted_at, user_id, image_count, location_id, tags
-				) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-				RETURNING id`,
-				a.CategoryID, a.Title, a.Description, a.CreatedAt, a.InactiveAt,
-				a.DeletedAt, ownerID, a.ImageCount, locationID, a.Tags,
-			).Scan(&newID)
-		} else {
-			err = db.QueryRow(`
-				INSERT INTO ads (
-					category_id, title, description, created_at, deleted_at,
-					user_id, image_count, location_id, tags
-				) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-				RETURNING id`,
-				a.CategoryID, a.Title, a.Description, a.CreatedAt, a.DeletedAt,
-				ownerID, a.ImageCount, locationID, a.Tags,
-			).Scan(&newID)
-		}
+		err := db.QueryRow(`
+			INSERT INTO ads (
+				category_id, title, description, created_at, inactive_at,
+				deleted_at, user_id, image_count, location_id, tags
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			RETURNING id`,
+			a.CategoryID, a.Title, a.Description, a.CreatedAt, a.InactiveAt,
+			a.DeletedAt, ownerID, a.ImageCount, locationID, a.Tags,
+		).Scan(&newID)
 		if err != nil {
 			return fmt.Errorf("insert ad ref %d: %w", a.Ref, err)
 		}

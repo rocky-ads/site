@@ -23,22 +23,13 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 		return fmt.Errorf("lookup test user: %w", err)
 	}
 
-	hasInactiveAt, err := adsHasInactiveAt()
-	if err != nil {
-		return err
-	}
-	inactiveSelect := "NULL::timestamp AS inactive_at"
-	if hasInactiveAt {
-		inactiveSelect = "inactive_at"
-	}
-
 	var adRows []adDBRow
-	err = db.Select(&adRows, fmt.Sprintf(`
-		SELECT id, category_id, title, description, created_at, %s, deleted_at,
-		       user_id, image_count, location_id, tags
+	err = db.Select(&adRows, `
+		SELECT id, category_id, title, description, created_at, inactive_at,
+		       deleted_at, user_id, image_count, location_id, tags
 		FROM ads
 		WHERE user_id != $1
-		ORDER BY created_at, id`, inactiveSelect), testUserID)
+		ORDER BY created_at, id`, testUserID)
 	if err != nil {
 		return fmt.Errorf("query ads: %w", err)
 	}
