@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rocky-ads/site/internal/local"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -591,7 +590,13 @@ func conversationPeerName(userID int, name string, deleted bool,
 }
 
 func conversationParticipantName(userID int, name string, deleted bool) g.Node {
-	if deleted || !local.IsLoggedIn(userID) {
+	if userID == 0 {
+		return Span(
+			Class("italic text-amber-700 dark:text-amber-300"),
+			g.Text(name),
+		)
+	}
+	if deleted {
 		return Span(
 			Class("text-zinc-500 dark:text-zinc-400"),
 			g.Text(name),

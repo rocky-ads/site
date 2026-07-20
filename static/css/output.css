@@ -1365,6 +1365,9 @@
   .whitespace-pre-wrap {
     white-space: pre-wrap;
   }
+  .text-amber-700 {
+    color: var(--color-amber-700);
+  }
   .text-amber-800 {
     color: var(--color-amber-800);
   }
@@ -1457,6 +1460,9 @@
   }
   .uppercase {
     text-transform: uppercase;
+  }
+  .italic {
+    font-style: italic;
   }
   .ordinal {
     --tw-ordinal: ordinal;
@@ -2198,6 +2204,11 @@
   .dark\:text-amber-200 {
     @media (prefers-color-scheme: dark) {
       color: var(--color-amber-200);
+    }
+  }
+  .dark\:text-amber-300 {
+    @media (prefers-color-scheme: dark) {
+      color: var(--color-amber-300);
     }
   }
   .dark\:text-blue-100 {
