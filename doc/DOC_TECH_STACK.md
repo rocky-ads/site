@@ -5,7 +5,7 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
 ## Backend
 
 ### Programming Language
-- **Go 1.25.3** - Primary programming language
+- **Go 1.26.5** - Primary programming language
 
 ### Web Framework
 - **Fiber v2.52.5** - High-performance HTTP web framework built on top of fasthttp
@@ -116,7 +116,7 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
 ### CI/CD
 - **GitHub Actions** - Continuous integration
   - Automated testing on push/PR to main/dev branches
-  - Go 1.25.3 setup
+  - Go 1.26.5 setup
   - Module caching
   - Database rebuild with test data
   - Test execution with required environment variables

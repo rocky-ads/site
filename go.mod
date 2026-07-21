@@ -1,6 +1,6 @@
 module github.com/rocky-ads/site
 
-go 1.25.3
+go 1.26.5
 
 require (
 	github.com/chai2010/webp v1.4.0
