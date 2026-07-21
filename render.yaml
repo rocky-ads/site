@@ -25,7 +25,7 @@ projects:
       - rockyads.com
       - www.rockyads.com
       autoDeployTrigger: commit
-    - type: pserv
+    - type: web
       name: minio
       runtime: image
       image:
@@ -33,8 +33,15 @@ projects:
       plan: starter
       envVars:
       - fromGroup: MINIO
+      - key: HOST
+        value: "0.0.0.0"
+      - key: PORT
+        value: "9000"
+      - key: MINIO_BROWSER
+        value: "off"
       region: oregon
-      dockerCommand: minio server /data --console-address :9001
+      healthCheckPath: /minio/health/live
+      dockerCommand: minio server /data --address $HOST:$PORT
       disk:
         name: disk
         mountPath: /data
