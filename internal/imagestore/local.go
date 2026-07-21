@@ -2,18 +2,26 @@ package imagestore
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
+	"time"
 )
 
 // LocalStore writes ad images under baseDir/{adID}/{index}-{suffix}.webp.
 type LocalStore struct {
 	baseDir string
+	mu      sync.Mutex
+	puts    map[string]string
 }
 
 func NewLocal(baseDir string) *LocalStore {
-	return &LocalStore{baseDir: baseDir}
+	return &LocalStore{
+		baseDir: baseDir,
+		puts:    make(map[string]string),
+	}
 }
 
 func (s *LocalStore) Put(adID, index int, suffix string, data []byte) error {
@@ -29,12 +37,26 @@ func (s *LocalStore) Put(adID, index int, suffix string, data []byte) error {
 }
 
 func (s *LocalStore) Get(adID, index int, suffix string) ([]byte, error) {
-	path := filepath.Join(s.baseDir, fmt.Sprintf("%d", adID), fmt.Sprintf("%d-%s.webp", index, suffix))
+	path := filepath.Join(s.baseDir, fmt.Sprintf("%d", adID),
+		fmt.Sprintf("%d-%s.webp", index, suffix))
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read image: %w", err)
 	}
 	return data, nil
+}
+
+func (s *LocalStore) Stat(adID, index int, suffix string) (bool, error) {
+	path := filepath.Join(s.baseDir, fmt.Sprintf("%d", adID),
+		fmt.Sprintf("%d-%s.webp", index, suffix))
+	_, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func (s *LocalStore) ListAd(adID int) ([]ImageRef, error) {
@@ -71,4 +93,33 @@ func (s *LocalStore) DeleteAd(adID int) error {
 		return fmt.Errorf("delete ad images: %w", err)
 	}
 	return nil
+}
+
+func (s *LocalStore) PresignPut(adID, index int, suffix string,
+	expiry time.Duration) (string, error) {
+	_ = expiry
+	key := objectKey(adID, index, suffix)
+	u := url.URL{
+		Scheme: "http",
+		Host:   "127.0.0.1:9",
+		Path:   "/" + key,
+	}
+	s.mu.Lock()
+	s.puts[u.String()] = key
+	s.mu.Unlock()
+	return u.String(), nil
+}
+
+func (s *LocalStore) PresignGet(adID, index int, suffix string,
+	expiry time.Duration) (string, error) {
+	_ = expiry
+	ok, err := s.Stat(adID, index, suffix)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", fmt.Errorf("object not found")
+	}
+	return fmt.Sprintf("http://127.0.0.1/local/%d/%d-%s.webp",
+		adID, index, suffix), nil
 }

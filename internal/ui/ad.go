@@ -512,12 +512,17 @@ func descriptionDisplay(adID int, original string, facetDetails []string,
 func descriptionHistoryEntry(adID int, e AdHistoryEntry) g.Node {
 	imageNodes := make([]g.Node, len(e.ImageIndices))
 	for i, idx := range e.ImageIndices {
-		imageNodes[i] = Img(
-			Src(fmt.Sprintf("/ad/%d/image/%d/%s", adID, idx, "160w")),
-			Alt(fmt.Sprintf("Added image %d", idx)),
-			Class("w-16 h-16 object-cover rounded border "+
-				"border-zinc-200 dark:border-zinc-600"),
-		)
+		src := AdImageSrc(adID, idx, "160w")
+		if src == "" {
+			imageNodes[i] = GenerateSVG(adID, idx, "160w")
+		} else {
+			imageNodes[i] = Img(
+				Src(src),
+				Alt(fmt.Sprintf("Added image %d", idx)),
+				Class("w-16 h-16 object-cover rounded border "+
+					"border-zinc-200 dark:border-zinc-600"),
+			)
+		}
 	}
 	return Div(
 		Class("text-sm text-blue-700 dark:text-blue-300"),
@@ -645,11 +650,16 @@ func editImagesField(adID, existingCount, maxImagesPerAd int) g.Node {
 
 	existingNodes := make([]g.Node, existingCount)
 	for i := 1; i <= existingCount; i++ {
-		existingNodes[i-1] = Img(
-			Src(fmt.Sprintf("/ad/%d/image/%d/%s", adID, i, "160w")),
-			Alt(fmt.Sprintf("Image %d", i)),
-			Class("object-cover rounded w-[90px] h-[90px]"),
-		)
+		src := AdImageSrc(adID, i, "160w")
+		if src == "" {
+			existingNodes[i-1] = GenerateSVG(adID, i, "160w")
+		} else {
+			existingNodes[i-1] = Img(
+				Src(src),
+				Alt(fmt.Sprintf("Image %d", i)),
+				Class("object-cover rounded w-[90px] h-[90px]"),
+			)
+		}
 	}
 
 	nodes := []g.Node{
@@ -793,17 +803,17 @@ func newAdForm(fields g.Node) g.Node {
 }
 
 func adForm(cfg uiads.AdFormConfig, fields g.Node) g.Node {
+	mode := "create"
+	if cfg.Mode == uiads.AdFormEdit {
+		mode = "edit"
+	}
 	formAttrs := []g.Node{
 		Class("space-y-8 mt-8"),
 		ID(cfg.FormID),
 		g.Attr("novalidate", ""),
-		hx.Post(cfg.PostURL),
-		hx.Swap("none"),
-	}
-	if cfg.Mode == uiads.AdFormCreate ||
-		(cfg.Mode == uiads.AdFormEdit &&
-			cfg.Values.ImageCount < config.MaxImagesPerAd) {
-		formAttrs = append(formAttrs, hx.Encoding("multipart/form-data"))
+		g.Attr("data-ad-post-url", cfg.PostURL),
+		g.Attr("data-ad-form-mode", mode),
+		g.Attr("onsubmit", "return submitAdForm(event)"),
 	}
 
 	children := []g.Node{fields}
@@ -823,6 +833,7 @@ func adForm(cfg uiads.AdFormConfig, fields g.Node) g.Node {
 			}),
 			ErrorDiv(""),
 		),
+		g.Raw(`<script src="/js/image-upload.js" defer></script>`),
 	)
 
 	return Form(append(formAttrs, g.Group(children))...)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -72,8 +73,7 @@ func TestCreateAdWithImages(t *testing.T) {
 	}
 	client.Jar.SetCookies(baseURLParsed, []*http.Cookie{categoryCookie})
 
-	pngData := minimalTestPNG(t)
-	fields := map[string]string{
+	fields := map[string]interface{}{
 		"title":          "Ad With Images",
 		"description":    "Listing with uploaded photos.",
 		"year":           "2020",
@@ -83,24 +83,36 @@ func TestCreateAdWithImages(t *testing.T) {
 		"mileage_unit":   "mi",
 		"location":       "Los Angeles",
 	}
-	uploads := []multipartUpload{
-		{fieldName: "images", fileName: "one.png", content: pngData},
-		{fieldName: "images", fileName: "two.png", content: pngData},
+	resp, result := postAdUploadForm(t, baseURL+"/auth/ad/new", fields)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("create: status %d result=%v", resp.StatusCode, result)
+	}
+	adIDFloat, ok := result["adId"].(float64)
+	if !ok {
+		t.Fatalf("missing adId: %v", result)
+	}
+	adID := int(adIDFloat)
+
+	presignResp, presign := postJSONRequest(t,
+		fmt.Sprintf("%s/auth/ad/%d/presign-images", baseURL, adID),
+		map[string]any{"count": 2})
+	if presignResp.StatusCode != http.StatusOK {
+		t.Fatalf("presign: %d %v", presignResp.StatusCode, presign)
+	}
+	uploads, _ := presign["uploads"].([]interface{})
+	if len(uploads) != 6 {
+		t.Fatalf("expected 6 upload URLs, got %d", len(uploads))
 	}
 
-	resp, result := postMultipartRequest(t, baseURL+"/auth/ad/new", fields, uploads)
-	if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusOK {
-		raw, _ := result["raw"].(string)
-		t.Fatalf("expected redirect or success, got %d body=%q", resp.StatusCode, raw)
-	}
-	if resp.StatusCode == http.StatusOK {
-		raw, _ := result["raw"].(string)
-		if strings.Contains(raw, "error") || strings.Contains(raw, "required") {
-			t.Fatalf("create failed: %q", raw)
-		}
+	putLocalAdImages(t, adID, 1, 2)
+
+	confirmResp, confirm := postJSONRequest(t,
+		fmt.Sprintf("%s/auth/ad/%d/confirm-images", baseURL, adID),
+		map[string]any{"imageCount": 2})
+	if confirmResp.StatusCode != http.StatusOK {
+		t.Fatalf("confirm: %d %v", confirmResp.StatusCode, confirm)
 	}
 
-	adID := adIDFromCreateResponse(t, resp, "Ad With Images")
 	var imageCount int
 	if err := db.QueryRow(
 		"SELECT image_count FROM ads WHERE id = $1", adID,
@@ -114,13 +126,30 @@ func TestCreateAdWithImages(t *testing.T) {
 	for _, size := range []string{"160w", "480w", "1200w"} {
 		for idx := 1; idx <= 2; idx++ {
 			path := filepath.Join(
-				testImageDir, adID,
+				testImageDir, fmt.Sprintf("%d", adID),
 				fmt.Sprintf("%d-%s.webp", idx, size),
 			)
 			if _, err := os.Stat(path); err != nil {
 				t.Errorf("missing image file %s: %v", path, err)
 			}
 		}
+	}
+
+	detail, err := http.Get(baseURL + fmt.Sprintf("/ad/%d", adID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer detail.Body.Close()
+	body, _ := io.ReadAll(detail.Body)
+	html := string(body)
+	if strings.Contains(html, "/ad/") && strings.Contains(html, "/image/") {
+		// proxy path should be gone from img src
+		if strings.Contains(html, fmt.Sprintf("/ad/%d/image/", adID)) {
+			t.Fatalf("expected no proxy image URLs, body snippet has /ad/%d/image/", adID)
+		}
+	}
+	if !strings.Contains(html, "127.0.0.1/local/") {
+		t.Fatalf("expected LocalStore PresignGet URL in HTML")
 	}
 }
 
@@ -135,49 +164,32 @@ func TestCreateAdImageValidation(t *testing.T) {
 	}
 	client.Jar.SetCookies(baseURLParsed, []*http.Cookie{categoryCookie})
 
-	baseFields := map[string]string{
-		"title":          "Bad Image Ad",
-		"description":    "Should not be created.",
+	fields := map[string]interface{}{
+		"title":          "Presign Limit Ad",
+		"description":    "Too many images.",
 		"year":           "2020",
 		"price":          "15000",
 		"price_currency": "USD",
 		"mileage":        "12000",
 		"mileage_unit":   "mi",
 	}
+	resp, result := postAdUploadForm(t, baseURL+"/auth/ad/new", fields)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("create: %d %v", resp.StatusCode, result)
+	}
+	adID := int(result["adId"].(float64))
 
-	t.Run("invalid extension", func(t *testing.T) {
-		resp, result := postMultipartRequest(t, baseURL+"/auth/ad/new", baseFields,
-			[]multipartUpload{
-				{fieldName: "images", fileName: "notes.txt", content: []byte("not an image")},
-			})
-		if resp.StatusCode == http.StatusFound {
-			t.Fatal("expected validation failure, got redirect")
-		}
-		raw, _ := result["raw"].(string)
-		if !strings.Contains(raw, "invalid extension") {
-			t.Fatalf("expected extension error, body=%q", raw)
-		}
-	})
-
-	t.Run("too many images", func(t *testing.T) {
-		pngData := minimalTestPNG(t)
-		uploads := make([]multipartUpload, config.MaxImagesPerAd+1)
-		for i := range uploads {
-			uploads[i] = multipartUpload{
-				fieldName: "images",
-				fileName:  fmt.Sprintf("img%d.png", i),
-				content:   pngData,
-			}
-		}
-		resp, result := postMultipartRequest(t, baseURL+"/auth/ad/new", baseFields, uploads)
-		if resp.StatusCode == http.StatusFound {
-			t.Fatal("expected validation failure, got redirect")
-		}
-		raw, _ := result["raw"].(string)
-		if !strings.Contains(raw, "too many images") {
-			t.Fatalf("expected count error, body=%q", raw)
-		}
-	})
+	presignResp, presign := postJSONRequest(t,
+		fmt.Sprintf("%s/auth/ad/%d/presign-images", baseURL, adID),
+		map[string]any{"count": config.MaxImagesPerAd + 1})
+	if presignResp.StatusCode == http.StatusOK {
+		t.Fatal("expected too-many-images failure")
+	}
+	errMsg, _ := presign["error"].(string)
+	raw, _ := presign["raw"].(string)
+	if !strings.Contains(errMsg+raw, "too many") {
+		t.Fatalf("expected too many images, got %v", presign)
+	}
 }
 
 func TestUpdateAd(t *testing.T) {
@@ -256,8 +268,7 @@ func TestUpdateAdAppendImages(t *testing.T) {
 	}
 	client.Jar.SetCookies(baseURLParsed, []*http.Cookie{categoryCookie})
 
-	pngData := minimalTestPNG(t)
-	createFields := map[string]string{
+	createFields := map[string]interface{}{
 		"title":          "Edit Append Images",
 		"description":    "Original listing text.",
 		"year":           "2020",
@@ -266,33 +277,45 @@ func TestUpdateAdAppendImages(t *testing.T) {
 		"mileage":        "12000",
 		"mileage_unit":   "mi",
 	}
-	createUploads := []multipartUpload{
-		{fieldName: "images", fileName: "one.png", content: pngData},
+	resp, result := postAdUploadForm(t, baseURL+"/auth/ad/new", createFields)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("create: %d %v", resp.StatusCode, result)
 	}
-	resp, _ := postMultipartRequest(
-		t, baseURL+"/auth/ad/new", createFields, createUploads,
-	)
-	adID := adIDFromCreateResponse(t, resp, "Edit Append Images")
+	adID := int(result["adId"].(float64))
+	putLocalAdImages(t, adID, 1, 1)
+	confirmResp, _ := postJSONRequest(t,
+		fmt.Sprintf("%s/auth/ad/%d/confirm-images", baseURL, adID),
+		map[string]any{"imageCount": 1})
+	if confirmResp.StatusCode != http.StatusOK {
+		t.Fatal("confirm first image")
+	}
 
-	editFields := map[string]string{
+	editFields := map[string]interface{}{
 		"title":          "Edit Append Images",
-		"description":    "Original listing text.",
 		"year":           "2020",
 		"price":          "3400",
 		"price_currency": "USD",
 		"mileage":        "12000",
 		"mileage_unit":   "mi",
 	}
-	editUploads := []multipartUpload{
-		{fieldName: "images", fileName: "two.png", content: pngData},
+	resp, result = postAdUploadForm(t,
+		fmt.Sprintf("%s/auth/ad/%d/edit", baseURL, adID), editFields)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("edit: %d %v", resp.StatusCode, result)
 	}
-	resp, result := postMultipartRequest(
-		t, baseURL+"/auth/ad/"+adID+"/edit", editFields, editUploads,
-	)
-	if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusOK {
-		raw, _ := result["raw"].(string)
-		t.Fatalf("update ad: expected redirect or success, got %d body=%q",
-			resp.StatusCode, raw)
+
+	presignResp, presign := postJSONRequest(t,
+		fmt.Sprintf("%s/auth/ad/%d/presign-images", baseURL, adID),
+		map[string]any{"count": 1})
+	if presignResp.StatusCode != http.StatusOK {
+		t.Fatalf("presign: %d %v", presignResp.StatusCode, presign)
+	}
+	putLocalAdImages(t, adID, 2, 1)
+	confirmResp, _ = postJSONRequest(t,
+		fmt.Sprintf("%s/auth/ad/%d/confirm-images", baseURL, adID),
+		map[string]any{"imageCount": 2})
+	if confirmResp.StatusCode != http.StatusOK {
+		t.Fatal("confirm second image")
 	}
 
 	var imageCount int
@@ -313,11 +336,11 @@ func TestUpdateAdAppendImages(t *testing.T) {
 	if len(parts.History) == 0 ||
 		len(parts.History[0].ImageIndices) != 1 ||
 		parts.History[0].ImageIndices[0] != 2 {
-		t.Fatalf("history indices = %v", parts.History[0].ImageIndices)
+		t.Fatalf("history indices = %v", parts.History)
 	}
 
 	path := filepath.Join(
-		testImageDir, adID, "2-160w.webp",
+		testImageDir, fmt.Sprintf("%d", adID), "2-160w.webp",
 	)
 	if _, err := os.Stat(path); err != nil {
 		t.Errorf("missing appended image file %s: %v", path, err)

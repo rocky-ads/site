@@ -59,7 +59,6 @@ func setupApp() *fiber.App {
 	app.Get("/faq", handler.FAQHandler)
 	app.Get("/faq/:section", handler.FAQHandler)
 	app.Get("/ad/:id", handler.AdHandler)
-	app.Get("/ad/:id/image/:index/:size", handler.ImageHandler)
 	app.Get("/c/:category", handler.ShortCategoryHandler)
 
 	// Auth routes
@@ -74,6 +73,8 @@ func setupApp() *fiber.App {
 	auth.Post("/ad/new", handler.CreateAdHandler)
 	auth.Get("/ad/:id/edit", handler.EditAdHandler)
 	auth.Post("/ad/:id/edit", handler.UpdateAdHandler)
+	auth.Post("/ad/:id/presign-images", handler.PresignAdImagesHandler)
+	auth.Post("/ad/:id/confirm-images", handler.ConfirmAdImagesHandler)
 	auth.Get("/ad/:id/edit/suggestions", handler.EditSuggestionsHandler)
 	auth.Get("/ad/:id/remove-modal", handler.AdRemoveModalHandler)
 	auth.Post("/ad/:id/pause", handler.PauseAdHandler)

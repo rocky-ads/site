@@ -22,7 +22,9 @@ const (
 	RecoverySessionTTL       = 10 * time.Minute // Recover session / code lifetime
 
 	// MinIO configuration
-	MinIOPresignedURLExpiry = 3600 // seconds (1 hour)
+	MinIOPresignedPutExpiry = 15 * time.Minute
+	MinIOPresignedGetExpiry = 24 * time.Hour
+	MinIOObjectCacheControl = "public, max-age=86400"
 
 	// Vector search configuration
 	SearchPageSize                = 20  // Number of results per page for list/grid views
@@ -89,6 +91,7 @@ var (
 
 	// MinIO configuration
 	MinIOAPIURL       = getEnvWithDefault("MINIO_API_URL", "")
+	MinIOPublicURL    = getEnvWithDefault("MINIO_PUBLIC_URL", "")
 	MinIORootUser     = getEnvWithDefault("MINIO_ROOT_USER", "")
 	MinIORootPassword = getEnvWithDefault("MINIO_ROOT_PASSWORD", "")
 	MinIOBucketName   = getEnvWithDefault("MINIO_BUCKET_NAME", "")

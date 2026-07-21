@@ -20,6 +20,11 @@ Input: `input.css` → output: `static/css/output.css`.
 
 Ad images are stored in MinIO. The server requires `MINIO_API_URL` (and related credentials) to start.
 
+- `MINIO_API_URL` — S3 API endpoint used by the server (private-network host in production).
+- `MINIO_PUBLIC_URL` — browser-facing host used when minting presigned PUT/GET URLs (e.g. `https://minio.rockyads.com` or `http://127.0.0.1:9000` locally). Defaults to `MINIO_API_URL` if unset.
+
+Browsers upload WebP derivatives via short-lived **presigned PUT** URLs. Listing/detail pages embed **reused long-lived presigned GET** URLs so image bytes come from MinIO and remain browser-cacheable.
+
 Local dev with docker-compose:
 
 ```bash
@@ -30,6 +35,7 @@ Set in `.env`:
 
 ```
 MINIO_API_URL=http://127.0.0.1:9000
+MINIO_PUBLIC_URL=http://127.0.0.1:9000
 MINIO_ROOT_USER=minioadmin
 MINIO_ROOT_PASSWORD=minioadmin
 MINIO_BUCKET_NAME=rockyads

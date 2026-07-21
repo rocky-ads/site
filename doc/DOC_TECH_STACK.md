@@ -63,14 +63,10 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
 ## Frontend
 
 ### JavaScript
-**No custom JavaScript is used in this application.** The frontend is intentionally JavaScript-free except for HTMX, which provides all necessary interactivity through HTML attributes.
-
-- **HTMX v2.0.10** - HTML-over-the-wire library (only JavaScript dependency)
-  - Server-sent events (SSE) extension v2.2.4
-  - Self-hosted in `static/js/` (first-party scripts; avoids CDN blocking in privacy browsers)
-  - Enables dynamic HTML updates without full page reloads
-  - All interactivity handled declaratively via HTML attributes
-  - **HATEOAS (Hypermedia As The Engine Of Application State)** - Application state is driven entirely by hypermedia (HTML links, forms, and responses) rather than client-side state management or hardcoded URLs. The server controls application flow by returning HTML with embedded links and forms that represent available state transitions.
+- **HTMX v2.0.10** — HTML-over-the-wire (self-hosted in `static/js/`)
+- **First-party scripts** for ad image upload: client-side WebP resize/encode and MinIO presigned PUT with progress (`image-preview.js`, `image-upload.js`)
+- SSE extension for live updates
+- **HATEOAS** — server-driven hypermedia for most flows; image upload uses authenticated JSON + direct-to-MinIO PUTs
 
 ### CSS Framework
 - **Tailwind CSS** - Utility-first CSS framework
@@ -90,9 +86,12 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
 ## External Services & APIs
 
 ### Object Storage
-- **MinIO** - S3-compatible object storage
-  - Presigned URLs for image access (1-hour expiry)
-  - Used for ad image storage
+- **MinIO** - S3-compatible object storage for ad images
+  - `MINIO_API_URL` — server-side S3 API (private network in production)
+  - `MINIO_PUBLIC_URL` — host embedded in browser-facing presigned URLs
+  - **PUT:** short-lived (~15m) presigned uploads from the browser after create/edit; client encodes 160/480/1200 WebP derivatives
+  - **GET:** long-lived (~24h) presigned URLs reused in-process so `img src` stays stable and browsers can cache; app does not proxy image bodies
+  - Bucket CORS must allow PUT (and typically GET) from the site origin
 
 ### Communication Services
 - **Twilio** - SMS messaging service

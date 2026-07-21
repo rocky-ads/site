@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/url"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/csrf"
@@ -9,48 +10,54 @@ import (
 	"github.com/rocky-ads/site/internal/config"
 )
 
+func minioPublicOrigin() string {
+	raw := config.MinIOPublicURL
+	if raw == "" {
+		raw = config.MinIOAPIURL
+	}
+	if raw == "" {
+		return ""
+	}
+	if !strings.Contains(raw, "://") {
+		raw = "https://" + raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	if u.Scheme == "http" {
+		return "http://" + u.Host
+	}
+	return "https://" + u.Host
+}
+
 // ConfigureHelmet returns a configured Helmet middleware with custom CSP,
 // DENY for X-Frame-Options, and strict-origin-when-cross-origin for
 // Referrer-Policy.
 func ConfigureHelmet() fiber.Handler {
-	// Build img-src directive with MinIO domain
 	imgSrc := "'self' data:"
-	if config.MinIOAPIURL != "" {
-		minioURL, err := url.Parse(config.MinIOAPIURL)
-		if err == nil {
-			// Allow the MinIO domain with port (presigned URLs may include port)
-			// Use the full host (host:port) to match presigned URLs
-			if minioURL.Scheme == "https" {
-				imgSrc += " https://" + minioURL.Host
-			} else {
-				imgSrc += " http://" + minioURL.Host
-			}
-		}
+	connectSrc := "'self'"
+	if origin := minioPublicOrigin(); origin != "" {
+		imgSrc += " " + origin
+		connectSrc += " " + origin
 	}
 
-	// Custom Content-Security-Policy
-	// This policy restricts which resources can be loaded
 	csp := "default-src 'self'; " +
-		"script-src 'self' 'unsafe-inline'; " + // 'unsafe-inline' for the ad image-upload constants <script> block and inline event handlers (onclick/onkeydown/onsubmit/etc.)
-		"style-src 'self' 'unsafe-inline'; " + // 'unsafe-inline' for inline style attrs (modals, rock meter, SSE sinks) and HTMX-injected indicator styles
+		"script-src 'self' 'unsafe-inline'; " +
+		"style-src 'self' 'unsafe-inline'; " +
 		"img-src " + imgSrc + "; " +
 		"font-src 'self' data:; " +
-		"connect-src 'self'; " +
+		"connect-src " + connectSrc + "; " +
 		"frame-ancestors 'none';" +
 		"base-uri 'self';" +
 		"form-action 'self';"
 
 	cfg := helmet.Config{
-		ContentSecurityPolicy: csp,
-		XFrameOptions:         "DENY",
-		ReferrerPolicy:        "strict-origin-when-cross-origin",
-		ContentTypeNosniff:    "nosniff",
-		PermissionPolicy:      "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()",
-		// NOTE: CrossOriginEmbedderPolicy and CrossOriginResourcePolicy are relaxed.
-		// MinIO can support CORP headers if configured, but we keep relaxed settings for compatibility.
-		// If MinIO is configured with CORP headers, these can be tightened to:
-		//   CrossOriginEmbedderPolicy: "require-corp"
-		//   CrossOriginResourcePolicy: "same-origin"
+		ContentSecurityPolicy:     csp,
+		XFrameOptions:             "DENY",
+		ReferrerPolicy:            "strict-origin-when-cross-origin",
+		ContentTypeNosniff:        "nosniff",
+		PermissionPolicy:          "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()",
 		CrossOriginEmbedderPolicy: "unsafe-none",
 		CrossOriginOpenerPolicy:   "same-origin",
 		CrossOriginResourcePolicy: "cross-origin",
@@ -60,10 +67,9 @@ func ConfigureHelmet() fiber.Handler {
 		XPermittedCrossDomain:     "none",
 	}
 
-	// Set HSTS only if using HTTPS
 	if config.CookieSecure {
 		cfg.HSTSMaxAge = 31536000
-		cfg.HSTSExcludeSubdomains = false // includeSubDomains
+		cfg.HSTSExcludeSubdomains = false
 	}
 
 	return helmet.New(cfg)
@@ -71,23 +77,15 @@ func ConfigureHelmet() fiber.Handler {
 
 // CSRFMiddleware is the CSRF protection middleware configured for
 // Double-Submit Cookie Pattern with cookie-based storage.
-// The token is stored in a secure cookie and validated against the header value.
-// This pattern works across multiple instances without requiring shared session storage.
 var CSRFMiddleware = csrf.New(csrf.Config{
-	// Use cookie-based storage (double-submit cookie pattern)
-	// No Session parameter means cookie-based storage is used
-	// Check for token in header (used by HTMX requests via hx.Headers)
-	KeyLookup: "header:X-Csrf-Token",
-	// Store token in context so handler can access it
-	ContextKey: "csrf-token",
-	// Configure CSRF cookie with secure settings using new API
+	KeyLookup:      "header:X-Csrf-Token",
+	ContextKey:     "csrf-token",
 	CookieName:     "_csrf",
-	CookieHTTPOnly: true,                // Prevent XSS attacks from reading token
-	CookieSecure:   config.CookieSecure, // HTTPS only when enabled
-	CookieSameSite: "Strict",            // Prevent cross-site cookie sending
+	CookieHTTPOnly: true,
+	CookieSecure:   config.CookieSecure,
+	CookieSameSite: "Strict",
 	CookiePath:     "/",
 	ErrorHandler: func(c *fiber.Ctx, err error) error {
-		// For HTMX requests, return HTML error page; for API requests, return JSON
 		if c.Get("HX-Request") != "" {
 			return ErrorHandler(c, fiber.NewError(fiber.StatusForbidden,
 				"CSRF token missing or invalid. Please refresh the page and try again."))
@@ -97,7 +95,6 @@ var CSRFMiddleware = csrf.New(csrf.Config{
 		})
 	},
 	Next: func(c *fiber.Ctx) bool {
-		// Exclude specific POST endpoints that don't need CSRF protection
 		path := c.Path()
 		return path == "/api/sms/webhook"
 	},

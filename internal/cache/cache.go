@@ -35,6 +35,14 @@ func (c *Cache[T]) SetWithTTL(key string, value T, cost int64,
 	return c.impl.SetWithTTL(key, value, cost, ttl)
 }
 
+func (c *Cache[T]) Del(key string) {
+	c.impl.Del(key)
+}
+
+func (c *Cache[T]) Wait() {
+	c.impl.Wait()
+}
+
 func (c *Cache[T]) Clear() {
 	c.impl.Clear()
 }

@@ -170,14 +170,22 @@ func imageNav(adID, current, count int, size, heightClass string,
 	})
 }
 
+func adImg(adID, index int, size, class string) g.Node {
+	src := AdImageSrc(adID, index, size)
+	if src == "" {
+		return GenerateSVG(adID, index, size)
+	}
+	return Img(
+		Class(class),
+		Src(src),
+		g.Attr("loading", "lazy"),
+	)
+}
+
 func ImageNode(adID, count, current int, size, heightClass string,
 	clickable bool) g.Node {
 	containerID := fmt.Sprintf("image-%d", adID)
-	imgElement := Img(
-		Class("w-full h-full object-cover"),
-		Src(fmt.Sprintf("/ad/%d/image/%d/%s", adID, current, size)),
-		g.Attr("loading", "lazy"),
-	)
+	imgElement := adImg(adID, current, size, "w-full h-full object-cover")
 
 	var imageWrapper g.Node
 	if clickable {
@@ -222,11 +230,17 @@ func imageFullScreenContent(adID, current, count int, size string) g.Node {
 		// Image container
 		Div(
 			Class("relative w-full h-full flex items-center justify-center"),
-			Img(
-				Class("max-w-full max-h-full object-contain"),
-				Src(fmt.Sprintf("/ad/%d/image/%d/%s", adID, current, size)),
-				Alt(fmt.Sprintf("Image %d of %d", current, count)),
-			),
+			func() g.Node {
+				src := AdImageSrc(adID, current, size)
+				if src == "" {
+					return GenerateSVG(adID, current, size)
+				}
+				return Img(
+					Class("max-w-full max-h-full object-contain"),
+					Src(src),
+					Alt(fmt.Sprintf("Image %d of %d", current, count)),
+				)
+			}(),
 			// Navigation buttons (only if multiple images)
 			g.If(count > 1, imageFullScreenNav(adID, current, count, size)),
 			// Image counter
@@ -327,11 +341,8 @@ func ImageThumbnails(adID, current, count int, size, heightClass string,
 			borderClass += "border-transparent hover:border-zinc-300 dark:hover:border-zinc-600"
 		}
 
-		thumbnailImg := Img(
-			Class("w-full h-full object-cover rounded"),
-			Src(fmt.Sprintf("/ad/%d/image/%d/%s", adID, i, size)),
-			g.Attr("loading", "lazy"),
-		)
+		thumbnailImg := adImg(adID, i, size,
+			"w-full h-full object-cover rounded")
 
 		var thumbnailWrapper g.Node
 		if clickable {
@@ -364,11 +375,7 @@ func ImageThumbnails(adID, current, count int, size, heightClass string,
 func ImageNodeWithThumbnails(adID, count, current int, size, heightClass string,
 	clickable bool) g.Node {
 	containerID := fmt.Sprintf("image-%d", adID)
-	imgElement := Img(
-		Class("w-full h-full object-cover"),
-		Src(fmt.Sprintf("/ad/%d/image/%d/%s", adID, current, size)),
-		g.Attr("loading", "lazy"),
-	)
+	imgElement := adImg(adID, current, size, "w-full h-full object-cover")
 
 	var imageWrapper g.Node
 	if clickable {

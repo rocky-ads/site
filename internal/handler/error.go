@@ -9,6 +9,11 @@ import (
 )
 
 func showError(c *fiber.Ctx, errMsg string) error {
+	if wantsJSON(c) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": errMsg,
+		})
+	}
 	return showErrorTo(c, "error", errMsg)
 }
 

@@ -76,14 +76,6 @@ func UpdateAdHandler(c *fiber.Ctx) error {
 		return showError(c, err.Error())
 	}
 
-	imageFiles, err := parseAdImageFiles(c)
-	if err != nil {
-		return showError(c, err.Error())
-	}
-	if err := validateAppendImageFiles(a.ImageCount, imageFiles); err != nil {
-		return showError(c, err.Error())
-	}
-
 	err = ad.UpdateAd(ad.UpdateInput{
 		AdID:                adID,
 		UserID:              userID,
@@ -92,16 +84,11 @@ func UpdateAdHandler(c *fiber.Ctx) error {
 		LocationText:        c.FormValue("location"),
 		Facets:              facets,
 		Suggestions:         parseAdSuggestions(c),
-		ImagesAdded:         len(imageFiles),
+		ImagesAdded:         0,
 		Tz:                  tz,
 	})
 	if err != nil {
 		return showError(c, err.Error())
-	}
-	if len(imageFiles) > 0 {
-		uploadAdImagesFromIndex(
-			adImageStore, adID, a.ImageCount+1, imageFiles,
-		)
 	}
 	if err := rockopinion.InvalidateForAd(adID); err != nil {
 		logger.Error("Failed to invalidate rock opinions",
@@ -109,12 +96,7 @@ func UpdateAdHandler(c *fiber.Ctx) error {
 	}
 	vector.QueueAd(adID)
 
-	redirect := "/ad/" + strconv.Itoa(adID)
-	if c.Get("HX-Request") != "" {
-		c.Set("HX-Redirect", redirect)
-		return c.SendStatus(fiber.StatusOK)
-	}
-	return c.Redirect(redirect, fiber.StatusFound)
+	return respondAdSaved(c, adID, a.ImageCount)
 }
 
 func adFormValuesFrom(a ad.Ad) uiads.AdFormValues {

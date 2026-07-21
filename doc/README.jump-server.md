@@ -99,6 +99,5 @@ See the [MinIO Client documentation](https://docs.min.io/docs/minio-client-quick
 | `set_admin` | Promote or demote a user by name (`promote` / `demote`) |
 | `backup_db` | Backup/restore non-test ads (DB rows + MinIO images); one-time `migrate-schema` |
 | `migrate_images` | One-time upload of local ad image files to MinIO |
-| `cors-test` | Presign PUT URLs against a public MinIO URL for browser CORS smoke tests |
 | `quote_server` | Quote-of-the-day page on port 10000 |
 | `mc` | MinIO command-line client |

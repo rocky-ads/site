@@ -2,7 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"mime/multipart"
 	"strconv"
 	"strings"
 
@@ -20,11 +19,6 @@ func CreateAdHandler(c *fiber.Ctx) error {
 
 	category := ad.GetCategory(cookie.GetCategoryID(c))
 
-	imageFiles, err := parseAdImageFiles(c)
-	if err != nil {
-		return showCreateAdError(c, err.Error())
-	}
-
 	facets, err := parseAdFacets(c, category)
 	if err != nil {
 		return showCreateAdError(c, err.Error())
@@ -38,13 +32,11 @@ func CreateAdHandler(c *fiber.Ctx) error {
 		LocationText: c.FormValue("location"),
 		Facets:       facets,
 		Suggestions:  parseAdSuggestions(c),
-		ImageCount:   len(imageFiles),
+		ImageCount:   0,
 	})
 	if err != nil {
 		return showCreateAdError(c, err.Error())
 	}
-
-	uploadAdImages(adImageStore, adID, imageFiles)
 
 	if in, err := ad.GetForEmbedding(adID); err != nil {
 		vector.QueueAd(adID)
@@ -52,12 +44,7 @@ func CreateAdHandler(c *fiber.Ctx) error {
 		vector.QueueAd(adID)
 	}
 
-	redirect := "/ad/" + strconv.Itoa(adID)
-	if c.Get("HX-Request") != "" {
-		c.Set("HX-Redirect", redirect)
-		return c.SendStatus(fiber.StatusOK)
-	}
-	return c.Redirect(redirect, fiber.StatusFound)
+	return respondAdSaved(c, adID, 0)
 }
 
 func parseAdFacets(c *fiber.Ctx,
@@ -214,27 +201,11 @@ func parseOptionalFacet(raw string) (*int, error) {
 	return &value, nil
 }
 
-func parseAdImageFiles(c *fiber.Ctx) ([]*multipart.FileHeader, error) {
-	if !strings.HasPrefix(c.Get("Content-Type"), "multipart/form-data") {
-		return nil, nil
-	}
-	form, err := c.MultipartForm()
-	if err != nil {
-		return nil, fmt.Errorf("invalid form data")
-	}
-	if form == nil {
-		return nil, nil
-	}
-	files := form.File["images"]
-	if len(files) == 0 {
-		return nil, nil
-	}
-	if err := validateImageFiles(files); err != nil {
-		return nil, err
-	}
-	return files, nil
-}
-
 func showCreateAdError(c *fiber.Ctx, errMsg string) error {
+	if wantsJSON(c) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": errMsg,
+		})
+	}
 	return showError(c, errMsg)
 }

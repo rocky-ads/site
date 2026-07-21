@@ -595,6 +595,132 @@ func adIDFromCreateResponse(t *testing.T, resp *http.Response,
 	return strconv.Itoa(id)
 }
 
+func postJSONRequest(t *testing.T, requestURL string,
+	body any) (*http.Response, map[string]interface{}) {
+	t.Helper()
+	client := getTestClient()
+	baseURLParsed, _ := url.Parse(baseURL)
+
+	csrfToken := ""
+	for _, c := range client.Jar.Cookies(baseURLParsed) {
+		if c.Name == "_csrf" {
+			csrfToken = c.Value
+			break
+		}
+	}
+	if csrfToken == "" {
+		getReq, _ := http.NewRequest("GET", baseURL+"/health", nil)
+		getResp, err := client.Do(getReq)
+		if err != nil {
+			t.Fatal(err)
+		}
+		getResp.Body.Close()
+		for _, c := range client.Jar.Cookies(baseURLParsed) {
+			if c.Name == "_csrf" {
+				csrfToken = c.Value
+				break
+			}
+		}
+	}
+	if csrfToken == "" {
+		t.Fatal("no CSRF token")
+	}
+
+	payload, err := json.Marshal(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequest("POST", requestURL, bytes.NewReader(payload))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("X-Csrf-Token", csrfToken)
+	for _, c := range client.Jar.Cookies(baseURLParsed) {
+		req.AddCookie(c)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	var result map[string]interface{}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return resp, map[string]interface{}{"raw": string(raw)}
+	}
+	return resp, result
+}
+
+func postAdUploadForm(t *testing.T, requestURL string,
+	fields map[string]interface{}) (*http.Response, map[string]interface{}) {
+	t.Helper()
+	client := getTestClient()
+	baseURLParsed, _ := url.Parse(baseURL)
+
+	csrfToken := ""
+	for _, c := range client.Jar.Cookies(baseURLParsed) {
+		if c.Name == "_csrf" {
+			csrfToken = c.Value
+			break
+		}
+	}
+	if csrfToken == "" {
+		t.Fatal("no CSRF token")
+	}
+
+	form := url.Values{}
+	for k, v := range fields {
+		switch val := v.(type) {
+		case []string:
+			for _, s := range val {
+				form.Add(k, s)
+			}
+		case string:
+			form.Set(k, val)
+		default:
+			form.Set(k, fmt.Sprint(val))
+		}
+	}
+	req, err := http.NewRequest("POST", requestURL,
+		strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("X-Ad-Upload", "1")
+	req.Header.Set("X-Csrf-Token", csrfToken)
+	for _, c := range client.Jar.Cookies(baseURLParsed) {
+		req.AddCookie(c)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	var result map[string]interface{}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return resp, map[string]interface{}{"raw": string(raw)}
+	}
+	return resp, result
+}
+
+func putLocalAdImages(t *testing.T, adID int, startIndex, count int) {
+	t.Helper()
+	store := imagestore.NewLocal(testImageDir)
+	for i := 0; i < count; i++ {
+		idx := startIndex + i
+		for _, size := range []string{"160w", "480w", "1200w"} {
+			if err := store.Put(adID, idx, size, []byte("webp-test")); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+}
+
 func adTagsJSON(t *testing.T, adID string) string {
 	t.Helper()
 	var tags string
