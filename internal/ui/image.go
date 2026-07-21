@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
 )
 
-func GenerateSVG(adID, imageID int, size string) g.Node {
+// GenerateSVG is a missing-image placeholder sized like an <img> via class.
+func GenerateSVG(adID, imageID int, size, class string) g.Node {
 	var width int
 
 	switch size {
@@ -32,11 +34,17 @@ func GenerateSVG(adID, imageID int, size string) g.Node {
 	fontSizeStr := strconv.Itoa(fontSize)
 	lineHeight := int(float64(fontSize) * 1.2)
 
+	// Inline SVG ignores object-fit; mimic cover/contain via preserveAspectRatio.
+	preserve := "xMidYMid slice"
+	if strings.Contains(class, "object-contain") {
+		preserve = "xMidYMid meet"
+	}
+
 	return g.El("svg",
+		Class(class),
 		g.Attr("xmlns", "http://www.w3.org/2000/svg"),
-		g.Attr("width", strconv.Itoa(width)),
-		g.Attr("height", strconv.Itoa(height)),
 		g.Attr("viewBox", fmt.Sprintf("0 0 %d %d", width, height)),
+		g.Attr("preserveAspectRatio", preserve),
 
 		// Define checkerboard pattern rotated 45 degrees
 		g.El("defs",
@@ -173,7 +181,7 @@ func imageNav(adID, current, count int, size, heightClass string,
 func adImg(adID, index int, size, class string) g.Node {
 	src := AdImageSrc(adID, index, size)
 	if src == "" {
-		return GenerateSVG(adID, index, size)
+		return GenerateSVG(adID, index, size, class)
 	}
 	return Img(
 		Class(class),
@@ -232,11 +240,12 @@ func imageFullScreenContent(adID, current, count int, size string) g.Node {
 			Class("relative w-full h-full flex items-center justify-center"),
 			func() g.Node {
 				src := AdImageSrc(adID, current, size)
+				class := "max-w-full max-h-full object-contain"
 				if src == "" {
-					return GenerateSVG(adID, current, size)
+					return GenerateSVG(adID, current, size, class)
 				}
 				return Img(
-					Class("max-w-full max-h-full object-contain"),
+					Class(class),
 					Src(src),
 					Alt(fmt.Sprintf("Image %d of %d", current, count)),
 				)

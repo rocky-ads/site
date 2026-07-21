@@ -512,15 +512,16 @@ func descriptionDisplay(adID int, original string, facetDetails []string,
 func descriptionHistoryEntry(adID int, e AdHistoryEntry) g.Node {
 	imageNodes := make([]g.Node, len(e.ImageIndices))
 	for i, idx := range e.ImageIndices {
+		class := "w-16 h-16 object-cover rounded border " +
+			"border-zinc-200 dark:border-zinc-600"
 		src := AdImageSrc(adID, idx, "160w")
 		if src == "" {
-			imageNodes[i] = GenerateSVG(adID, idx, "160w")
+			imageNodes[i] = GenerateSVG(adID, idx, "160w", class)
 		} else {
 			imageNodes[i] = Img(
 				Src(src),
 				Alt(fmt.Sprintf("Added image %d", idx)),
-				Class("w-16 h-16 object-cover rounded border "+
-					"border-zinc-200 dark:border-zinc-600"),
+				Class(class),
 			)
 		}
 	}
@@ -650,14 +651,15 @@ func editImagesField(adID, existingCount, maxImagesPerAd int) g.Node {
 
 	existingNodes := make([]g.Node, existingCount)
 	for i := 1; i <= existingCount; i++ {
+		class := "object-cover rounded w-[90px] h-[90px]"
 		src := AdImageSrc(adID, i, "160w")
 		if src == "" {
-			existingNodes[i-1] = GenerateSVG(adID, i, "160w")
+			existingNodes[i-1] = GenerateSVG(adID, i, "160w", class)
 		} else {
 			existingNodes[i-1] = Img(
 				Src(src),
 				Alt(fmt.Sprintf("Image %d", i)),
-				Class("object-cover rounded w-[90px] h-[90px]"),
+				Class(class),
 			)
 		}
 	}
