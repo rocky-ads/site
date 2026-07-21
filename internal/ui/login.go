@@ -40,6 +40,29 @@ func passwordInput(autocomplete string) g.Node {
 	return labeledPasswordField("Password", "password", autocomplete, false)
 }
 
+// passwordManagerUsername shows the username as plain text and includes an
+// sr-only input (not type=hidden) so password managers can associate it.
+func passwordManagerUsername(username string) g.Node {
+	return Div(
+		label("Username"),
+		P(
+			Class("text-zinc-900 dark:text-zinc-100 font-medium"),
+			g.Text(username),
+		),
+		Input(
+			Class("sr-only"),
+			Type("text"),
+			Name("username"),
+			ID("username"),
+			Value(username),
+			g.Attr("autocomplete", "username"),
+			g.Attr("readonly", "readonly"),
+			g.Attr("tabindex", "-1"),
+			g.Attr("aria-hidden", "true"),
+		),
+	)
+}
+
 func LoginForm(returnPath string) g.Node {
 	nodes := []g.Node{
 		Class("space-y-8 mt-8"),

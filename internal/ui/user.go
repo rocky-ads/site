@@ -403,7 +403,10 @@ func SettingsPage(name, phoneE64 string, smsOptedOut bool) []g.Node {
 				Class("space-y-4"),
 				hx.Post("/auth/user/settings/password"),
 				hx.Swap("none"),
-				labeledPasswordField("Current Password", "current_password", "current-password", false),
+				passwordManagerUsername(name),
+				labeledPasswordFieldID("Current Password", "current_password",
+					"settings_current_password", "current-password",
+					false, true),
 				Div(
 					labeledPasswordField("New Password", "new_password", "new-password", false),
 					Span(
@@ -463,8 +466,8 @@ func ChangePhoneRequestForm() g.Node {
 		Class("space-y-4"),
 		hx.Post("/auth/user/settings/phone"),
 		hx.Swap("none"),
-		labeledPasswordField("Current Password", "current_password",
-			"current-password", false),
+		labeledPasswordFieldID("Current Password", "current_password",
+			"phone_current_password", "current-password", false, false),
 		Div(
 			Div(
 				Class("flex items-baseline justify-between mb-1"),

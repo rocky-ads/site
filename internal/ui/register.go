@@ -181,13 +181,13 @@ func RegisterVerify(username, phoneE64 string) g.Node {
 
 func RegisterPassword(username, phoneE64 string) g.Node {
 	return Form(
-		Class("space-y-8"),
+		Class("space-y-8 mt-8"),
 		ID("registerForm"),
 		hx.Post("/api/register/step3"),
 		hx.Swap("none"),
 		hx.SwapOOB("true"),
-		hiddenUserName(username),
 		hiddenPhone(phoneE64),
+		passwordManagerUsername(username),
 		Div(
 			labeledPasswordField("Password", "password", "new-password", true),
 			Span(

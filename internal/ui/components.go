@@ -36,36 +36,54 @@ func labeledSelect(labelText, fieldID string, attrs ...g.Node) g.Node {
 // PasswordFieldView holds state for a password input with visibility toggle.
 type PasswordFieldView struct {
 	Name         string
+	ID           string // DOM id stem; defaults to Name when empty
 	Autocomplete string
 	Value        string
 	Visible      bool
 	Autofocus    bool
+	// PreventAutofill uses readonly-until-focus so password managers
+	// don't fill the field on page load (e.g. change-password forms
+	// that also include a username for the save prompt).
+	PreventAutofill bool
 }
 
-func passwordFieldID(name string) string {
-	return "password-field-" + name
+func passwordFieldID(view PasswordFieldView) string {
+	id := view.ID
+	if id == "" {
+		id = view.Name
+	}
+	return "password-field-" + id
 }
 
-func passwordFieldWrapID(name string) string {
-	return passwordFieldID(name) + "-wrap"
+func passwordFieldWrapID(view PasswordFieldView) string {
+	return passwordFieldID(view) + "-wrap"
 }
 
-func passwordFieldToggleURL(name, autocomplete string, visible bool) string {
+func passwordFieldToggleURL(view PasswordFieldView, visible bool) string {
 	vis := "false"
 	if visible {
 		vis = "true"
 	}
-	return fmt.Sprintf(
-		"/api/password-field?name=%s&visible=%s&autocomplete=%s",
-		url.QueryEscape(name),
+	id := view.ID
+	if id == "" {
+		id = view.Name
+	}
+	urlStr := fmt.Sprintf(
+		"/api/password-field?name=%s&id=%s&visible=%s&autocomplete=%s",
+		url.QueryEscape(view.Name),
+		url.QueryEscape(id),
 		vis,
-		url.QueryEscape(autocomplete),
+		url.QueryEscape(view.Autocomplete),
 	)
+	if view.PreventAutofill {
+		urlStr += "&prevent_autofill=true"
+	}
+	return urlStr
 }
 
 // PasswordField renders a password input with an HTMX visibility toggle.
 func PasswordField(view PasswordFieldView) g.Node {
-	fieldID := passwordFieldID(view.Name)
+	fieldID := passwordFieldID(view)
 	inputType := "password"
 	iconSrc := "/images/eye.svg"
 	ariaLabel := "Show password"
@@ -92,8 +110,14 @@ func PasswordField(view PasswordFieldView) g.Node {
 	if view.Autofocus {
 		inputAttrs = append(inputAttrs, Autofocus())
 	}
+	if view.PreventAutofill {
+		inputAttrs = append(inputAttrs,
+			g.Attr("readonly", "readonly"),
+			g.Attr("onfocus", "this.removeAttribute('readonly')"),
+		)
+	}
 
-	wrapID := passwordFieldWrapID(view.Name)
+	wrapID := passwordFieldWrapID(view)
 	toggleVisible := !view.Visible
 	return Div(
 		ID(wrapID),
@@ -107,9 +131,7 @@ func PasswordField(view PasswordFieldView) g.Node {
 			),
 			g.Attr("aria-label", ariaLabel),
 			g.Attr("aria-pressed", ariaPressed),
-			hx.Post(passwordFieldToggleURL(
-				view.Name, view.Autocomplete, toggleVisible,
-			)),
+			hx.Post(passwordFieldToggleURL(view, toggleVisible)),
 			hx.Target("#"+wrapID),
 			hx.Swap("outerHTML"),
 			hx.Include("#"+wrapID),
@@ -124,13 +146,23 @@ func PasswordField(view PasswordFieldView) g.Node {
 
 func labeledPasswordField(labelText, name, autocomplete string,
 	autofocus bool) g.Node {
+	return labeledPasswordFieldID(
+		labelText, name, "", autocomplete, autofocus, false,
+	)
+}
+
+func labeledPasswordFieldID(labelText, name, id, autocomplete string,
+	autofocus, preventAutofill bool) g.Node {
+	view := PasswordFieldView{
+		Name:            name,
+		ID:              id,
+		Autocomplete:    autocomplete,
+		Autofocus:       autofocus,
+		PreventAutofill: preventAutofill,
+	}
 	return Div(
-		fieldLabel(labelText, passwordFieldID(name)),
-		PasswordField(PasswordFieldView{
-			Name:         name,
-			Autocomplete: autocomplete,
-			Autofocus:    autofocus,
-		}),
+		fieldLabel(labelText, passwordFieldID(view)),
+		PasswordField(view),
 	)
 }
 

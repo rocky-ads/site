@@ -171,15 +171,7 @@ func RecoverResetForm(username string) g.Node {
 			Class("space-y-4"),
 			hx.Post("/api/recover/password"),
 			hx.Swap("none"),
-			Div(
-				labeledTextInput("Username", "username",
-					Type("text"),
-					Name("username"),
-					Value(username),
-					g.Attr("readonly", "readonly"),
-					g.Attr("autocomplete", "username"),
-				),
-			),
+			passwordManagerUsername(username),
 			Div(
 				labeledPasswordField("New Password", "password", "new-password", true),
 				Span(
