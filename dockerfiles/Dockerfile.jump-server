@@ -37,6 +37,11 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o /build/backup_db \
     ./cmd/backup_db
 
+# Build cors-test binary (statically linked)
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -o /build/cors-test \
+    ./cmd/cors-test
+
 # Stage 2: Final image
 FROM ubuntu:22.04
 
@@ -73,13 +78,15 @@ COPY --from=go-builder /build/set_admin /usr/local/bin/set_admin
 COPY --from=go-builder /build/quote_server /usr/local/bin/quote_server
 COPY --from=go-builder /build/migrate_images /usr/local/bin/migrate_images
 COPY --from=go-builder /build/backup_db /usr/local/bin/backup_db
+COPY --from=go-builder /build/cors-test /usr/local/bin/cors-test
 
 # Make them executable
 RUN chmod +x /usr/local/bin/init_db && \
     chmod +x /usr/local/bin/set_admin && \
     chmod +x /usr/local/bin/quote_server && \
     chmod +x /usr/local/bin/migrate_images && \
-    chmod +x /usr/local/bin/backup_db
+    chmod +x /usr/local/bin/backup_db && \
+    chmod +x /usr/local/bin/cors-test
 
 # Create workspace directory
 RUN mkdir -p /workspace && chmod 777 /workspace
