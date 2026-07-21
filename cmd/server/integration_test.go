@@ -101,6 +101,10 @@ func TestMain(m *testing.M) {
 
 	reflect.ValueOf(&config.CookieSecure).Elem().SetBool(false)
 
+	if config.TwilioFromNumber == "" {
+		reflect.ValueOf(&config.TwilioFromNumber).Elem().SetString("+15555550100")
+	}
+
 	// Initialize logger for tests (use minimal logging)
 	if err := logger.Init("error", "text", ""); err != nil {
 		panic(fmt.Sprintf("Failed to initialize logger: %v", err))

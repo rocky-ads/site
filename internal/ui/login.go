@@ -81,6 +81,14 @@ func LoginForm(returnPath string) g.Node {
 					g.Text("Sign up"),
 				),
 			),
+			P(
+				Class("text-sm text-zinc-600 dark:text-zinc-400"),
+				A(
+					Href("/recover"),
+					Class("text-blue-600 dark:text-blue-400 hover:underline"),
+					g.Text("Recover account"),
+				),
+			),
 		),
 	)
 	return Form(nodes...)

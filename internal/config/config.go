@@ -17,6 +17,9 @@ const (
 	ServerRateLimitExp       = 1 * time.Minute
 	RegistrationRateLimitMax = 3                // Allow 3 registration attempts per IP
 	RegistrationRateLimitExp = 15 * time.Minute // Within 15 minutes
+	RecoveryRateLimitMax     = 3                // Allow 3 recovery starts per IP
+	RecoveryRateLimitExp     = 15 * time.Minute // Within 15 minutes
+	RecoverySessionTTL       = 10 * time.Minute // Recover session / code lifetime
 
 	// MinIO configuration
 	MinIOPresignedURLExpiry = 3600 // seconds (1 hour)
@@ -141,6 +144,14 @@ func EffectiveRegistrationRateLimitMax() int {
 		return 100
 	}
 	return RegistrationRateLimitMax
+}
+
+// EffectiveRecoveryRateLimitMax returns the recovery rate limit max attempts.
+func EffectiveRecoveryRateLimitMax() int {
+	if AllowTestRegistration {
+		return 100
+	}
+	return RecoveryRateLimitMax
 }
 
 // getEnvWithDefault returns the environment variable value or a default if not set

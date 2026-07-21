@@ -31,10 +31,10 @@ func JWTMiddleware(c *fiber.Ctx) error {
 		return c.Next()
 	}
 
-	// Verify that the user still exists in the database (lightweight check)
 	userID := getUserID(claims)
-	if !user.Exists(userID) {
-		// User doesn't exist (may have been deleted), clear cookie
+	salt, ok := user.PasswordSalt(userID)
+	if !ok || salt != claims.PasswordSalt {
+		// User gone or password changed — revoke session
 		clearAuth(c)
 		return c.Next()
 	}
@@ -48,18 +48,23 @@ func JWTMiddleware(c *fiber.Ctx) error {
 }
 
 type claims struct {
-	UserID   int    `json:"user_id"`
-	UserName string `json:"user_name"`
-	IsAdmin  bool   `json:"is_admin"`
+	UserID       int    `json:"user_id"`
+	UserName     string `json:"user_name"`
+	IsAdmin      bool   `json:"is_admin"`
+	PasswordSalt string `json:"pwd_salt"`
 	jwt.RegisteredClaims
 }
 
 // generateJWTToken creates a JWT token for a user
 func generateJWTToken(u *user.User) (string, error) {
+	if u.PasswordSalt == "" {
+		return "", errors.New("user password salt required for token")
+	}
 	claims := claims{
-		UserID:   u.ID,
-		UserName: u.Name,
-		IsAdmin:  u.IsAdmin,
+		UserID:       u.ID,
+		UserName:     u.Name,
+		IsAdmin:      u.IsAdmin,
+		PasswordSalt: u.PasswordSalt,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

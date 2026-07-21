@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/rocky-ads/site/internal/accountrecovery"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/phoneverification"
 	"github.com/rocky-ads/site/internal/service/sms"
@@ -31,12 +33,20 @@ func SMSWebhookHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	// Log all incoming webhook data for debugging
+	bodyTrimmed := strings.TrimSpace(webhookData.Body)
+	_, isRecover := accountrecovery.ParseRecoverCode(bodyTrimmed)
+	logBody := bodyTrimmed
+	if isRecover {
+		logBody = "RECOVER [redacted]"
+	}
+
 	logger.Debug("Webhook received",
-		"component", "SMS", "from", webhookData.From, "to",
-		webhookData.To, "body", webhookData.Body, "status",
-		webhookData.MessageStatus, "messageSid",
-		webhookData.MessageSid)
+		"component", "SMS",
+		"hasFrom", webhookData.From != "",
+		"hasTo", webhookData.To != "",
+		"body", logBody,
+		"status", webhookData.MessageStatus,
+		"messageSid", webhookData.MessageSid)
 
 	// Update the status tracker if this is a status update
 	if webhookData.MessageStatus != "" && webhookData.MessageSid != "" {
@@ -50,15 +60,31 @@ func SMSWebhookHandler(c *fiber.Ctx) error {
 	phone := webhookData.From
 	if body == "STOP" {
 		logger.Info("STOP received; invalidating verification codes only",
-			"component", "SMS", "from", phone)
+			"component", "SMS")
 		if err := phoneverification.InvalidateCodes(phone); err != nil {
 			logger.Error("Failed to invalidate verification codes",
-				"error", err, "component", "SMS", "phoneNumber", phone)
+				"error", err, "component", "SMS")
 			return err
+		}
+		return c.JSON(fiber.Map{"status": "success"})
+	}
+
+	if isRecover {
+		logger.Info("Recovery SMS received", "component", "SMS")
+		err := accountrecovery.CompleteFromSMS(phone, bodyTrimmed)
+		if err != nil {
+			if errors.Is(err, accountrecovery.ErrNoUser) ||
+				errors.Is(err, accountrecovery.ErrNotFound) ||
+				errors.Is(err, accountrecovery.ErrInvalidSMS) {
+				logger.Info("Recovery SMS not applied",
+					"component", "SMS", "reason", err.Error())
+			} else {
+				logger.Error("Failed to complete recovery from SMS",
+					"error", err, "component", "SMS")
+			}
 		}
 	}
 
-	// Return success to Twilio
 	return c.JSON(fiber.Map{
 		"status": "success",
 	})

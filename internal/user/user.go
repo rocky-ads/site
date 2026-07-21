@@ -160,6 +160,19 @@ func Exists(id int) bool {
 	return err == nil
 }
 
+// PasswordSalt returns the password salt for an active user without decryption.
+// ok is false if the user does not exist or is deleted.
+func PasswordSalt(id int) (salt string, ok bool) {
+	err := db.QueryRow(
+		`SELECT password_salt FROM users WHERE id = $1 AND deleted_at IS NULL`,
+		id,
+	).Scan(&salt)
+	if err != nil {
+		return "", false
+	}
+	return salt, true
+}
+
 func GetByPhoneE64(phoneE64 string) (User, error) {
 	phoneHash := db.HashString(phoneE64)
 	return getUserBy("phone_hash = $1 AND deleted_at IS NULL", phoneHash)

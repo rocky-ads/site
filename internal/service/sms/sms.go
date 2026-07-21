@@ -342,6 +342,9 @@ func Init() error {
 	if config.AllowTestRegistration {
 		logger.Warn("SMS Twilio validation skipped (ALLOW_TEST_REGISTRATION enabled)",
 			"component", "SMS")
+		// Still update the inbound SMS webhook when Twilio is configured so
+		// local/dev recovery (and other inbound SMS) works via ngrok.
+		tryUpdateInboundWebhook()
 		return nil
 	}
 
@@ -376,7 +379,7 @@ func Init() error {
 		return fmt.Errorf("TWILIO_FROM_NUMBER must be in E.164 format (e.g., +12025550123)")
 	}
 
-	// Validate WebhookURL is a valid URL
+	// Validate Webhook URL is a valid URL
 	parsedURL, err := url.Parse(config.TwilioWebhookURL)
 	if err != nil {
 		return fmt.Errorf("TWILIO_WEBHOOK_URL must be a valid URL: %w", err)
@@ -397,15 +400,25 @@ func Init() error {
 	logger.Info("SMS enabled",
 		"component", "SMS", "twilioWebhookURL", config.TwilioWebhookURL)
 
-	// Update Twilio phone number webhook URL on startup
+	tryUpdateInboundWebhook()
+	return nil
+}
+
+func tryUpdateInboundWebhook() {
+	if config.TwilioWebhookURL == "" || config.TwilioFromNumber == "" {
+		return
+	}
+	parsedURL, err := url.Parse(config.TwilioWebhookURL)
+	if err != nil || parsedURL.Host == "" || isLocalhost(parsedURL.Hostname()) {
+		return
+	}
 	if err := UpdatePhoneNumberWebhook(); err != nil {
 		logger.Warn("Failed to update phone number webhook",
 			"error", err, "component", "SMS")
 		logger.Info("You may need to manually configure the webhook in Twilio Console",
 			"component", "SMS")
+		return
 	}
-
-	return nil
 }
 
 // UpdatePhoneNumberWebhook updates the Twilio phone number's incoming message webhook URL

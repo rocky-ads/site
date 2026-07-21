@@ -112,7 +112,7 @@ func loginNode(returnPath string) g.Node {
 
 func navLoggedOut(currentPath string) g.Node {
 	switch currentPath {
-	case "/login", "/register/verify":
+	case "/login", "/register/verify", "/recover":
 		return nil
 	default:
 		return loginNode(currentPath)
