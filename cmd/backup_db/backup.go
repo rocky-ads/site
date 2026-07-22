@@ -1,7 +1,9 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,12 +16,13 @@ import (
 )
 
 func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) error {
-	var testUserID int
+	// Exclude seed ads when the seeded "test" user exists; otherwise back up all.
+	testUserID := -1
 	err := db.QueryRow(
 		`SELECT id FROM users WHERE name_hash = $1`,
 		db.HashString("test"),
 	).Scan(&testUserID)
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("lookup test user: %w", err)
 	}
 

@@ -48,7 +48,7 @@ init_db
 backup_db restore -from /workspace/backups/prod
 ```
 
-`backup_db` exports ads not owned by the seeded `test` user, along with dependent users, locations, facets, bookmarks, clicks, conversations, messages, and MinIO images. Archive format v2 uses creation-order refs instead of database IDs; restored ads are appended with new IDs. Embeddings are excluded and recomputed by the server after restore.
+`backup_db` exports ads not owned by the seeded `test` user (when that user exists; otherwise all ads), along with dependent users, locations, facets, bookmarks, clicks, conversations, messages, and MinIO images. Archive format v2 uses creation-order refs instead of database IDs; restored ads are appended with new IDs. Embeddings are excluded and recomputed by the server after restore.
 
 `restore` requires `USER_ENCRYPTION_KEY` to re-encrypt user data under new IDs. If the backup came from an environment with a different key, set `BACKUP_USER_ENCRYPTION_KEY` to the source key for decrypt; encrypt always uses `USER_ENCRYPTION_KEY`.
 
