@@ -171,12 +171,15 @@ func AdGridNode(userID, adID, imageCount, nextPage int, priceDisplay, title,
 			g.If(time.Since(createdAt) < 4*time.Hour, newBadgeImageOverlay()),
 		),
 		Div(
-			Class("flex items-center justify-between pt-1"),
+			Class("flex items-start gap-2 pt-1 min-w-0"),
 			priceSpan(priceDisplay, hasPrice),
-			adCardMeta(location, createdAt, false),
+			Span(
+				Class("min-w-0 flex-1 text-right text-xs text-zinc-500"),
+				g.Text(location),
+			),
 		),
 		Div(
-			Class("flex items-center gap-2 min-w-0"),
+			Class("flex items-start gap-2 min-w-0"),
 			g.If(local.IsLoggedIn(userID) && bookmarked, BookmarkButton(adID, bookmarked, csrfToken)),
 			g.If(rockCount > 0, RockIcons(adID, rockCount)),
 			adCardTitle(title, facetLabel),

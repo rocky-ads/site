@@ -431,6 +431,9 @@
   .-mx-4 {
     margin-inline: calc(var(--spacing) * -4);
   }
+  .-mx-5 {
+    margin-inline: calc(var(--spacing) * -5);
+  }
   .-mx-6 {
     margin-inline: calc(var(--spacing) * -6);
   }

@@ -268,7 +268,7 @@ func searchResults(view int, results []g.Node, oob bool) g.Node {
 
 	switch view {
 	case ViewGrid:
-		class = "grid grid-cols-2 md:grid-cols-3 gap-3"
+		class = "grid grid-cols-2 md:grid-cols-3 gap-2 -mx-5"
 	case ViewList:
 		// Empty class - items naturally stack as a column
 	}
