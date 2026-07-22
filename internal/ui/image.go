@@ -376,7 +376,7 @@ func ImageThumbnails(adID, current, count int, size, heightClass string,
 	}
 
 	return Div(
-		Class("flex flex-wrap gap-2 px-4 py-2 justify-center bg-zinc-100 dark:bg-zinc-700"),
+		Class("flex flex-wrap gap-2 px-2 sm:px-4 py-2 justify-center bg-zinc-100 dark:bg-zinc-700"),
 		g.Group(thumbnails),
 	)
 }

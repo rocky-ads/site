@@ -113,7 +113,7 @@ func newBadgeImageOverlay() g.Node {
 
 func listedAgeDetailNode(createdAt time.Time) g.Node {
 	return Div(
-		Class("shrink-0 text-right"),
+		Class("justify-self-end shrink-0 whitespace-nowrap text-right text-xs text-zinc-500"),
 		g.Text(formatListedAge(createdAt)),
 	)
 }
@@ -148,7 +148,10 @@ func priceSpan(priceDisplay string, hasPrice bool) g.Node {
 	if !hasPrice {
 		return g.Text("")
 	}
-	return Span(Class("text-green-600 font-semibold"), g.Text(priceDisplay))
+	return Span(
+		Class("shrink-0 whitespace-nowrap text-green-600 font-semibold"),
+		g.Text(priceDisplay),
+	)
 }
 
 func AdGridNode(userID, adID, imageCount, nextPage int, priceDisplay, title,
@@ -312,7 +315,7 @@ func adButtons(adID, userID, ownerID int, bookmarked, active, inactive, reachabl
 	csrfToken string) g.Node {
 	isOwner := local.IsLoggedIn(userID) && userID == ownerID
 	return Div(
-		Class("flex items-center gap-2"),
+		Class("flex shrink-0 items-center gap-2 justify-self-end"),
 		g.If(local.IsLoggedIn(userID), BookmarkButton(adID, bookmarked, csrfToken)),
 		g.If(active && reachable && !isOwner, messageButton(adID)),
 		g.If(active && isOwner, editButton(adID)),
@@ -430,7 +433,7 @@ func AdShareModal(path string) g.Node {
 func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 	return []g.Node{
 		Div(
-			Class("flex flex-col relative rounded-lg shadow-lg dark:shadow-xl dark:shadow-zinc-900/50 my-4 mx-2 col-span-full overflow-hidden bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700"),
+			Class("flex flex-col relative rounded-none sm:rounded-lg shadow-lg dark:shadow-xl dark:shadow-zinc-900/50 my-4 -mx-6 sm:mx-2 col-span-full overflow-hidden bg-white dark:bg-zinc-800 border-y sm:border border-zinc-200 dark:border-zinc-700"),
 			Div(
 				Class("relative"),
 				g.If(d.ImageCount > 0, ImageNodeWithThumbnails(d.ID, d.ImageCount, 1, "1200w", "aspect-[4/3] w-full", true)),
@@ -441,24 +444,21 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 			g.If(d.Inactive, pausedWatermark()),
 			g.If(d.IsTest && d.Active, testWatermark()),
 			Div(
-				Class("p-6 flex flex-col bg-white dark:bg-zinc-800"),
+				Class("p-3 sm:p-6 flex flex-col bg-white dark:bg-zinc-800"),
 				Div(
-					Class("flex items-center justify-between min-w-0"),
+					Class("grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-1 items-start"),
 					Div(
 						Class("flex items-center gap-2 min-w-0"),
 						g.If(d.RockCount > 0, RockIcons(d.ID, d.RockCount)),
 						adCardTitle(d.Title, d.FacetLabel),
 					),
 					adButtons(d.ID, userID, d.OwnerID, d.Bookmarked, d.Active, d.Inactive, d.Reachable, csrfToken),
-				),
-				Div(
-					Class("flex items-center gap-2 min-w-0"),
-					priceSpan(d.PriceDisplay, d.HasPrice),
 					Div(
-						Class("flex flex-1 items-center justify-between gap-2 text-xs text-zinc-500 min-w-0"),
-						Span(Class("min-w-0"), g.Text(d.Location)),
-						listedAgeDetailNode(d.CreatedAt),
+						Class("flex flex-wrap items-baseline gap-x-2 gap-y-0.5 min-w-0"),
+						priceSpan(d.PriceDisplay, d.HasPrice),
+						Span(Class("min-w-0 text-xs text-zinc-500"), g.Text(d.Location)),
 					),
+					listedAgeDetailNode(d.CreatedAt),
 				),
 				descriptionDisplay(
 					d.ID,
