@@ -130,7 +130,7 @@ func paginationDiv(nextPage int) g.Node {
 
 func adCardMeta(location string, createdAt time.Time, showNewBadge bool) g.Node {
 	return Div(
-		Class("flex items-center gap-2 text-xs text-zinc-500"),
+		Class("flex flex-wrap items-start justify-end gap-2 text-xs text-zinc-500"),
 		g.If(showNewBadge && time.Since(createdAt) < 4*time.Hour, newBadge()),
 		g.Text(location),
 	)
@@ -199,7 +199,8 @@ func AdGridNode(userID, adID, imageCount, nextPage int, priceDisplay, title,
 func AdListNode(userID, adID int, priceDisplay, title, location,
 	facetLabel string, hasPrice bool, createdAt time.Time, active, bookmarked bool,
 	csrfToken string, isLast bool, nextPage int, rockCount int) g.Node {
-	class := "flex flex-wrap items-center justify-between py-2 cursor-pointer"
+	class := "grid grid-cols-[minmax(0,1fr)_auto_auto] " +
+		"gap-x-2 items-baseline py-2 cursor-pointer"
 	if active {
 		class += " hover:bg-zinc-50 dark:hover:bg-zinc-800"
 	} else {
@@ -210,14 +211,17 @@ func AdListNode(userID, adID int, priceDisplay, title, location,
 		Href("/ad/"+strconv.Itoa(adID)),
 		Class(class),
 		Div(
-			Class("flex items-center gap-2 min-w-0"),
+			Class("flex items-start gap-2 min-w-0"),
 			g.If(local.IsLoggedIn(userID) && bookmarked, BookmarkButton(adID, bookmarked, csrfToken)),
 			g.If(rockCount > 0, RockIcons(adID, rockCount)),
 			adCardTitle(title, facetLabel),
 		),
 		Div(
-			Class("flex items-center gap-2 ml-auto"),
+			Class("max-w-[7.5rem] min-w-0 text-right"),
 			adCardMeta(location, createdAt, true),
+		),
+		Div(
+			Class("justify-self-end"),
 			priceSpan(priceDisplay, hasPrice),
 		),
 	)

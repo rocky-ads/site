@@ -500,9 +500,6 @@
   .ml-4 {
     margin-left: calc(var(--spacing) * 4);
   }
-  .ml-auto {
-    margin-left: auto;
-  }
   .block {
     display: block;
   }
@@ -653,6 +650,9 @@
   .w-full {
     width: 100%;
   }
+  .max-w-\[7\.5rem\] {
+    max-width: 7.5rem;
+  }
   .max-w-\[50\%\%\] {
     max-width: 50%%;
   }
@@ -756,6 +756,9 @@
   }
   .grid-cols-\[minmax\(0\,1fr\)_auto\] {
     grid-template-columns: minmax(0,1fr) auto;
+  }
+  .grid-cols-\[minmax\(0\,1fr\)_auto_auto\] {
+    grid-template-columns: minmax(0,1fr) auto auto;
   }
   .flex-col {
     flex-direction: column;
