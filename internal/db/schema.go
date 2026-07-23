@@ -10,8 +10,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// ResetSchema drops all public tables and applies schema.sql.
-func ResetSchema(databaseURL string) error {
+// ResetSchema drops all public tables and applies schema.sql
+// on the database opened by Init.
+func ResetSchema() error {
+	if databaseURL == "" {
+		return fmt.Errorf("database not initialized")
+	}
 	if err := dropAllTables(); err != nil {
 		return err
 	}

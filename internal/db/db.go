@@ -15,14 +15,16 @@ import (
 )
 
 var (
-	db   *sqlx.DB
-	once sync.Once
+	db          *sqlx.DB
+	once        sync.Once
+	databaseURL string
 )
 
-func Init(databaseURL string) error {
+func Init(url string) error {
 	var err error
 	once.Do(func() {
-		db, err = sqlx.Open("pgx", databaseURL)
+		databaseURL = url
+		db, err = sqlx.Open("pgx", url)
 		if err != nil {
 			return
 		}
@@ -54,6 +56,7 @@ func ResetForTest() {
 		_ = db.Close()
 	}
 	db = nil
+	databaseURL = ""
 	once = sync.Once{}
 }
 

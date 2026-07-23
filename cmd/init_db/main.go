@@ -37,7 +37,7 @@ func main() {
 	logger.Info("Init database step", "duration", time.Since(stepStart))
 
 	stepStart = time.Now()
-	if err := db.ResetSchema(databaseURL); err != nil {
+	if err := db.ResetSchema(); err != nil {
 		logger.Fatal("Failed to setup database", "error", err)
 	}
 	logger.Info("Setup database step", "duration", time.Since(stepStart))

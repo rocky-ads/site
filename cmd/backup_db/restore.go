@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/rocky-ads/site/cmd/init_db/seed"
-	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/imagestore"
 	"github.com/rocky-ads/site/internal/journal"
@@ -473,7 +472,7 @@ func syncIdentitySequences() error {
 
 func prepareFreshDatabase() error {
 	logger.Info("Resetting database for restore")
-	if err := db.ResetSchema(config.DatabaseURL); err != nil {
+	if err := db.ResetSchema(); err != nil {
 		return fmt.Errorf("reset schema: %w", err)
 	}
 	if err := seed.LoadCategories(); err != nil {
