@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/base64"
-	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -17,6 +16,7 @@ import (
 	"github.com/rocky-ads/site/internal/imagestore"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/user"
+	"golang.org/x/term"
 )
 
 type screen int
@@ -423,39 +423,28 @@ func (m model) View() string {
 
 func main() {
 	if len(os.Args) > 1 {
-		runCLI(os.Args[1:])
-		return
+		switch os.Args[1] {
+		case "-h", "--help", "help":
+			fmt.Print(`Usage:
+  admin    Interactive TUI (backup, restore, init DB, promote/demote)
+`)
+			return
+		default:
+			fmt.Fprintf(os.Stderr, "unknown argument %q (try -h)\n", os.Args[1])
+			os.Exit(1)
+		}
 	}
 	runTUI()
 }
 
-func runCLI(args []string) {
-	if args[0] == "init" {
-		fs := flag.NewFlagSet("init", flag.ExitOnError)
-		loadSeed := fs.Bool("load-seed", false,
-			"Also load seed users and ads (categories always load)")
-		_ = fs.Parse(args[1:])
-		mustInit(false)
-		defer db.Close()
-		if err := dbinit.Rebuild(*loadSeed); err != nil {
-			fmt.Fprintf(os.Stderr, "init failed: %v\n", err)
-			os.Exit(1)
-		}
-		if *loadSeed {
-			fmt.Println("Database rebuilt with seed data")
-		} else {
-			fmt.Println("Database rebuilt (categories only)")
-		}
-		return
-	}
-	fmt.Fprintf(os.Stderr, `Usage:
-  admin              Interactive TUI
-  admin init [-load-seed]
-`)
-	os.Exit(1)
-}
-
 func runTUI() {
+	if !term.IsTerminal(int(os.Stdin.Fd())) ||
+		!term.IsTerminal(int(os.Stdout.Fd())) {
+		fmt.Fprintln(os.Stderr,
+			"admin requires a TTY (use ssh -t, or docker compose exec -it)")
+		os.Exit(1)
+	}
+
 	mustInit(true)
 	defer db.Close()
 

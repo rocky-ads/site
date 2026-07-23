@@ -19,8 +19,14 @@ docker compose up -d
 Interactive TUI (requires a TTY):
 
 ```bash
+# local compose
 docker compose exec -it jump-server admin
+
+# Render / SSH — allocate a pseudo-TTY
+ssh -t <jump-host> admin
 ```
+
+Without a TTY, `admin` exits immediately (stdin EOF). Use `ssh -t` or an equivalent that requests a PTY.
 
 Menu:
 
@@ -28,13 +34,6 @@ Menu:
 - **Restore** — pick a file from `backups/`, optionally enter source `BACKUP_DB_ENCRYPTION_KEY`, confirm wipe, restore
 - **Init database** — wipe and reload schema + categories (or with seed users/ads)
 - **Promote / Demote admin** — by username
-
-Non-interactive init (scripts / CI):
-
-```bash
-admin init              # schema + categories
-admin init -load-seed   # also seed users and ads
-```
 
 `./backups` on the host is mounted at `/workspace/backups`.
 
@@ -45,28 +44,7 @@ admin init -load-seed   # also seed users and ads
 | `DB_ENCRYPTION_KEY` | Live DB crypto (name/phone; journals sealed on write/restore) |
 | `BACKUP_DB_ENCRYPTION_KEY` | Decrypt archive user fields when restoring from another env (prompted in TUI; empty uses `DB_ENCRYPTION_KEY`) |
 
-<<<<<<< Updated upstream
-### Backup and restore ads
-
-To rebuild the database from a backup:
-
-```bash
-backup_db backup
-backup_db restore -from backup-20260722-172045.tar.gz
-```
-
-Or with an explicit path: `backup_db backup -out /workspace/backups/prod`.
-
-`backup` defaults to `backup-YYYYMMDD-HHMMSS.tar.gz` in the current directory when `-out` is omitted. `restore` requires `-from`. Staging directories are not kept.
-
-`backup_db` exports all ads, along with dependent users, locations, facets, bookmarks, clicks, conversations, messages, and MinIO images. `restore` first resets the database like `init_db` (schema + categories, no seed users/ads), then imports the archive. Archive format v2 uses creation-order refs instead of database IDs; restored ads get new IDs. Embeddings are excluded and recomputed by the server after restore.
-
-`restore` requires `USER_ENCRYPTION_KEY` to re-encrypt user data under new IDs. If the backup came from an environment with a different key, set `BACKUP_USER_ENCRYPTION_KEY` to the source key for decrypt; encrypt always uses `USER_ENCRYPTION_KEY`.
-
-Backups are persisted under `./backups` on the host via the docker-compose volume mount.
-=======
 Backup verify-decrypts users with `DB_ENCRYPTION_KEY` and stores ciphertext in the archive. Restore re-keys users to the target `DB_ENCRYPTION_KEY` and seals conversation journals. Restore resets the DB like init (schema + categories) before import. Embeddings are omitted and recomputed by the server after restore.
->>>>>>> Stashed changes
 
 ## Ad images
 
@@ -103,7 +81,7 @@ See the [MinIO Client documentation](https://docs.min.io/docs/minio-client-quick
 
 | Binary | Purpose |
 |--------|---------|
-| `admin` | TUI + `admin init [-load-seed]`: backup/restore, init DB, promote/demote |
+| `admin` | Interactive TUI: backup/restore, init DB, promote/demote |
 | `migrate_images` | One-time upload of local ad image files to MinIO |
 | `quote_server` | Quote-of-the-day page on port 10000 |
 | `mc` | MinIO command-line client |
