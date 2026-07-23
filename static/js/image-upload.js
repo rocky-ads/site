@@ -254,6 +254,15 @@ async function uploadPreparedImages(adId, prepared) {
 	return presign.startIndex + prepared.length - 1;
 }
 
+function setSubmitBusy(submitBtn, busy) {
+	if (!submitBtn) {
+		return;
+	}
+	submitBtn.disabled = busy;
+	submitBtn.classList.toggle('opacity-50', busy);
+	submitBtn.classList.toggle('cursor-not-allowed', busy);
+}
+
 async function submitAdForm(event) {
 	event.preventDefault();
 	const form = event.target;
@@ -269,9 +278,7 @@ async function submitAdForm(event) {
 
 	form.dataset.uploading = '1';
 	const submitBtn = form.querySelector('button[type="submit"]');
-	if (submitBtn) {
-		submitBtn.disabled = true;
-	}
+	setSubmitBusy(submitBtn, true);
 
 	try {
 		setAdFormStatus('Saving ad...');
@@ -314,9 +321,7 @@ async function submitAdForm(event) {
 		clearAdFormStatus();
 		showAdFormError(err.message || 'Something went wrong');
 		form.dataset.uploading = '0';
-		if (submitBtn) {
-			submitBtn.disabled = false;
-		}
+		setSubmitBusy(submitBtn, false);
 	}
 	return false;
 }
