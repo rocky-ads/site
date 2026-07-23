@@ -1,4 +1,4 @@
-package main
+package backup
 
 import (
 	"encoding/json"
@@ -7,7 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/encryption"
 	"github.com/rocky-ads/site/internal/imagestore"
 	"github.com/rocky-ads/site/internal/journal"
 	"github.com/rocky-ads/site/internal/logger"
@@ -34,10 +36,8 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 		adRefs[i] = a.ID
 	}
 
-	userIDs := make([]int, 0, len(adRows))
 	locationIDs := make([]int, 0, len(adRows))
 	for _, a := range adRows {
-		userIDs = append(userIDs, a.UserID)
 		if a.LocationID != nil {
 			locationIDs = append(locationIDs, *a.LocationID)
 		}
@@ -85,26 +85,18 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 	convIDToRef := make(map[int]int, len(convDB))
 	for i, c := range convDB {
 		convIDToRef[c.ID] = i
-		userIDs = append(userIDs, c.OwnerID, c.InquirerID)
-		if c.RockThrowerID != nil {
-			userIDs = append(userIDs, *c.RockThrowerID)
-		}
 	}
-	for _, b := range bookmarkDB {
-		userIDs = append(userIDs, b.UserID)
-	}
-	for _, c := range clickDB {
-		userIDs = append(userIDs, c.UserID)
-	}
-	for _, c := range imageClickDB {
-		userIDs = append(userIDs, c.UserID)
-	}
-	userIDs = uniqueInts(userIDs)
 	locationIDs = uniqueInts(locationIDs)
 
 	var msgDB []messageDBRow
 	for _, c := range convDB {
-		for _, e := range journal.Parse(c.Journal) {
+		plainJournal, err := encryption.Open(
+			c.ID, c.Journal, config.DBEncryptionKey,
+		)
+		if err != nil {
+			return fmt.Errorf("open journal for conversation %d: %w", c.ID, err)
+		}
+		for _, e := range journal.Parse(plainJournal) {
 			if e.Kind != journal.Message {
 				continue
 			}
@@ -129,24 +121,19 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 			FROM rock_opinions WHERE conversation_id IN (%s)`, clause), args...); err != nil {
 			return fmt.Errorf("query rock_opinions: %w", err)
 		}
-		for _, m := range msgDB {
-			userIDs = append(userIDs, m.SenderID)
-		}
-		userIDs = uniqueInts(userIDs)
 	}
 
+	// All users — including admins with no ads/activity.
 	var userDB []userDBRow
-	if len(userIDs) > 0 {
-		clause, args := intInClause(userIDs)
-		if err := db.Select(&userDB, fmt.Sprintf(`
-			SELECT id, created_at, deleted_at, is_admin,
-			       encrypted_name, name_nonce, name_hash,
-			       password_hash, password_salt, password_algo,
-			       encrypted_phone, phone_nonce, phone_hash,
-			       phone_verified, sms_opted_out, last_sms_sent_at
-			FROM users WHERE id IN (%s)`, clause), args...); err != nil {
-			return fmt.Errorf("query users: %w", err)
-		}
+	if err := db.Select(&userDB, `
+		SELECT id, created_at, deleted_at, is_admin,
+		       encrypted_name, name_nonce, name_hash,
+		       password_hash, password_salt, password_algo,
+		       encrypted_phone, phone_nonce, phone_hash,
+		       phone_verified, sms_opted_out, last_sms_sent_at
+		FROM users
+		ORDER BY id`); err != nil {
+		return fmt.Errorf("query users: %w", err)
 	}
 
 	userIDToHash := make(map[int]string, len(userDB))
@@ -154,6 +141,9 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 	for i, u := range userDB {
 		userIDToHash[u.ID] = u.NameHash
 		users[i] = userRowFromDB(u)
+		if err := verifyUserDecrypt(users[i]); err != nil {
+			return err
+		}
 	}
 
 	locationIDToRaw := make(map[int]string)
@@ -341,7 +331,6 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 	}
 
 	manifest := Manifest{
-		Version:   archiveVersion,
 		CreatedAt: time.Now().UTC(),
 		Counts: Counts{
 			Users:             len(users),

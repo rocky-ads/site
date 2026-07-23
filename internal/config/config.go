@@ -27,12 +27,11 @@ const (
 	MinIOObjectCacheControl = "public, max-age=86400"
 
 	// Vector search configuration
-	SearchPageSize                = 20  // Number of results per page for list/grid views
-	SearchThreshold               = 0.6 // Max cosine distance for vector search (pgvector <=>)
-	VectorProcessingQueueSize     = 100
-	VectorProcessingSleepInterval = 100 * time.Millisecond
-	VectorUserEmbeddingLimit      = 30
-	VectorSystemEmbeddingLimit    = 100
+	SearchPageSize             = 20  // Number of results per page for list/grid views
+	SearchThreshold            = 0.6 // Max cosine distance for vector search (pgvector <=>)
+	VectorProcessingQueueSize  = 100
+	VectorUserEmbeddingLimit   = 30
+	VectorSystemEmbeddingLimit = 100
 
 	// Embedding cache TTL configuration
 	VectorQueryEmbeddingCacheTTL = 1 * time.Hour // TTL for query embedding cache
@@ -44,17 +43,9 @@ const (
 	GrokModel           = "grok-4.3"
 	GrokReasoningEffort = "none"
 
-	// Gemini API configuration
-	GeminiEmbeddingModel      = "gemini-embedding-001"
-	GeminiEmbeddingDimensions = 768
-
 	// Ollama embedding configuration
 	OllamaEmbeddingModel      = "nomic-embed-text"
 	OllamaEmbeddingDimensions = 768
-
-	// Embedder backend identifiers (see EMBEDDER env var)
-	EmbedderOllama = "ollama"
-	EmbedderGemini = "gemini"
 
 	// Ad configuration
 	MaxImagesPerAd         = 20
@@ -97,11 +88,8 @@ var (
 	MinIOBucketName   = getEnvWithDefault("MINIO_BUCKET_NAME", "")
 
 	// AI/ML API configuration
-	// Embedder selects the embedding backend: "ollama" (default, local) or "gemini".
-	Embedder     = getEnvWithDefault("EMBEDDER", EmbedderOllama)
-	GeminiAPIKey = getEnvWithDefault("GEMINI_API_KEY", "")
-	GrokAPIKey   = getEnvWithDefault("GROK_API_KEY", "")
-	OllamaURL    = getEnvWithDefault("OLLAMA_URL", "http://localhost:11434")
+	GrokAPIKey = getEnvWithDefault("GROK_API_KEY", "")
+	OllamaURL  = getEnvWithDefault("OLLAMA_URL", "http://localhost:11434")
 
 	// SMS/Twilio configuration
 	TwilioAccountSID = getEnvWithDefault("TWILIO_ACCOUNT_SID", "")
@@ -114,11 +102,8 @@ var (
 	// JWT configuration
 	JWTSecret = []byte(getEnvWithDefault("JWT_SECRET", ""))
 
-	// Message encryption configuration
-	MessageEncryptionKey = getEncryptionKey("MESSAGE_ENCRYPTION_KEY")
-
-	// User data encryption configuration
-	UserEncryptionKey = getEncryptionKey("USER_ENCRYPTION_KEY")
+	// DB encryption (user name/phone; journals on restore / later at rest)
+	DBEncryptionKey = getEncryptionKey("DB_ENCRYPTION_KEY")
 
 	// Server configuration
 	ServerPort   = getEnvWithDefault("PORT", "10000")
@@ -222,35 +207,20 @@ func SecurityCheck() {
 	// Log security status
 	logger.Info("JWT secret configured", "length", len(JWTSecret))
 
-	// Validate message encryption key
-	messageKeyStr := os.Getenv("MESSAGE_ENCRYPTION_KEY")
-	if messageKeyStr == "" {
+	// Validate DB encryption key
+	dbKeyStr := os.Getenv("DB_ENCRYPTION_KEY")
+	if dbKeyStr == "" {
 		logger.Fatal("Security configuration error",
-			"error", "MESSAGE_ENCRYPTION_KEY environment variable is required but not set")
+			"error", "DB_ENCRYPTION_KEY environment variable is required but not set")
 	}
-	if len(MessageEncryptionKey) == 0 {
+	if len(DBEncryptionKey) == 0 {
 		logger.Fatal("Security configuration error",
-			"error", "MESSAGE_ENCRYPTION_KEY is invalid base64 format")
+			"error", "DB_ENCRYPTION_KEY is invalid base64 format")
 	}
-	if len(MessageEncryptionKey) != 32 {
-		logger.Fatal("MESSAGE_ENCRYPTION_KEY must be 32 bytes (256 bits)")
+	if len(DBEncryptionKey) != 32 {
+		logger.Fatal("DB_ENCRYPTION_KEY must be 32 bytes (256 bits)")
 	}
-	logger.Info("Message encryption key configured", "length", len(MessageEncryptionKey))
-
-	// Validate user data encryption key
-	userKeyStr := os.Getenv("USER_ENCRYPTION_KEY")
-	if userKeyStr == "" {
-		logger.Fatal("Security configuration error",
-			"error", "USER_ENCRYPTION_KEY environment variable is required but not set")
-	}
-	if len(UserEncryptionKey) == 0 {
-		logger.Fatal("Security configuration error",
-			"error", "USER_ENCRYPTION_KEY is invalid base64 format")
-	}
-	if len(UserEncryptionKey) != 32 {
-		logger.Fatal("USER_ENCRYPTION_KEY must be 32 bytes (256 bits)")
-	}
-	logger.Info("User encryption key configured", "length", len(UserEncryptionKey))
+	logger.Info("DB encryption key configured", "length", len(DBEncryptionKey))
 
 	if AllowTestRegistration {
 		logger.Warn("ALLOW_TEST_REGISTRATION is enabled: test phone signup skips SMS verification")

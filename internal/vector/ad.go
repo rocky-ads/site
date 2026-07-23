@@ -19,18 +19,9 @@ var (
 )
 
 // IsEmbeddingUnavailable reports whether search should degrade gracefully
-// instead of returning HTTP 500 (backfill in progress, rate limits, etc.).
+// instead of returning HTTP 500 (e.g. backfill still in progress).
 func IsEmbeddingUnavailable(err error) bool {
-	if err == nil {
-		return false
-	}
-	if errors.Is(err, ErrNoEmbeddedAds) {
-		return true
-	}
-	msg := err.Error()
-	return strings.Contains(msg, "429") ||
-		strings.Contains(msg, "RESOURCE_EXHAUSTED") ||
-		strings.Contains(msg, "Gemini embedding API")
+	return errors.Is(err, ErrNoEmbeddedAds)
 }
 
 func BuildAdEmbedding(input ad.EmbeddingInput) error {
@@ -160,7 +151,6 @@ func StartBackgroundProcessor() {
 			if err := BuildAdEmbeddings(inputs); err != nil {
 				logger.Error("embedding batch failed", "error", err)
 			}
-			time.Sleep(config.VectorProcessingSleepInterval)
 		}
 	}()
 }
@@ -189,33 +179,6 @@ func ProcessAdsWithoutVectors() {
 	}()
 }
 
-func isRateLimitError(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := err.Error()
-	return strings.Contains(msg, "429") ||
-		strings.Contains(msg, "RESOURCE_EXHAUSTED")
-}
-
-func buildAdEmbeddingsWithRetry(inputs []ad.EmbeddingInput) error {
-	delay := 2 * time.Second
-	for attempt := 1; attempt <= 5; attempt++ {
-		err := BuildAdEmbeddings(inputs)
-		if err == nil {
-			return nil
-		}
-		if !isRateLimitError(err) || attempt == 5 {
-			return err
-		}
-		logger.Warn("embedding rate limited, retrying",
-			"attempt", attempt, "delay", delay, "batch", len(inputs))
-		time.Sleep(delay)
-		delay *= 2
-	}
-	return nil
-}
-
 func BackfillAllAdsSync() (remaining int, err error) {
 	ids, err := ad.GetAdsWithoutVectors()
 	if err != nil {
@@ -240,12 +203,11 @@ func BackfillAllAdsSync() (remaining int, err error) {
 			}
 			inputs = append(inputs, in)
 		}
-		if chunkErr := buildAdEmbeddingsWithRetry(inputs); chunkErr != nil {
+		if chunkErr := BuildAdEmbeddings(inputs); chunkErr != nil {
 			logger.Error("backfill chunk failed",
 				"error", chunkErr, "offset", i, "size", len(inputs))
 			failed = true
 		}
-		time.Sleep(config.VectorProcessingSleepInterval)
 	}
 	remainingIDs, countErr := ad.GetAdsWithoutVectors()
 	if countErr != nil {

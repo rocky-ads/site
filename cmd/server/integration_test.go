@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/rocky-ads/site/cmd/init_db/seed"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/cookie"
@@ -32,6 +31,7 @@ import (
 	"github.com/rocky-ads/site/internal/handler"
 	"github.com/rocky-ads/site/internal/imagestore"
 	"github.com/rocky-ads/site/internal/logger"
+	"github.com/rocky-ads/site/internal/seed"
 	"github.com/rocky-ads/site/internal/vector"
 )
 
@@ -72,26 +72,17 @@ func TestMain(m *testing.M) {
 		panic(fmt.Sprintf("Failed to chdir to module root: %v", err))
 	}
 
-	// Set test encryption keys before anything else
-	// These must match the keys used when seeding the test database
-	testUserEncryptionKey := "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" // base64 encoded 32 bytes of zeros
-	testMessageEncryptionKey := "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+	// Set test encryption key before anything else
+	// Must match the key used when seeding the test database
+	testDBEncryptionKey := "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" // base64 encoded 32 bytes of zeros
 	testJWTSecret := "test-jwt-secret-key-for-ci-minimum-32-chars-long"
 
-	os.Setenv("USER_ENCRYPTION_KEY", testUserEncryptionKey)
-	os.Setenv("MESSAGE_ENCRYPTION_KEY", testMessageEncryptionKey)
+	os.Setenv("DB_ENCRYPTION_KEY", testDBEncryptionKey)
 	os.Setenv("JWT_SECRET", testJWTSecret)
 
 	// Update config variables using reflection since they're initialized at package import time
-	// Decode and set UserEncryptionKey
-	if key, err := base64.StdEncoding.DecodeString(testUserEncryptionKey); err == nil {
-		configValue := reflect.ValueOf(&config.UserEncryptionKey).Elem()
-		configValue.Set(reflect.ValueOf(key))
-	}
-
-	// Decode and set MessageEncryptionKey
-	if key, err := base64.StdEncoding.DecodeString(testMessageEncryptionKey); err == nil {
-		configValue := reflect.ValueOf(&config.MessageEncryptionKey).Elem()
+	if key, err := base64.StdEncoding.DecodeString(testDBEncryptionKey); err == nil {
+		configValue := reflect.ValueOf(&config.DBEncryptionKey).Elem()
 		configValue.Set(reflect.ValueOf(key))
 	}
 

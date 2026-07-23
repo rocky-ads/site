@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	testUserEncryptionKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-	testJWTSecret         = "test-jwt-secret-key-for-accountrecovery-tests"
+	testDBEncryptionKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+	testJWTSecret       = "test-jwt-secret-key-for-accountrecovery-tests"
 )
 
 func TestMain(m *testing.M) {
@@ -31,10 +31,10 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	os.Setenv("DATABASE_URL", testURL)
-	os.Setenv("USER_ENCRYPTION_KEY", testUserEncryptionKey)
+	os.Setenv("DB_ENCRYPTION_KEY", testDBEncryptionKey)
 	os.Setenv("JWT_SECRET", testJWTSecret)
-	if key, err := base64.StdEncoding.DecodeString(testUserEncryptionKey); err == nil {
-		reflect.ValueOf(&config.UserEncryptionKey).Elem().Set(reflect.ValueOf(key))
+	if key, err := base64.StdEncoding.DecodeString(testDBEncryptionKey); err == nil {
+		reflect.ValueOf(&config.DBEncryptionKey).Elem().Set(reflect.ValueOf(key))
 	}
 	reflect.ValueOf(&config.JWTSecret).Elem().Set(reflect.ValueOf([]byte(testJWTSecret)))
 	if err := logger.Init("error", "text", ""); err != nil {

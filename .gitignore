@@ -31,8 +31,7 @@ go.work.sum
 # .idea/
 # .vscode/
 
-/init_db
-/set_admin
+/admin
 /site
 /static/images/ad
 

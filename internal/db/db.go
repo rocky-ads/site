@@ -15,14 +15,16 @@ import (
 )
 
 var (
-	db   *sqlx.DB
-	once sync.Once
+	db          *sqlx.DB
+	once        sync.Once
+	databaseURL string
 )
 
-func Init(databaseURL string) error {
+func Init(url string) error {
 	var err error
 	once.Do(func() {
-		db, err = sqlx.Open("pgx", databaseURL)
+		databaseURL = url
+		db, err = sqlx.Open("pgx", url)
 		if err != nil {
 			return
 		}
@@ -54,6 +56,7 @@ func ResetForTest() {
 		_ = db.Close()
 	}
 	db = nil
+	databaseURL = ""
 	once = sync.Once{}
 }
 
@@ -81,7 +84,7 @@ func Ping() error {
 	return db.Ping()
 }
 
-// CheckSchema reports whether init_db (or equivalent) has been applied.
+// CheckSchema reports whether admin init (or equivalent) has been applied.
 func CheckSchema() error {
 	var exists bool
 	err := QueryRow(`
@@ -93,7 +96,7 @@ func CheckSchema() error {
 		return fmt.Errorf("checking database schema: %w", err)
 	}
 	if !exists {
-		return fmt.Errorf("database not initialized — run: go run ./cmd/init_db")
+		return fmt.Errorf("database not initialized — run: admin init")
 	}
 	return nil
 }

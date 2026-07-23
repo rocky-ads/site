@@ -10,8 +10,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// ResetSchema drops all public tables and applies schema.sql.
-func ResetSchema(databaseURL string) error {
+// ResetSchema drops all public tables and applies schema.sql
+// on the database opened by Init.
+func ResetSchema() error {
+	if databaseURL == "" {
+		return fmt.Errorf("database not initialized")
+	}
 	if err := dropAllTables(); err != nil {
 		return err
 	}
@@ -41,13 +45,13 @@ func dropAllTables() error {
 	return nil
 }
 
-func applySchema(databaseURL string) error {
+func applySchema(url string) error {
 	schema, err := os.ReadFile(findSchemaPath())
 	if err != nil {
 		return fmt.Errorf("read schema: %w", err)
 	}
 
-	conn, err := pgx.Connect(context.Background(), databaseURL)
+	conn, err := pgx.Connect(context.Background(), url)
 	if err != nil {
 		return fmt.Errorf("pgx connect: %w", err)
 	}

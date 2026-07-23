@@ -97,6 +97,11 @@ func scanConversationRow(scanner interface {
 	if rockThrownAt.Valid {
 		conv.RockThrownAt = &rockThrownAt.Time
 	}
+	plain, err := openJournal(conv.ID, conv.Journal)
+	if err != nil {
+		return Conversation{}, fmt.Errorf("open journal: %w", err)
+	}
+	conv.Journal = plain
 	applyJournalDerivedTimes(&conv)
 	return conv, nil
 }
@@ -356,6 +361,11 @@ func GetUserConversations(userID int,
 		if rockThrownAt.Valid {
 			conv.RockThrownAt = &rockThrownAt.Time
 		}
+		plain, err := openJournal(conv.ID, conv.Journal)
+		if err != nil {
+			return nil, fmt.Errorf("open journal: %w", err)
+		}
+		conv.Journal = plain
 		applyJournalDerivedTimes(&conv.Conversation)
 
 		if content, at, ok := LastMessagePreview(conv.Journal); ok {
@@ -458,6 +468,10 @@ func CreateMessage(conversationID, senderID int,
 
 	now := time.Now().UTC()
 	newJournal := AppendMessageEntry(conv.Journal, senderID, content, now, time.UTC)
+	sealed, err := sealJournal(conversationID, newJournal)
+	if err != nil {
+		return Message{}, fmt.Errorf("seal journal: %w", err)
+	}
 
 	var recipientField string
 	if conv.OwnerID == senderID {
@@ -470,7 +484,7 @@ func CreateMessage(conversationID, senderID int,
 		UPDATE conversations
 		SET journal = $1, updated_at = $2, %s = 1
 		WHERE id = $3
-	`, recipientField), newJournal, now, conversationID)
+	`, recipientField), sealed, now, conversationID)
 	if err != nil {
 		return Message{}, fmt.Errorf("failed to create message: %w", err)
 	}

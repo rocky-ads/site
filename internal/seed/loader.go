@@ -111,7 +111,7 @@ type Ad struct {
 
 // LoadUsers loads users from user.json into the users table
 func LoadUsers() error {
-	data, err := os.ReadFile("cmd/init_db/seed/user.json")
+	data, err := os.ReadFile("internal/seed/user.json")
 	if err != nil {
 		return err
 	}
@@ -163,13 +163,13 @@ func LoadUsers() error {
 			return fmt.Errorf("inserting user %s: %w", u.Name, err)
 		}
 
-		encryptedName, nameNonce, err := encryption.Encrypt(int(userID), u.Name, config.UserEncryptionKey)
+		encryptedName, nameNonce, err := encryption.Encrypt(int(userID), u.Name, config.DBEncryptionKey)
 		if err != nil {
 			return fmt.Errorf("encrypting name for user %s: %w", u.Name, err)
 		}
 		nameHash := db.HashString(u.Name)
 
-		encryptedPhone, phoneNonce, err := encryption.Encrypt(int(userID), phoneE64, config.UserEncryptionKey)
+		encryptedPhone, phoneNonce, err := encryption.Encrypt(int(userID), phoneE64, config.DBEncryptionKey)
 		if err != nil {
 			return fmt.Errorf("encrypting phone for user %s: %w", u.Name, err)
 		}
@@ -200,7 +200,7 @@ func LoadUsers() error {
 
 // LoadCategories loads ad-category.json into categories
 func LoadCategories() error {
-	data, err := os.ReadFile("cmd/init_db/seed/ad-category.json")
+	data, err := os.ReadFile("internal/seed/ad-category.json")
 	if err != nil {
 		return err
 	}
@@ -351,7 +351,7 @@ func convertAdJSON(aj adJSON) Ad {
 
 func loadAdsFromFile(categoryID int, filename string, categoryFacets []string,
 	usedIDs map[int]string) error {
-	data, err := os.ReadFile("cmd/init_db/seed/" + filename)
+	data, err := os.ReadFile("internal/seed/" + filename)
 	if err != nil {
 		return err
 	}

@@ -98,5 +98,5 @@ func InitSchema() error {
 	if err := db.Init(url); err != nil {
 		return fmt.Errorf("init db: %w", err)
 	}
-	return db.ResetSchema(url)
+	return db.ResetSchema()
 }

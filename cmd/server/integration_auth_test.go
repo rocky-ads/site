@@ -46,16 +46,16 @@ func TestLoginHandler(t *testing.T) {
 }
 
 func TestLoginSubmitHandler(t *testing.T) {
-	if len(config.UserEncryptionKey) == 0 {
-		t.Fatal("USER_ENCRYPTION_KEY environment variable not set. This is required for user decryption.")
+	if len(config.DBEncryptionKey) == 0 {
+		t.Fatal("DB_ENCRYPTION_KEY environment variable not set. This is required for user decryption.")
 	}
 
 	testUser, err := user.GetByName("test")
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			t.Fatalf("Test user not found in database. Database may need to be seeded with: ./init_db -load-seed")
+			t.Fatalf("Test user not found in database. Database may need to be seeded with: admin init -load-seed")
 		}
-		t.Fatalf("Failed to retrieve test user (error: %v). This might be a decryption error if USER_ENCRYPTION_KEY doesn't match the key used to seed the database.", err)
+		t.Fatalf("Failed to retrieve test user (error: %v). This might be a decryption error if DB_ENCRYPTION_KEY doesn't match the key used to seed the database.", err)
 	}
 
 	if testUser.ID == 0 {

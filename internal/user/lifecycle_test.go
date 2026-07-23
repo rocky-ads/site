@@ -16,7 +16,7 @@ import (
 	"github.com/rocky-ads/site/internal/logger"
 )
 
-const testUserEncryptionKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+const testDBEncryptionKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
 func TestMain(m *testing.M) {
 	if err := chdirModuleRoot(); err != nil {
@@ -27,9 +27,9 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	os.Setenv("DATABASE_URL", testURL)
-	os.Setenv("USER_ENCRYPTION_KEY", testUserEncryptionKey)
-	if key, err := base64.StdEncoding.DecodeString(testUserEncryptionKey); err == nil {
-		reflect.ValueOf(&config.UserEncryptionKey).Elem().Set(reflect.ValueOf(key))
+	os.Setenv("DB_ENCRYPTION_KEY", testDBEncryptionKey)
+	if key, err := base64.StdEncoding.DecodeString(testDBEncryptionKey); err == nil {
+		reflect.ValueOf(&config.DBEncryptionKey).Elem().Set(reflect.ValueOf(key))
 	}
 	if err := logger.Init("error", "text", ""); err != nil {
 		panic(err)

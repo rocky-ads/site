@@ -1,4 +1,4 @@
-package main
+package backup
 
 import (
 	"database/sql"
@@ -11,9 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rocky-ads/site/cmd/init_db/seed"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/dbinit"
+	"github.com/rocky-ads/site/internal/encryption"
 	"github.com/rocky-ads/site/internal/imagestore"
 	"github.com/rocky-ads/site/internal/journal"
 	"github.com/rocky-ads/site/internal/logger"
@@ -21,16 +22,11 @@ import (
 
 var restoreImagePattern = regexp.MustCompile(`^(\d+)-(\d+w)\.webp$`)
 
-func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) error {
+func runRestore(fromDir string, store imagestore.Store, backupKey []byte,
+	dryRun, verbose bool) error {
 	var manifest Manifest
 	if err := readJSON(filepath.Join(fromDir, fileManifest), &manifest); err != nil {
 		return err
-	}
-	if manifest.Version != archiveVersion {
-		return fmt.Errorf(
-			"unsupported archive version %d (expected %d)",
-			manifest.Version, archiveVersion,
-		)
 	}
 
 	var users []UserRow
@@ -103,7 +99,7 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 
 	userHashToID := make(map[string]int, len(users))
 	for _, u := range users {
-		id, err := resolveUserID(u)
+		id, err := resolveUserID(u, backupKey)
 		if err != nil {
 			return err
 		}
@@ -281,10 +277,23 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 			adID, ownerID, inquirerID,
 			c.OwnerHasUnread, c.InquirerHasUnread,
 			rockThrowerID, c.RockThrownAt,
-			journalText, updatedAt,
+			"", updatedAt,
 		).Scan(&newID)
 		if err != nil {
 			return fmt.Errorf("insert conversation ref %d: %w", c.Ref, err)
+		}
+		sealed, err := encryption.Seal(
+			newID, journalText, config.DBEncryptionKey,
+		)
+		if err != nil {
+			return fmt.Errorf("seal journal for conversation %d: %w", newID, err)
+		}
+		_, err = db.Exec(
+			`UPDATE conversations SET journal = $1 WHERE id = $2`,
+			sealed, newID,
+		)
+		if err != nil {
+			return fmt.Errorf("store journal for conversation %d: %w", newID, err)
 		}
 		convRefToID[c.Ref] = newID
 	}
@@ -473,11 +482,8 @@ func syncIdentitySequences() error {
 
 func prepareFreshDatabase() error {
 	logger.Info("Resetting database for restore")
-	if err := db.ResetSchema(config.DatabaseURL); err != nil {
-		return fmt.Errorf("reset schema: %w", err)
-	}
-	if err := seed.LoadCategories(); err != nil {
-		return fmt.Errorf("load categories: %w", err)
+	if err := dbinit.Rebuild(false); err != nil {
+		return err
 	}
 	return nil
 }
