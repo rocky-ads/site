@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rocky-ads/site/cmd/init_db/seed"
+	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/imagestore"
 	"github.com/rocky-ads/site/internal/journal"
@@ -78,6 +80,10 @@ func runRestore(fromDir string, store imagestore.Store, dryRun, verbose bool) er
 			"ads", len(ads), "conversations", len(conversations),
 			"images", manifest.Counts.Images)
 		return nil
+	}
+
+	if err := prepareFreshDatabase(); err != nil {
+		return err
 	}
 
 	sort.Slice(ads, func(i, j int) bool {
@@ -461,6 +467,17 @@ func syncIdentitySequences() error {
 		if err != nil {
 			return fmt.Errorf("setval %s: %w", table, err)
 		}
+	}
+	return nil
+}
+
+func prepareFreshDatabase() error {
+	logger.Info("Resetting database for restore")
+	if err := db.ResetSchema(config.DatabaseURL); err != nil {
+		return fmt.Errorf("reset schema: %w", err)
+	}
+	if err := seed.LoadCategories(); err != nil {
+		return fmt.Errorf("load categories: %w", err)
 	}
 	return nil
 }

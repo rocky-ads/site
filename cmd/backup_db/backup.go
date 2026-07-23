@@ -1,9 +1,7 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,28 +14,17 @@ import (
 )
 
 func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) error {
-	// Exclude seed ads when the seeded "test" user exists; otherwise back up all.
-	testUserID := -1
-	err := db.QueryRow(
-		`SELECT id FROM users WHERE name_hash = $1`,
-		db.HashString("test"),
-	).Scan(&testUserID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("lookup test user: %w", err)
-	}
-
 	var adRows []adDBRow
-	err = db.Select(&adRows, `
+	err := db.Select(&adRows, `
 		SELECT id, category_id, title, description, created_at, inactive_at,
 		       deleted_at, user_id, image_count, location_id, tags
 		FROM ads
-		WHERE user_id != $1
-		ORDER BY created_at, id`, testUserID)
+		ORDER BY created_at, id`)
 	if err != nil {
 		return fmt.Errorf("query ads: %w", err)
 	}
 	if len(adRows) == 0 {
-		logger.Info("No non-test ads to backup")
+		logger.Info("No ads to backup")
 	}
 
 	adIDToRef := make(map[int]int, len(adRows))
@@ -393,7 +380,7 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 		}
 	}
 
-	logger.Info("Backup complete", "dir", outDir, "ads", len(ads), "images", imageCount)
+	logger.Info("Backup staged", "dir", outDir, "ads", len(ads), "images", imageCount)
 	return nil
 }
 

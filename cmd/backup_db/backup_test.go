@@ -156,40 +156,36 @@ func TestBackupRestoreRoundTrip(t *testing.T) {
 		t.Fatalf("put image: %v", err)
 	}
 
-	backupDir := filepath.Join(t.TempDir(), "backup")
-	if err := runBackup(backupDir, store, false, false); err != nil {
+	backupArchive := filepath.Join(t.TempDir(), "backup")
+	if err := backupToArchive(backupArchive, store, false, false); err != nil {
 		t.Fatalf("backup: %v", err)
 	}
+	archivePath := resolveArchivePath(backupArchive)
+	if _, err := os.Stat(archivePath); err != nil {
+		t.Fatalf("archive missing: %v", err)
+	}
 
+	inspectDir := t.TempDir()
+	if err := extractTarGz(archivePath, inspectDir); err != nil {
+		t.Fatalf("extract for inspect: %v", err)
+	}
 	var backedAds []AdRow
-	if err := readJSON(filepath.Join(backupDir, fileAds), &backedAds); err != nil {
+	if err := readJSON(filepath.Join(inspectDir, fileAds), &backedAds); err != nil {
 		t.Fatalf("read backed ads: %v", err)
 	}
-	if len(backedAds) != 1 {
-		t.Fatalf("backed ads = %d, want 1", len(backedAds))
+	var backedAd *AdRow
+	for i := range backedAds {
+		if backedAds[i].Title == "Backup Test Car" {
+			backedAd = &backedAds[i]
+			break
+		}
 	}
-	if backedAds[0].Ref != 0 {
-		t.Fatalf("backed ad ref = %d, want 0", backedAds[0].Ref)
-	}
-	if backedAds[0].Title != "Backup Test Car" {
-		t.Fatalf("backed title = %q", backedAds[0].Title)
-	}
-
-	if err := testdb.InitSchema(); err != nil {
-		t.Fatalf("rebuild schema: %v", err)
-	}
-	if err := seed.LoadAll(); err != nil {
-		t.Fatalf("reseed: %v", err)
-	}
-
-	var maxIDBeforeRestore int
-	err = db.QueryRow(`SELECT COALESCE(MAX(id), 0) FROM ads`).Scan(&maxIDBeforeRestore)
-	if err != nil {
-		t.Fatalf("max ad id before restore: %v", err)
+	if backedAd == nil {
+		t.Fatalf("Backup Test Car missing from %d backed ads", len(backedAds))
 	}
 
 	restoreStore := imagestore.NewLocal(t.TempDir())
-	if err := runRestore(backupDir, restoreStore, false, false); err != nil {
+	if err := restoreFromArchive(backupArchive, restoreStore, false, false); err != nil {
 		t.Fatalf("restore: %v", err)
 	}
 
@@ -200,9 +196,13 @@ func TestBackupRestoreRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("query restored ad: %v", err)
 	}
-	if restoredID <= maxIDBeforeRestore {
-		t.Fatalf("restored ad id %d should be after existing max %d",
-			restoredID, maxIDBeforeRestore)
+
+	err = db.QueryRow(
+		`SELECT id FROM users WHERE name_hash = $1`,
+		db.HashString("test"),
+	).Scan(&testUserID)
+	if err != nil {
+		t.Fatalf("lookup restored test user: %v", err)
 	}
 
 	var facetPrice int
