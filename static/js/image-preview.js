@@ -30,13 +30,24 @@ function handleUploadClick() {
 	}
 }
 
+function isImageFile(file) {
+	return file.type.startsWith('image/');
+}
+
 function previewImages(input) {
 	const preview = document.getElementById('image-preview');
 	
 	// Add new files to the DOM
 	if (input.files && input.files.length > 0) {
 		let skippedCount = 0;
+		let rejectedCount = 0;
 		Array.from(input.files).forEach(file => {
+			// accept includes application/pdf as an Android Chrome workaround
+			// so the OS shows Camera; reject non-images here.
+			if (!isImageFile(file)) {
+				rejectedCount++;
+				return;
+			}
 			if (totalImageCount() >= MAX_IMAGES_PER_AD) {
 				skippedCount++;
 				return;
@@ -52,6 +63,9 @@ function previewImages(input) {
 			}
 		});
 		
+		if (rejectedCount > 0) {
+			alert('Only image files are allowed. Non-image file(s) were not added.');
+		}
 		if (skippedCount > 0) {
 			alert(`Maximum of ${MAX_IMAGES_PER_AD} images allowed per ad. ${skippedCount} image(s) were not added.`);
 		}

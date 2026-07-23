@@ -724,7 +724,9 @@ func imageUploadControls(maxImagesPerAd, existingCount int,
 			ID("images"),
 			Name("images"),
 			Class("hidden"),
-			g.Attr("accept", "image/*"),
+			// application/pdf is only to coax Android Chrome into offering
+			// Camera; non-images are rejected in image-preview.js.
+			g.Attr("accept", "image/*, application/pdf"),
 			g.Attr("multiple"),
 			g.Attr("onchange", "previewImages(this)"),
 		),
