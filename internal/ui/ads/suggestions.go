@@ -16,20 +16,24 @@ func descriptionWithSuggestionsBox(cfg AdFormConfig) g.Node {
 	return Div(
 		Class("w-full "+controlClass+" overflow-hidden"),
 		descriptionInput(cfg),
-		suggestionsRow(cfg, cfg.Values.Suggestions),
+		suggestionsRow(cfg, cfg.Values.Suggestions, true),
 	)
 }
 
 func editDescriptionWithSuggestionsBox(cfg AdFormConfig) g.Node {
-	nodes := []g.Node{
-		Div(
+	hasDesc := cfg.Values.OriginalDescription != ""
+	nodes := []g.Node{}
+	if hasDesc {
+		nodes = append(nodes, Div(
 			Class("p-2 bg-zinc-50 dark:bg-zinc-900 whitespace-pre-wrap "+
 				"text-zinc-700 dark:text-zinc-300"),
 			DescriptionTextWithLinks(cfg.Values.OriginalDescription),
-		),
-		descriptionContextInput(cfg),
-		suggestionsRow(cfg, cfg.Values.Suggestions),
+		))
 	}
+	nodes = append(nodes,
+		descriptionContextInput(cfg),
+		suggestionsRow(cfg, cfg.Values.Suggestions, hasDesc),
+	)
 	return Div(
 		Class("w-full "+controlClass+" overflow-hidden"),
 		g.Group(nodes),
@@ -46,13 +50,17 @@ func descriptionContextInput(cfg AdFormConfig) g.Node {
 	)
 }
 
-func suggestionsRow(cfg AdFormConfig, selected []SuggestionOption) g.Node {
+func suggestionsRow(cfg AdFormConfig, selected []SuggestionOption, topBorder bool) g.Node {
+	rowClass := "flex items-start gap-2 p-2"
+	if topBorder {
+		rowClass += " border-t border-zinc-300 dark:border-zinc-600"
+	}
 	var initial g.Node
 	if len(selected) > 0 {
 		initial = SuggestionsPartial(selected)
 	}
 	return Div(
-		Class("flex items-start gap-2 p-2 border-t border-zinc-300 dark:border-zinc-600"),
+		Class(rowClass),
 		Div(
 			Class("shrink-0 flex flex-col gap-2"),
 			suggestionsButton(cfg),

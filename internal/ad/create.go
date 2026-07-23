@@ -31,9 +31,6 @@ func CreateAd(input CreateInput) (int, error) {
 	if title == "" {
 		return 0, fmt.Errorf("title is required")
 	}
-	if description == "" {
-		return 0, fmt.Errorf("description is required")
-	}
 	if utf8.RuneCountInString(title) > config.MaxAdTitleLength {
 		return 0, fmt.Errorf("title must be at most %d characters", config.MaxAdTitleLength)
 	}

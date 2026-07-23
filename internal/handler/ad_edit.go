@@ -100,10 +100,10 @@ func UpdateAdHandler(c *fiber.Ctx) error {
 }
 
 func adFormValuesFrom(a ad.Ad) uiads.AdFormValues {
-	original, _ := ad.SplitDescription(a.Description)
+	desc := ad.ParseDescriptionForDisplay(a.Description)
 	values := uiads.AdFormValues{
 		Title:               a.Title,
-		OriginalDescription: ad.DisplayDescription(original),
+		OriginalDescription: desc.Body,
 		Location:            a.RawLocation,
 		ImageCount:          a.ImageCount,
 		PriceRow:            priceRowFromAd(a),

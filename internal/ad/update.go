@@ -84,7 +84,7 @@ func UpdateAd(input UpdateInput) error {
 	desc := a.Description
 	if addition != "" {
 		desc = AppendHistoryEntry(
-			desc, "Description Addition", addition, now, input.Tz,
+			desc, DescriptionAdditionLabel, addition, now, input.Tz,
 		)
 	}
 	if input.ImagesAdded > 0 {

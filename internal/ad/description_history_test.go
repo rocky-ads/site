@@ -16,14 +16,14 @@ func TestSplitDescription(t *testing.T) {
 
 	desc := WrapDescription("Triumph tr7 $3500 obo.", origAt, loc)
 	desc = AppendHistoryEntry(
-		desc, "Description Addition", "Has the 2.0L engine.", editAt, loc,
+		desc, DescriptionAdditionLabel, "Has the 2.0L engine.", editAt, loc,
 	)
 
 	gotOrig, gotHist := SplitDescription(desc)
 	if gotOrig != "Triumph tr7 $3500 obo." {
 		t.Errorf("original = %q, want Triumph tr7 $3500 obo.", gotOrig)
 	}
-	if !strings.Contains(gotHist, "Description Addition") {
+	if !strings.Contains(gotHist, DescriptionAdditionLabel) {
 		t.Errorf("history = %q", gotHist)
 	}
 	if !strings.Contains(gotHist, entrylog.Marker) {
@@ -45,7 +45,7 @@ func TestAppendHistoryEntryPrependsNewest(t *testing.T) {
 	desc := WrapDescription("Original text.", origAt, loc)
 	desc = AppendHistoryEntry(
 		desc,
-		"Description Addition",
+		DescriptionAdditionLabel,
 		"First edit.",
 		first,
 		loc,
@@ -62,14 +62,41 @@ func TestAppendHistoryEntryPrependsNewest(t *testing.T) {
 	if parts.Original != "Original text." {
 		t.Errorf("original = %q", parts.Original)
 	}
+	if parts.Body != "Original text.\n\nFirst edit." {
+		t.Errorf("body = %q", parts.Body)
+	}
 	if len(parts.History) != 2 {
 		t.Fatalf("got %d history entries, want 2", len(parts.History))
 	}
 	if !strings.Contains(parts.History[0].Header, "Price change") {
 		t.Errorf("newest first: %q", parts.History[0].Header)
 	}
-	if !strings.Contains(parts.History[1].Header, "Description Addition") {
+	if !strings.Contains(parts.History[1].Header, DescriptionAdditionLabel) {
 		t.Errorf("oldest second: %q", parts.History[1].Header)
+	}
+}
+
+func TestDescriptionBodyAppendsAdditions(t *testing.T) {
+	loc, _ := time.LoadLocation("America/Los_Angeles")
+	origAt := time.Date(2026, 1, 5, 12, 0, 0, 0, loc)
+	first := time.Date(2026, 1, 7, 0, 34, 0, 0, loc)
+	second := time.Date(2026, 1, 8, 10, 0, 0, 0, loc)
+
+	desc := WrapDescription("", origAt, loc)
+	desc = AppendHistoryEntry(desc, DescriptionAdditionLabel, "asdfasdf", first, loc)
+	desc = AppendHistoryEntry(desc, "Price change", "now free", first, loc)
+	desc = AppendHistoryEntry(desc, DescriptionAdditionLabel, "more info", second, loc)
+
+	parts := ParseDescriptionForDisplay(desc)
+	if parts.Original != "" {
+		t.Errorf("original = %q, want empty", parts.Original)
+	}
+	wantBody := "asdfasdf\n\nmore info"
+	if parts.Body != wantBody {
+		t.Errorf("body = %q, want %q", parts.Body, wantBody)
+	}
+	if len(parts.History) != 3 {
+		t.Fatalf("history len = %d, want 3", len(parts.History))
 	}
 }
 
@@ -81,7 +108,7 @@ func TestAppendHistoryEntry(t *testing.T) {
 	desc := WrapDescription("Original text.", origAt, loc)
 	desc = AppendHistoryEntry(
 		desc,
-		"Description Addition",
+		DescriptionAdditionLabel,
 		"Has the 2.0L engine.",
 		at,
 		loc,

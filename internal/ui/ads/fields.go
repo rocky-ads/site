@@ -20,9 +20,13 @@ func NewAdFieldsPartial(facets []facet.Def, defaults facet.FormDefaults) g.Node 
 // AdFieldsPartial renders create or edit ad fields for the given category facets.
 func AdFieldsPartial(cfg AdFormConfig, facets []facet.Def) g.Node {
 	f := adFields{cfg: cfg}
+	descLabel := "Description"
+	if cfg.Mode == AdFormCreate {
+		descLabel = "Description (optional)"
+	}
 	nodes := []g.Node{
 		fieldBlock("Title", f.cfg.fieldID("title"), f.titleInput()),
-		fieldBlock("Description", "", f.descriptionFields()),
+		fieldBlock(descLabel, "", f.descriptionFields()),
 	}
 	if !hasLocationFacet(facets) {
 		nodes = append(nodes, fieldBlock("Location (optional)", f.cfg.fieldID("location"), f.locationInput()))

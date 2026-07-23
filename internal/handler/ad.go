@@ -93,7 +93,7 @@ func adDetailFrom(a ad.Ad, viewerUserID int, reachable, isTest bool) ui.AdDetail
 		HasPrice:            hasPrice,
 		Title:               a.Title,
 		Location:            ad.AdLocationDisplay(a, viewerUserID),
-		DescriptionOriginal: desc.Original,
+		DescriptionOriginal: desc.Body,
 		DescriptionHistory:  history,
 		ShowLoginForDetails: showLoginForDetails,
 		CreatedAt:           a.CreatedAt,

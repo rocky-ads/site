@@ -15,6 +15,9 @@ import (
 
 const OriginalLabel = "original"
 
+// DescriptionAdditionLabel is the history label for text appended via edit.
+const DescriptionAdditionLabel = "Description Addition"
+
 // HistoryEntryDisplay is one parsed edit-history block for UI rendering.
 type HistoryEntryDisplay struct {
 	Header       string
@@ -24,8 +27,12 @@ type HistoryEntryDisplay struct {
 
 // DescriptionDisplay holds original ad text and edit history for display.
 type DescriptionDisplay struct {
+	// Original is the immutable create-time body only.
 	Original string
-	History  []HistoryEntryDisplay
+	// Body is original plus description additions in chronological order,
+	// separated by a blank line — used for the main description area.
+	Body    string
+	History []HistoryEntryDisplay
 }
 
 // DisplayDescription renders stored description as plain text for display.
@@ -57,7 +64,10 @@ func WrapDescription(body string, at time.Time, tz *time.Location) string {
 // ParseDescriptionForDisplay splits stored description into original and history.
 func ParseDescriptionForDisplay(desc string) DescriptionDisplay {
 	original, historyBlocks := splitDescriptionBlocks(desc)
-	out := DescriptionDisplay{Original: original}
+	out := DescriptionDisplay{
+		Original: original,
+		Body:     descriptionBody(original, historyBlocks),
+	}
 	for _, b := range historyBlocks {
 		header := formatDisplayHeader(b)
 		indices := imageIndicesFromHistoryEntry(header, b.Body)
@@ -72,6 +82,26 @@ func ParseDescriptionForDisplay(desc string) DescriptionDisplay {
 		})
 	}
 	return out
+}
+
+// descriptionBody joins original text with Description Addition bodies
+// in chronological order (oldest first).
+func descriptionBody(original string, history []entrylog.Block) string {
+	parts := make([]string, 0, 1+len(history))
+	if original != "" {
+		parts = append(parts, original)
+	}
+	for i := len(history) - 1; i >= 0; i-- {
+		b := history[i]
+		if b.Label != DescriptionAdditionLabel {
+			continue
+		}
+		body := strings.TrimSpace(b.Body)
+		if body != "" {
+			parts = append(parts, body)
+		}
+	}
+	return strings.Join(parts, "\n\n")
 }
 
 // SplitDescription separates the immutable original body from server history.
