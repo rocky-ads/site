@@ -40,3 +40,4 @@ go.work.sum
 **/.DS_Store
 package-lock.json
 node_modules
+backups/
