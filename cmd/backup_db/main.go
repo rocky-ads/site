@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
@@ -35,12 +36,12 @@ func main() {
 func runBackupCmd(args []string) {
 	fs := flag.NewFlagSet("backup", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
-	out := fs.String("out", "", "Output .tar.gz path (.tar.gz appended if omitted)")
+	out := fs.String("out", "", "Output .tar.gz path (default: backup-YYYYMMDD-HHMMSS.tar.gz)")
 	dryRun := fs.Bool("dry-run", false, "Preview without writing")
 	verbose := fs.Bool("verbose", false, "Log per-ad image progress")
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr,
-			"Usage:\n  backup_db backup -out <path.tar.gz> [-dry-run] [-verbose]\n")
+			"Usage:\n  backup_db backup [-out <path.tar.gz>] [-dry-run] [-verbose]\n")
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err == flag.ErrHelp {
@@ -48,9 +49,9 @@ func runBackupCmd(args []string) {
 	} else if err != nil {
 		os.Exit(2)
 	}
-	if *out == "" {
-		fs.Usage()
-		os.Exit(2)
+	outPath := *out
+	if outPath == "" {
+		outPath = defaultBackupArchiveName(time.Now())
 	}
 
 	mustInit()
@@ -60,7 +61,7 @@ func runBackupCmd(args []string) {
 	if err != nil {
 		logger.Fatal("Failed to initialize image store", "error", err)
 	}
-	if err := backupToArchive(*out, store, *dryRun, *verbose); err != nil {
+	if err := backupToArchive(outPath, store, *dryRun, *verbose); err != nil {
 		logger.Fatal("Backup failed", "error", err)
 	}
 }
@@ -118,9 +119,13 @@ func isHelp(arg string) bool {
 
 func printUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  backup_db backup  -out <path.tar.gz> [-dry-run] [-verbose]
+  backup_db backup  [-out <path.tar.gz>] [-dry-run] [-verbose]
   backup_db restore -from <path.tar.gz> [-dry-run] [-verbose]
 `)
+}
+
+func defaultBackupArchiveName(t time.Time) string {
+	return fmt.Sprintf("backup-%s.tar.gz", t.UTC().Format("20060102-150405"))
 }
 
 func backupToArchive(out string, store imagestore.Store, dryRun, verbose bool) error {

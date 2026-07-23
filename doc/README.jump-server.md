@@ -43,11 +43,13 @@ set_admin demote <name>
 To rebuild the database from a backup:
 
 ```bash
-backup_db backup -out /workspace/backups/prod
-backup_db restore -from /workspace/backups/prod
+backup_db backup
+backup_db restore -from backup-20260722-172045.tar.gz
 ```
 
-`backup` / `restore` use a `.tar.gz` archive (`.tar.gz` is appended when omitted). The staging directory is not kept.
+Or with an explicit path: `backup_db backup -out /workspace/backups/prod`.
+
+`backup` defaults to `backup-YYYYMMDD-HHMMSS.tar.gz` in the current directory when `-out` is omitted. `restore` requires `-from`. Staging directories are not kept.
 
 `backup_db` exports all ads, along with dependent users, locations, facets, bookmarks, clicks, conversations, messages, and MinIO images. `restore` first resets the database like `init_db` (schema + categories, no seed users/ads), then imports the archive. Archive format v2 uses creation-order refs instead of database IDs; restored ads get new IDs. Embeddings are excluded and recomputed by the server after restore.
 

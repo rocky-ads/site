@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestCreateExtractTarGzRoundTrip(t *testing.T) {
@@ -50,5 +51,14 @@ func TestResolveArchivePath(t *testing.T) {
 	}
 	if got := resolveArchivePath("prod.tar.gz"); got != "prod.tar.gz" {
 		t.Fatalf("got %q", got)
+	}
+}
+
+func TestDefaultBackupArchiveName(t *testing.T) {
+	ts := time.Date(2026, 7, 22, 17, 20, 45, 0, time.UTC)
+	got := defaultBackupArchiveName(ts)
+	want := "backup-20260722-172045.tar.gz"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
 	}
 }
