@@ -856,6 +856,15 @@ func adPills(labels []string, spacing string) g.Node {
 	)
 }
 
+func adFormStatus() g.Node {
+	return Div(
+		ID("ad-form-status"),
+		Class("hidden text-blue-600 dark:text-blue-400 "+
+			"text-sm whitespace-nowrap"),
+		Span(ID("ad-form-status-text")),
+	)
+}
+
 func newAdForm(fields g.Node) g.Node {
 	cfg := uiads.NewFormConfig(uiads.AdFormConfig{}.Defaults)
 	return adForm(cfg, fields)
@@ -885,11 +894,12 @@ func adForm(cfg uiads.AdFormConfig, fields g.Node) g.Node {
 	}
 	children = append(children,
 		Div(
-			Class("flex items-center gap-4"),
+			Class("flex items-center gap-4 flex-wrap"),
 			standardButton(buttonProps{
 				Type: "submit",
 				Text: cfg.SubmitLabel,
 			}),
+			adFormStatus(),
 			ErrorDiv(""),
 		),
 		g.Raw(`<script src="/js/image-upload.js" defer></script>`),

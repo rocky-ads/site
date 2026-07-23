@@ -38,6 +38,25 @@ function clearAdFormError() {
 	el.classList.add('hidden');
 }
 
+function setAdFormStatus(msg) {
+	const el = document.getElementById('ad-form-status');
+	const text = document.getElementById('ad-form-status-text');
+	if (!el || !text) {
+		return;
+	}
+	if (!msg) {
+		text.textContent = '';
+		el.classList.add('hidden');
+		return;
+	}
+	text.textContent = msg;
+	el.classList.remove('hidden');
+}
+
+function clearAdFormStatus() {
+	setAdFormStatus('');
+}
+
 function setThumbnailProgress(container, pct) {
 	let bar = container.querySelector('.upload-progress');
 	if (!bar) {
@@ -104,13 +123,18 @@ function encodeWebP(source, maxWidth, quality) {
 	});
 }
 
-async function prepareDerivatives(file) {
+async function prepareDerivatives(file, onProgress) {
 	const bitmap = await loadImageBitmap(file);
 	try {
 		const out = {};
-		for (const spec of IMAGE_SIZES) {
+		const total = IMAGE_SIZES.length;
+		for (let i = 0; i < total; i++) {
+			const spec = IMAGE_SIZES[i];
 			out[spec.size] = await encodeWebP(
 				bitmap, spec.width, spec.quality);
+			if (onProgress) {
+				onProgress((i + 1) / total);
+			}
 		}
 		return out;
 	} finally {
@@ -212,6 +236,7 @@ async function uploadPreparedImages(adId, prepared) {
 		const index = presign.startIndex + i;
 		const sizes = IMAGE_SIZES.map((s) => s.size);
 		let done = 0;
+		setThumbnailProgress(item.container, 0);
 		for (const size of sizes) {
 			const putUrl = byKey[index + ':' + size];
 			if (!putUrl) {
@@ -249,20 +274,32 @@ async function submitAdForm(event) {
 	}
 
 	try {
+		setAdFormStatus('Saving ad...');
 		const saved = await saveAdForm(form);
 		const adId = saved.adId;
 		let imageCount = saved.imageCount || 0;
 
 		if (thumbs.length > 0) {
 			const prepared = [];
-			for (const container of thumbs) {
+			for (let i = 0; i < thumbs.length; i++) {
+				const container = thumbs[i];
+				const label = thumbs.length === 1
+					? 'Processing image...'
+					: 'Processing image ' + (i + 1) +
+						' of ' + thumbs.length + '...';
+				setAdFormStatus(label);
 				setThumbnailError(container, false);
 				setThumbnailProgress(container, 0);
-				const blobs = await prepareDerivatives(container.fileReference);
+				const blobs = await prepareDerivatives(
+					container.fileReference,
+					(p) => setThumbnailProgress(container, p * 100),
+				);
 				prepared.push({ container: container, blobs: blobs });
 			}
 			try {
+				setAdFormStatus('Uploading images...');
 				imageCount = await uploadPreparedImages(adId, prepared);
+				setAdFormStatus('Finishing...');
 				await confirmImages(adId, imageCount);
 			} catch (uploadErr) {
 				thumbs.forEach((c) => setThumbnailError(c, true));
@@ -270,9 +307,11 @@ async function submitAdForm(event) {
 			}
 		}
 
+		setAdFormStatus('Redirecting...');
 		window.location.href = '/ad/' + adId;
 	} catch (err) {
 		console.error(err);
+		clearAdFormStatus();
 		showAdFormError(err.message || 'Something went wrong');
 		form.dataset.uploading = '0';
 		if (submitBtn) {
