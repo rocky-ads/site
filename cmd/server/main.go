@@ -198,6 +198,7 @@ func main() {
 		logger.Fatal("Failed to initialize SMS service", "error", err)
 	}
 	sms.StartSMSWorker()
+	handler.StartAdExpireWorker()
 
 	imageStore, err := imagestore.NewDefault()
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/facet"
 )
@@ -267,14 +268,37 @@ func Pause(id int) error {
 	return err
 }
 
-// Activate restores an inactive ad to live listings.
+// Activate restores an inactive ad to live listings and bumps created_at
+// so the auto-expire window starts over.
 func Activate(id int) error {
 	_, err := db.Exec(`
 		UPDATE ads
-		SET inactive_at = NULL
+		SET inactive_at = NULL, created_at = CURRENT_TIMESTAMP
 		WHERE id = $1 AND deleted_at IS NULL AND inactive_at IS NOT NULL
 	`, id)
 	return err
+}
+
+// DueExpire holds an active ad past its auto-expire age.
+type DueExpire struct {
+	ID     int `db:"id"`
+	UserID int `db:"user_id"`
+}
+
+// ListAdsDueToExpire returns active ads whose created_at is older than
+// AdExpireAfterMonths.
+func ListAdsDueToExpire() ([]DueExpire, error) {
+	cutoff := time.Now().UTC().AddDate(0, -config.AdExpireAfterMonths, 0)
+	var rows []DueExpire
+	err := db.Select(&rows, `
+		SELECT id, user_id
+		FROM ads
+		WHERE inactive_at IS NULL
+		  AND deleted_at IS NULL
+		  AND created_at < $1
+		ORDER BY created_at ASC, id ASC
+	`, cutoff)
+	return rows, err
 }
 
 // PermanentlyDelete soft-deletes an ad as a zombie that cannot be restored.

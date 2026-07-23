@@ -233,23 +233,32 @@ func PauseAdHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Ad is not active")
 	}
 
-	if err := ad.Pause(adID); err != nil {
+	if err := pauseAdWithSideEffects(adID, userID); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to pause ad")
+	}
+
+	c.Set("HX-Redirect", fmt.Sprintf("/ad/%d", adID))
+	return c.SendStatus(fiber.StatusOK)
+}
+
+// pauseAdWithSideEffects pauses an ad and cleans up embeddings, rocks,
+// opinions, and conversations. actorID is recorded in conversation journals.
+func pauseAdWithSideEffects(adID, actorID int) error {
+	if err := ad.Pause(adID); err != nil {
+		return err
 	}
 	_ = vector.DeleteAdEmbedding(adID)
 	_ = rock.UnthrowActiveForAd(adID)
 	_ = rockopinion.InvalidateForAd(adID)
 
-	convs, err := message.SuspendConversationsForPausedAd(adID, userID)
+	convs, err := message.SuspendConversationsForPausedAd(adID, actorID)
 	if err != nil {
 		logger.Error("Failed to suspend conversations for paused ad",
 			"error", err, "adID", adID)
-	} else {
-		NotifyConversationsStatus(convs, userID)
+		return nil
 	}
-
-	c.Set("HX-Redirect", fmt.Sprintf("/ad/%d", adID))
-	return c.SendStatus(fiber.StatusOK)
+	NotifyConversationsStatus(convs, actorID)
+	return nil
 }
 
 func DeleteAdHandler(c *fiber.Ctx) error {

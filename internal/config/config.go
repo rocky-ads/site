@@ -54,6 +54,8 @@ const (
 	DefaultAdCategoryName  = "Car & Truck Parts"
 	MaxAdTitleLength       = 64   // Maximum length for ad title
 	MaxAdDescriptionLength = 1000 // Maximum length for ad description
+	AdExpireAfterMonths    = 3    // Active ads auto-pause this many months after created_at
+	AdExpireWorkerInterval = 1 * time.Hour
 
 	// Password/Argon2 configuration
 	Argon2Memory = 64 * 1024

@@ -438,46 +438,94 @@ func AdShareModal(path string) g.Node {
 }
 
 func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
-	return []g.Node{
+	nodes := []g.Node{}
+	if userID == d.OwnerID && d.Active {
+		nodes = append(nodes, adExpireToolbar(d.CreatedAt))
+	}
+	nodes = append(nodes, Div(
+		Class("flex flex-col relative rounded-none sm:rounded-lg shadow-lg dark:shadow-xl dark:shadow-zinc-900/50 my-4 -mx-6 sm:mx-2 col-span-full overflow-hidden bg-white dark:bg-zinc-800 border-y sm:border border-zinc-200 dark:border-zinc-700"),
 		Div(
-			Class("flex flex-col relative rounded-none sm:rounded-lg shadow-lg dark:shadow-xl dark:shadow-zinc-900/50 my-4 -mx-6 sm:mx-2 col-span-full overflow-hidden bg-white dark:bg-zinc-800 border-y sm:border border-zinc-200 dark:border-zinc-700"),
+			Class("relative"),
+			g.If(d.ImageCount > 0, ImageNodeWithThumbnails(d.ID, d.ImageCount, 1, "1200w", "aspect-[4/3] w-full", true)),
+			g.If(d.ImageCount == 0, noImage("h-32 w-full")),
+			g.If(time.Since(d.CreatedAt) < 4*time.Hour, newBadgeImageOverlay()),
+		),
+		g.If(d.Deleted, deletedWatermark()),
+		g.If(d.Inactive, pausedWatermark()),
+		g.If(d.IsTest && d.Active, testWatermark()),
+		Div(
+			Class("p-3 sm:p-6 flex flex-col bg-white dark:bg-zinc-800"),
 			Div(
-				Class("relative"),
-				g.If(d.ImageCount > 0, ImageNodeWithThumbnails(d.ID, d.ImageCount, 1, "1200w", "aspect-[4/3] w-full", true)),
-				g.If(d.ImageCount == 0, noImage("h-32 w-full")),
-				g.If(time.Since(d.CreatedAt) < 4*time.Hour, newBadgeImageOverlay()),
-			),
-			g.If(d.Deleted, deletedWatermark()),
-			g.If(d.Inactive, pausedWatermark()),
-			g.If(d.IsTest && d.Active, testWatermark()),
-			Div(
-				Class("p-3 sm:p-6 flex flex-col bg-white dark:bg-zinc-800"),
+				Class("grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-1 items-start"),
 				Div(
-					Class("grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-1 items-start"),
-					Div(
-						Class("flex items-center gap-2 min-w-0"),
-						g.If(d.RockCount > 0, RockIcons(d.ID, d.RockCount)),
-						adCardTitle(d.Title, d.FacetLabel),
-					),
-					adButtons(d.ID, userID, d.OwnerID, d.Bookmarked, d.Active, d.Inactive, d.Reachable, csrfToken),
-					Div(
-						Class("flex flex-wrap items-baseline gap-x-2 gap-y-0.5 min-w-0"),
-						priceSpan(d.PriceDisplay, d.HasPrice),
-						Span(Class("min-w-0 text-xs text-zinc-500"), g.Text(d.Location)),
-					),
-					listedAgeDetailNode(d.CreatedAt),
+					Class("flex items-center gap-2 min-w-0"),
+					g.If(d.RockCount > 0, RockIcons(d.ID, d.RockCount)),
+					adCardTitle(d.Title, d.FacetLabel),
 				),
-				descriptionDisplay(
-					d.ID,
-					d.DescriptionOriginal,
-					d.FacetDetails,
-					d.Tags,
-					d.DescriptionHistory,
-					d.ShowLoginForDetails,
+				adButtons(d.ID, userID, d.OwnerID, d.Bookmarked, d.Active, d.Inactive, d.Reachable, csrfToken),
+				Div(
+					Class("flex flex-wrap items-baseline gap-x-2 gap-y-0.5 min-w-0"),
+					priceSpan(d.PriceDisplay, d.HasPrice),
+					Span(Class("min-w-0 text-xs text-zinc-500"), g.Text(d.Location)),
 				),
+				listedAgeDetailNode(d.CreatedAt),
+			),
+			descriptionDisplay(
+				d.ID,
+				d.DescriptionOriginal,
+				d.FacetDetails,
+				d.Tags,
+				d.DescriptionHistory,
+				d.ShowLoginForDetails,
 			),
 		),
+	))
+	return nodes
+}
+
+func adExpireToolbar(createdAt time.Time) g.Node {
+	expiresAt := createdAt.AddDate(0, config.AdExpireAfterMonths, 0)
+	return Div(
+		Class("flex items-center justify-between gap-2 mx-2 mt-4 mb-0 col-span-full"),
+		Span(
+			Class("text-xs text-zinc-500"),
+			g.Text(formatExpiresIn(expiresAt)),
+		),
+		newAdLink(),
+	)
+}
+
+func formatExpiresIn(expiresAt time.Time) string {
+	d := time.Until(expiresAt)
+	if d < time.Minute {
+		return "Expires soon"
 	}
+	mins := int(d.Minutes())
+	if mins < 60 {
+		if mins == 1 {
+			return "Expires in 1 minute"
+		}
+		return fmt.Sprintf("Expires in %d minutes", mins)
+	}
+	hours := int(d.Hours())
+	if hours < 24 {
+		if hours == 1 {
+			return "Expires in 1 hour"
+		}
+		return fmt.Sprintf("Expires in %d hours", hours)
+	}
+	days := int(d.Hours() / 24)
+	if days < 30 {
+		if days == 1 {
+			return "Expires in 1 day"
+		}
+		return fmt.Sprintf("Expires in %d days", days)
+	}
+	months := days / 30
+	if months == 1 {
+		return "Expires in 1 month"
+	}
+	return fmt.Sprintf("Expires in %d months", months)
 }
 
 func descriptionDisplay(adID int, original string, facetDetails []string,
