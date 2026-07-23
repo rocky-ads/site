@@ -61,6 +61,7 @@ type model struct {
 	status        string
 	err           string
 	store         imagestore.Store
+	dbTarget      string
 }
 
 type doneMsg struct {
@@ -68,7 +69,7 @@ type doneMsg struct {
 	err error
 }
 
-func initialModel(store imagestore.Store) model {
+func initialModel(store imagestore.Store, dbTarget string) model {
 	ni := textinput.New()
 	ni.Placeholder = "username"
 	ni.CharLimit = 64
@@ -85,6 +86,7 @@ func initialModel(store imagestore.Store) model {
 		nameInput: ni,
 		keyInput:  ki,
 		store:     store,
+		dbTarget:  dbTarget,
 	}
 }
 
@@ -348,6 +350,10 @@ func (m model) updateAdminName(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	title := lipgloss.NewStyle().Bold(true).Render("Rocky Ads Admin")
+	if m.dbTarget != "" {
+		muted := lipgloss.NewStyle().Faint(true).Render(m.dbTarget)
+		title = title + "\n" + muted
+	}
 	var body string
 	switch m.screen {
 	case screenMenu:
@@ -448,12 +454,22 @@ func runTUI() {
 	mustInit(true)
 	defer db.Close()
 
+	host, database := db.ConnectionTarget(config.DatabaseURL)
+	dbTarget := database
+	if host != "" {
+		dbTarget = database + " @ " + host
+	}
+	fmt.Fprintf(os.Stderr, "Rocky Ads Admin — connected to %s\n", dbTarget)
+
 	store, err := imagestore.NewDefault()
 	if err != nil {
-		logger.Fatal("image store", "error", err)
+		fmt.Fprintf(os.Stderr, "image store: %v\n", err)
+		os.Exit(1)
 	}
 
-	p := tea.NewProgram(initialModel(store), tea.WithAltScreen())
+	p := tea.NewProgram(
+		initialModel(store, dbTarget), tea.WithAltScreen(),
+	)
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "admin: %v\n", err)
 		os.Exit(1)
@@ -470,12 +486,16 @@ func mustInit(quiet bool) {
 		os.Exit(1)
 	}
 	if config.DatabaseURL == "" {
-		logger.Fatal("DATABASE_URL must be set")
+		fmt.Fprintln(os.Stderr, "DATABASE_URL must be set")
+		os.Exit(1)
 	}
 	if len(config.DBEncryptionKey) != 32 {
-		logger.Fatal("DB_ENCRYPTION_KEY must be set (32-byte base64)")
+		fmt.Fprintln(os.Stderr,
+			"DB_ENCRYPTION_KEY must be set (32-byte base64)")
+		os.Exit(1)
 	}
 	if err := db.Init(config.DatabaseURL); err != nil {
-		logger.Fatal("database", "error", err)
+		fmt.Fprintf(os.Stderr, "database: %v\n", err)
+		os.Exit(1)
 	}
 }

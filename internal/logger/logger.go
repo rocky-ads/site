@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -135,14 +136,22 @@ func Error(msg string, fields ...any) {
 	defaultLogger.Error(msg, fields...)
 }
 
-// Fatal logs a fatal-level message and exits
+// Fatal logs a fatal-level message and exits.
+// Always writes to stderr so failures stay visible even when the
+// logger output is redirected (e.g. admin TUI → /dev/null).
 func Fatal(msg string, fields ...any) {
-	if defaultLogger == nil {
-		slog.Error(msg, fields...)
-		os.Exit(1)
-		return
+	var b strings.Builder
+	b.WriteString(msg)
+	for i := 0; i+1 < len(fields); i += 2 {
+		b.WriteString(" ")
+		b.WriteString(fmt.Sprint(fields[i]))
+		b.WriteString("=")
+		b.WriteString(fmt.Sprint(fields[i+1]))
 	}
-	defaultLogger.Error(msg, fields...)
+	fmt.Fprintln(os.Stderr, b.String())
+	if defaultLogger != nil {
+		defaultLogger.Error(msg, fields...)
+	}
 	os.Exit(1)
 }
 
