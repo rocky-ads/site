@@ -1,12 +1,10 @@
-package main
+package backup
 
 import (
 	"encoding/base64"
 	"encoding/json"
 	"time"
 )
-
-const archiveVersion = 2
 
 const (
 	fileManifest          = "manifest.json"
@@ -24,7 +22,6 @@ const (
 )
 
 type Manifest struct {
-	Version   int       `json:"version"`
 	CreatedAt time.Time `json:"created_at"`
 	Counts    Counts    `json:"counts"`
 }

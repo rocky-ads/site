@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"strings"
 
 	"golang.org/x/crypto/hkdf"
 )
@@ -114,4 +115,30 @@ func deriveKey(id int, masterKey []byte) ([]byte, error) {
 	}
 
 	return key, nil
+}
+
+const sealedPrefix = "dbenc1:"
+
+// Seal encrypts plaintext for storage in a single TEXT column.
+// Format: dbenc1:<nonce_b64>:<ciphertext_b64>
+func Seal(id int, plaintext string, masterKey []byte) (string, error) {
+	enc, nonce, err := Encrypt(id, plaintext, masterKey)
+	if err != nil {
+		return "", err
+	}
+	return sealedPrefix + nonce + ":" + enc, nil
+}
+
+// Open decrypts a Seal'd blob. Plaintext (no prefix) is returned unchanged
+// so transitional unencrypted journals still work.
+func Open(id int, stored string, masterKey []byte) (string, error) {
+	if !strings.HasPrefix(stored, sealedPrefix) {
+		return stored, nil
+	}
+	rest := strings.TrimPrefix(stored, sealedPrefix)
+	nonce, enc, ok := strings.Cut(rest, ":")
+	if !ok || nonce == "" || enc == "" {
+		return "", fmt.Errorf("invalid sealed blob")
+	}
+	return Decrypt(id, enc, nonce, masterKey)
 }

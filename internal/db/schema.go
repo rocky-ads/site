@@ -45,13 +45,13 @@ func dropAllTables() error {
 	return nil
 }
 
-func applySchema(databaseURL string) error {
+func applySchema(url string) error {
 	schema, err := os.ReadFile(findSchemaPath())
 	if err != nil {
 		return fmt.Errorf("read schema: %w", err)
 	}
 
-	conn, err := pgx.Connect(context.Background(), databaseURL)
+	conn, err := pgx.Connect(context.Background(), url)
 	if err != nil {
 		return fmt.Errorf("pgx connect: %w", err)
 	}

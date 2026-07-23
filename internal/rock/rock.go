@@ -8,6 +8,7 @@ import (
 
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
+	"github.com/rocky-ads/site/internal/encryption"
 	"github.com/rocky-ads/site/internal/journal"
 )
 
@@ -45,15 +46,23 @@ func ThrowRock(userID, conversationID int) error {
 	}
 
 	now := time.Now().UTC()
-	newJournal := journal.AppendRock(conv.Journal, journal.RockThrown, userID,
+	plain, err := encryption.Open(conversationID, conv.Journal, config.DBEncryptionKey)
+	if err != nil {
+		return fmt.Errorf("open journal: %w", err)
+	}
+	newJournal := journal.AppendRock(plain, journal.RockThrown, userID,
 		now, time.UTC)
+	sealed, err := encryption.Seal(conversationID, newJournal, config.DBEncryptionKey)
+	if err != nil {
+		return fmt.Errorf("seal journal: %w", err)
+	}
 
 	_, err = db.Exec(`
 		UPDATE conversations
 		SET rock_thrower_id = $1, rock_thrown_at = $2,
 			journal = $3, updated_at = $2
 		WHERE id = $4
-	`, userID, now, newJournal, conversationID)
+	`, userID, now, sealed, conversationID)
 	if err != nil {
 		return fmt.Errorf("failed to throw rock: %w", err)
 	}
@@ -79,6 +88,11 @@ func getConversationForRock(conversationID int) (struct {
 	if err != nil {
 		return conv, fmt.Errorf("failed to get conversation: %w", err)
 	}
+	plain, err := encryption.Open(conversationID, conv.Journal, config.DBEncryptionKey)
+	if err != nil {
+		return conv, fmt.Errorf("open journal: %w", err)
+	}
+	conv.Journal = plain
 	return conv, nil
 }
 
@@ -107,15 +121,23 @@ func UnthrowRock(userID, conversationID int) error {
 	}
 
 	now := time.Now().UTC()
-	newJournal := journal.AppendRock(j, journal.RockUnthrown, userID, now,
+	plain, err := encryption.Open(conversationID, j, config.DBEncryptionKey)
+	if err != nil {
+		return fmt.Errorf("open journal: %w", err)
+	}
+	newJournal := journal.AppendRock(plain, journal.RockUnthrown, userID, now,
 		time.UTC)
+	sealed, err := encryption.Seal(conversationID, newJournal, config.DBEncryptionKey)
+	if err != nil {
+		return fmt.Errorf("seal journal: %w", err)
+	}
 
 	_, err = db.Exec(`
 		UPDATE conversations
 		SET rock_thrower_id = NULL, rock_thrown_at = NULL,
 			journal = $1, updated_at = $2
 		WHERE id = $3
-	`, newJournal, now, conversationID)
+	`, sealed, now, conversationID)
 	if err != nil {
 		return fmt.Errorf("failed to remove rock: %w", err)
 	}
@@ -324,14 +346,22 @@ func unthrowRows(rows *sql.Rows) error {
 
 func forceUnthrow(conversationID, throwerID int, j string) error {
 	now := time.Now().UTC()
-	newJournal := journal.AppendRock(j, journal.RockUnthrown, throwerID, now,
+	plain, err := encryption.Open(conversationID, j, config.DBEncryptionKey)
+	if err != nil {
+		return fmt.Errorf("open journal: %w", err)
+	}
+	newJournal := journal.AppendRock(plain, journal.RockUnthrown, throwerID, now,
 		time.UTC)
-	_, err := db.Exec(`
+	sealed, err := encryption.Seal(conversationID, newJournal, config.DBEncryptionKey)
+	if err != nil {
+		return fmt.Errorf("seal journal: %w", err)
+	}
+	_, err = db.Exec(`
 		UPDATE conversations
 		SET rock_thrower_id = NULL, rock_thrown_at = NULL,
 			journal = $1, updated_at = $2
 		WHERE id = $3 AND rock_thrower_id IS NOT NULL
-	`, newJournal, now, conversationID)
+	`, sealed, now, conversationID)
 	if err != nil {
 		return fmt.Errorf("failed to force-unthrow rock: %w", err)
 	}

@@ -84,7 +84,7 @@ func Ping() error {
 	return db.Ping()
 }
 
-// CheckSchema reports whether init_db (or equivalent) has been applied.
+// CheckSchema reports whether admin init (or equivalent) has been applied.
 func CheckSchema() error {
 	var exists bool
 	err := QueryRow(`
@@ -96,7 +96,7 @@ func CheckSchema() error {
 		return fmt.Errorf("checking database schema: %w", err)
 	}
 	if !exists {
-		return fmt.Errorf("database not initialized — run: go run ./cmd/init_db")
+		return fmt.Errorf("database not initialized — run: admin init")
 	}
 	return nil
 }

@@ -62,11 +62,15 @@ func appendCloseToConversations(query string, args []any, kind string,
 	updated := make([]Conversation, 0, len(convs))
 	for _, conv := range convs {
 		newJournal := AppendCloseEntry(conv.Journal, kind, actorID, now, time.UTC)
-		_, err := db.Exec(`
+		sealed, err := sealJournal(conv.ID, newJournal)
+		if err != nil {
+			return nil, fmt.Errorf("seal journal: %w", err)
+		}
+		_, err = db.Exec(`
 			UPDATE conversations
 			SET journal = $1, updated_at = $2
 			WHERE id = $3
-		`, newJournal, now, conv.ID)
+		`, sealed, now, conv.ID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to append close entry: %w", err)
 		}

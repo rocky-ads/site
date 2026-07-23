@@ -23,36 +23,18 @@ func SetEmbedder(e Embedder) {
 	activeEmbedder = e
 }
 
-// EmbedderInfo returns the active embedding backend's provider identifier and
-// model name (as selected by the EMBEDDER env var).
+// EmbedderInfo returns the Ollama provider identifier and model name.
 func EmbedderInfo() (provider, model string) {
-	switch config.Embedder {
-	case config.EmbedderGemini:
-		return config.EmbedderGemini, config.GeminiEmbeddingModel
-	case config.EmbedderOllama:
-		return config.EmbedderOllama, config.OllamaEmbeddingModel
-	default:
-		return config.Embedder, ""
-	}
+	return "ollama", config.OllamaEmbeddingModel
 }
 
-// InitEmbedder initializes the embedding backend selected by config.Embedder
-// (the EMBEDDER env var): "ollama" (default, local) or "gemini".
+// InitEmbedder initializes the local Ollama embedding backend.
 func InitEmbedder() error {
-	switch config.Embedder {
-	case config.EmbedderGemini:
-		if err := InitGeminiClient(); err != nil {
-			return err
-		}
-	case config.EmbedderOllama:
-		if err := InitOllamaClient(); err != nil {
-			return err
-		}
-	default:
-		return fmt.Errorf("invalid EMBEDDER value %q (valid: %q, %q)",
-			config.Embedder, config.EmbedderOllama, config.EmbedderGemini)
+	if err := InitOllamaClient(); err != nil {
+		return err
 	}
-	logger.Info("Embedder initialized", "provider", config.Embedder)
+	logger.Info("Embedder initialized", "provider", "ollama",
+		"model", config.OllamaEmbeddingModel)
 	return nil
 }
 
@@ -122,7 +104,7 @@ func (f fakeEmbedder) EmbedDocuments(texts []string) ([][]float32, error) {
 }
 
 func hashEmbed(text string) []float32 {
-	vec := make([]float32, config.GeminiEmbeddingDimensions)
+	vec := make([]float32, config.OllamaEmbeddingDimensions)
 	for _, word := range strings.Fields(strings.ToLower(text)) {
 		h := fnv.New64a()
 		_, _ = h.Write([]byte(word))
