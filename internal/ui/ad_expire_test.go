@@ -53,6 +53,12 @@ func TestAdExpireToolbarVisibility(t *testing.T) {
 		if !strings.Contains(html, "/images/post_add.svg") {
 			t.Fatal("expected new-ad icon for owner")
 		}
+		if !strings.Contains(html, "/images/copy.svg") {
+			t.Fatal("expected copy-ad icon for owner")
+		}
+		if !strings.Contains(html, `/auth/ad/1/copy`) {
+			t.Fatal("expected copy-ad link for owner")
+		}
 	})
 
 	t.Run("non_owner", func(t *testing.T) {
@@ -62,6 +68,9 @@ func TestAdExpireToolbarVisibility(t *testing.T) {
 		}
 		if strings.Contains(html, "/images/post_add.svg") {
 			t.Fatal("did not expect new-ad icon for non-owner")
+		}
+		if strings.Contains(html, "/images/copy.svg") {
+			t.Fatal("did not expect copy-ad icon for non-owner")
 		}
 	})
 
@@ -75,6 +84,9 @@ func TestAdExpireToolbarVisibility(t *testing.T) {
 		}
 		if strings.Contains(html, "/images/post_add.svg") {
 			t.Fatal("did not expect new-ad icon for paused ad")
+		}
+		if strings.Contains(html, "/images/copy.svg") {
+			t.Fatal("did not expect copy-ad icon for paused ad")
 		}
 	})
 }

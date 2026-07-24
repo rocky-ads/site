@@ -73,6 +73,23 @@ const (
 
 // NewFormConfig returns config for the create-ad form.
 func NewFormConfig(defaults facet.FormDefaults) AdFormConfig {
+	return NewFormConfigWithValues(defaults, AdFormValues{})
+}
+
+// NewFormConfigWithValues returns create-ad config with prefilled values
+// (e.g. copy-from-ad). Images are not prefilled.
+func NewFormConfigWithValues(defaults facet.FormDefaults,
+	values AdFormValues) AdFormConfig {
+	if values.Facets == nil {
+		values.Facets = make(map[string]string)
+	}
+	if values.FacetUnits == nil {
+		values.FacetUnits = make(map[string]string)
+	}
+	if values.FacetMulti == nil {
+		values.FacetMulti = make(map[string][]string)
+	}
+	values.ImageCount = 0
 	return AdFormConfig{
 		Mode:           AdFormCreate,
 		FormID:         createFormID,
@@ -81,6 +98,7 @@ func NewFormConfig(defaults facet.FormDefaults) AdFormConfig {
 		PriceFieldURL:  priceFieldURL,
 		SuggestionsURL: "/auth/ad/new/suggestions",
 		SubmitLabel:    "Submit",
+		Values:         values,
 		Defaults:       defaults,
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/local"
+	"github.com/rocky-ads/site/internal/param"
 	"github.com/rocky-ads/site/internal/ui"
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
 	"github.com/rocky-ads/site/internal/user"
@@ -17,6 +18,40 @@ import (
 func NewAdHandler(c *fiber.Ctx) error {
 	category := ad.GetCategory(cookie.GetCategoryID(c))
 	fieldsNode := uiads.NewAdFieldsPartial(category.Facets(), newAdFormDefaults(c))
+
+	return renderPage(c, "New Ad", ui.NewAd(categoryOption(category), fieldsNode))
+}
+
+func CopyAdHandler(c *fiber.Ctx) error {
+	userID := local.GetUserID(c)
+
+	adID, err := param.GetAdID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
+	}
+
+	tz := cookie.GetTimezone(c)
+	a, err := ad.GetAd(userID, adID, tz)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
+	}
+	if a.UserID != userID {
+		return fiber.NewError(fiber.StatusForbidden, "You are not the owner of this ad")
+	}
+	if !a.IsActive() {
+		return fiber.NewError(fiber.StatusBadRequest, "Cannot copy a deleted or inactive ad")
+	}
+
+	cookie.SetCategoryID(c, a.CategoryID)
+	category := ad.GetCategory(a.CategoryID)
+
+	if err := ad.LoadTags(&a); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	values := adFormValuesFrom(a)
+	cfg := uiads.NewFormConfigWithValues(newAdFormDefaults(c), values)
+	fieldsNode := uiads.AdFieldsPartial(cfg, category.Facets())
 
 	return renderPage(c, "New Ad", ui.NewAd(categoryOption(category), fieldsNode))
 }

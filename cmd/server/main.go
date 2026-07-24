@@ -71,6 +71,7 @@ func setupApp() *fiber.App {
 	auth.Get("/ad/new/price-field", handler.NewAdPriceFieldHandler)
 	auth.Get("/ad/new/suggestions", handler.SuggestionsHandler)
 	auth.Post("/ad/new", handler.CreateAdHandler)
+	auth.Get("/ad/:id/copy", handler.CopyAdHandler)
 	auth.Get("/ad/:id/edit", handler.EditAdHandler)
 	auth.Post("/ad/:id/edit", handler.UpdateAdHandler)
 	auth.Post("/ad/:id/presign-images", handler.PresignAdImagesHandler)

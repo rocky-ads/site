@@ -440,7 +440,7 @@ func AdShareModal(path string) g.Node {
 func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 	nodes := []g.Node{}
 	if userID == d.OwnerID && d.Active {
-		nodes = append(nodes, adExpireToolbar(d.CreatedAt))
+		nodes = append(nodes, adExpireToolbar(d.ID, d.CreatedAt))
 	}
 	nodes = append(nodes, Div(
 		Class("flex flex-col relative rounded-none sm:rounded-lg shadow-lg dark:shadow-xl dark:shadow-zinc-900/50 my-4 -mx-6 sm:mx-2 col-span-full overflow-hidden bg-white dark:bg-zinc-800 border-y sm:border border-zinc-200 dark:border-zinc-700"),
@@ -483,7 +483,7 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 	return nodes
 }
 
-func adExpireToolbar(createdAt time.Time) g.Node {
+func adExpireToolbar(adID int, createdAt time.Time) g.Node {
 	expiresAt := createdAt.AddDate(0, config.AdExpireAfterMonths, 0)
 	return Div(
 		Class("flex items-center justify-between gap-2 mx-2 mt-4 mb-0 col-span-full"),
@@ -491,7 +491,26 @@ func adExpireToolbar(createdAt time.Time) g.Node {
 			Class("text-xs text-zinc-500"),
 			g.Text(formatExpiresIn(expiresAt)),
 		),
-		newAdLink(),
+		Div(
+			Class("flex items-center gap-2 shrink-0"),
+			newAdLink(),
+			copyAdLink(adID),
+		),
+	)
+}
+
+func copyAdLink(adID int) g.Node {
+	const label = "Copy ad"
+	return A(
+		Href(fmt.Sprintf("/auth/ad/%d/copy", adID)),
+		Class("flex-shrink-0 cursor-pointer"),
+		g.Attr("aria-label", label),
+		g.Attr("title", label),
+		Img(
+			Class("w-6 h-6 dark:invert dark:opacity-80"),
+			Src("/images/copy.svg"),
+			Alt(label),
+		),
 	)
 }
 

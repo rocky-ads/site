@@ -75,13 +75,17 @@ func suggestionsRow(cfg AdFormConfig, selected []SuggestionOption, topBorder boo
 }
 
 func descriptionInput(cfg AdFormConfig) g.Node {
-	return Textarea(
+	attrs := []g.Node{
 		Name("description"),
 		ID(cfg.fieldID("description")),
 		Class("w-full p-2 border-0 rounded-none bg-transparent focus:outline-none focus:ring-0"),
 		g.Attr("rows", "6"),
 		g.Attr("maxlength", "1000"),
-	)
+	}
+	if cfg.Values.OriginalDescription != "" {
+		attrs = append(attrs, g.Text(cfg.Values.OriginalDescription))
+	}
+	return Textarea(attrs...)
 }
 
 func suggestionsButton(cfg AdFormConfig) g.Node {
