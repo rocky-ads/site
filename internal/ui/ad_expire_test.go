@@ -15,19 +15,19 @@ func TestFormatExpiresIn(t *testing.T) {
 		in   time.Duration
 		want string
 	}{
-		{"soon", 30 * time.Second, "Expires soon"},
-		{"one_minute", time.Minute + time.Second, "Expires in 1 minute"},
-		{"minutes", 12*time.Minute + time.Second, "Expires in 12 minutes"},
-		{"one_hour", time.Hour + time.Minute, "Expires in 1 hour"},
-		{"hours", 5*time.Hour + time.Minute, "Expires in 5 hours"},
+		{"soon_minutes", 30 * time.Minute, "Expires soon"},
+		{"soon_hours", 5 * time.Hour, "Expires soon"},
 		{"one_day", 25 * time.Hour, "Expires in 1 day"},
 		{"days", 5*24*time.Hour + time.Hour, "Expires in 5 days"},
-		{"one_month", 35 * 24 * time.Hour, "Expires in 1 month"},
-		{"months", 70 * 24 * time.Hour, "Expires in 2 months"},
+		{"one_month", 30 * 24 * time.Hour, "Expires in 1 month"},
+		{"one_month_days", 42 * 24 * time.Hour, "Expires in 1 month 12 days"},
+		{"months", 60 * 24 * time.Hour, "Expires in 2 months"},
+		{"months_days", 72 * 24 * time.Hour, "Expires in 2 months 12 days"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := formatExpiresIn(time.Now().Add(tt.in))
+			// Add a second so time.Until does not slip under a day boundary.
+			got := formatExpiresIn(time.Now().Add(tt.in + time.Second))
 			if got != tt.want {
 				t.Fatalf("formatExpiresIn(%v) = %q, want %q", tt.in, got, tt.want)
 			}

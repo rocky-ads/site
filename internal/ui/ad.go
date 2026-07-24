@@ -516,35 +516,35 @@ func copyAdLink(adID int) g.Node {
 
 func formatExpiresIn(expiresAt time.Time) string {
 	d := time.Until(expiresAt)
-	if d < time.Minute {
+	if d < 24*time.Hour {
 		return "Expires soon"
 	}
-	mins := int(d.Minutes())
-	if mins < 60 {
-		if mins == 1 {
-			return "Expires in 1 minute"
-		}
-		return fmt.Sprintf("Expires in %d minutes", mins)
-	}
-	hours := int(d.Hours())
-	if hours < 24 {
-		if hours == 1 {
-			return "Expires in 1 hour"
-		}
-		return fmt.Sprintf("Expires in %d hours", hours)
-	}
-	days := int(d.Hours() / 24)
-	if days < 30 {
-		if days == 1 {
-			return "Expires in 1 day"
-		}
-		return fmt.Sprintf("Expires in %d days", days)
-	}
-	months := days / 30
+	// Whole days remaining (partial day does not count up).
+	totalDays := int(d / (24 * time.Hour))
+	months := totalDays / 30
+	days := totalDays % 30
+
+	monthPart := ""
 	if months == 1 {
-		return "Expires in 1 month"
+		monthPart = "1 month"
+	} else if months > 1 {
+		monthPart = fmt.Sprintf("%d months", months)
 	}
-	return fmt.Sprintf("Expires in %d months", months)
+	dayPart := ""
+	if days == 1 {
+		dayPart = "1 day"
+	} else if days > 1 {
+		dayPart = fmt.Sprintf("%d days", days)
+	}
+
+	switch {
+	case monthPart != "" && dayPart != "":
+		return fmt.Sprintf("Expires in %s %s", monthPart, dayPart)
+	case monthPart != "":
+		return "Expires in " + monthPart
+	default:
+		return "Expires in " + dayPart
+	}
 }
 
 func descriptionDisplay(adID int, original string, facetDetails []string,
