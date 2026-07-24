@@ -34,7 +34,7 @@ func ValidateView(viewStr string) int {
 	return view
 }
 
-func viewToggle(view, target int) g.Node {
+func viewToggle(view, target int, pathPrefix, hxTarget string) g.Node {
 	active := view == target
 	class := "p-1.5 rounded-full shrink-0 "
 	if active {
@@ -47,8 +47,8 @@ func viewToggle(view, target int) g.Node {
 		Class(class),
 		g.Attr("aria-label", GetViewName(target)+" view"),
 		g.Attr("aria-pressed", strconv.FormatBool(active)),
-		hx.Get("/api/view/"+strconv.Itoa(target)),
-		hx.Target("#search-view"),
+		hx.Get(pathPrefix+strconv.Itoa(target)),
+		hx.Target(hxTarget),
 		hx.Swap("outerHTML"),
 		Img(
 			Class("w-6 h-6 shrink-0 dark:invert dark:opacity-80"),
@@ -59,10 +59,23 @@ func viewToggle(view, target int) g.Node {
 }
 
 func viewToggles(view int) g.Node {
+	return viewTogglesTargeting(view, "/api/view/", "#search-view")
+}
+
+func viewTogglesTargeting(view int, pathPrefix, hxTarget string) g.Node {
 	return Div(
 		Class("flex items-center shrink-0 rounded-full "+
 			"bg-zinc-100 dark:bg-zinc-800 p-0.5"),
-		viewToggle(view, ViewGrid),
-		viewToggle(view, ViewList),
+		viewToggle(view, ViewGrid, pathPrefix, hxTarget),
+		viewToggle(view, ViewList, pathPrefix, hxTarget),
 	)
+}
+
+func resultsContainerClass(view int) string {
+	switch view {
+	case ViewGrid:
+		return "grid grid-cols-2 md:grid-cols-3 gap-2 -mx-5 md:mx-0"
+	default:
+		return ""
+	}
 }

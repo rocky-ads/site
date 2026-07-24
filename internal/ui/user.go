@@ -192,7 +192,7 @@ func UserMenu(userName, memberSince string, userID int, isAdmin bool,
 	})
 }
 
-func MyAdsPage(activeTab string, adNodes []g.Node) []g.Node {
+func MyAdsPage(activeTab string, view int, adNodes []g.Node) []g.Node {
 	return []g.Node{
 		Div(
 			Class("flex items-center justify-between gap-4"),
@@ -202,16 +202,22 @@ func MyAdsPage(activeTab string, adNodes []g.Node) []g.Node {
 				Text: "New Ad",
 			}),
 		),
-		MyAdsContainer(activeTab, adNodes),
+		MyAdsContainer(activeTab, view, adNodes),
 	}
 }
 
-func MyAdsContainer(activeTab string, adNodes []g.Node) g.Node {
+func MyAdsContainer(activeTab string, view int, adNodes []g.Node) g.Node {
+	pathPrefix := fmt.Sprintf(
+		"/auth/user/myads/tab/%s/view/", activeTab)
 	return Div(
 		ID("my-ads-container"),
-		Class("space-y-6 mt-6"),
+		Class("space-y-4 mt-6"),
 		MyAdsTabs(activeTab),
-		MyAdsContent(activeTab, adNodes),
+		Div(
+			Class("flex justify-end"),
+			viewTogglesTargeting(view, pathPrefix, "#my-ads-container"),
+		),
+		MyAdsContent(view, adNodes),
 	)
 }
 
@@ -249,22 +255,21 @@ func myAdsTab(name, tabID string, active bool) g.Node {
 	)
 }
 
-func MyAdsContent(activeTab string, adNodes []g.Node) g.Node {
+func MyAdsContent(view int, adNodes []g.Node) g.Node {
+	var content g.Node
+	if len(adNodes) == 0 {
+		content = Div(
+			Class("col-span-full text-center text-zinc-600 "+
+				"dark:text-zinc-400 py-8"),
+			P(g.Text("No ads found.")),
+		)
+	} else {
+		content = g.Group(adNodes)
+	}
 	return Div(
 		ID("my-ads-content"),
-		Class("mt-4"),
-		g.If(len(adNodes) == 0,
-			Div(
-				Class("text-center text-zinc-600 dark:text-zinc-400 py-8"),
-				P(g.Text("No ads found.")),
-			),
-		),
-		g.If(len(adNodes) > 0,
-			Div(
-				Class("space-y-0"),
-				g.Group(adNodes),
-			),
-		),
+		Class(resultsContainerClass(view)),
+		content,
 	)
 }
 

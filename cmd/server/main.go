@@ -88,6 +88,7 @@ func setupApp() *fiber.App {
 	auth.Get("/user/menu", handler.UserMenuHandler)
 	auth.Get("/user/myads", handler.UserMyAdsHandler)
 	auth.Get("/user/myads/tab/:tab", handler.UserMyAdsTabHandler)
+	auth.Get("/user/myads/tab/:tab/view/:view", handler.UserMyAdsViewHandler)
 	auth.Get("/user/messages", handler.UserMessagesHandler)
 	auth.Get("/user/settings", handler.UserSettingsHandler)
 	auth.Post("/user/settings/notifications", handler.NotificationsToggleHandler)
