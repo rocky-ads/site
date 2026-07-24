@@ -62,6 +62,13 @@ func viewToggles(view int) g.Node {
 	return viewTogglesTargeting(view, "/api/view/", "#search-view")
 }
 
+func adsViewToggles(view int, pathPrefix, hxTarget string) g.Node {
+	return Div(
+		Class("flex justify-end"),
+		viewTogglesTargeting(view, pathPrefix, hxTarget),
+	)
+}
+
 func viewTogglesTargeting(view int, pathPrefix, hxTarget string) g.Node {
 	return Div(
 		Class("flex items-center shrink-0 rounded-full "+

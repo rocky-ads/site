@@ -98,6 +98,7 @@ func setupApp() *fiber.App {
 	auth.Get("/user/settings/delete-confirm", handler.DeleteAccountConfirmModalHandler)
 	auth.Post("/user/settings/delete", handler.DeleteAccountHandler)
 	auth.Get("/user/:id", handler.UserProfileHandler)
+	auth.Get("/user/:id/view/:view", handler.UserProfileViewHandler)
 	auth.Get("/user/:id/summary", handler.UserSummaryHandler)
 	auth.Get("/user/:id/rock/:ordinal", handler.UserRockConversationHandler)
 	auth.Get("/welcome", handler.WelcomeHandler)

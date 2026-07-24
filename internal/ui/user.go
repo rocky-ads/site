@@ -97,7 +97,7 @@ func UserSummaryFragment(d UserProfileData) g.Node {
 }
 
 // UserProfilePage renders the user profile page body
-func UserProfilePage(d UserProfileData) []g.Node {
+func UserProfilePage(d UserProfileData, view int, adNodes []g.Node) []g.Node {
 	return []g.Node{
 		pageTitle(d.Name),
 		Div(
@@ -114,7 +114,19 @@ func UserProfilePage(d UserProfileData) []g.Node {
 				),
 			),
 		),
+		UserProfileAds(d.ID, view, adNodes),
 	}
+}
+
+// UserProfileAds is the active-ads list with grid/list toggles.
+func UserProfileAds(userID, view int, adNodes []g.Node) g.Node {
+	pathPrefix := fmt.Sprintf("/auth/user/%d/view/", userID)
+	return Div(
+		ID("user-profile-ads"),
+		Class("space-y-4 mt-8"),
+		adsViewToggles(view, pathPrefix, "#user-profile-ads"),
+		AdsContent(view, adNodes),
+	)
 }
 
 func UserMenu(userName, memberSince string, userID int, isAdmin bool,
@@ -213,11 +225,8 @@ func MyAdsContainer(activeTab string, view int, adNodes []g.Node) g.Node {
 		ID("my-ads-container"),
 		Class("space-y-4 mt-6"),
 		MyAdsTabs(activeTab),
-		Div(
-			Class("flex justify-end"),
-			viewTogglesTargeting(view, pathPrefix, "#my-ads-container"),
-		),
-		MyAdsContent(view, adNodes),
+		adsViewToggles(view, pathPrefix, "#my-ads-container"),
+		AdsContent(view, adNodes),
 	)
 }
 
@@ -255,7 +264,7 @@ func myAdsTab(name, tabID string, active bool) g.Node {
 	)
 }
 
-func MyAdsContent(view int, adNodes []g.Node) g.Node {
+func AdsContent(view int, adNodes []g.Node) g.Node {
 	var content g.Node
 	if len(adNodes) == 0 {
 		content = Div(
@@ -267,7 +276,6 @@ func MyAdsContent(view int, adNodes []g.Node) g.Node {
 		content = g.Group(adNodes)
 	}
 	return Div(
-		ID("my-ads-content"),
 		Class(resultsContainerClass(view)),
 		content,
 	)

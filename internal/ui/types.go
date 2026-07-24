@@ -8,6 +8,7 @@ import (
 
 // UserProfileData holds presentation fields for a user profile or summary.
 type UserProfileData struct {
+	ID            int
 	Name          string
 	MemberSince   string
 	ActiveAdCount int
