@@ -401,12 +401,29 @@ func loadAdsFromFile(categoryID int, filename string, categoryFacets []string,
 		}
 		tagsJSON := adp.TagsJSON(seedSuggestions(aj))
 
+		grant := adp.InitialExpireGrant(createdAt)
+		expiresAt := createdAt.Add(grant)
+		if v, ok := aj.Facets["sale_end_date"]; ok && v.Text != nil {
+			if t, err := adp.ExpiresAtFromSaleEnd(*v.Text); err == nil {
+				expiresAt = t
+			}
+		} else {
+			// Seed created_at values are often years old (for listing-age
+			// variety). Give them a fresh expire window so init doesn't
+			// immediately pause every ad.
+			now := time.Now().UTC()
+			grant = adp.InitialExpireGrant(now)
+			expiresAt = now.Add(grant)
+		}
+
 		_, err = db.Exec(
 			`INSERT INTO ads (id, category_id, title, description, created_at,
-			 user_id, image_count, location_id, tags)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+			 user_id, image_count, location_id, tags, expires_at, expire_grant)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+			         $11 * INTERVAL '1 second')`,
 			adID, categoryID, ad.Title, description, createdAt,
-			testUserID, ad.ImageCount, locationID, tagsJSON,
+			testUserID, ad.ImageCount, locationID, tagsJSON, expiresAt,
+			grant.Seconds(),
 		)
 		if err != nil {
 			return fmt.Errorf("inserting ad with ID %d: %w", adID, err)

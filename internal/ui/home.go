@@ -264,15 +264,6 @@ func SearchWidget(userID, view int, q string, filtersExpanded,
 }
 
 func searchResults(view int, results []g.Node, oob bool) g.Node {
-	var class string
-
-	switch view {
-	case ViewGrid:
-		class = "grid grid-cols-2 md:grid-cols-3 gap-2 -mx-5 md:mx-0"
-	case ViewList:
-		// Empty class - items naturally stack as a column
-	}
-
 	var content g.Node
 	if len(results) == 0 {
 		content = searchResultsEmpty()
@@ -282,7 +273,7 @@ func searchResults(view int, results []g.Node, oob bool) g.Node {
 
 	attrs := []g.Node{
 		ID("search-results"),
-		Class(class),
+		Class(resultsContainerClass(view)),
 		content,
 	}
 	if oob {

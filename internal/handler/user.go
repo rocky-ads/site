@@ -18,6 +18,7 @@ import (
 	"github.com/rocky-ads/site/internal/service/sms"
 	"github.com/rocky-ads/site/internal/ui"
 	"github.com/rocky-ads/site/internal/user"
+	g "maragu.dev/gomponents"
 )
 
 const (
@@ -28,6 +29,7 @@ const (
 func userProfileData(u user.User, activeAdCount, userRockCount int,
 	tz *time.Location, memberSinceLayout string) ui.UserProfileData {
 	return ui.UserProfileData{
+		ID:            u.ID,
 		Name:          u.Name,
 		MemberSince:   u.CreatedAt.In(tz).Format(memberSinceLayout),
 		ActiveAdCount: activeAdCount,
@@ -59,7 +61,7 @@ func UserMenuHandler(c *fiber.Ctx) error {
 }
 
 func UserMyAdsHandler(c *fiber.Ctx) error {
-	return userMyAdsTabHandler(c, "active")
+	return userMyAdsTabHandler(c, "active", 0)
 }
 
 func UserMyAdsTabHandler(c *fiber.Ctx) error {
@@ -68,15 +70,28 @@ func UserMyAdsTabHandler(c *fiber.Ctx) error {
 		tabID != "inactive" && tabID != "deleted" {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid tab")
 	}
-	return userMyAdsTabHandler(c, tabID)
+	return userMyAdsTabHandler(c, tabID, 0)
 }
 
-func userMyAdsTabHandler(c *fiber.Ctx, activeTab string) error {
+func UserMyAdsViewHandler(c *fiber.Ctx) error {
+	tabID := c.Params("tab")
+	if tabID != "bookmarked" && tabID != "active" &&
+		tabID != "inactive" && tabID != "deleted" {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid tab")
+	}
+	view := ui.ValidateView(c.Params("view"))
+	cookie.SetView(c, view)
+	return userMyAdsTabHandler(c, tabID, view)
+}
+
+func userMyAdsTabHandler(c *fiber.Ctx, activeTab string, view int) error {
 	userID := local.GetUserID(c)
 	tz := cookie.GetTimezone(c)
 	csrfToken := local.GetCSRFToken(c)
+	if view == 0 {
+		view = ui.ValidateView(cookie.GetView(c))
+	}
 
-	// Get ad IDs for the selected tab
 	adIDs, err := ad.GetUserAdIDs(userID, activeTab)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to load ads")
@@ -87,14 +102,13 @@ func userMyAdsTabHandler(c *fiber.Ctx, activeTab string) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to load ads")
 	}
 
-	adNodes := ui.AdNodes(adCardsFrom(ads, userID, tz), userID, ui.ViewList, 1, csrfToken, false)
+	adNodes := ui.AdNodes(adCardsFrom(ads, userID, tz), userID, view, 1, csrfToken, false)
 
-	// Check if this is a tab switch (HTMX request) or full page load
 	if c.Get("HX-Request") != "" {
-		return render(c, ui.MyAdsContainer(activeTab, adNodes))
+		return render(c, ui.MyAdsContainer(activeTab, view, adNodes))
 	}
 
-	return renderPage(c, "My Ads", ui.MyAdsPage(activeTab, adNodes))
+	return renderPage(c, "My Ads", ui.MyAdsPage(activeTab, view, adNodes))
 }
 
 func UserSettingsHandler(c *fiber.Ctx) error {
@@ -357,8 +371,46 @@ func UserProfileHandler(c *fiber.Ctx) error {
 	activeAdCount, _ := ad.CountActiveAdsByUser(id)
 	userRockCount, _ := rock.GetRockCountForUser(id)
 	tz := cookie.GetTimezone(c)
+	view := ui.ValidateView(cookie.GetView(c))
+	adNodes, err := userActiveAdNodes(c, id, view)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to load ads")
+	}
 	d := userProfileData(u, activeAdCount, userRockCount, tz, memberSinceLayoutPage)
-	return renderPage(c, u.Name, ui.UserProfilePage(d))
+	return renderPage(c, u.Name, ui.UserProfilePage(d, view, adNodes))
+}
+
+func UserProfileViewHandler(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid user ID")
+	}
+	if _, err := user.GetByID(id); err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "User not found")
+	}
+	view := ui.ValidateView(c.Params("view"))
+	cookie.SetView(c, view)
+	adNodes, err := userActiveAdNodes(c, id, view)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to load ads")
+	}
+	return render(c, ui.UserProfileAds(id, view, adNodes))
+}
+
+func userActiveAdNodes(c *fiber.Ctx, profileUserID, view int) ([]g.Node, error) {
+	viewerID := local.GetUserID(c)
+	tz := cookie.GetTimezone(c)
+	csrfToken := local.GetCSRFToken(c)
+	adIDs, err := ad.GetUserAdIDs(profileUserID, "active")
+	if err != nil {
+		return nil, err
+	}
+	ads, err := ad.GetAds(viewerID, adIDs, tz)
+	if err != nil {
+		return nil, err
+	}
+	return ui.AdNodes(adCardsFrom(ads, viewerID, tz), viewerID, view, 1,
+		csrfToken, false), nil
 }
 
 func UserSummaryHandler(c *fiber.Ctx) error {

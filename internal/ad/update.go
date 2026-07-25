@@ -138,13 +138,18 @@ func UpdateAd(input UpdateInput) error {
 
 	newImageCount := a.ImageCount + input.ImagesAdded
 
+	expiresAt := a.ExpiresAt.UTC()
+	if _, ok := SaleEndDateString(values); ok {
+		expiresAt = ComputeExpiresAt(values, now.UTC(), a.ExpireGrant())
+	}
+
 	_, err = tx.Exec(
 		`UPDATE ads SET title = $1, description = $2, location_id = $3, tags = $4,
-		 image_count = $5
-		 WHERE id = $6 AND user_id = $7
+		 image_count = $5, expires_at = $6
+		 WHERE id = $7 AND user_id = $8
 		   AND inactive_at IS NULL AND deleted_at IS NULL`,
 		title, desc, locationID, tagsJSON(newSuggestions), newImageCount,
-		input.AdID, input.UserID,
+		expiresAt, input.AdID, input.UserID,
 	)
 	if err != nil {
 		return fmt.Errorf("update ad: %w", err)

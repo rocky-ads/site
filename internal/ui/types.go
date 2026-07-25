@@ -8,6 +8,7 @@ import (
 
 // UserProfileData holds presentation fields for a user profile or summary.
 type UserProfileData struct {
+	ID            int
 	Name          string
 	MemberSince   string
 	ActiveAdCount int
@@ -46,6 +47,7 @@ type AdDetail struct {
 	// until the viewer logs in.
 	ShowLoginForDetails bool
 	CreatedAt           time.Time
+	ExpiresAt           time.Time
 	Bookmarked          bool
 	Active              bool
 	Inactive            bool

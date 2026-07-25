@@ -18,8 +18,9 @@ import (
 func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) error {
 	var adRows []adDBRow
 	err := db.Select(&adRows, `
-		SELECT id, category_id, title, description, created_at, inactive_at,
-		       deleted_at, user_id, image_count, location_id, tags
+		SELECT id, category_id, title, description, created_at, expires_at,
+		       EXTRACT(EPOCH FROM expire_grant) AS expire_grant_secs,
+		       inactive_at, deleted_at, user_id, image_count, location_id, tags
 		FROM ads
 		ORDER BY created_at, id`)
 	if err != nil {
@@ -172,16 +173,18 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 	ads := make([]AdRow, len(adRows))
 	for i, a := range adRows {
 		row := AdRow{
-			Ref:         i,
-			CategoryID:  a.CategoryID,
-			Title:       a.Title,
-			Description: a.Description,
-			CreatedAt:   a.CreatedAt,
-			InactiveAt:  a.InactiveAt,
-			DeletedAt:   a.DeletedAt,
-			OwnerHash:   userIDToHash[a.UserID],
-			ImageCount:  a.ImageCount,
-			Tags:        a.Tags,
+			Ref:           i,
+			CategoryID:    a.CategoryID,
+			Title:         a.Title,
+			Description:   a.Description,
+			CreatedAt:     a.CreatedAt,
+			ExpiresAt:     a.ExpiresAt,
+			ExpireGrantNs: int64(a.ExpireGrantSecs * float64(time.Second)),
+			InactiveAt:    a.InactiveAt,
+			DeletedAt:     a.DeletedAt,
+			OwnerHash:     userIDToHash[a.UserID],
+			ImageCount:    a.ImageCount,
+			Tags:          a.Tags,
 		}
 		if a.LocationID != nil {
 			if raw, ok := locationIDToRaw[*a.LocationID]; ok {

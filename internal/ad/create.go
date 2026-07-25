@@ -75,13 +75,17 @@ func CreateAd(input CreateInput) (int, error) {
 	defer tx.Rollback()
 
 	var id int
+	now := time.Now().UTC()
+	grant := InitialExpireGrant(now)
+	expiresAt := ComputeExpiresAt(values, now, grant)
 	err = tx.QueryRow(
 		`INSERT INTO ads (category_id, title, description, user_id, location_id,
-		 tags, image_count)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7)
+		 tags, image_count, expires_at, expire_grant)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9 * INTERVAL '1 second')
 		 RETURNING id`,
 		input.CategoryID, title, description, input.UserID, locationID,
-		tagsJSON(input.Suggestions), input.ImageCount,
+		tagsJSON(input.Suggestions), input.ImageCount, expiresAt,
+		grant.Seconds(),
 	).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("create ad: %w", err)

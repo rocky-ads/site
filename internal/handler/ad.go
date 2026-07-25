@@ -97,6 +97,7 @@ func adDetailFrom(a ad.Ad, viewerUserID int, reachable, isTest bool) ui.AdDetail
 		DescriptionHistory:  history,
 		ShowLoginForDetails: showLoginForDetails,
 		CreatedAt:           a.CreatedAt,
+		ExpiresAt:           a.ExpiresAt,
 		Bookmarked:          a.Bookmarked,
 		Active:              a.IsActive(),
 		Inactive:            a.IsInactive(),

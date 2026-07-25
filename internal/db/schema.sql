@@ -96,6 +96,8 @@ CREATE TABLE ads (
     title TEXT NOT NULL,
     description TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    expire_grant INTERVAL NOT NULL,
     inactive_at TIMESTAMP,
     deleted_at TIMESTAMP,
     user_id INTEGER NOT NULL REFERENCES users(id),
@@ -110,6 +112,8 @@ CREATE INDEX idx_ads_embedding ON ads USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX idx_ads_vector_metadata ON ads USING gin (vector_metadata);
 CREATE INDEX idx_ads_inactive_at ON ads(inactive_at);
 CREATE INDEX idx_ads_deleted_at ON ads(deleted_at);
+CREATE INDEX idx_ads_expires_at_active ON ads(expires_at)
+    WHERE inactive_at IS NULL AND deleted_at IS NULL;
 
 -- Ad facet values table (one row per ad+facet; see internal/facet)
 CREATE TABLE ad_facets (
