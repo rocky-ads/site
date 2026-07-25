@@ -43,6 +43,7 @@ func TestAdExpireToolbarVisibility(t *testing.T) {
 		Title:     "Test Ad",
 		Active:    true,
 		CreatedAt: created,
+		ExpiresAt: created.AddDate(0, 3, 0),
 	}
 
 	t.Run("owner_active", func(t *testing.T) {

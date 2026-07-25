@@ -5,23 +5,25 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/facet"
 )
 
 type Ad struct {
 	// Core database fields
-	ID          int        `db:"id"`
-	CategoryID  int        `db:"category_id"`
-	Title       string     `db:"title"`
-	Description string     `db:"description"`
-	CreatedAt   time.Time  `db:"created_at"`
-	InactiveAt  *time.Time `db:"inactive_at"`
-	DeletedAt   *time.Time `db:"deleted_at"`
-	UserID      int        `db:"user_id"`
-	ImageCount  int        `db:"image_count"`
-	LocationID  *int       `db:"location_id"`
+	ID          int       `db:"id"`
+	CategoryID  int       `db:"category_id"`
+	Title       string    `db:"title"`
+	Description string    `db:"description"`
+	CreatedAt   time.Time `db:"created_at"`
+	ExpiresAt   time.Time `db:"expires_at"`
+	// ExpireGrantSecs is EXTRACT(EPOCH FROM expire_grant); use ExpireGrant().
+	ExpireGrantSecs float64    `db:"expire_grant_secs"`
+	InactiveAt      *time.Time `db:"inactive_at"`
+	DeletedAt       *time.Time `db:"deleted_at"`
+	UserID          int        `db:"user_id"`
+	ImageCount      int        `db:"image_count"`
+	LocationID      *int       `db:"location_id"`
 
 	// Location fields from join
 	City        string `db:"city"`
@@ -38,6 +40,10 @@ type Ad struct {
 
 	// Tags selected for the ad; loaded lazily on ad detail (ads.tags JSON)
 	Tags []Suggestion
+}
+
+func (a Ad) ExpireGrant() time.Duration {
+	return time.Duration(a.ExpireGrantSecs * float64(time.Second))
 }
 
 func (a Ad) IsActive() bool {
@@ -86,6 +92,8 @@ func GetAds(userID int, ids []int, tz *time.Location) ([]Ad, error) {
 			a.title,
 			a.description,
 			a.created_at,
+			a.expires_at,
+			EXTRACT(EPOCH FROM a.expire_grant) AS expire_grant_secs,
 			a.inactive_at,
 			a.deleted_at,
 			a.user_id,
@@ -120,6 +128,7 @@ func GetAds(userID int, ids []int, tz *time.Location) ([]Ad, error) {
 	// Convert timestamps to local timezone
 	for i := range ads {
 		ads[i].CreatedAt = ads[i].CreatedAt.In(tz)
+		ads[i].ExpiresAt = ads[i].ExpiresAt.In(tz)
 		if ads[i].InactiveAt != nil {
 			converted := (*ads[i].InactiveAt).In(tz)
 			ads[i].InactiveAt = &converted
@@ -268,36 +277,58 @@ func Pause(id int) error {
 	return err
 }
 
-// Activate restores an inactive ad to live listings and bumps created_at
-// so the auto-expire window starts over.
+// Activate restores an inactive ad to live listings and renews expires_at.
+// Sale-end ads recalculate from sale_end_date; others halve expire_grant.
 func Activate(id int) error {
-	_, err := db.Exec(`
+	a, err := GetAd(0, id, time.UTC)
+	if err != nil {
+		return err
+	}
+	if !a.IsInactive() {
+		return fmt.Errorf("ad is not inactive")
+	}
+	now := time.Now().UTC()
+	if s, ok := SaleEndDateString(a.Facets); ok {
+		expiresAt, err := ExpiresAtFromSaleEnd(s)
+		if err != nil {
+			return err
+		}
+		_, err = db.Exec(`
+			UPDATE ads
+			SET inactive_at = NULL, expires_at = $1
+			WHERE id = $2 AND deleted_at IS NULL AND inactive_at IS NOT NULL
+		`, expiresAt, id)
+		return err
+	}
+	grant := HalfExpireGrant(a.ExpireGrant())
+	expiresAt := now.Add(grant)
+	_, err = db.Exec(`
 		UPDATE ads
-		SET inactive_at = NULL, created_at = CURRENT_TIMESTAMP
-		WHERE id = $1 AND deleted_at IS NULL AND inactive_at IS NOT NULL
-	`, id)
+		SET inactive_at = NULL,
+		    expire_grant = $1 * INTERVAL '1 second',
+		    expires_at = $2
+		WHERE id = $3 AND deleted_at IS NULL AND inactive_at IS NOT NULL
+	`, grant.Seconds(), expiresAt, id)
 	return err
 }
 
-// DueExpire holds an active ad past its auto-expire age.
+// DueExpire holds an active ad past its expires_at.
 type DueExpire struct {
 	ID     int `db:"id"`
 	UserID int `db:"user_id"`
 }
 
-// ListAdsDueToExpire returns active ads whose created_at is older than
-// AdExpireAfterMonths.
+// ListAdsDueToExpire returns active ads whose expires_at is in the past.
 func ListAdsDueToExpire() ([]DueExpire, error) {
-	cutoff := time.Now().UTC().AddDate(0, -config.AdExpireAfterMonths, 0)
 	var rows []DueExpire
 	err := db.Select(&rows, `
 		SELECT id, user_id
 		FROM ads
 		WHERE inactive_at IS NULL
 		  AND deleted_at IS NULL
-		  AND created_at < $1
-		ORDER BY created_at ASC, id ASC
-	`, cutoff)
+		  AND expires_at < CURRENT_TIMESTAMP
+		ORDER BY expires_at ASC, id ASC
+	`)
 	return rows, err
 }
 

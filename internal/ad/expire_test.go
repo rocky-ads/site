@@ -89,14 +89,14 @@ func createTestAd(t *testing.T, userID int, title string) int {
 	return adID
 }
 
-func TestActivateResetsCreatedAt(t *testing.T) {
+func TestActivateHalvesGrantKeepsCreatedAt(t *testing.T) {
 	resetAdDB(t)
 
 	u, err := user.CreateUser("expireowner", "+15559872001", "password1")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	adID := createTestAd(t, u.ID, "Activate bump")
+	adID := createTestAd(t, u.ID, "Activate half")
 
 	oldCreated := time.Now().UTC().AddDate(0, -1, 0)
 	_, err = db.Exec(`UPDATE ads SET created_at = $1 WHERE id = $2`,
@@ -104,15 +104,18 @@ func TestActivateResetsCreatedAt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("backdate created_at: %v", err)
 	}
+	before, err := ad.GetAd(u.ID, adID, time.UTC)
+	if err != nil {
+		t.Fatalf("get before: %v", err)
+	}
 	if err := ad.Pause(adID); err != nil {
 		t.Fatalf("pause: %v", err)
 	}
 
-	before := time.Now().UTC().Add(-time.Second)
+	activateAt := time.Now().UTC()
 	if err := ad.Activate(adID); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	after := time.Now().UTC().Add(time.Second)
 
 	a, err := ad.GetAd(u.ID, adID, time.UTC)
 	if err != nil {
@@ -121,9 +124,18 @@ func TestActivateResetsCreatedAt(t *testing.T) {
 	if !a.IsActive() {
 		t.Fatal("expected ad to be active")
 	}
-	if a.CreatedAt.Before(before) || a.CreatedAt.After(after) {
-		t.Fatalf("created_at = %v, want between %v and %v",
-			a.CreatedAt, before, after)
+	if a.CreatedAt.UTC().Sub(oldCreated).Abs() > time.Second {
+		t.Fatalf("created_at changed: got %v, want ~%v",
+			a.CreatedAt, oldCreated)
+	}
+	wantGrant := ad.HalfExpireGrant(before.ExpireGrant())
+	if diff := a.ExpireGrant() - wantGrant; diff < -time.Second ||
+		diff > time.Second {
+		t.Fatalf("expire_grant = %v, want ~%v", a.ExpireGrant(), wantGrant)
+	}
+	wantExpires := activateAt.Add(wantGrant)
+	if a.ExpiresAt.UTC().Sub(wantExpires).Abs() > 2*time.Second {
+		t.Fatalf("expires_at = %v, want ~%v", a.ExpiresAt, wantExpires)
 	}
 }
 
@@ -138,12 +150,11 @@ func TestListAdsDueToExpire(t *testing.T) {
 	freshID := createTestAd(t, u.ID, "Fresh ad")
 	staleID := createTestAd(t, u.ID, "Stale ad")
 
-	cutoff := time.Now().UTC().AddDate(0, -config.AdExpireAfterMonths, 0).
-		Add(-time.Hour)
-	_, err = db.Exec(`UPDATE ads SET created_at = $1 WHERE id = $2`,
-		cutoff, staleID)
+	past := time.Now().UTC().Add(-time.Hour)
+	_, err = db.Exec(`UPDATE ads SET expires_at = $1 WHERE id = $2`,
+		past, staleID)
 	if err != nil {
-		t.Fatalf("backdate stale: %v", err)
+		t.Fatalf("backdate stale expires_at: %v", err)
 	}
 
 	due, err := ad.ListAdsDueToExpire()
@@ -177,5 +188,65 @@ func TestListAdsDueToExpire(t *testing.T) {
 		if row.ID == staleID {
 			t.Fatal("paused ad should not be due to expire")
 		}
+	}
+}
+
+func TestCreateAdSetsExpiresAt(t *testing.T) {
+	resetAdDB(t)
+	u, err := user.CreateUser("expirecreate", "+15559872003", "password1")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	before := time.Now().UTC()
+	adID := createTestAd(t, u.ID, "Expire create")
+	a, err := ad.GetAd(u.ID, adID, time.UTC)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	want := before.Add(ad.InitialExpireGrant(before))
+	if a.ExpiresAt.UTC().Sub(want).Abs() > 2*time.Second {
+		t.Fatalf("expires_at = %v, want ~%v", a.ExpiresAt, want)
+	}
+}
+
+func TestCreateGarageSaleExpiresFromSaleEnd(t *testing.T) {
+	resetAdDB(t)
+	u, err := user.CreateUser("expiregarage", "+15559872004", "password1")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	catID, err := ad.GetCategoryIDByName("Garage/Estate Sale")
+	if err != nil {
+		t.Fatalf("garage category: %v", err)
+	}
+	saleType := "Garage Sale"
+	start := "2026-08-01"
+	end := "2026-08-02"
+	addr := "123 Main St, Ann Arbor, MI"
+	adID, err := ad.CreateAd(ad.CreateInput{
+		CategoryID:  catID,
+		UserID:      u.ID,
+		Title:       "Yard sale expire test",
+		Description: "desc",
+		Facets: map[string]facet.Value{
+			"sale_type":       {Text: &saleType},
+			"sale_start_date": {Text: &start},
+			"sale_end_date":   {Text: &end},
+			"address":         {Text: &addr},
+		},
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	a, err := ad.GetAd(u.ID, adID, time.UTC)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	want, err := ad.ExpiresAtFromSaleEnd(end)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !a.ExpiresAt.UTC().Equal(want) {
+		t.Fatalf("expires_at = %v, want %v", a.ExpiresAt, want)
 	}
 }

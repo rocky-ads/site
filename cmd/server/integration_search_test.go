@@ -299,8 +299,10 @@ func TestIntegrationSearchGeoAndFacetFilters(t *testing.T) {
 func insertIntegrationAdWithCondition(t *testing.T, title, condition string) {
 	t.Helper()
 	var id int
-	err := db.QueryRow(`INSERT INTO ads (category_id, title, description, user_id)
-		VALUES ($1, $2, 'desc', $3) RETURNING id`,
+	err := db.QueryRow(`INSERT INTO ads (category_id, title, description, user_id,
+		 expires_at, expire_grant)
+		VALUES ($1, $2, 'desc', $3,
+		        NOW() + INTERVAL '3 months', INTERVAL '3 months') RETURNING id`,
 		integrationCarsCategory, title, integrationTestUserID).Scan(&id)
 	if err != nil {
 		t.Fatal(err)
@@ -325,8 +327,10 @@ func rebuildIntegrationAdVector(t *testing.T, adID int) {
 func insertIntegrationAdWithMileage(t *testing.T, title string, mileage int) {
 	t.Helper()
 	var id int
-	err := db.QueryRow(`INSERT INTO ads (category_id, title, description, user_id)
-		VALUES ($1, $2, 'desc', $3) RETURNING id`,
+	err := db.QueryRow(`INSERT INTO ads (category_id, title, description, user_id,
+		 expires_at, expire_grant)
+		VALUES ($1, $2, 'desc', $3,
+		        NOW() + INTERVAL '3 months', INTERVAL '3 months') RETURNING id`,
 		integrationCarsCategory, title, integrationTestUserID).Scan(&id)
 	if err != nil {
 		t.Fatal(err)
@@ -340,8 +344,10 @@ func insertIntegrationAdWithMileage(t *testing.T, title string, mileage int) {
 func insertIntegrationAdWithDate(t *testing.T, title, date string) {
 	t.Helper()
 	var id int
-	err := db.QueryRow(`INSERT INTO ads (category_id, title, description, user_id)
-		VALUES ($1, $2, 'desc', $3) RETURNING id`,
+	err := db.QueryRow(`INSERT INTO ads (category_id, title, description, user_id,
+		 expires_at, expire_grant)
+		VALUES ($1, $2, 'desc', $3,
+		        NOW() + INTERVAL '3 months', INTERVAL '3 months') RETURNING id`,
 		integrationGarageCategory, title, integrationTestUserID).Scan(&id)
 	if err != nil {
 		t.Fatal(err)
@@ -355,8 +361,10 @@ func insertIntegrationAdWithDate(t *testing.T, title, date string) {
 func insertIntegrationAdWithPricingStyle(t *testing.T, title, jsonVal string) {
 	t.Helper()
 	var id int
-	err := db.QueryRow(`INSERT INTO ads (category_id, title, description, user_id)
-		VALUES ($1, $2, 'desc', $3) RETURNING id`,
+	err := db.QueryRow(`INSERT INTO ads (category_id, title, description, user_id,
+		 expires_at, expire_grant)
+		VALUES ($1, $2, 'desc', $3,
+		        NOW() + INTERVAL '3 months', INTERVAL '3 months') RETURNING id`,
 		integrationGarageCategory, title, integrationTestUserID).Scan(&id)
 	if err != nil {
 		t.Fatal(err)

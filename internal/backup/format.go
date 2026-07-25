@@ -135,31 +135,35 @@ type LocationRow struct {
 }
 
 type AdRow struct {
-	Ref         int        `json:"ref"`
-	CategoryID  int        `json:"category_id" db:"category_id"`
-	Title       string     `json:"title" db:"title"`
-	Description string     `json:"description" db:"description"`
-	CreatedAt   time.Time  `json:"created_at" db:"created_at"`
-	InactiveAt  *time.Time `json:"inactive_at,omitempty" db:"inactive_at"`
-	DeletedAt   *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
-	OwnerHash   string     `json:"owner_hash"`
-	ImageCount  int        `json:"image_count" db:"image_count"`
-	LocationRaw *string    `json:"location_raw,omitempty"`
-	Tags        string     `json:"tags" db:"tags"`
+	Ref           int        `json:"ref"`
+	CategoryID    int        `json:"category_id" db:"category_id"`
+	Title         string     `json:"title" db:"title"`
+	Description   string     `json:"description" db:"description"`
+	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
+	ExpiresAt     time.Time  `json:"expires_at" db:"expires_at"`
+	ExpireGrantNs int64      `json:"expire_grant_ns" db:"expire_grant_ns"`
+	InactiveAt    *time.Time `json:"inactive_at,omitempty" db:"inactive_at"`
+	DeletedAt     *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
+	OwnerHash     string     `json:"owner_hash"`
+	ImageCount    int        `json:"image_count" db:"image_count"`
+	LocationRaw   *string    `json:"location_raw,omitempty"`
+	Tags          string     `json:"tags" db:"tags"`
 }
 
 type adDBRow struct {
-	ID          int        `db:"id"`
-	CategoryID  int        `db:"category_id"`
-	Title       string     `db:"title"`
-	Description string     `db:"description"`
-	CreatedAt   time.Time  `db:"created_at"`
-	InactiveAt  *time.Time `db:"inactive_at"`
-	DeletedAt   *time.Time `db:"deleted_at"`
-	UserID      int        `db:"user_id"`
-	ImageCount  int        `db:"image_count"`
-	LocationID  *int       `db:"location_id"`
-	Tags        string     `db:"tags"`
+	ID              int        `db:"id"`
+	CategoryID      int        `db:"category_id"`
+	Title           string     `db:"title"`
+	Description     string     `db:"description"`
+	CreatedAt       time.Time  `db:"created_at"`
+	ExpiresAt       time.Time  `db:"expires_at"`
+	ExpireGrantSecs float64    `db:"expire_grant_secs"`
+	InactiveAt      *time.Time `db:"inactive_at"`
+	DeletedAt       *time.Time `db:"deleted_at"`
+	UserID          int        `db:"user_id"`
+	ImageCount      int        `db:"image_count"`
+	LocationID      *int       `db:"location_id"`
+	Tags            string     `db:"tags"`
 }
 
 type AdFacetRow struct {

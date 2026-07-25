@@ -47,6 +47,7 @@ type AdDetail struct {
 	// until the viewer logs in.
 	ShowLoginForDetails bool
 	CreatedAt           time.Time
+	ExpiresAt           time.Time
 	Bookmarked          bool
 	Active              bool
 	Inactive            bool
