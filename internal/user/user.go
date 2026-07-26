@@ -25,21 +25,23 @@ const (
 )
 
 type User struct {
-	ID             int
-	Name           string // Decrypted (calculated field)
-	EncryptedName  string
-	NameNonce      string
-	PasswordHash   string
-	PasswordSalt   string
-	PasswordAlgo   string
-	PhoneE64       string // Decrypted (calculated field)
-	EncryptedPhone string
-	PhoneNonce     string
-	CreatedAt      time.Time
-	IsAdmin        bool
-	PhoneVerified  bool
-	SMSOptedOut    bool
-	DeletedAt      *time.Time
+	ID                int
+	Name              string // Decrypted (calculated field)
+	EncryptedName     string
+	NameNonce         string
+	PasswordHash      string
+	PasswordSalt      string
+	PasswordAlgo      string
+	PhoneE64          string // Decrypted (calculated field)
+	EncryptedPhone    string
+	PhoneNonce        string
+	CreatedAt         time.Time
+	IsAdmin           bool
+	PhoneVerified     bool
+	SMSOptedOut       bool
+	HasAccountPicture bool
+	AccountPictureURL string
+	DeletedAt         *time.Time
 }
 
 const userSelectFields = `SELECT 
@@ -55,13 +57,16 @@ const userSelectFields = `SELECT
 	created_at,
 	is_admin,
 	sms_opted_out,
+	has_account_picture,
+	account_picture_url,
 	deleted_at
 FROM users`
 
 func processUserRow(id int, encryptedNameBytes, nameNonceBytes []byte,
 	encryptedPhoneBytes, phoneNonceBytes []byte, passwordHash, passwordSalt,
 	passwordAlgo string, phoneVerifiedInt int, createdAt time.Time, isAdminInt int,
-	smsOptedOutInt int, deletedAt *time.Time) (User, error) {
+	smsOptedOutInt, hasAccountPictureInt int, accountPictureURL sql.NullString,
+	deletedAt *time.Time) (User, error) {
 	var u User
 
 	u.ID = id
@@ -79,6 +84,10 @@ func processUserRow(id int, encryptedNameBytes, nameNonceBytes []byte,
 	u.PhoneVerified = phoneVerifiedInt == 1
 	u.IsAdmin = isAdminInt == 1
 	u.SMSOptedOut = smsOptedOutInt == 1
+	u.HasAccountPicture = hasAccountPictureInt == 1
+	if accountPictureURL.Valid {
+		u.AccountPictureURL = accountPictureURL.String
+	}
 
 	var err error
 	u.Name, err = decryptName(u.ID, u.EncryptedName, u.NameNonce)
@@ -103,6 +112,8 @@ func scanUserFields(s scanner) (User, error) {
 	var encryptedNameBytes, nameNonceBytes []byte
 	var encryptedPhoneBytes, phoneNonceBytes []byte
 	var phoneVerifiedInt, isAdminInt, smsOptedOutInt int
+	var hasAccountPictureInt int
+	var accountPictureURL sql.NullString
 	var passwordHash, passwordSalt, passwordAlgo string
 	var createdAt time.Time
 	var deletedAt *time.Time
@@ -120,6 +131,8 @@ func scanUserFields(s scanner) (User, error) {
 		&createdAt,
 		&isAdminInt,
 		&smsOptedOutInt,
+		&hasAccountPictureInt,
+		&accountPictureURL,
 		&deletedAt,
 	)
 	if err != nil {
@@ -135,6 +148,8 @@ func scanUserFields(s scanner) (User, error) {
 		createdAt,
 		isAdminInt,
 		smsOptedOutInt,
+		hasAccountPictureInt,
+		accountPictureURL,
 		deletedAt,
 	)
 }
@@ -628,6 +643,37 @@ func PromoteToAdmin(userID int) error {
 
 func DemoteFromAdmin(userID int) error {
 	_, err := db.Exec("UPDATE users SET is_admin = 0 WHERE id = $1", userID)
+	return err
+}
+
+// ConfirmAccountPicture marks that users/{id}/account.webp was uploaded.
+func ConfirmAccountPicture(userID int) error {
+	_, err := db.Exec(
+		`UPDATE users SET has_account_picture = 1 WHERE id = $1`, userID,
+	)
+	return err
+}
+
+// ClearAccountPicture clears the picture flag (caller deletes MinIO object).
+func ClearAccountPicture(userID int) error {
+	_, err := db.Exec(
+		`UPDATE users SET has_account_picture = 0 WHERE id = $1`, userID,
+	)
+	return err
+}
+
+// SetAccountPictureURL sets or clears the optional click-through URL.
+func SetAccountPictureURL(userID int, pictureURL string) error {
+	var arg any
+	if pictureURL == "" {
+		arg = nil
+	} else {
+		arg = pictureURL
+	}
+	_, err := db.Exec(
+		`UPDATE users SET account_picture_url = $1 WHERE id = $2`,
+		arg, userID,
+	)
 	return err
 }
 

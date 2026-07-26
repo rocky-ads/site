@@ -29,11 +29,13 @@ const (
 func userProfileData(u user.User, activeAdCount, userRockCount int,
 	tz *time.Location, memberSinceLayout string) ui.UserProfileData {
 	return ui.UserProfileData{
-		ID:            u.ID,
-		Name:          u.Name,
-		MemberSince:   u.CreatedAt.In(tz).Format(memberSinceLayout),
-		ActiveAdCount: activeAdCount,
-		UserRockCount: userRockCount,
+		ID:                u.ID,
+		Name:              u.Name,
+		MemberSince:       u.CreatedAt.In(tz).Format(memberSinceLayout),
+		ActiveAdCount:     activeAdCount,
+		UserRockCount:     userRockCount,
+		HasAccountPicture: u.HasAccountPicture,
+		AccountPictureURL: u.AccountPictureURL,
 	}
 }
 
@@ -117,7 +119,10 @@ func UserSettingsHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "User not found")
 	}
-	return renderPage(c, "Settings", ui.SettingsPage(u.Name, u.PhoneE64, u.SMSOptedOut))
+	return renderPage(c, "Settings", ui.SettingsPage(
+		u.Name, u.PhoneE64, u.SMSOptedOut,
+		u.ID, u.HasAccountPicture, u.AccountPictureURL,
+	))
 }
 
 func NotificationsToggleHandler(c *fiber.Ctx) error {
@@ -333,6 +338,7 @@ func DeleteAccountHandler(c *fiber.Ctx) error {
 		logger.Error("Failed to delete account", "error", err, "userID", userID)
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to delete account")
 	}
+	deleteUserAccountPicture(userID)
 
 	convs, err := message.CloseConversationsForDeletedAccount(userID)
 	if err != nil {

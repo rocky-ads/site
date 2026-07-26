@@ -18,6 +18,7 @@ func SetAdImageStore(store imagestore.Store) {
 	}
 	adImageURLCache = urlCache
 	ui.SetAdImageURLFunc(resolveAdImageURL)
+	ui.SetUserAccountPictureURLFunc(resolveUserAccountPictureURL)
 }
 
 func resolveAdImageURL(adID, index int, size string) string {
@@ -34,4 +35,30 @@ func resolveAdImageURL(adID, index int, size string) string {
 		return ""
 	}
 	return url
+}
+
+func resolveUserAccountPictureURL(userID int) string {
+	if adImageStore == nil || adImageURLCache == nil {
+		return ""
+	}
+	ok, err := adImageStore.StatUserAccount(userID)
+	if err != nil || !ok {
+		return ""
+	}
+	url, err := adImageURLCache.ReusedGetUserAccountURL(userID,
+		config.MinIOPresignedGetExpiry)
+	if err != nil {
+		return ""
+	}
+	return url
+}
+
+func deleteUserAccountPicture(userID int) {
+	if adImageStore == nil {
+		return
+	}
+	_ = adImageStore.DeleteUserAccount(userID)
+	if adImageURLCache != nil {
+		adImageURLCache.InvalidateUserAccountURL(userID)
+	}
 }

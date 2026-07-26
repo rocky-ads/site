@@ -67,61 +67,67 @@ func (b *B64) UnmarshalJSON(data []byte) error {
 }
 
 type UserRow struct {
-	EncryptUserID  int        `json:"encrypt_user_id"`
-	CreatedAt      time.Time  `json:"created_at" db:"created_at"`
-	DeletedAt      *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
-	IsAdmin        int        `json:"is_admin" db:"is_admin"`
-	EncryptedName  B64        `json:"encrypted_name" db:"encrypted_name"`
-	NameNonce      B64        `json:"name_nonce" db:"name_nonce"`
-	NameHash       string     `json:"name_hash" db:"name_hash"`
-	PasswordHash   string     `json:"password_hash" db:"password_hash"`
-	PasswordSalt   string     `json:"password_salt" db:"password_salt"`
-	PasswordAlgo   string     `json:"password_algo" db:"password_algo"`
-	EncryptedPhone B64        `json:"encrypted_phone" db:"encrypted_phone"`
-	PhoneNonce     B64        `json:"phone_nonce" db:"phone_nonce"`
-	PhoneHash      string     `json:"phone_hash" db:"phone_hash"`
-	PhoneVerified  int        `json:"phone_verified" db:"phone_verified"`
-	SMSOptedOut    int        `json:"sms_opted_out" db:"sms_opted_out"`
-	LastSMSSentAt  *time.Time `json:"last_sms_sent_at,omitempty" db:"last_sms_sent_at"`
+	EncryptUserID     int        `json:"encrypt_user_id"`
+	CreatedAt         time.Time  `json:"created_at" db:"created_at"`
+	DeletedAt         *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
+	IsAdmin           int        `json:"is_admin" db:"is_admin"`
+	EncryptedName     B64        `json:"encrypted_name" db:"encrypted_name"`
+	NameNonce         B64        `json:"name_nonce" db:"name_nonce"`
+	NameHash          string     `json:"name_hash" db:"name_hash"`
+	PasswordHash      string     `json:"password_hash" db:"password_hash"`
+	PasswordSalt      string     `json:"password_salt" db:"password_salt"`
+	PasswordAlgo      string     `json:"password_algo" db:"password_algo"`
+	EncryptedPhone    B64        `json:"encrypted_phone" db:"encrypted_phone"`
+	PhoneNonce        B64        `json:"phone_nonce" db:"phone_nonce"`
+	PhoneHash         string     `json:"phone_hash" db:"phone_hash"`
+	PhoneVerified     int        `json:"phone_verified" db:"phone_verified"`
+	SMSOptedOut       int        `json:"sms_opted_out" db:"sms_opted_out"`
+	LastSMSSentAt     *time.Time `json:"last_sms_sent_at,omitempty" db:"last_sms_sent_at"`
+	HasAccountPicture int        `json:"has_account_picture" db:"has_account_picture"`
+	AccountPictureURL *string    `json:"account_picture_url,omitempty" db:"account_picture_url"`
 }
 
 type userDBRow struct {
-	ID             int        `db:"id"`
-	CreatedAt      time.Time  `db:"created_at"`
-	DeletedAt      *time.Time `db:"deleted_at"`
-	IsAdmin        int        `db:"is_admin"`
-	EncryptedName  []byte     `db:"encrypted_name"`
-	NameNonce      []byte     `db:"name_nonce"`
-	NameHash       string     `db:"name_hash"`
-	PasswordHash   string     `db:"password_hash"`
-	PasswordSalt   string     `db:"password_salt"`
-	PasswordAlgo   string     `db:"password_algo"`
-	EncryptedPhone []byte     `db:"encrypted_phone"`
-	PhoneNonce     []byte     `db:"phone_nonce"`
-	PhoneHash      string     `db:"phone_hash"`
-	PhoneVerified  int        `db:"phone_verified"`
-	SMSOptedOut    int        `db:"sms_opted_out"`
-	LastSMSSentAt  *time.Time `db:"last_sms_sent_at"`
+	ID                int        `db:"id"`
+	CreatedAt         time.Time  `db:"created_at"`
+	DeletedAt         *time.Time `db:"deleted_at"`
+	IsAdmin           int        `db:"is_admin"`
+	EncryptedName     []byte     `db:"encrypted_name"`
+	NameNonce         []byte     `db:"name_nonce"`
+	NameHash          string     `db:"name_hash"`
+	PasswordHash      string     `db:"password_hash"`
+	PasswordSalt      string     `db:"password_salt"`
+	PasswordAlgo      string     `db:"password_algo"`
+	EncryptedPhone    []byte     `db:"encrypted_phone"`
+	PhoneNonce        []byte     `db:"phone_nonce"`
+	PhoneHash         string     `db:"phone_hash"`
+	PhoneVerified     int        `db:"phone_verified"`
+	SMSOptedOut       int        `db:"sms_opted_out"`
+	LastSMSSentAt     *time.Time `db:"last_sms_sent_at"`
+	HasAccountPicture int        `db:"has_account_picture"`
+	AccountPictureURL *string    `db:"account_picture_url"`
 }
 
 func userRowFromDB(r userDBRow) UserRow {
 	return UserRow{
-		EncryptUserID:  r.ID,
-		CreatedAt:      r.CreatedAt,
-		DeletedAt:      r.DeletedAt,
-		IsAdmin:        r.IsAdmin,
-		EncryptedName:  B64(r.EncryptedName),
-		NameNonce:      B64(r.NameNonce),
-		NameHash:       r.NameHash,
-		PasswordHash:   r.PasswordHash,
-		PasswordSalt:   r.PasswordSalt,
-		PasswordAlgo:   r.PasswordAlgo,
-		EncryptedPhone: B64(r.EncryptedPhone),
-		PhoneNonce:     B64(r.PhoneNonce),
-		PhoneHash:      r.PhoneHash,
-		PhoneVerified:  r.PhoneVerified,
-		SMSOptedOut:    r.SMSOptedOut,
-		LastSMSSentAt:  r.LastSMSSentAt,
+		EncryptUserID:     r.ID,
+		CreatedAt:         r.CreatedAt,
+		DeletedAt:         r.DeletedAt,
+		IsAdmin:           r.IsAdmin,
+		EncryptedName:     B64(r.EncryptedName),
+		NameNonce:         B64(r.NameNonce),
+		NameHash:          r.NameHash,
+		PasswordHash:      r.PasswordHash,
+		PasswordSalt:      r.PasswordSalt,
+		PasswordAlgo:      r.PasswordAlgo,
+		EncryptedPhone:    B64(r.EncryptedPhone),
+		PhoneNonce:        B64(r.PhoneNonce),
+		PhoneHash:         r.PhoneHash,
+		PhoneVerified:     r.PhoneVerified,
+		SMSOptedOut:       r.SMSOptedOut,
+		LastSMSSentAt:     r.LastSMSSentAt,
+		HasAccountPicture: r.HasAccountPicture,
+		AccountPictureURL: r.AccountPictureURL,
 	}
 }
 

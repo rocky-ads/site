@@ -15,3 +15,18 @@ func AdImageSrc(adID, index int, size string) string {
 	}
 	return adImageURLFunc(adID, index, size)
 }
+
+var userAccountPictureURLFunc func(userID int) string
+
+// SetUserAccountPictureURLFunc registers the resolver for account pictures.
+func SetUserAccountPictureURLFunc(f func(userID int) string) {
+	userAccountPictureURLFunc = f
+}
+
+// UserAccountPictureSrc returns a PresignGet URL, or "" when missing.
+func UserAccountPictureSrc(userID int) string {
+	if userAccountPictureURLFunc == nil {
+		return ""
+	}
+	return userAccountPictureURLFunc(userID)
+}

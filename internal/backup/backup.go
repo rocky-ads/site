@@ -131,7 +131,8 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 		       encrypted_name, name_nonce, name_hash,
 		       password_hash, password_salt, password_algo,
 		       encrypted_phone, phone_nonce, phone_hash,
-		       phone_verified, sms_opted_out, last_sms_sent_at
+		       phone_verified, sms_opted_out, last_sms_sent_at,
+		       has_account_picture, account_picture_url
 		FROM users
 		ORDER BY id`); err != nil {
 		return fmt.Errorf("query users: %w", err)

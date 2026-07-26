@@ -151,6 +151,7 @@ func AdminUserDeleteHandler(c *fiber.Ctx) error {
 		logger.Error("Failed to delete user", "error", err, "userID", userID)
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to delete user")
 	}
+	deleteUserAccountPicture(userID)
 
 	convs, err := message.CloseConversationsForDeletedAccount(userID)
 	if err != nil {

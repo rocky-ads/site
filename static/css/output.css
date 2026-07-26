@@ -587,6 +587,9 @@
   .h-full {
     height: 100%;
   }
+  .max-h-\[300px\] {
+    max-height: 300px;
+  }
   .max-h-full {
     max-height: 100%;
   }
@@ -1602,6 +1605,42 @@
       background-color: var(--color-green-500);
     }
   }
+  .file\:mr-4 {
+    &::file-selector-button {
+      margin-right: calc(var(--spacing) * 4);
+    }
+  }
+  .file\:rounded {
+    &::file-selector-button {
+      border-radius: 0.25rem;
+    }
+  }
+  .file\:border-0 {
+    &::file-selector-button {
+      border-style: var(--tw-border-style);
+      border-width: 0px;
+    }
+  }
+  .file\:bg-zinc-200 {
+    &::file-selector-button {
+      background-color: var(--color-zinc-200);
+    }
+  }
+  .file\:px-4 {
+    &::file-selector-button {
+      padding-inline: calc(var(--spacing) * 4);
+    }
+  }
+  .file\:py-2 {
+    &::file-selector-button {
+      padding-block: calc(var(--spacing) * 2);
+    }
+  }
+  .file\:text-zinc-900 {
+    &::file-selector-button {
+      color: var(--color-zinc-900);
+    }
+  }
   .placeholder\:text-zinc-400 {
     &::placeholder {
       color: var(--color-zinc-400);
@@ -1791,6 +1830,13 @@
     &:hover {
       @media (hover: hover) {
         background-color: var(--color-zinc-600);
+      }
+    }
+  }
+  .hover\:bg-zinc-700 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-zinc-700);
       }
     }
   }
@@ -2427,6 +2473,20 @@
     @media (prefers-color-scheme: dark) {
       --tw-invert: invert(100%);
       filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);
+    }
+  }
+  .dark\:file\:bg-zinc-700 {
+    @media (prefers-color-scheme: dark) {
+      &::file-selector-button {
+        background-color: var(--color-zinc-700);
+      }
+    }
+  }
+  .dark\:file\:text-zinc-100 {
+    @media (prefers-color-scheme: dark) {
+      &::file-selector-button {
+        color: var(--color-zinc-100);
+      }
     }
   }
   .dark\:placeholder\:text-zinc-500 {

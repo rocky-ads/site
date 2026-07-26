@@ -10,26 +10,54 @@ import (
 )
 
 func TestFormatExpiresIn(t *testing.T) {
+	now := time.Now()
 	tests := []struct {
 		name string
-		in   time.Duration
+		at   time.Time
 		want string
 	}{
-		{"soon_minutes", 30 * time.Minute, "Expires soon"},
-		{"soon_hours", 5 * time.Hour, "Expires soon"},
-		{"one_day", 25 * time.Hour, "Expires in 1 day"},
-		{"days", 5*24*time.Hour + time.Hour, "Expires in 5 days"},
-		{"one_month", 30 * 24 * time.Hour, "Expires in 1 month"},
-		{"one_month_days", 42 * 24 * time.Hour, "Expires in 1 month 12 days"},
-		{"months", 60 * 24 * time.Hour, "Expires in 2 months"},
-		{"months_days", 72 * 24 * time.Hour, "Expires in 2 months 12 days"},
+		{"soon_minutes", now.Add(30 * time.Minute), "Expires soon"},
+		{"soon_hours", now.Add(5 * time.Hour), "Expires soon"},
+		{"one_day", now.AddDate(0, 0, 1).Add(time.Hour), "Expires in 1 day"},
+		{"days", now.AddDate(0, 0, 5).Add(time.Hour), "Expires in 5 days"},
+		{"one_month", now.AddDate(0, 1, 0), "Expires in 1 month"},
+		{"one_month_days", now.AddDate(0, 1, 12), "Expires in 1 month 12 days"},
+		{"months", now.AddDate(0, 2, 0), "Expires in 2 months"},
+		{"months_days", now.AddDate(0, 2, 12), "Expires in 2 months 12 days"},
+		// Fresh InitialExpireGrant is AddDate(0, 3, 0); must not pick up
+		// leftover days from 30-day-month math (~91–92 real days).
+		{"initial_grant", now.AddDate(0, 3, 0), "Expires in 3 months"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Add a second so time.Until does not slip under a day boundary.
-			got := formatExpiresIn(time.Now().Add(tt.in + time.Second))
+			got := formatExpiresIn(tt.at)
 			if got != tt.want {
-				t.Fatalf("formatExpiresIn(%v) = %q, want %q", tt.in, got, tt.want)
+				t.Fatalf("formatExpiresIn(%v) = %q, want %q", tt.at, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCalendarMonthsDays(t *testing.T) {
+	loc := time.UTC
+	from := time.Date(2026, 7, 25, 11, 26, 0, 0, loc)
+	tests := []struct {
+		name       string
+		to         time.Time
+		wantMonths int
+		wantDays   int
+	}{
+		{"exact_3mo", from.AddDate(0, 3, 0), 3, 0},
+		{"3mo_plus_1d", from.AddDate(0, 3, 1), 3, 1},
+		{"under_3mo", from.AddDate(0, 3, -1), 2, 29}, // Sep has 30 days
+		{"same_day", from, 0, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m, d := calendarMonthsDays(from, tt.to)
+			if m != tt.wantMonths || d != tt.wantDays {
+				t.Fatalf("calendarMonthsDays = %d mo %d d, want %d mo %d d",
+					m, d, tt.wantMonths, tt.wantDays)
 			}
 		})
 	}

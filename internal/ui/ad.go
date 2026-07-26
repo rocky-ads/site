@@ -521,14 +521,14 @@ func copyAdLink(adID int) g.Node {
 }
 
 func formatExpiresIn(expiresAt time.Time) string {
-	d := time.Until(expiresAt)
-	if d < 24*time.Hour {
+	now := time.Now()
+	if expiresAt.Sub(now) < 24*time.Hour {
 		return "Expires soon"
 	}
-	// Whole days remaining (partial day does not count up).
-	totalDays := int(d / (24 * time.Hour))
-	months := totalDays / 30
-	days := totalDays % 30
+	// Calendar months match InitialExpireGrant (AddDate months), not
+	// fixed 30-day blocks — else a fresh 3-month grant reads as
+	// "3 months 1 day" / "3 months 2 days".
+	months, days := calendarMonthsDays(now, expiresAt)
 
 	monthPart := ""
 	if months == 1 {
@@ -548,9 +548,32 @@ func formatExpiresIn(expiresAt time.Time) string {
 		return fmt.Sprintf("Expires in %s %s", monthPart, dayPart)
 	case monthPart != "":
 		return "Expires in " + monthPart
-	default:
+	case dayPart != "":
 		return "Expires in " + dayPart
+	default:
+		return "Expires soon"
 	}
+}
+
+// calendarMonthsDays is whole calendar months and leftover days from
+// from→to using calendar dates (same basis as time.AddDate months).
+func calendarMonthsDays(from, to time.Time) (months, days int) {
+	from = from.In(to.Location())
+	y1, m1, d1 := from.Date()
+	y2, m2, d2 := to.Date()
+
+	months = (y2-y1)*12 + int(m2-m1)
+	days = d2 - d1
+	if days < 0 {
+		months--
+		// Day 0 of to's month is the last day of the previous month.
+		lastPrev := time.Date(y2, m2, 0, 0, 0, 0, 0, to.Location()).Day()
+		days += lastPrev
+	}
+	if months < 0 {
+		return 0, 0
+	}
+	return months, days
 }
 
 func descriptionDisplay(adID int, original string, facetDetails []string,

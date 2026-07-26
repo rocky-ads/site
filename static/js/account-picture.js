@@ -1,0 +1,194 @@
+// account-picture.js: single WebP encode + MinIO presigned PUT for settings
+
+const ACCOUNT_PICTURE_MAX_WIDTH = 1200;
+const ACCOUNT_PICTURE_QUALITY = 0.8;
+
+function accountPictureCsrfToken() {
+	const el = document.querySelector('[hx-headers]');
+	if (!el) {
+		return '';
+	}
+	try {
+		const headers = JSON.parse(el.getAttribute('hx-headers'));
+		return headers['X-Csrf-Token'] || '';
+	} catch (e) {
+		return '';
+	}
+}
+
+function setAccountPictureStatus(msg) {
+	const el = document.getElementById('account-picture-status');
+	if (!el) {
+		return;
+	}
+	if (!msg) {
+		el.textContent = '';
+		el.classList.add('hidden');
+		return;
+	}
+	el.textContent = msg;
+	el.classList.remove('hidden');
+}
+
+function showAccountPictureError(msg) {
+	const el = document.getElementById('account-picture-error');
+	if (!el) {
+		alert(msg);
+		return;
+	}
+	el.textContent = msg;
+	el.classList.remove('hidden');
+}
+
+function clearAccountPictureError() {
+	const el = document.getElementById('account-picture-error');
+	if (!el) {
+		return;
+	}
+	el.textContent = '';
+	el.classList.add('hidden');
+}
+
+async function loadAccountPictureBitmap(file) {
+	if (typeof createImageBitmap === 'function') {
+		return createImageBitmap(file);
+	}
+	return new Promise((resolve, reject) => {
+		const url = URL.createObjectURL(file);
+		const img = new Image();
+		img.onload = () => {
+			URL.revokeObjectURL(url);
+			resolve(img);
+		};
+		img.onerror = () => {
+			URL.revokeObjectURL(url);
+			reject(new Error('Failed to decode image'));
+		};
+		img.src = url;
+	});
+}
+
+function encodeAccountPictureWebP(source, maxWidth, quality) {
+	const sw = source.width || source.naturalWidth;
+	const sh = source.height || source.naturalHeight;
+	const scale = sw > maxWidth ? maxWidth / sw : 1;
+	const w = Math.max(1, Math.round(sw * scale));
+	const h = Math.max(1, Math.round(sh * scale));
+	const canvas = document.createElement('canvas');
+	canvas.width = w;
+	canvas.height = h;
+	const ctx = canvas.getContext('2d');
+	ctx.drawImage(source, 0, 0, w, h);
+	return new Promise((resolve, reject) => {
+		canvas.toBlob((blob) => {
+			if (!blob) {
+				reject(new Error('WebP encode failed'));
+				return;
+			}
+			resolve(blob);
+		}, 'image/webp', quality);
+	});
+}
+
+function putAccountPicture(url, blob) {
+	return new Promise((resolve, reject) => {
+		const xhr = new XMLHttpRequest();
+		xhr.open('PUT', url);
+		xhr.setRequestHeader('Content-Type', 'image/webp');
+		xhr.onload = () => {
+			if (xhr.status >= 200 && xhr.status < 300) {
+				resolve();
+			} else {
+				reject(new Error('Upload failed: ' + xhr.status));
+			}
+		};
+		xhr.onerror = () => reject(new Error('Network error during upload'));
+		xhr.send(blob);
+	});
+}
+
+async function uploadAccountPicture(file) {
+	clearAccountPictureError();
+	setAccountPictureStatus('Processing image...');
+	const bitmap = await loadAccountPictureBitmap(file);
+	let blob;
+	try {
+		blob = await encodeAccountPictureWebP(
+			bitmap, ACCOUNT_PICTURE_MAX_WIDTH, ACCOUNT_PICTURE_QUALITY);
+	} finally {
+		if (bitmap.close) {
+			bitmap.close();
+		}
+	}
+
+	setAccountPictureStatus('Preparing upload...');
+	const presignRes = await fetch(
+		'/auth/user/settings/account-picture/presign', {
+			method: 'POST',
+			headers: {
+				'Accept': 'application/json',
+				'X-Csrf-Token': accountPictureCsrfToken(),
+			},
+			credentials: 'same-origin',
+		});
+	if (!presignRes.ok) {
+		const data = await presignRes.json().catch(() => ({}));
+		throw new Error(data.error || 'Failed to prepare upload');
+	}
+	const { putUrl } = await presignRes.json();
+	if (!putUrl) {
+		throw new Error('Missing upload URL');
+	}
+
+	setAccountPictureStatus('Uploading...');
+	await putAccountPicture(putUrl, blob);
+
+	setAccountPictureStatus('Finishing...');
+	const confirmRes = await fetch(
+		'/auth/user/settings/account-picture/confirm', {
+			method: 'POST',
+			headers: {
+				'Accept': 'application/json',
+				'X-Csrf-Token': accountPictureCsrfToken(),
+			},
+			credentials: 'same-origin',
+		});
+	if (!confirmRes.ok) {
+		const data = await confirmRes.json().catch(() => ({}));
+		throw new Error(data.error || 'Failed to confirm upload');
+	}
+	setAccountPictureStatus('Done');
+	window.location.reload();
+}
+
+function bindAccountPictureUpload() {
+	const btn = document.getElementById('account-picture-upload-btn');
+	const input = document.getElementById('account-picture-file');
+	if (!btn || !input || btn.dataset.bound === '1') {
+		return;
+	}
+	btn.dataset.bound = '1';
+	btn.addEventListener('click', async () => {
+		if (!input.files || input.files.length === 0) {
+			showAccountPictureError('Choose an image file first');
+			return;
+		}
+		btn.disabled = true;
+		try {
+			await uploadAccountPicture(input.files[0]);
+		} catch (err) {
+			console.error(err);
+			setAccountPictureStatus('');
+			showAccountPictureError(err.message || 'Upload failed');
+			btn.disabled = false;
+		}
+	});
+}
+
+document.addEventListener('DOMContentLoaded', bindAccountPictureUpload);
+document.body.addEventListener('htmx:afterSwap', (e) => {
+	if (e.detail && e.detail.target &&
+		e.detail.target.id === 'account-picture-section') {
+		bindAccountPictureUpload();
+	}
+});
