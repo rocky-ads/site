@@ -99,7 +99,7 @@ func formatListedAge(t time.Time) string {
 
 func newBadge() g.Node {
 	return Span(
-		Class("px-2 py-0.5 rounded-full bg-zinc-100 text-black text-xs font-medium shadow-sm"),
+		Class("inline-flex align-middle whitespace-nowrap px-2 py-0.5 rounded-full bg-zinc-100 text-black text-xs font-medium shadow-sm"),
 		g.Text("Just listed"),
 	)
 }
@@ -128,19 +128,26 @@ func paginationDiv(nextPage int) g.Node {
 	)
 }
 
-func adCardMeta(location string, createdAt time.Time, showNewBadge bool) g.Node {
+func adCardMeta(location string) g.Node {
 	return Div(
 		Class("flex flex-wrap items-start justify-end gap-2 text-xs text-zinc-500"),
-		g.If(showNewBadge && time.Since(createdAt) < 4*time.Hour, newBadge()),
 		g.Text(location),
 	)
 }
 
 func adCardTitle(title, facetLabel string) g.Node {
+	return adCardTitleWithBadge(title, facetLabel, false, time.Time{})
+}
+
+func adCardTitleWithBadge(title, facetLabel string, showNewBadge bool,
+	createdAt time.Time) g.Node {
 	return Span(
 		Class("min-w-0"),
 		g.Text(title),
-		g.If(facetLabel != "", Span(Class("text-xs text-zinc-500"), g.Text(" · "+facetLabel))),
+		g.If(facetLabel != "",
+			Span(Class("text-xs text-zinc-500"), g.Text(" · "+facetLabel))),
+		g.If(showNewBadge && time.Since(createdAt) < 4*time.Hour,
+			Span(Class("ml-1"), newBadge())),
 	)
 }
 
@@ -214,11 +221,11 @@ func AdListNode(userID, adID int, priceDisplay, title, location,
 			Class("flex items-start gap-2 min-w-0"),
 			g.If(local.IsLoggedIn(userID) && bookmarked, BookmarkButton(adID, bookmarked, csrfToken)),
 			g.If(rockCount > 0, RockIcons(adID, rockCount)),
-			adCardTitle(title, facetLabel),
+			adCardTitleWithBadge(title, facetLabel, true, createdAt),
 		),
 		Div(
 			Class("max-w-[7.5rem] min-w-0 text-right"),
-			adCardMeta(location, createdAt, true),
+			adCardMeta(location),
 		),
 		Div(
 			Class("justify-self-end"),
