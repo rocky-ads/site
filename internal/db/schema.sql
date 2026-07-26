@@ -25,7 +25,11 @@ CREATE TABLE users (
     sms_opted_out INTEGER NOT NULL DEFAULT 0,
 
     -- Notification settings
-    last_sms_sent_at TIMESTAMP
+    last_sms_sent_at TIMESTAMP,
+
+    -- Account picture (bytes in MinIO: users/{id}/account.webp)
+    has_account_picture INTEGER NOT NULL DEFAULT 0,
+    account_picture_url TEXT
 );
 CREATE INDEX idx_user_deleted_at ON users(deleted_at);
 CREATE INDEX idx_user_name_hash ON users(name_hash);

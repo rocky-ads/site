@@ -35,6 +35,17 @@ func resolveUserID(u UserRow, backupKey []byte) (int, error) {
 		`SELECT id FROM users WHERE name_hash = $1`, u.NameHash,
 	).Scan(&id)
 	if err == nil {
+		_, err = db.Exec(`
+			UPDATE users SET
+				has_account_picture = $1,
+				account_picture_url = $2
+			WHERE id = $3`,
+			u.HasAccountPicture, u.AccountPictureURL, id,
+		)
+		if err != nil {
+			return 0, fmt.Errorf(
+				"update account picture for user %s: %w", u.NameHash, err)
+		}
 		return id, nil
 	}
 	if err != sql.ErrNoRows {
@@ -53,19 +64,22 @@ func resolveUserID(u UserRow, backupKey []byte) (int, error) {
 			encrypted_name, name_nonce, name_hash,
 			password_hash, password_salt, password_algo,
 			encrypted_phone, phone_nonce, phone_hash,
-			phone_verified, sms_opted_out, last_sms_sent_at
+			phone_verified, sms_opted_out, last_sms_sent_at,
+			has_account_picture, account_picture_url
 		) VALUES (
 			$1, $2, $3,
 			$4, $5, $6,
 			$7, $8, $9,
 			$10, $11, $12,
-			$13, $14, $15
+			$13, $14, $15,
+			$16, $17
 		) RETURNING id`,
 		u.CreatedAt, u.DeletedAt, u.IsAdmin,
 		[]byte{}, []byte{}, u.NameHash,
 		u.PasswordHash, u.PasswordSalt, u.PasswordAlgo,
 		[]byte{}, []byte{}, u.PhoneHash,
 		u.PhoneVerified, u.SMSOptedOut, u.LastSMSSentAt,
+		u.HasAccountPicture, u.AccountPictureURL,
 	).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("insert user %s: %w", u.NameHash, err)

@@ -123,3 +123,69 @@ func (s *LocalStore) PresignGet(adID, index int, suffix string,
 	return fmt.Sprintf("http://127.0.0.1/local/%d/%d-%s.webp",
 		adID, index, suffix), nil
 }
+
+func (s *LocalStore) userAccountPath(userID int) string {
+	return filepath.Join(s.baseDir, "users", fmt.Sprintf("%d", userID),
+		"account.webp")
+}
+
+func (s *LocalStore) PutUserAccount(userID int, data []byte) error {
+	path := s.userAccountPath(userID)
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("create user image dir: %w", err)
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return fmt.Errorf("write user account image: %w", err)
+	}
+	return nil
+}
+
+func (s *LocalStore) StatUserAccount(userID int) (bool, error) {
+	_, err := os.Stat(s.userAccountPath(userID))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (s *LocalStore) DeleteUserAccount(userID int) error {
+	path := s.userAccountPath(userID)
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("delete user account image: %w", err)
+	}
+	dir := filepath.Dir(path)
+	_ = os.Remove(dir) // best-effort remove empty users/{id}
+	return nil
+}
+
+func (s *LocalStore) PresignPutUserAccount(userID int,
+	expiry time.Duration) (string, error) {
+	_ = expiry
+	key := userAccountObjectKey(userID)
+	u := url.URL{
+		Scheme: "http",
+		Host:   "127.0.0.1:9",
+		Path:   "/" + key,
+	}
+	s.mu.Lock()
+	s.puts[u.String()] = key
+	s.mu.Unlock()
+	return u.String(), nil
+}
+
+func (s *LocalStore) PresignGetUserAccount(userID int,
+	expiry time.Duration) (string, error) {
+	_ = expiry
+	ok, err := s.StatUserAccount(userID)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", fmt.Errorf("object not found")
+	}
+	return fmt.Sprintf("http://127.0.0.1/local/users/%d/account.webp",
+		userID), nil
+}

@@ -114,8 +114,37 @@ func UserProfilePage(d UserProfileData, view int, adNodes []g.Node) []g.Node {
 				),
 			),
 		),
+		UserAccountPictureBanner(d),
 		UserProfileAds(d.ID, view, adNodes),
 	}
+}
+
+// UserAccountPictureBanner shows the optional full-width account picture.
+func UserAccountPictureBanner(d UserProfileData) g.Node {
+	if !d.HasAccountPicture {
+		return nil
+	}
+	src := UserAccountPictureSrc(d.ID)
+	if src == "" {
+		return nil
+	}
+	img := Img(
+		Src(src),
+		Alt(d.Name+" account picture"),
+		Class("w-full max-h-[300px] object-cover"),
+	)
+	if d.AccountPictureURL == "" {
+		return Div(Class("mt-8"), img)
+	}
+	return Div(
+		Class("mt-8"),
+		A(
+			Href(d.AccountPictureURL),
+			Target("_blank"),
+			Rel("noopener noreferrer"),
+			img,
+		),
+	)
 }
 
 // UserProfileAds is the active-ads list with grid/list toggles.
@@ -124,7 +153,14 @@ func UserProfileAds(userID, view int, adNodes []g.Node) g.Node {
 	return Div(
 		ID("user-profile-ads"),
 		Class("space-y-4 mt-8"),
-		adsViewToggles(view, pathPrefix, "#user-profile-ads"),
+		Div(
+			Class("flex items-center justify-between gap-4"),
+			H2(
+				Class("text-lg font-semibold text-zinc-900 dark:text-zinc-100"),
+				g.Text("Active Ads"),
+			),
+			viewTogglesTargeting(view, pathPrefix, "#user-profile-ads"),
+		),
 		AdsContent(view, adNodes),
 	)
 }
@@ -285,6 +321,7 @@ const (
 	SettingsChangePasswordErrorID = "change-password-error"
 	SettingsChangePhoneErrorID    = "change-phone-error"
 	SettingsDeleteAccountErrorID  = "delete-account-error"
+	SettingsAccountPictureErrorID = "account-picture-error"
 )
 
 func settingsFormActions(button buttonProps, errorID string) g.Node {
@@ -405,10 +442,12 @@ func NotificationsSection(smsOptedOut bool) g.Node {
 	)
 }
 
-func SettingsPage(name, phoneE64 string, smsOptedOut bool) []g.Node {
+func SettingsPage(name, phoneE64 string, smsOptedOut bool,
+	userID int, hasAccountPicture bool, accountPictureURL string) []g.Node {
 	return []g.Node{
 		pageTitle("Settings"),
 		settingsAccountSection(name, phoneE64),
+		AccountPictureSection(userID, hasAccountPicture, accountPictureURL, ""),
 		NotificationsSection(smsOptedOut),
 		ChangePhoneSection(),
 		settingsSection("Change Password",
@@ -457,7 +496,125 @@ func SettingsPage(name, phoneE64 string, smsOptedOut bool) []g.Node {
 				}, SettingsDeleteAccountErrorID),
 			),
 		),
+		g.Raw(`<script src="/js/account-picture.js" defer></script>`),
 	}
+}
+
+// AccountPictureSection is the settings block for upload/URL/remove.
+func AccountPictureSection(userID int, hasPicture bool,
+	pictureURL, errMsg string) g.Node {
+	previewSrc := ""
+	if hasPicture {
+		previewSrc = UserAccountPictureSrc(userID)
+	}
+	uploadLabel := "Upload picture"
+	if hasPicture {
+		uploadLabel = "Replace picture"
+	}
+
+	nodes := []g.Node{
+		H2(Class("text-xl font-semibold mb-4"), g.Text("Account Picture")),
+		P(
+			Class("text-sm text-zinc-600 dark:text-zinc-400 mb-4"),
+			g.Text("Shown full-width on your public profile below your "+
+				"member info. Optional link opens in a new tab when the "+
+				"picture is clicked."),
+		),
+	}
+
+	if previewSrc != "" {
+		nodes = append(nodes,
+			Div(
+				Class("mb-4"),
+				Img(
+					Src(previewSrc),
+					Alt("Account picture preview"),
+					Class("w-full max-h-[300px] object-cover rounded"),
+				),
+			),
+		)
+	}
+
+	nodes = append(nodes,
+		Div(
+			Class("space-y-4"),
+			Div(
+				Label(
+					Class("block text-sm font-medium mb-1"),
+					g.Text(uploadLabel),
+				),
+				Input(
+					Type("file"),
+					ID("account-picture-file"),
+					Accept("image/*"),
+					Class("block w-full text-sm text-zinc-600 dark:text-zinc-400 "+
+						"file:mr-4 file:py-2 file:px-4 file:rounded "+
+						"file:border-0 file:bg-zinc-200 dark:file:bg-zinc-700 "+
+						"file:text-zinc-900 dark:file:text-zinc-100"),
+				),
+				Div(
+					Class("mt-2 flex items-center gap-4"),
+					standardButton(buttonProps{
+						Type: "button",
+						Text: uploadLabel,
+						Attrs: []g.Node{
+							ID("account-picture-upload-btn"),
+						},
+					}),
+					Span(
+						ID("account-picture-status"),
+						Class("text-sm text-zinc-500 dark:text-zinc-400 hidden"),
+					),
+				),
+			),
+			Form(
+				Class("space-y-4"),
+				hx.Post("/auth/user/settings/account-picture"),
+				hx.Target("#account-picture-section"),
+				hx.Swap("outerHTML"),
+				labeledTextInput("Link URL (optional)", "account_picture_url",
+					Type("url"),
+					Name("account_picture_url"),
+					Value(pictureURL),
+					Placeholder("https://example.com"),
+				),
+				Div(
+					Class("flex items-center gap-4"),
+					standardButton(buttonProps{
+						Type: "submit",
+						Text: "Save link",
+					}),
+					Div(
+						ID(SettingsAccountPictureErrorID),
+						Class("text-red-500 text-lg"),
+						g.If(errMsg != "", g.Text(errMsg)),
+					),
+				),
+			),
+		),
+	)
+
+	if hasPicture {
+		nodes = append(nodes,
+			Form(
+				Class("mt-4"),
+				hx.Post("/auth/user/settings/account-picture/remove"),
+				hx.Target("#account-picture-section"),
+				hx.Swap("outerHTML"),
+				standardButton(buttonProps{
+					Type:  "submit",
+					Text:  "Remove picture",
+					Class: "bg-zinc-600 hover:bg-zinc-700",
+				}),
+			),
+		)
+	}
+
+	return Div(
+		ID("account-picture-section"),
+		Class("mt-8 p-6 border border-zinc-200 dark:border-zinc-700 rounded-lg"),
+		g.Group(nodes),
+	)
 }
 
 func ChangePhoneSection() g.Node {

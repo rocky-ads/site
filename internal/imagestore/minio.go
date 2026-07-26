@@ -29,6 +29,10 @@ func objectKey(adID, index int, suffix string) string {
 	return fmt.Sprintf("%d/%d-%s.webp", adID, index, suffix)
 }
 
+func userAccountObjectKey(userID int) string {
+	return fmt.Sprintf("users/%d/account.webp", userID)
+}
+
 func parseImageObjectKey(key string) (index int, suffix string, ok bool) {
 	parts := strings.Split(key, "/")
 	if len(parts) != 2 {
@@ -241,6 +245,72 @@ func (s *MinioStore) PresignGet(adID, index int, suffix string,
 		nil)
 	if err != nil {
 		return "", fmt.Errorf("presign get: %w", err)
+	}
+	return u.String(), nil
+}
+
+func (s *MinioStore) PutUserAccount(userID int, data []byte) error {
+	key := userAccountObjectKey(userID)
+	ctx := context.Background()
+	_, err := s.client.PutObject(ctx, s.bucket, key,
+		bytes.NewReader(data), int64(len(data)),
+		minio.PutObjectOptions{
+			ContentType:  "image/webp",
+			CacheControl: config.MinIOObjectCacheControl,
+		})
+	if err != nil {
+		return fmt.Errorf("put user account image: %w", err)
+	}
+	return nil
+}
+
+func (s *MinioStore) StatUserAccount(userID int) (bool, error) {
+	key := userAccountObjectKey(userID)
+	ctx := context.Background()
+	_, err := s.client.StatObject(ctx, s.bucket, key, minio.StatObjectOptions{})
+	if err != nil {
+		errResp := minio.ToErrorResponse(err)
+		if errResp.Code == "NoSuchKey" || errResp.StatusCode == 404 {
+			return false, nil
+		}
+		return false, fmt.Errorf("stat user account image: %w", err)
+	}
+	return true, nil
+}
+
+func (s *MinioStore) DeleteUserAccount(userID int) error {
+	key := userAccountObjectKey(userID)
+	ctx := context.Background()
+	err := s.client.RemoveObject(ctx, s.bucket, key, minio.RemoveObjectOptions{})
+	if err != nil {
+		errResp := minio.ToErrorResponse(err)
+		if errResp.Code == "NoSuchKey" || errResp.StatusCode == 404 {
+			return nil
+		}
+		return fmt.Errorf("delete user account image: %w", err)
+	}
+	return nil
+}
+
+func (s *MinioStore) PresignPutUserAccount(userID int,
+	expiry time.Duration) (string, error) {
+	key := userAccountObjectKey(userID)
+	ctx := context.Background()
+	u, err := s.presignClient.PresignedPutObject(ctx, s.bucket, key, expiry)
+	if err != nil {
+		return "", fmt.Errorf("presign put user account: %w", err)
+	}
+	return u.String(), nil
+}
+
+func (s *MinioStore) PresignGetUserAccount(userID int,
+	expiry time.Duration) (string, error) {
+	key := userAccountObjectKey(userID)
+	ctx := context.Background()
+	u, err := s.presignClient.PresignedGetObject(ctx, s.bucket, key, expiry,
+		nil)
+	if err != nil {
+		return "", fmt.Errorf("presign get user account: %w", err)
 	}
 	return u.String(), nil
 }

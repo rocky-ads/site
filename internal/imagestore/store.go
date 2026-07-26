@@ -27,6 +27,12 @@ type Store interface {
 		expiry time.Duration) (string, error)
 	PresignGet(adID, index int, suffix string,
 		expiry time.Duration) (string, error)
+
+	PutUserAccount(userID int, data []byte) error
+	StatUserAccount(userID int) (bool, error)
+	DeleteUserAccount(userID int) error
+	PresignPutUserAccount(userID int, expiry time.Duration) (string, error)
+	PresignGetUserAccount(userID int, expiry time.Duration) (string, error)
 }
 
 // URLCache reuses PresignGet URLs for the signature lifetime (TTL = expiry).
@@ -48,6 +54,10 @@ func cacheKey(adID, index int, suffix string) string {
 	return fmt.Sprintf("%d/%d/%s", adID, index, suffix)
 }
 
+func userAccountCacheKey(userID int) string {
+	return fmt.Sprintf("users/%d/account", userID)
+}
+
 // ReusedGetURL returns a stable PresignGet URL. Miss (or TTL expiry) mints fresh.
 func (c *URLCache) ReusedGetURL(adID, index int, suffix string,
 	expiry time.Duration) (string, error) {
@@ -67,4 +77,25 @@ func (c *URLCache) ReusedGetURL(adID, index int, suffix string,
 // InvalidateGetURL drops a cached GET URL.
 func (c *URLCache) InvalidateGetURL(adID, index int, suffix string) {
 	c.urls.Del(cacheKey(adID, index, suffix))
+}
+
+// ReusedGetUserAccountURL returns a stable PresignGet for a user account picture.
+func (c *URLCache) ReusedGetUserAccountURL(userID int,
+	expiry time.Duration) (string, error) {
+	key := userAccountCacheKey(userID)
+	if url, ok := c.urls.Get(key); ok {
+		return url, nil
+	}
+
+	url, err := c.store.PresignGetUserAccount(userID, expiry)
+	if err != nil {
+		return "", err
+	}
+	c.urls.SetWithTTL(key, url, 1, expiry)
+	return url, nil
+}
+
+// InvalidateUserAccountURL drops a cached user account picture GET URL.
+func (c *URLCache) InvalidateUserAccountURL(userID int) {
+	c.urls.Del(userAccountCacheKey(userID))
 }
