@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pgvector/pgvector-go"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
@@ -140,18 +141,30 @@ func runRestore(fromDir string, store imagestore.Store, backupKey []byte,
 		}
 		expiresAt, grantNs := resolveExpireFields(a, saleEndByAdRef[a.Ref])
 		grantSecs := float64(grantNs) / float64(time.Second)
+		var emb any
+		if len(a.Embedding) > 0 {
+			floats, err := decodeEmbedding(a.Embedding)
+			if err != nil {
+				return fmt.Errorf("decode embedding ad ref %d: %w", a.Ref, err)
+			}
+			emb = pgvector.NewVector(floats)
+		}
+		var meta any
+		if len(a.VectorMetadata) > 0 {
+			meta = string(a.VectorMetadata)
+		}
 		var newID int
 		err := db.QueryRow(`
 			INSERT INTO ads (
 				category_id, title, description, created_at, expires_at,
 				expire_grant, inactive_at, deleted_at, user_id, image_count,
-				location_id, tags
+				location_id, tags, embedding, vector_metadata
 			) VALUES ($1, $2, $3, $4, $5, $6 * INTERVAL '1 second',
-			          $7, $8, $9, $10, $11, $12)
+			          $7, $8, $9, $10, $11, $12, $13, $14::jsonb)
 			RETURNING id`,
 			a.CategoryID, a.Title, a.Description, a.CreatedAt, expiresAt,
 			grantSecs, a.InactiveAt, a.DeletedAt, ownerID, a.ImageCount,
-			locationID, a.Tags,
+			locationID, a.Tags, emb, meta,
 		).Scan(&newID)
 		if err != nil {
 			return fmt.Errorf("insert ad ref %d: %w", a.Ref, err)

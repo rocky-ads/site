@@ -6,9 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/pgvector/pgvector-go"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/backup"
 	"github.com/rocky-ads/site/internal/config"
@@ -22,6 +24,7 @@ import (
 	"github.com/rocky-ads/site/internal/message"
 	"github.com/rocky-ads/site/internal/seed"
 	"github.com/rocky-ads/site/internal/user"
+	"github.com/rocky-ads/site/internal/vector"
 )
 
 const keyA = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -106,6 +109,15 @@ func TestBackupRestoreCrossKey(t *testing.T) {
 		t.Fatalf("create ad: %v", err)
 	}
 
+	wantEmb := make([]float32, config.OllamaEmbeddingDimensions)
+	wantEmb[0] = 1
+	wantMeta := map[string]any{"category_id": 5, "rock_count": 0}
+	if err := vector.UpsertAdEmbeddings(
+		[]int{adID}, [][]float32{wantEmb}, []map[string]any{wantMeta},
+	); err != nil {
+		t.Fatalf("upsert embedding: %v", err)
+	}
+
 	var convID int
 	err = db.QueryRow(`
 		INSERT INTO conversations (
@@ -161,6 +173,29 @@ func TestBackupRestoreCrossKey(t *testing.T) {
 	}
 	if grantSecs <= 0 {
 		t.Fatalf("expire_grant secs = %v, want > 0", grantSecs)
+	}
+
+	var gotVec pgvector.Vector
+	var gotMeta string
+	err = db.QueryRow(`
+		SELECT embedding, vector_metadata::text
+		FROM ads WHERE id = $1`, restoredID,
+	).Scan(&gotVec, &gotMeta)
+	if err != nil {
+		t.Fatalf("query restored embedding: %v", err)
+	}
+	gotSlice := gotVec.Slice()
+	if len(gotSlice) != len(wantEmb) {
+		t.Fatalf("embedding len = %d, want %d", len(gotSlice), len(wantEmb))
+	}
+	for i := range wantEmb {
+		if gotSlice[i] != wantEmb[i] {
+			t.Fatalf("embedding[%d] = %v, want %v", i, gotSlice[i], wantEmb[i])
+		}
+	}
+	if !strings.Contains(gotMeta, `"category_id": 5`) &&
+		!strings.Contains(gotMeta, `"category_id":5`) {
+		t.Fatalf("vector_metadata = %q", gotMeta)
 	}
 
 	restoredAlice, err := user.GetByName("alice")

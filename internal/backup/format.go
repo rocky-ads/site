@@ -3,7 +3,11 @@ package backup
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"time"
+
+	"github.com/pgvector/pgvector-go"
+	"github.com/rocky-ads/site/internal/config"
 )
 
 const (
@@ -38,6 +42,7 @@ type Counts struct {
 	Messages          int `json:"messages"`
 	RockOpinions      int `json:"rock_opinions"`
 	Images            int `json:"images"`
+	Embeddings        int `json:"embeddings"`
 }
 
 type B64 []byte
@@ -141,19 +146,21 @@ type LocationRow struct {
 }
 
 type AdRow struct {
-	Ref           int        `json:"ref"`
-	CategoryID    int        `json:"category_id" db:"category_id"`
-	Title         string     `json:"title" db:"title"`
-	Description   string     `json:"description" db:"description"`
-	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
-	ExpiresAt     time.Time  `json:"expires_at" db:"expires_at"`
-	ExpireGrantNs int64      `json:"expire_grant_ns" db:"expire_grant_ns"`
-	InactiveAt    *time.Time `json:"inactive_at,omitempty" db:"inactive_at"`
-	DeletedAt     *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
-	OwnerHash     string     `json:"owner_hash"`
-	ImageCount    int        `json:"image_count" db:"image_count"`
-	LocationRaw   *string    `json:"location_raw,omitempty"`
-	Tags          string     `json:"tags" db:"tags"`
+	Ref            int             `json:"ref"`
+	CategoryID     int             `json:"category_id" db:"category_id"`
+	Title          string          `json:"title" db:"title"`
+	Description    string          `json:"description" db:"description"`
+	CreatedAt      time.Time       `json:"created_at" db:"created_at"`
+	ExpiresAt      time.Time       `json:"expires_at" db:"expires_at"`
+	ExpireGrantNs  int64           `json:"expire_grant_ns" db:"expire_grant_ns"`
+	InactiveAt     *time.Time      `json:"inactive_at,omitempty" db:"inactive_at"`
+	DeletedAt      *time.Time      `json:"deleted_at,omitempty" db:"deleted_at"`
+	OwnerHash      string          `json:"owner_hash"`
+	ImageCount     int             `json:"image_count" db:"image_count"`
+	LocationRaw    *string         `json:"location_raw,omitempty"`
+	Tags           string          `json:"tags" db:"tags"`
+	Embedding      B64             `json:"embedding,omitempty"`
+	VectorMetadata json.RawMessage `json:"vector_metadata,omitempty"`
 }
 
 type adDBRow struct {
@@ -170,6 +177,38 @@ type adDBRow struct {
 	ImageCount      int        `db:"image_count"`
 	LocationID      *int       `db:"location_id"`
 	Tags            string     `db:"tags"`
+	EmbeddingText   *string    `db:"embedding_text"`
+	VectorMetadata  *string    `db:"vector_metadata"`
+}
+
+func encodeEmbedding(text string) (B64, error) {
+	var v pgvector.Vector
+	if err := v.Parse(text); err != nil {
+		return nil, fmt.Errorf("parse embedding: %w", err)
+	}
+	buf, err := v.EncodeBinary(nil)
+	if err != nil {
+		return nil, fmt.Errorf("encode embedding: %w", err)
+	}
+	return B64(buf), nil
+}
+
+func decodeEmbedding(b B64) ([]float32, error) {
+	if len(b) == 0 {
+		return nil, nil
+	}
+	var v pgvector.Vector
+	if err := v.DecodeBinary(b); err != nil {
+		return nil, fmt.Errorf("decode embedding: %w", err)
+	}
+	slice := v.Slice()
+	if len(slice) != config.OllamaEmbeddingDimensions {
+		return nil, fmt.Errorf(
+			"embedding dim %d, want %d",
+			len(slice), config.OllamaEmbeddingDimensions,
+		)
+	}
+	return slice, nil
 }
 
 type AdFacetRow struct {

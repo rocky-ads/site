@@ -44,7 +44,7 @@ Menu:
 | `DB_ENCRYPTION_KEY` | Live DB crypto (name/phone; journals sealed on write/restore) |
 | `BACKUP_DB_ENCRYPTION_KEY` | Decrypt archive user fields when restoring from another env (prompted in TUI; empty uses `DB_ENCRYPTION_KEY`) |
 
-Backup verify-decrypts users with `DB_ENCRYPTION_KEY` and stores ciphertext in the archive. Restore re-keys users to the target `DB_ENCRYPTION_KEY` and seals conversation journals. Restore resets the DB like init (schema + categories) before import. Embeddings are omitted and recomputed by the server after restore.
+Backup verify-decrypts users with `DB_ENCRYPTION_KEY` and stores ciphertext in the archive. Restore re-keys users to the target `DB_ENCRYPTION_KEY` and seals conversation journals. Restore resets the DB like init (schema + categories) before import. Ad embeddings and `vector_metadata` are included in the archive (base64 pgvector binary on each ad) so search works without recomputing after restore. Older archives without embeddings still restore; those ads get vectors from the server backfill on startup.
 
 Ad `expires_at` / `expire_grant` are included in new archives. Older archives without those fields are still restorable: restore backfills `expires_at` from `sale_end_date` (+1 week) when present, otherwise `created_at` + 3 months, and sets `expire_grant` to 3 months.
 

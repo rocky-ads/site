@@ -20,7 +20,10 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 	err := db.Select(&adRows, `
 		SELECT id, category_id, title, description, created_at, expires_at,
 		       EXTRACT(EPOCH FROM expire_grant) AS expire_grant_secs,
-		       inactive_at, deleted_at, user_id, image_count, location_id, tags
+		       inactive_at, deleted_at, user_id, image_count, location_id, tags,
+		       CASE WHEN embedding IS NOT NULL
+		            THEN embedding::text END AS embedding_text,
+		       vector_metadata::text AS vector_metadata
 		FROM ads
 		ORDER BY created_at, id`)
 	if err != nil {
@@ -172,6 +175,7 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 	}
 
 	ads := make([]AdRow, len(adRows))
+	embeddingCount := 0
 	for i, a := range adRows {
 		row := AdRow{
 			Ref:           i,
@@ -191,6 +195,17 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 			if raw, ok := locationIDToRaw[*a.LocationID]; ok {
 				row.LocationRaw = &raw
 			}
+		}
+		if a.EmbeddingText != nil && *a.EmbeddingText != "" {
+			emb, err := encodeEmbedding(*a.EmbeddingText)
+			if err != nil {
+				return fmt.Errorf("encode embedding ad %d: %w", a.ID, err)
+			}
+			row.Embedding = emb
+			embeddingCount++
+		}
+		if a.VectorMetadata != nil && *a.VectorMetadata != "" {
+			row.VectorMetadata = json.RawMessage(*a.VectorMetadata)
 		}
 		ads[i] = row
 	}
@@ -348,6 +363,7 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 			Messages:          len(messages),
 			RockOpinions:      len(opinions),
 			Images:            imageCount,
+			Embeddings:        embeddingCount,
 		},
 	}
 
