@@ -68,27 +68,12 @@ func StaticRockIcons(rockCount int) g.Node {
 	)
 }
 
-func rockThrowLinkContent(thrown bool) g.Node {
-	plungerClass := "rock-plunger"
-	if thrown {
-		plungerClass += " rock-plunger--thrown"
-	}
-	label := "Throw Rock"
-	if thrown {
-		label = "Unthrow Rock"
-	}
-	return Span(
-		Class(plungerClass),
-		Span(Class("rock-plunger__face"), g.Text(label)),
-	)
-}
-
-// RockThrowLink renders a link to throw/unthrow a rock in the conversation modal
+// RockThrowLink renders a button to throw/unthrow a rock in the conversation modal
 // hasThrownRock: whether the current user has thrown a rock at this conversation
 // canThrow: whether the current user can throw a rock (is participant and has < 3 rocks)
 func RockThrowLink(conversationID int, hasThrownRock, canThrow bool,
 	csrfToken string) g.Node {
-	// Only show link if user has thrown a rock (to remove it) OR user can throw a rock (and hasn't thrown one)
+	// Only show if user has thrown a rock (to remove it) OR user can throw a rock
 	if !hasThrownRock && !canThrow {
 		return g.Raw("")
 	}
@@ -97,7 +82,6 @@ func RockThrowLink(conversationID int, hasThrownRock, canThrow bool,
 	var label string
 
 	if hasThrownRock {
-		// Unthrow link - user has thrown a rock, show remove option
 		label = "Unthrow Rock"
 		attrs = []g.Node{
 			hx.Delete(fmt.Sprintf("/auth/conversation/%d/rock/unthrow", conversationID)),
@@ -106,7 +90,6 @@ func RockThrowLink(conversationID int, hasThrownRock, canThrow bool,
 			hx.Swap(conversationMessagesAppendSwap()),
 		}
 	} else if canThrow {
-		// Throw link - user can throw and hasn't thrown one yet
 		label = "Throw Rock"
 		attrs = []g.Node{
 			hx.Post(fmt.Sprintf("/auth/conversation/%d/rock/throw", conversationID)),
@@ -115,18 +98,17 @@ func RockThrowLink(conversationID int, hasThrownRock, canThrow bool,
 			hx.Swap(conversationMessagesAppendSwap()),
 		}
 	} else {
-		// Shouldn't reach here due to check above, but just in case
 		return g.Raw("")
 	}
 
-	return A(
+	return Button(
 		g.Group(attrs),
-		Href("#"),
-		Class("rock-throw-link"),
+		Type("button"),
+		Class("flex-shrink-0 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"),
 		Title(label),
 		g.Attr("aria-label", label),
 		g.Attr("aria-pressed", fmt.Sprintf("%t", hasThrownRock)),
-		rockThrowLinkContent(hasThrownRock),
+		g.Text(label),
 	)
 }
 

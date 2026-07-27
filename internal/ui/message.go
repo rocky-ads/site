@@ -237,7 +237,7 @@ func ConversationMessageActionsBanner(d ConversationModalData,
 	visible := messageActionsBannerVisible(d)
 	classes := "w-full flex-shrink-0 flex items-center justify-end gap-3"
 	if visible {
-		classes += " border-b border-zinc-200 dark:border-zinc-700 px-4 py-2"
+		classes += " border-b border-zinc-200 dark:border-zinc-700 px-4 py-3"
 	}
 	attrs := append([]g.Node{
 		ID(fmt.Sprintf("conversation-%d-message-actions", d.ConversationID)),
@@ -403,11 +403,7 @@ func ConversationModalSwapOOB(d ConversationModalData) g.Node {
 				Class("flex items-start justify-between p-4 border-b border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
 				Div(
 					Class("flex-1 min-w-0 pr-4"),
-					Div(
-						Class("text-sm text-zinc-600 dark:text-zinc-400 mb-1"),
-						Span(Class("font-semibold"), g.Text("Subject: ")),
-						g.Text(d.AdTitle),
-					),
+					conversationSubjectLine(d.AdID, d.AdTitle),
 					Div(
 						Class("text-sm text-zinc-600 dark:text-zinc-400"),
 						Span(Class("font-semibold"), g.Text("From: ")),
@@ -500,11 +496,7 @@ func ConversationModalWithRock(d ConversationModalData) g.Node {
 					Class("flex items-start justify-between p-4 border-b border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
 					Div(
 						Class("flex-1 min-w-0 pr-4"),
-						Div(
-							Class("text-sm text-zinc-600 dark:text-zinc-400 mb-1"),
-							Span(Class("font-semibold"), g.Text("Subject: ")),
-							g.Text(d.AdTitle),
-						),
+						conversationSubjectLine(d.AdID, d.AdTitle),
 						Div(
 							Class("text-sm text-zinc-600 dark:text-zinc-400"),
 							Span(Class("font-semibold"), g.Text("From: ")),
@@ -587,6 +579,18 @@ func conversationPeerName(userID int, name string, deleted bool,
 		)
 	}
 	return UserNameLink(userID, name, StaticRockIcons(rockCount))
+}
+
+func conversationSubjectLine(adID int, adTitle string) g.Node {
+	return Div(
+		Class("text-sm text-zinc-600 dark:text-zinc-400 mb-1"),
+		Span(Class("font-semibold"), g.Text("Subject: ")),
+		A(
+			Href(fmt.Sprintf("/ad/%d", adID)),
+			Class("text-blue-600 dark:text-blue-400 hover:underline"),
+			g.Text(adTitle),
+		),
+	)
 }
 
 func conversationParticipantName(userID int, name string, deleted bool) g.Node {
