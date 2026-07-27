@@ -837,11 +837,31 @@ func aboutItem(icon, alt, label, href string, external bool,
 	)
 }
 
+func aboutNoItem(text string) g.Node {
+	return Li(
+		Class("flex items-center gap-2"),
+		Img(
+			Class("w-5 h-5 shrink-0"),
+			Src("/images/block.svg"),
+			Alt(""),
+			Style("filter: invert(27%) sepia(94%) saturate(2878%) "+
+				"hue-rotate(346deg) brightness(95%) contrast(92%)"),
+		),
+		g.Text(text),
+	)
+}
+
 func AboutPage() []g.Node {
 	return []g.Node{
 		pageTitle("About"),
+		P(
+			Class("mt-4 text-xl font-medium text-zinc-800 dark:text-zinc-200"),
+			g.Textf("%s is classified ads for the Internet.",
+				config.ServerName),
+		),
 		Div(
-			Class("mt-8"),
+			Class("mt-8 p-2 sm:p-3 bg-zinc-100 dark:bg-zinc-800 "+
+				"border border-zinc-300 dark:border-zinc-600 shadow-md"),
 			Img(
 				Src("/images/classifieds.jpg"),
 				Alt("Newspaper classifieds"),
@@ -849,8 +869,44 @@ func AboutPage() []g.Node {
 			),
 		),
 		Div(
-			Class("mt-8 space-y-8 text-zinc-700 dark:text-zinc-300"),
-			P(g.Textf("Welcome to %s.", config.ServerName)),
+			Class("mt-10 space-y-8 text-zinc-700 dark:text-zinc-300"),
+			Div(
+				Class("space-y-6"),
+				P(
+					Class("text-lg leading-relaxed text-zinc-800 "+
+						"dark:text-zinc-200"),
+					g.Textf(
+						"Remember classified ads? Easy, simple. "+
+							"Post an ad with your phone number and "+
+							"folks call you. %s works the same way, "+
+							"except your phone number stays hidden.",
+						config.ServerName,
+					),
+				),
+				Ul(
+					Class("pl-4 space-y-2 text-base font-medium "+
+						"text-zinc-800 dark:text-zinc-200"),
+					aboutNoItem("No email"),
+					aboutNoItem("No Facebook friends"),
+					aboutNoItem("No posting fees"),
+					aboutNoItem("No credit cards"),
+				),
+				P(
+					Class("text-lg"),
+					g.Text("All you need is your phone number to "),
+					faqLink("/register", "get started"),
+				),
+				P(
+					Class("text-lg inline-flex items-center flex-wrap"),
+					g.Text("And the fun part? You get to "),
+					faqLink("/faq/rocks", "throw rocks"),
+					Img(
+						Class("w-9 h-9 ml-1"),
+						Src("/images/rock.svg"),
+						Alt(""),
+					),
+				),
+			),
 			Div(
 				Class("space-y-3"),
 				aboutItem(
