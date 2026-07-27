@@ -295,7 +295,7 @@ func conversationContentInputAttrs(conversationID int) []g.Node {
 		Name("content"),
 		Placeholder("Type a message..."),
 		Required(),
-		Class("flex-1 px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200"),
+		Class("flex-1 min-w-0 px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200"),
 		g.Attr("onkeydown", "if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); this.form.requestSubmit(); }"),
 	}
 }
@@ -357,13 +357,13 @@ func ConversationForm(conversationID, adID int, csrfToken string,
 					Name("content"),
 					Placeholder(disabledPlaceholder),
 					Disabled(),
-					Class("flex-1 px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 cursor-not-allowed"),
+					Class("flex-1 min-w-0 px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 cursor-not-allowed"),
 				),
 			),
 			g.If(canPost,
 				Button(
 					Type("submit"),
-					Class("px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"),
+					Class("flex-shrink-0 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"),
 					g.Text("Send"),
 				),
 			),
@@ -395,9 +395,9 @@ func ConversationModalSwapOOB(d ConversationModalData) g.Node {
 	return Div(
 		ID(modalID),
 		hx.SwapOOB("outerHTML"),
-		Class("fixed inset-0 flex items-center justify-center z-50 p-8 pointer-events-none"),
+		Class("fixed inset-0 flex items-center justify-center z-50 p-2 sm:p-8 pointer-events-none"),
 		Div(
-			Class("bg-white dark:bg-zinc-800 rounded-lg w-full max-w-lg shadow-2xl border-2 border-zinc-300 dark:border-zinc-600 flex flex-col pointer-events-auto"),
+			Class("bg-white/85 dark:bg-zinc-800/85 backdrop-blur-md rounded-lg w-full max-w-lg shadow-2xl border-2 border-zinc-300 dark:border-zinc-600 flex flex-col pointer-events-auto"),
 			Style("max-height: min(80vh, 600px)"),
 			Div(
 				Class("flex items-start justify-between p-4 border-b border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
@@ -492,9 +492,9 @@ func ConversationModalWithRock(d ConversationModalData) g.Node {
 		modalBackdrop(modalName),
 		Div(
 			ID(modalName+"-modal"),
-			Class("fixed inset-0 flex items-center justify-center z-50 p-8 pointer-events-none"),
+			Class("fixed inset-0 flex items-center justify-center z-50 p-2 sm:p-8 pointer-events-none"),
 			Div(
-				Class("bg-white dark:bg-zinc-800 rounded-lg w-full max-w-lg shadow-2xl border-2 border-zinc-300 dark:border-zinc-600 flex flex-col pointer-events-auto"),
+				Class("bg-white/85 dark:bg-zinc-800/85 backdrop-blur-md rounded-lg w-full max-w-lg shadow-2xl border-2 border-zinc-300 dark:border-zinc-600 flex flex-col pointer-events-auto"),
 				Style("max-height: min(80vh, 600px)"),
 				Div(
 					Class("flex items-start justify-between p-4 border-b border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
