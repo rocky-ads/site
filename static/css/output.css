@@ -591,6 +591,9 @@
   .max-h-\[300px\] {
     max-height: 300px;
   }
+  .max-h-\[480px\] {
+    max-height: 480px;
+  }
   .max-h-full {
     max-height: 100%;
   }

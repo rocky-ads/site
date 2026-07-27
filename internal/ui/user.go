@@ -841,6 +841,14 @@ func AboutPage() []g.Node {
 	return []g.Node{
 		pageTitle("About"),
 		Div(
+			Class("mt-8"),
+			Img(
+				Src("/images/classifieds.jpg"),
+				Alt("Newspaper classifieds"),
+				Class("w-full max-h-[480px] object-cover"),
+			),
+		),
+		Div(
 			Class("mt-8 space-y-8 text-zinc-700 dark:text-zinc-300"),
 			P(g.Textf("Welcome to %s.", config.ServerName)),
 			Div(
