@@ -43,11 +43,31 @@ func phoneInput() g.Node {
 }
 
 func offers() g.Node {
-	label := "I agree to receive informational text messages from " +
-		config.ServerName +
-		". Message frequency varies. Message and data rates may apply. " +
-		"Reply STOP to cancel."
-	return checkbox("offers", "true", label, false, false, Required())
+	inputAttrs := []g.Node{
+		Type("checkbox"),
+		Name("offers"),
+		Value("true"),
+		ID("offers-true"),
+		Class("mt-0.5 h-5 w-5 shrink-0 accent-blue-600 cursor-pointer"),
+		Required(),
+	}
+	return Div(
+		Class("flex items-start gap-3"),
+		Input(inputAttrs...),
+		Label(
+			For("offers-true"),
+			Class("text-sm leading-snug text-zinc-600 dark:text-zinc-300 "+
+				"cursor-pointer"),
+			g.Text("I agree to the "),
+			faqLink("/terms", "Terms of Service"),
+			g.Text(" and "),
+			faqLink("/privacy", "Privacy Policy"),
+			g.Text(", and to receive informational text messages from "+
+				config.ServerName+
+				". Message frequency varies. Message and data rates "+
+				"may apply. Reply STOP to cancel."),
+		),
+	)
 }
 
 func RegisterForm(username string) g.Node {

@@ -856,7 +856,7 @@ func AboutPage() []g.Node {
 		pageTitle("About"),
 		P(
 			Class("mt-4 text-xl font-medium text-zinc-800 dark:text-zinc-200"),
-			g.Textf("%s is classified ads for the Internet.",
+			g.Textf("%s is classified ads for the Internet",
 				config.ServerName),
 		),
 		Div(
@@ -916,6 +916,22 @@ func AboutPage() []g.Node {
 					"/faq",
 					false,
 					faqLink("/faq", "Frequently asked questions"),
+				),
+				aboutItem(
+					"/images/info.svg",
+					"Privacy",
+					"Privacy",
+					"/privacy",
+					false,
+					faqLink("/privacy", "Privacy Policy"),
+				),
+				aboutItem(
+					"/images/balance.svg",
+					"Terms",
+					"Terms",
+					"/terms",
+					false,
+					faqLink("/terms", "Terms of Service"),
 				),
 				aboutItem(
 					"/images/contact_mail.svg",

@@ -191,6 +191,24 @@ func navigation(userID int, userName, currentPath string,
 	)
 }
 
+func siteFooter() g.Node {
+	linkClass := "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 " +
+		"dark:hover:text-zinc-200 hover:underline"
+	return Footer(
+		Class("mt-16 pt-6 border-t border-zinc-200 dark:border-zinc-700 "+
+			"flex flex-wrap gap-x-4 gap-y-2 text-sm"),
+		A(Href("/about"), Class(linkClass), g.Text("About")),
+		A(Href("/privacy"), Class(linkClass), g.Text("Privacy")),
+		A(Href("/terms"), Class(linkClass), g.Text("Terms")),
+		A(Href("/faq"), Class(linkClass), g.Text("FAQ")),
+		A(
+			Href("mailto:"+config.ContactEmail),
+			Class(linkClass),
+			g.Text("Contact"),
+		),
+	)
+}
+
 func Page(userID int, hasUnread bool, userName, title, currentPath,
 	csrfToken string, showIntroBanner bool, body []g.Node) g.Node {
 	var headNodes []g.Node
@@ -258,6 +276,7 @@ func Page(userID int, hasUnread bool, userName, title, currentPath,
 				g.If(showIntroBanner, introBanner()),
 				navigation(userID, userName, currentPath, hasUnread),
 				g.Group(body),
+				siteFooter(),
 			),
 		),
 	}

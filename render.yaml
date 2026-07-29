@@ -57,7 +57,7 @@ projects:
       - key: OLLAMA_HOST
         value: 0.0.0.0:11434
       - key: OLLAMA_KEEP_ALIVE
-        value: 30m
+        value: "-1"
       region: oregon
       autoDeployTrigger: commit
     - type: web

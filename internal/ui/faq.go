@@ -32,9 +32,12 @@ var faqSections = map[string]faqSectionData{
 						"with the ad owner so you can work together to " +
 						"resolve the issue.",
 				)),
-				faqParagraph(g.Text(
-					"Once the issue is resolved, the seller can return " +
-						"your rock. Rocks are limited — use them wisely.",
+				faqParagraph(g.Textf(
+					"Ads with more than %d rocks are excluded from "+
+						"search listings. Once the issue is resolved, "+
+						"the seller can return your rock. Rocks are "+
+						"limited — use them wisely.",
+					config.MaxRockCount,
 				)),
 			}
 		},

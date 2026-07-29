@@ -357,6 +357,14 @@ func AboutHandler(c *fiber.Ctx) error {
 	return renderPage(c, "About", ui.AboutPage())
 }
 
+func PrivacyHandler(c *fiber.Ctx) error {
+	return renderPage(c, "Privacy Policy", ui.PrivacyPolicyPage())
+}
+
+func TermsHandler(c *fiber.Ctx) error {
+	return renderPage(c, "Terms of Service", ui.TermsOfServicePage())
+}
+
 func FAQHandler(c *fiber.Ctx) error {
 	section := c.Params("section")
 	if section != "" && !ui.ValidFAQSection(section) {

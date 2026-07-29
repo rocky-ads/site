@@ -56,6 +56,8 @@ func setupApp() *fiber.App {
 	app.Get("/health", handler.HandleHealth)
 	app.Get("/error", handler.ErrorPageHandler)
 	app.Get("/about", handler.AboutHandler)
+	app.Get("/privacy", handler.PrivacyHandler)
+	app.Get("/terms", handler.TermsHandler)
 	app.Get("/faq", handler.FAQHandler)
 	app.Get("/faq/:section", handler.FAQHandler)
 	app.Get("/ad/:id", handler.AdHandler)
