@@ -114,11 +114,6 @@ func renderSearchResults(ads []ad.Ad, geoMeta searchGeoMeta, page int, hasGeo bo
 	cards := adCardsFrom(ads, userID, tz)
 	hasMore := len(ads) >= config.SearchPageSize
 	cardNodes := ui.AdNodes(cards, userID, view, page, csrfToken, hasMore)
-	// Page 1 empty: SearchResults adds empty message + footer.
-	// Otherwise append footer when this is the last page.
-	if !hasMore && (len(ads) > 0 || page > 1) {
-		cardNodes = append(cardNodes, ui.SiteFooter())
-	}
 
 	if !hasGeo {
 		return cardNodes

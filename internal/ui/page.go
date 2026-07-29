@@ -276,9 +276,7 @@ func Page(userID int, hasUnread bool, userName, title, currentPath,
 				g.If(showIntroBanner, introBanner()),
 				navigation(userID, userName, currentPath, hasUnread),
 				g.Group(body),
-				// Home uses infinite scroll; footer is appended when
-				// listings are exhausted.
-				g.If(currentPath != "/", SiteFooter()),
+				SiteFooter(),
 			),
 		),
 	}
