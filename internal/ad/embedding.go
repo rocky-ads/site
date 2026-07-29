@@ -50,13 +50,7 @@ func GetForEmbedding(adID int) (EmbeddingInput, error) {
 			COALESCE(l.latitude, 0) AS latitude,
 			COALESCE(l.longitude, 0) AS longitude,
 			CASE WHEN l.id IS NOT NULL THEN 1 ELSE 0 END AS has_location,
-			COALESCE((
-				SELECT COUNT(*)
-				FROM conversations c
-				WHERE c.ad_id = a.id
-				  AND c.rock_thrower_id IS NOT NULL
-				  AND c.rock_thrower_id = c.inquirer_id
-			), 0) AS rock_count
+			a.rock_count
 		FROM ads a
 		LEFT JOIN locations l ON a.location_id = l.id
 		WHERE a.id = $1 AND a.inactive_at IS NULL AND a.deleted_at IS NULL`

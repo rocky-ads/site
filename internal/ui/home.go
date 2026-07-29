@@ -266,7 +266,10 @@ func SearchWidget(userID, view int, q string, filtersExpanded,
 func searchResults(view int, results []g.Node, oob bool) g.Node {
 	var content g.Node
 	if len(results) == 0 {
-		content = searchResultsEmpty()
+		content = g.Group([]g.Node{
+			searchResultsEmpty(),
+			SiteFooter(),
+		})
 	} else {
 		content = g.Group(results)
 	}

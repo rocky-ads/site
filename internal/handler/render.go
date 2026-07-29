@@ -68,14 +68,14 @@ func searchAndRender(c *fiber.Ctx, state cookie.SearchState, categoryID,
 	page = c.QueryInt("page", 1)
 
 	p := parseSearchParams(state, page, categoryID, userID, distanceUnit, tz)
-	ads, inAreaCount, err := searchForAds(p, userID, tz)
+	ads, geoMeta, err := searchForAds(p, userID, tz)
 	if err != nil {
 		return 0, nil, err
 	}
 
 	location := searchLocationDisplay(state.Location)
 	results = renderSearchResults(
-		ads, inAreaCount, page, p.HasGeo,
+		ads, geoMeta, page, p.HasGeo,
 		userID, view, tz, csrfToken,
 		location, state.Within, distanceUnit,
 	)
@@ -83,28 +83,42 @@ func searchAndRender(c *fiber.Ctx, state cookie.SearchState, categoryID,
 	return page, results, nil
 }
 
+type searchGeoMeta struct {
+	InAreaOnPage int
+	HasAnyInArea bool
+}
+
 // searchForAds runs vector search and loads matching ads in result order.
 func searchForAds(p search.Params, userID int,
-	tz *time.Location) ([]ad.Ad, int, error) {
+	tz *time.Location) ([]ad.Ad, searchGeoMeta, error) {
 	result, err := search.Search(p)
 	if err != nil {
-		return nil, 0,
+		return nil, searchGeoMeta{},
 			fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	ads, err := ad.GetAds(userID, result.IDs, tz)
 	if err != nil {
-		return nil, 0,
+		return nil, searchGeoMeta{},
 			fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	return ads, result.InAreaCount, nil
+	return ads, searchGeoMeta{
+		InAreaOnPage: result.InAreaOnPage,
+		HasAnyInArea: result.HasAnyInArea,
+	}, nil
 }
 
 // renderSearchResults renders search result ads into gomponents nodes.
-func renderSearchResults(ads []ad.Ad, inAreaCount, page int, hasGeo bool,
+func renderSearchResults(ads []ad.Ad, geoMeta searchGeoMeta, page int, hasGeo bool,
 	userID, view int, tz *time.Location, csrfToken,
 	location string, within int, distanceUnit string) []g.Node {
 	cards := adCardsFrom(ads, userID, tz)
-	cardNodes := ui.AdNodes(cards, userID, view, page, csrfToken, true)
+	hasMore := len(ads) >= config.SearchPageSize
+	cardNodes := ui.AdNodes(cards, userID, view, page, csrfToken, hasMore)
+	// Page 1 empty: SearchResults adds empty message + footer.
+	// Otherwise append footer when this is the last page.
+	if !hasMore && (len(ads) > 0 || page > 1) {
+		cardNodes = append(cardNodes, ui.SiteFooter())
+	}
 
 	if !hasGeo {
 		return cardNodes
@@ -117,7 +131,7 @@ func renderSearchResults(ads []ad.Ad, inAreaCount, page int, hasGeo bool,
 
 	offset := (page - 1) * config.SearchPageSize
 
-	if offset == 0 && inAreaCount == 0 {
+	if offset == 0 && !geoMeta.HasAnyInArea {
 		nodes := []g.Node{ui.NoInAreaMatchesMessage(displayWithin, distanceUnit, location)}
 		if len(cardNodes) > 0 {
 			nodes = append(nodes, ui.OutsideAreaHeading())
@@ -127,10 +141,8 @@ func renderSearchResults(ads []ad.Ad, inAreaCount, page int, hasGeo bool,
 	}
 
 	headingAt := -1
-	if offset < inAreaCount && offset+len(cards) > inAreaCount {
-		headingAt = inAreaCount - offset
-	} else if offset == inAreaCount && inAreaCount > 0 {
-		headingAt = 0
+	if geoMeta.InAreaOnPage > 0 && geoMeta.InAreaOnPage < len(cardNodes) {
+		headingAt = geoMeta.InAreaOnPage
 	}
 
 	if headingAt < 0 || headingAt >= len(cardNodes) {

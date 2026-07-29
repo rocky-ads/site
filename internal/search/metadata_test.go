@@ -22,23 +22,15 @@ func TestGeoInAreaWhereClause(t *testing.T) {
 	}
 }
 
-func TestGeoInAreaOrderExpr(t *testing.T) {
+func TestBuildVectorMetadataWhereUsesRockColumn(t *testing.T) {
 	var pa pgArgs
-	p := Params{
-		CenterLat: 34.0522,
-		CenterLon: -118.2437,
-		WithinKm:  80.467,
-		HasGeo:    true,
+	p := Params{CategoryID: 6}
+	clause := buildVectorMetadataWhere(p, &pa)
+	if strings.Contains(clause, "rock_count')") {
+		t.Fatalf("should not use metadata rock_count: %s", clause)
 	}
-	expr := geoInAreaOrderExpr(p, &pa)
-	if !strings.HasPrefix(expr, "CASE WHEN ") {
-		t.Fatalf("expected CASE expression, got %s", expr)
-	}
-	if !strings.Contains(expr, "THEN 0 ELSE 1 END") {
-		t.Fatalf("expected in/out ranking, got %s", expr)
-	}
-	if len(pa.args) != 4 {
-		t.Fatalf("expected 4 bbox args, got %d", len(pa.args))
+	if !strings.Contains(clause, "rock_count <=") {
+		t.Fatalf("expected rock_count column filter: %s", clause)
 	}
 }
 

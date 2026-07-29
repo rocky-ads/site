@@ -13,8 +13,7 @@ import (
 func buildVectorMetadataWhere(p Params, pa *pgArgs) string {
 	clause := `(vector_metadata->>'category_id')::int = ` +
 		pa.add(p.CategoryID)
-	clause += ` AND COALESCE((vector_metadata->>'rock_count')::int, 0) <= ` +
-		pa.add(config.MaxRockCount)
+	clause += ` AND rock_count <= ` + pa.add(config.MaxRockCount)
 
 	if !p.Expanded {
 		return clause
@@ -147,8 +146,4 @@ func geoInAreaExpr(p Params, pa *pgArgs) string {
 
 func geoInAreaWhereClause(p Params, pa *pgArgs) string {
 	return geoInAreaExpr(p, pa)
-}
-
-func geoInAreaOrderExpr(p Params, pa *pgArgs) string {
-	return `CASE WHEN ` + geoInAreaExpr(p, pa) + ` THEN 0 ELSE 1 END`
 }

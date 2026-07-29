@@ -98,7 +98,6 @@ func rockContext(count int) string {
 func buildAdEmbeddingMetadata(in ad.EmbeddingInput) map[string]any {
 	meta := map[string]any{
 		"category_id": in.CategoryID,
-		"rock_count":  in.RockCount,
 	}
 	if amount, _, ok := in.PriceValue(); ok {
 		meta["price"] = amount

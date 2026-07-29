@@ -54,9 +54,11 @@ func DeleteAdEmbedding(adID int) error {
 	return err
 }
 
+// QuerySimilarAdIDs returns nearest ad IDs under threshold matching whereClause.
+// whereClause placeholders start at $1 and are remapped after the embedding
+// and threshold args.
 func QuerySimilarAdIDs(embedding []float32, whereClause string, whereArgs []any,
-	orderPrefix, inAreaExpr string, limit, offset int,
-	threshold float64) ([]int, int, error) {
+	limit, offset int, threshold float64) ([]int, error) {
 	vec := pgvector.NewVector(embedding)
 	args := []any{vec, threshold}
 	argIndex := 3
@@ -74,43 +76,14 @@ func QuerySimilarAdIDs(embedding []float32, whereClause string, whereArgs []any,
 	offsetPH := argIndex + 1
 	args = append(args, limit, offset)
 
-	var query string
-	if inAreaExpr != "" {
-		isInArea := fmt.Sprintf(
-			`CASE WHEN %s THEN 1 ELSE 0 END`,
-			replacePlaceholders(inAreaExpr, 3),
-		)
-		orderBy := "is_in_area DESC, "
-		if orderPrefix != "" {
-			orderBy += replacePlaceholders(orderPrefix, 3)
-		}
-		orderBy += "dist"
-		query = fmt.Sprintf(`
-SELECT id, in_area_count
-FROM (
-  SELECT id, is_in_area, dist, SUM(is_in_area) OVER () AS in_area_count
-  FROM (
-    SELECT id, %s AS is_in_area, embedding <=> $1::vector AS dist
-    FROM ads
-    WHERE %s
-  ) base
-) ranked
-ORDER BY %s
-LIMIT $%d OFFSET $%d`, isInArea, whereSQL, orderBy, limitPH, offsetPH)
-	} else {
-		query = `
+	query := fmt.Sprintf(`
 		SELECT id
 		FROM ads
-		WHERE ` + whereSQL
-		query += " ORDER BY "
-		if orderPrefix != "" {
-			query += replacePlaceholders(orderPrefix, 3)
-		}
-		query += fmt.Sprintf(
-			`embedding <=> $1::vector LIMIT $%d OFFSET $%d`,
-			limitPH, offsetPH,
-		)
-	}
+		WHERE %s
+		ORDER BY embedding <=> $1::vector
+		LIMIT $%d OFFSET $%d`,
+		whereSQL, limitPH, offsetPH,
+	)
 
 	logger.Debug("vector search sql",
 		"sql", strings.Join(strings.Fields(query), " "),
@@ -119,27 +92,21 @@ LIMIT $%d OFFSET $%d`, isInArea, whereSQL, orderBy, limitPH, offsetPH)
 
 	rows, err := db.Query(query, args...)
 	if err != nil {
-		return nil, 0, fmt.Errorf("vector search: %w", err)
+		return nil, fmt.Errorf("vector search: %w", err)
 	}
 	defer rows.Close()
 
 	var ids []int
-	inAreaCount := 0
 	for rows.Next() {
 		var id int
-		if inAreaExpr != "" {
-			if err := rows.Scan(&id, &inAreaCount); err != nil {
-				logger.Warn("vector search scan", "error", err)
-				continue
-			}
-		} else if err := rows.Scan(&id); err != nil {
+		if err := rows.Scan(&id); err != nil {
 			logger.Warn("vector search scan", "error", err)
 			continue
 		}
 		ids = append(ids, id)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	logger.Debug("vector search query",
@@ -147,14 +114,13 @@ LIMIT $%d OFFSET $%d`, isInArea, whereSQL, orderBy, limitPH, offsetPH)
 		"limit", limit,
 		"offset", offset,
 		"where", whereClause,
-		"inAreaCount", inAreaCount,
 		"resultCount", len(ids),
 		"resultIDs", ids,
 	)
 	if len(ids) == 0 {
 		logVectorSearchDiagnostics(vec, filterWhere, whereArgs, threshold)
 	}
-	return ids, inAreaCount, nil
+	return ids, nil
 }
 
 func GetAdEmbeddings(adIDs []int) ([][]float32, error) {

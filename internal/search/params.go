@@ -28,8 +28,10 @@ func (p Params) HasTextQuery() bool {
 	return p.Q != ""
 }
 
-// Results holds vector search output including in-area match count for geo searches.
+// Results holds vector search output. For geo searches, InAreaOnPage and
+// HasAnyInArea drive the outside-area heading without a global in-area count.
 type Results struct {
-	IDs         []int
-	InAreaCount int
+	IDs          []int
+	InAreaOnPage int
+	HasAnyInArea bool
 }

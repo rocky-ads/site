@@ -67,24 +67,34 @@ func ThrowRock(userID, conversationID int) error {
 		return fmt.Errorf("failed to throw rock: %w", err)
 	}
 
+	if userID == conv.InquirerID {
+		if err := SyncAdRockCount(conv.AdID); err != nil {
+			return fmt.Errorf("sync ad rock count: %w", err)
+		}
+	}
+
 	return nil
 }
 
 func getConversationForRock(conversationID int) (struct {
 	OwnerID    int
 	InquirerID int
+	AdID       int
 	Journal    string
 }, error) {
 	var conv struct {
 		OwnerID    int
 		InquirerID int
+		AdID       int
 		Journal    string
 	}
 	err := db.QueryRow(`
-		SELECT owner_id, inquirer_id, journal
+		SELECT owner_id, inquirer_id, ad_id, journal
 		FROM conversations
 		WHERE id = $1
-	`, conversationID).Scan(&conv.OwnerID, &conv.InquirerID, &conv.Journal)
+	`, conversationID).Scan(
+		&conv.OwnerID, &conv.InquirerID, &conv.AdID, &conv.Journal,
+	)
 	if err != nil {
 		return conv, fmt.Errorf("failed to get conversation: %w", err)
 	}
@@ -99,12 +109,13 @@ func getConversationForRock(conversationID int) (struct {
 // UnthrowRock removes a rock from a conversation
 func UnthrowRock(userID, conversationID int) error {
 	var rockThrowerID sql.NullInt64
+	var inquirerID, adID int
 	var j string
 	err := db.QueryRow(`
-		SELECT rock_thrower_id, journal
+		SELECT rock_thrower_id, inquirer_id, ad_id, journal
 		FROM conversations
 		WHERE id = $1
-	`, conversationID).Scan(&rockThrowerID, &j)
+	`, conversationID).Scan(&rockThrowerID, &inquirerID, &adID, &j)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return ErrRockNotFound
@@ -119,6 +130,8 @@ func UnthrowRock(userID, conversationID int) error {
 	if int(rockThrowerID.Int64) != userID {
 		return fmt.Errorf("only the rock thrower can remove the rock")
 	}
+
+	adBound := int(rockThrowerID.Int64) == inquirerID
 
 	now := time.Now().UTC()
 	plain, err := encryption.Open(conversationID, j, config.DBEncryptionKey)
@@ -142,6 +155,31 @@ func UnthrowRock(userID, conversationID int) error {
 		return fmt.Errorf("failed to remove rock: %w", err)
 	}
 
+	if adBound {
+		if err := SyncAdRockCount(adID); err != nil {
+			return fmt.Errorf("sync ad rock count: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// SyncAdRockCount sets ads.rock_count from ad-bound rocks on conversations.
+func SyncAdRockCount(adID int) error {
+	_, err := db.Exec(`
+		UPDATE ads
+		SET rock_count = (
+			SELECT COUNT(*)::int
+			FROM conversations c
+			WHERE c.ad_id = $1
+			  AND c.rock_thrower_id IS NOT NULL
+			  AND c.rock_thrower_id = c.inquirer_id
+		)
+		WHERE id = $1
+	`, adID)
+	if err != nil {
+		return fmt.Errorf("update ads.rock_count: %w", err)
+	}
 	return nil
 }
 

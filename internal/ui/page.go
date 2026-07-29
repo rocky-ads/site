@@ -191,7 +191,7 @@ func navigation(userID int, userName, currentPath string,
 	)
 }
 
-func siteFooter() g.Node {
+func SiteFooter() g.Node {
 	linkClass := "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 " +
 		"dark:hover:text-zinc-200 hover:underline"
 	return Footer(
@@ -276,7 +276,9 @@ func Page(userID int, hasUnread bool, userName, title, currentPath,
 				g.If(showIntroBanner, introBanner()),
 				navigation(userID, userName, currentPath, hasUnread),
 				g.Group(body),
-				siteFooter(),
+				// Home uses infinite scroll; footer is appended when
+				// listings are exhausted.
+				g.If(currentPath != "/", SiteFooter()),
 			),
 		),
 	}
