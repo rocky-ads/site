@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestSearchGeoOutWhereNullSafe(t *testing.T) {
+func TestSearchGeoBandsUseColumns(t *testing.T) {
 	var pa pgArgs
 	p := Params{
 		CategoryID: 1,
@@ -17,15 +17,12 @@ func TestSearchGeoOutWhereNullSafe(t *testing.T) {
 	}
 	where := buildVectorMetadataWhere(p, &pa)
 	bbox := geoInAreaExpr(p, &pa)
-	outWhere := where + ` AND NOT (
-		(vector_metadata->'location'->>'lat') IS NOT NULL
-		AND (vector_metadata->'location'->>'lon') IS NOT NULL
-		AND (` + bbox + `)
-	)`
-	if outWhere == where {
-		t.Fatal("outWhere should extend base where")
+	inWhere := where + " AND (" + bbox + ")"
+	outWhere := where + " AND (" + geoOutOfAreaExpr(bbox) + ")"
+	if outWhere == where || inWhere == where {
+		t.Fatal("geo bands should extend base where")
 	}
-	if got := len(pa.args); got < 6 {
-		t.Fatalf("expected category+rock+bbox args, got %d", got)
+	if got := len(pa.args); got != 6 {
+		t.Fatalf("expected category+rock+bbox args (6), got %d", got)
 	}
 }

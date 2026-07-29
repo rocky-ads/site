@@ -71,12 +71,7 @@ func searchGeo(embedding []float32, where string, pa *pgArgs,
 	p Params) (Results, error) {
 	bbox := geoInAreaExpr(p, pa)
 	inWhere := where + " AND (" + bbox + ")"
-	// Missing location is out-of-area (NOT bbox alone would drop NULLs).
-	outWhere := where + ` AND NOT (
-		(vector_metadata->'location'->>'lat') IS NOT NULL
-		AND (vector_metadata->'location'->>'lon') IS NOT NULL
-		AND (` + bbox + `)
-	)`
+	outWhere := where + " AND (" + geoOutOfAreaExpr(bbox) + ")"
 	args := pa.args
 	thresh := config.SearchThreshold
 

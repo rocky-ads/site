@@ -2,7 +2,6 @@ package search
 
 import (
 	"fmt"
-	"math"
 	"sort"
 	"strings"
 
@@ -115,35 +114,4 @@ func sortedFacetKeys(filters map[string]facet.Filter) []string {
 	}
 	sort.Strings(keys)
 	return keys
-}
-
-func geoBoundingBox(lat, lon,
-	withinKm float64) (minLat, maxLat, minLon, maxLon float64) {
-	const kmPerDegreeLat = 111.0
-	deltaLat := withinKm / kmPerDegreeLat
-	cosLat := math.Cos(lat * math.Pi / 180)
-	deltaLon := withinKm / kmPerDegreeLat
-	if cosLat > 0.01 {
-		deltaLon = withinKm / (kmPerDegreeLat * cosLat)
-	}
-	return lat - deltaLat, lat + deltaLat, lon - deltaLon, lon + deltaLon
-}
-
-const (
-	latMetaKey = `(vector_metadata->'location'->>'lat')::float`
-	lonMetaKey = `(vector_metadata->'location'->>'lon')::float`
-)
-
-func geoInAreaExpr(p Params, pa *pgArgs) string {
-	minLat, maxLat, minLon, maxLon := geoBoundingBox(
-		p.CenterLat, p.CenterLon, p.WithinKm,
-	)
-	return latMetaKey + ` BETWEEN ` + pa.add(minLat) +
-		` AND ` + pa.add(maxLat) +
-		` AND ` + lonMetaKey + ` BETWEEN ` + pa.add(minLon) +
-		` AND ` + pa.add(maxLon)
-}
-
-func geoInAreaWhereClause(p Params, pa *pgArgs) string {
-	return geoInAreaExpr(p, pa)
 }

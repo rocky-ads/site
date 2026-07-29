@@ -10,7 +10,6 @@ import (
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/entrylog"
 	"github.com/rocky-ads/site/internal/facet"
-	"github.com/rocky-ads/site/internal/location"
 )
 
 type UpdateInput struct {
@@ -119,15 +118,9 @@ func UpdateAd(input UpdateInput) error {
 		return err
 	}
 
-	var locationID any
-	if strings.TrimSpace(locText) != "" {
-		id, ok, err := location.FindLocationID(locText)
-		if err != nil {
-			return err
-		}
-		if ok {
-			locationID = id
-		}
+	locationID, latitude, longitude, err := resolveLocationFields(locText)
+	if err != nil {
+		return err
 	}
 
 	tx, err := db.Begin()
@@ -144,11 +137,13 @@ func UpdateAd(input UpdateInput) error {
 	}
 
 	_, err = tx.Exec(
-		`UPDATE ads SET title = $1, description = $2, location_id = $3, tags = $4,
-		 image_count = $5, expires_at = $6
-		 WHERE id = $7 AND user_id = $8
+		`UPDATE ads SET title = $1, description = $2, location_id = $3,
+		 latitude = $4, longitude = $5, tags = $6, image_count = $7,
+		 expires_at = $8
+		 WHERE id = $9 AND user_id = $10
 		   AND inactive_at IS NULL AND deleted_at IS NULL`,
-		title, desc, locationID, tagsJSON(newSuggestions), newImageCount,
+		title, desc, locationID, latitude, longitude,
+		tagsJSON(newSuggestions), newImageCount,
 		expiresAt, input.AdID, input.UserID,
 	)
 	if err != nil {

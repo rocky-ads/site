@@ -9,7 +9,6 @@ import (
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/facet"
-	"github.com/rocky-ads/site/internal/location"
 )
 
 type CreateInput struct {
@@ -57,15 +56,9 @@ func CreateAd(input CreateInput) (int, error) {
 	if HasLocationFacet(category) {
 		locText = LocationTextFromFacets(category, values)
 	}
-	var locationID any
-	if strings.TrimSpace(locText) != "" {
-		id, ok, err := location.FindLocationID(locText)
-		if err != nil {
-			return 0, err
-		}
-		if ok {
-			locationID = id
-		}
+	locationID, latitude, longitude, err := resolveLocationFields(locText)
+	if err != nil {
+		return 0, err
 	}
 
 	tx, err := db.Begin()
@@ -80,12 +73,13 @@ func CreateAd(input CreateInput) (int, error) {
 	expiresAt := ComputeExpiresAt(values, now, grant)
 	err = tx.QueryRow(
 		`INSERT INTO ads (category_id, title, description, user_id, location_id,
-		 tags, image_count, expires_at, expire_grant)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9 * INTERVAL '1 second')
+		 latitude, longitude, tags, image_count, expires_at, expire_grant)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+		         $11 * INTERVAL '1 second')
 		 RETURNING id`,
 		input.CategoryID, title, description, input.UserID, locationID,
-		tagsJSON(input.Suggestions), input.ImageCount, expiresAt,
-		grant.Seconds(),
+		latitude, longitude, tagsJSON(input.Suggestions), input.ImageCount,
+		expiresAt, grant.Seconds(),
 	).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("create ad: %w", err)

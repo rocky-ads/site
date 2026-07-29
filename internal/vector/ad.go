@@ -102,12 +102,6 @@ func buildAdEmbeddingMetadata(in ad.EmbeddingInput) map[string]any {
 	if amount, _, ok := in.PriceValue(); ok {
 		meta["price"] = amount
 	}
-	if in.HasLocation {
-		meta["location"] = map[string]any{
-			"lat": in.Latitude,
-			"lon": in.Longitude,
-		}
-	}
 	for _, d := range in.FacetDefs {
 		v, ok := in.Facets[d.Key]
 		if !ok || !v.Present() {

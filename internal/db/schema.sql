@@ -107,6 +107,8 @@ CREATE TABLE ads (
     user_id INTEGER NOT NULL REFERENCES users(id),
     image_count INTEGER DEFAULT 0,
     location_id INTEGER REFERENCES locations(id),
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
     tags TEXT NOT NULL DEFAULT '[]', -- JSON array of {label, value}
     rock_count INTEGER NOT NULL DEFAULT 0,
     embedding vector(768),
@@ -114,6 +116,8 @@ CREATE TABLE ads (
 );
 CREATE INDEX idx_ads_category ON ads(category_id);
 CREATE INDEX idx_ads_rock_count ON ads(rock_count);
+CREATE INDEX idx_ads_lat_lon ON ads (latitude, longitude)
+    WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
 CREATE INDEX idx_ads_embedding ON ads USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX idx_ads_vector_metadata ON ads USING gin (vector_metadata);
 CREATE INDEX idx_ads_inactive_at ON ads(inactive_at);

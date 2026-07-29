@@ -172,6 +172,14 @@ func runRestore(fromDir string, store imagestore.Store, backupKey []byte,
 		adRefToID[a.Ref] = newID
 	}
 
+	if _, err := db.Exec(`
+		UPDATE ads a
+		SET latitude = l.latitude, longitude = l.longitude
+		FROM locations l
+		WHERE a.location_id = l.id`); err != nil {
+		return fmt.Errorf("backfill ad coordinates: %w", err)
+	}
+
 	for _, f := range facets {
 		adID, ok := adRefToID[f.AdRef]
 		if !ok {

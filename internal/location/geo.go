@@ -33,12 +33,18 @@ func ResolveLocation(text string) (lat, lon float64, ok bool, err error) {
 	return loc.lat, loc.lon, true, nil
 }
 
+// FindLocation resolves text to a cached location row id and coordinates.
+func FindLocation(text string) (id int, lat, lon float64, ok bool, err error) {
+	loc, ok, err := resolveAndStore(text)
+	if err != nil || !ok {
+		return 0, 0, 0, ok, err
+	}
+	return loc.id, loc.lat, loc.lon, true, nil
+}
+
 // FindLocationID looks up a location row ID for user-entered text,
 // resolving via Grok and caching when not already stored.
 func FindLocationID(text string) (int, bool, error) {
-	loc, ok, err := resolveAndStore(text)
-	if err != nil || !ok {
-		return 0, ok, err
-	}
-	return loc.id, true, nil
+	id, _, _, ok, err := FindLocation(text)
+	return id, ok, err
 }
