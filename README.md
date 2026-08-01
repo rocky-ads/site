@@ -2,7 +2,6 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/rocky-ads/site.svg)](https://pkg.go.dev/github.com/rocky-ads/site)
 ![Go Version](https://img.shields.io/github/go-mod/go-version/rocky-ads/site)
-[![Go Report Card](https://goreportcard.com/badge/github.com/rocky-ads/site)](https://goreportcard.com/report/github.com/rocky-ads/site)
 
 [Rocky Ads](https://rockyads.com) is classified ads for the Internet.
 
