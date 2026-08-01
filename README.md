@@ -1,8 +1,10 @@
 # Rocky Ads Web Site
 
-[Rocky Ads is classified ads for the Internet.](https://rockyads.com)
+[Rocky Ads](https://rockyads.com) is classified ads for the Internet.
 
-<img src="static/images/classifieds.jpg" alt="Newspaper classifieds" height="300">
+<p align="center">
+  <img src="static/images/classifieds.jpg" alt="Newspaper classifieds" height="500">
+</p>
 
 Remember classified ads? Easy, simple. Post an ad with your phone number and folks call you. Rocky Ads works the same way, except your phone number stays hidden.
 
