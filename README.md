@@ -1,11 +1,25 @@
-=== Rocky Ads Web Site ===
+# Rocky Ads Web Site
 
-Development
------------
+## Development
 
-**Prerequisites:** Node.js (includes npm). Install from https://nodejs.org or e.g. `brew install node` on macOS.
+```mermaid
+flowchart LR
+  Browser -->|HTTP / HTMX| Site["Site<br/>Go / Fiber"]
+  Browser -->|presigned PUT/GET| MinIO
+  Site --> Postgres[(Postgres)]
+  Site --> MinIO
+  Site --> Ollama
+  Site --> Twilio
+  Site --> Grok["Grok API<br/>x.ai"]
+  Twilio -->|SMS webhooks| Site
+```
 
-**CSS (Tailwind)**
+### Prerequisites
+
+- Go 1.26.5+ — https://go.dev/dl
+- Node.js (includes npm) — https://nodejs.org, or e.g. `brew install node` on macOS
+
+### CSS (Tailwind)
 
 The app uses Tailwind CSS v4 (listed in `package.json`; no need to install it separately). Install deps once, then build the stylesheet before or while running the server:
 
@@ -16,7 +30,7 @@ The app uses Tailwind CSS v4 (listed in `package.json`; no need to install it se
 
 Input: `input.css` → output: `static/css/output.css`.
 
-**Object storage (MinIO)**
+### Object storage (MinIO)
 
 Ad images are stored in MinIO. The server requires `MINIO_API_URL` (and related credentials) to start.
 
@@ -25,20 +39,79 @@ Ad images are stored in MinIO. The server requires `MINIO_API_URL` (and related 
 
 Browsers upload WebP derivatives via short-lived **presigned PUT** URLs. Listing/detail pages embed **reused long-lived presigned GET** URLs so image bytes come from MinIO and remain browser-cacheable.
 
-Local dev with docker-compose:
+### SMS (Twilio)
+
+Phone verification, account recovery, and notification SMS use Twilio. Required at server start unless `ALLOW_TEST_REGISTRATION=true` (which skips Twilio validation for local/test).
+
+- `TWILIO_ACCOUNT_SID` — Twilio account SID (must start with `AC`).
+- `TWILIO_AUTH_TOKEN` — Twilio auth token.
+- `TWILIO_FROM_NUMBER` — sender number in E.164 (e.g. `+12025550123`).
+- `TWILIO_WEBHOOK_URL` — public base URL for Twilio webhooks and SMS links. Must be a non-localhost `http`/`https` URL (use ngrok locally).
+
+### DB (Postgres)
+
+- `DATABASE_URL` — PostgreSQL DSN. Default: `postgres://localhost:5432/rockyads?sslmode=disable`. With docker-compose Postgres: `postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable`.
+- `DB_ENCRYPTION_KEY` — required. Base64-encoded 32-byte (256-bit) key for encrypting user name/phone.
+
+### LLM APIs
+
+- `GROK_API_KEY` — xAI Grok API key (chat completions for rock opinions / AI features).
+- `OLLAMA_URL` — Ollama HTTP endpoint for embeddings (`nomic-embed-text`). Default: `http://localhost:11434`.
+- `FAL_API_KEY` — fal.ai key for `go run ./cmd/gen_images` only (not required by the server).
+
+### JWT
+
+- `JWT_SECRET` — required. Secret for signing auth cookies; at least 32 characters.
+
+### Other settings
+
+- `PORT` — HTTP listen port. Default: `10000`.
+- `PORT_TEST` — port used by integration tests. Default: `10001`.
+- `APP_NAME` — display name. Default: `Rocky Ads`.
+- `CONTACT_EMAIL` — contact address shown in the UI. Default: `contact@rockyads.com`.
+- `LOCAL_DEVELOPMENT` — set to `true` so auth cookies work over plain HTTP (otherwise cookies are Secure-only).
+- `ALLOW_TEST_REGISTRATION` — set to `true` to skip SMS verification for `+1555010xxxx` phones and relax Twilio startup checks (dev/test only).
+- `LOG_LEVEL` — `debug` / `info` / … Default: `info`.
+- `LOG_FORMAT` — `json` or text. Default: `json`.
+- `LOG_FILE` — optional log file path; empty logs to stderr.
+
+### Local dev with docker-compose
 
 ```bash
-docker compose up -d   # starts postgres, minio, jump-server
+docker compose up -d   # starts postgres, minio, jump-server, ollama
 ```
 
 Set in `.env`:
 
 ```
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable
+DB_ENCRYPTION_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+JWT_SECRET=local-dev-jwt-secret-key-min-32-chars
+LOCAL_DEVELOPMENT=true
+ALLOW_TEST_REGISTRATION=true
 MINIO_API_URL=http://127.0.0.1:9000
 MINIO_PUBLIC_URL=http://127.0.0.1:9000
 MINIO_ROOT_USER=minioadmin
 MINIO_ROOT_PASSWORD=minioadmin
 MINIO_BUCKET_NAME=rockyads
+OLLAMA_URL=http://localhost:11434
 ```
 
-After seeding the database (Admin TUI → Init database with seed), populate images with `go run ./cmd/gen_images` or `go run ./cmd/migrate_images`. See [doc/README.jump-server.md](doc/README.jump-server.md).
+Add Twilio (`TWILIO_*`), `GROK_API_KEY`, and `FAL_API_KEY` when you need real SMS, Grok, or image generation.
+
+Initialize the database via the jump-server admin TUI:
+
+```bash
+docker compose exec -it jump-server admin
+```
+
+Choose **Init database**.
+
+Run the site (loads `.env` into the environment):
+
+```bash
+set -a && source .env && set +a
+go run ./cmd/server
+```
+
+Open http://localhost:10000.
