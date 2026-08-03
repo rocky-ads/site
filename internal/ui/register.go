@@ -113,14 +113,6 @@ func hiddenPhone(phone string) g.Node {
 	)
 }
 
-func hiddenCode(code string) g.Node {
-	return Input(
-		Type("hidden"),
-		Name("code"),
-		Value(code),
-	)
-}
-
 func verificationCodeInput() g.Node {
 	return Div(
 		Class("text-center mb-6 space-y-6 py-4"),
@@ -207,7 +199,7 @@ func RegisterVerify(username, phoneE64 string) g.Node {
 	)
 }
 
-func RegisterPassword(username, phoneE64, code string) g.Node {
+func RegisterPassword(username, phoneE64 string) g.Node {
 	return Form(
 		Class("space-y-8 mt-8"),
 		ID("registerForm"),
@@ -215,7 +207,6 @@ func RegisterPassword(username, phoneE64, code string) g.Node {
 		hx.Swap("none"),
 		hx.SwapOOB("true"),
 		hiddenPhone(phoneE64),
-		hiddenCode(code),
 		passwordManagerUsername(username),
 		Div(
 			labeledPasswordField("Password", "password", "new-password", true),

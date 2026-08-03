@@ -20,6 +20,7 @@ const (
 	RecoveryRateLimitMax     = 3                // Allow 3 recovery starts per IP
 	RecoveryRateLimitExp     = 15 * time.Minute // Within 15 minutes
 	RecoverySessionTTL       = 10 * time.Minute // Recover session / code lifetime
+	RegistrationTicketTTL    = 10 * time.Minute // Post-OTP registration ticket lifetime
 
 	// MinIO configuration
 	MinIOPresignedPutExpiry = 15 * time.Minute

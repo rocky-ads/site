@@ -14,6 +14,7 @@ import (
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/password"
 	"github.com/rocky-ads/site/internal/phoneverification"
+	"github.com/rocky-ads/site/internal/registrationticket"
 	"github.com/rocky-ads/site/internal/service/grok"
 	"github.com/rocky-ads/site/internal/service/sms"
 	"github.com/rocky-ads/site/internal/ui"
@@ -38,6 +39,7 @@ var RegistrationRateLimiter = limiter.New(limiter.Config{
 
 func RegisterHandler(c *fiber.Ctx) error {
 	logout(c)
+	cookie.ClearRegisterTicket(c)
 	return renderPage(c, "Register", ui.RegisterPage(c.Query("username")))
 }
 
@@ -182,7 +184,12 @@ func RegisterStep1Handler(c *fiber.Ctx) error {
 	}
 
 	if allowTestRegistration(phoneE64) {
-		return render(c, ui.RegisterPassword(username, phoneE64, ""))
+		if err := registrationticket.Issue(c, username, phoneE64); err != nil {
+			logger.Error("Failed to issue registration ticket",
+				"error", err, "phone", phoneE64)
+			return showError(c, "Unable to complete registration. Please try again.")
+		}
+		return render(c, ui.RegisterPassword(username, phoneE64))
 	}
 
 	code, err := phoneverification.GenerateCode()
@@ -239,27 +246,34 @@ func RegisterStep2Handler(c *fiber.Ctx) error {
 	}
 
 	if allowTestRegistration(phoneE64) {
-		return render(c, ui.RegisterPassword(username, phoneE64, ""))
+		if err := registrationticket.Issue(c, username, phoneE64); err != nil {
+			logger.Error("Failed to issue registration ticket",
+				"error", err, "phone", phoneE64)
+			return showError(c, "Unable to complete registration. Please try again.")
+		}
+		return render(c, ui.RegisterPassword(username, phoneE64))
 	}
 
-	valid, err := phoneverification.ValidateCode(phoneE64, code,
+	ok, err := phoneverification.ConsumeCode(phoneE64, code,
 		phoneverification.PurposeRegister, nil)
-	if err != nil {
-		logger.Warn("Verification code validation error",
+	if err != nil || !ok {
+		logger.Warn("Verification code consume failed",
 			"error", err, "phone", phoneE64)
 		return showError(c, "Invalid or expired verification code. Please request a new code.")
 	}
-	if !valid {
-		return showError(c, "Invalid verification code. Please check your code and try again.")
+
+	if err := registrationticket.Issue(c, username, phoneE64); err != nil {
+		logger.Error("Failed to issue registration ticket",
+			"error", err, "phone", phoneE64)
+		return showError(c, "Unable to complete registration. Please try again.")
 	}
 
-	return render(c, ui.RegisterPassword(username, phoneE64, code))
+	return render(c, ui.RegisterPassword(username, phoneE64))
 }
 
 func RegisterStep3Handler(c *fiber.Ctx) error {
 	username := c.FormValue("username")
 	phoneE64 := c.FormValue("phone")
-	code := c.FormValue("code")
 	passwd := c.FormValue("password")
 	passwd2 := c.FormValue("password2")
 	terms := c.FormValue("terms")
@@ -285,15 +299,11 @@ func RegisterStep3Handler(c *fiber.Ctx) error {
 		return showError(c, "You must accept the terms and conditions to continue.")
 	}
 
-	if !allowTestRegistration(phoneE64) {
-		ok, err := phoneverification.ConsumeCode(phoneE64, code,
-			phoneverification.PurposeRegister, nil)
-		if err != nil || !ok {
-			logger.Warn("Registration code consume failed",
-				"error", err, "phone", phoneE64)
-			return showError(c,
-				"Invalid or expired verification code. Please start over.")
-		}
+	if err := registrationticket.Consume(c, username, phoneE64); err != nil {
+		logger.Warn("Registration ticket consume failed",
+			"error", err, "phone", phoneE64)
+		return showError(c,
+			"Invalid or expired registration. Please start over.")
 	}
 
 	u, err := user.CreateUser(username, phoneE64, passwd)
