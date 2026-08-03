@@ -90,6 +90,54 @@ func TestPurposeIsolation(t *testing.T) {
 	}
 }
 
+func TestConsumeCode(t *testing.T) {
+	resetSchema(t)
+
+	const phone = "+15559872003"
+	const code = "555555"
+
+	if err := StoreCode(phone, code, PurposeRegister, nil); err != nil {
+		t.Fatalf("store: %v", err)
+	}
+
+	ok, err := ValidateCode(phone, code, PurposeRegister, nil)
+	if err != nil || !ok {
+		t.Fatalf("pre-check validate: ok=%v err=%v", ok, err)
+	}
+
+	ok, err = ConsumeCode(phone, code, PurposeRegister, nil)
+	if err != nil || !ok {
+		t.Fatalf("consume: ok=%v err=%v", ok, err)
+	}
+
+	ok, err = ConsumeCode(phone, code, PurposeRegister, nil)
+	if err == nil && ok {
+		t.Fatal("code must not be reusable after consume")
+	}
+}
+
+func TestConsumeCodeRejectsWrongCode(t *testing.T) {
+	resetSchema(t)
+
+	const phone = "+15559872004"
+	if err := StoreCode(phone, "666666", PurposeRegister, nil); err != nil {
+		t.Fatalf("store: %v", err)
+	}
+
+	ok, err := ConsumeCode(phone, "000000", PurposeRegister, nil)
+	if err != nil {
+		t.Fatalf("consume wrong code err: %v", err)
+	}
+	if ok {
+		t.Fatal("wrong code must not consume")
+	}
+
+	ok, err = ConsumeCode(phone, "666666", PurposeRegister, nil)
+	if err != nil || !ok {
+		t.Fatalf("correct code after failed attempt: ok=%v err=%v", ok, err)
+	}
+}
+
 func TestInvalidateCodesForPurpose(t *testing.T) {
 	resetSchema(t)
 

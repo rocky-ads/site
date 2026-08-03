@@ -182,7 +182,7 @@ func RegisterStep1Handler(c *fiber.Ctx) error {
 	}
 
 	if allowTestRegistration(phoneE64) {
-		return render(c, ui.RegisterPassword(username, phoneE64))
+		return render(c, ui.RegisterPassword(username, phoneE64, ""))
 	}
 
 	code, err := phoneverification.GenerateCode()
@@ -239,7 +239,7 @@ func RegisterStep2Handler(c *fiber.Ctx) error {
 	}
 
 	if allowTestRegistration(phoneE64) {
-		return render(c, ui.RegisterPassword(username, phoneE64))
+		return render(c, ui.RegisterPassword(username, phoneE64, ""))
 	}
 
 	valid, err := phoneverification.ValidateCode(phoneE64, code,
@@ -253,13 +253,13 @@ func RegisterStep2Handler(c *fiber.Ctx) error {
 		return showError(c, "Invalid verification code. Please check your code and try again.")
 	}
 
-	// Code is valid, show password form
-	return render(c, ui.RegisterPassword(username, phoneE64))
+	return render(c, ui.RegisterPassword(username, phoneE64, code))
 }
 
 func RegisterStep3Handler(c *fiber.Ctx) error {
 	username := c.FormValue("username")
 	phoneE64 := c.FormValue("phone")
+	code := c.FormValue("code")
 	passwd := c.FormValue("password")
 	passwd2 := c.FormValue("password2")
 	terms := c.FormValue("terms")
@@ -285,8 +285,16 @@ func RegisterStep3Handler(c *fiber.Ctx) error {
 		return showError(c, "You must accept the terms and conditions to continue.")
 	}
 
-	// Verify code was validated in step 2 (we could add additional validation here if needed)
-	// For now, we trust that step 2 validated the code
+	if !allowTestRegistration(phoneE64) {
+		ok, err := phoneverification.ConsumeCode(phoneE64, code,
+			phoneverification.PurposeRegister, nil)
+		if err != nil || !ok {
+			logger.Warn("Registration code consume failed",
+				"error", err, "phone", phoneE64)
+			return showError(c,
+				"Invalid or expired verification code. Please start over.")
+		}
+	}
 
 	u, err := user.CreateUser(username, phoneE64, passwd)
 	if err != nil {

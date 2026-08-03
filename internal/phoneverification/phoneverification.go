@@ -160,6 +160,29 @@ func getPhoneVerification(phoneE64, purpose string,
 	return pv, nil
 }
 
+func codesMatch(stored, input string) bool {
+	storedBytes := []byte(stored)
+	inputBytes := []byte(input)
+	if len(storedBytes) != len(inputBytes) {
+		return false
+	}
+	return subtle.ConstantTimeCompare(storedBytes, inputBytes) == 1
+}
+
+func bumpAttempts(id int) error {
+	_, err := db.Exec(`
+		UPDATE phone_verification
+		SET attempts = attempts + 1
+		WHERE id = $1
+	`, id)
+	if err != nil {
+		logger.Error("Failed to update attempts",
+			"error", err, "component", "verification")
+		return err
+	}
+	return nil
+}
+
 func ValidateCode(phoneE64, code, purpose string, userID *int) (bool, error) {
 	vc, err := getPhoneVerification(phoneE64, purpose, userID)
 	if err != nil {
@@ -167,35 +190,57 @@ func ValidateCode(phoneE64, code, purpose string, userID *int) (bool, error) {
 		return false, err
 	}
 
-	_, err = db.Exec(`
-		UPDATE phone_verification
-		SET attempts = attempts + 1
-		WHERE id = $1
-	`, vc.ID)
-	if err != nil {
-		logger.Error("Failed to update attempts",
-			"error", err, "component", "verification")
-		return false, err
-	}
-
-	codeBytes := []byte(vc.VerificationCode)
-	inputBytes := []byte(code)
-
-	if len(codeBytes) != len(inputBytes) {
-		logger.Warn("Invalid code (length mismatch)",
-			"component", "verification", "phoneE64", phoneE64)
-		return false, nil
-	}
-
-	if subtle.ConstantTimeCompare(codeBytes, inputBytes) == 1 {
+	if codesMatch(vc.VerificationCode, code) {
 		logger.Info("Code validated successfully",
 			"component", "verification", "phoneE64", phoneE64,
 			"purpose", purpose)
 		return true, nil
 	}
 
+	if err := bumpAttempts(vc.ID); err != nil {
+		return false, err
+	}
+
 	logger.Warn("Invalid code", "component", "verification", "phoneE64", phoneE64)
 	return false, nil
+}
+
+// ConsumeCode validates a code and deletes it so it cannot be reused.
+// Concurrent consumers: only the first successful delete wins.
+func ConsumeCode(phoneE64, code, purpose string, userID *int) (bool, error) {
+	vc, err := getPhoneVerification(phoneE64, purpose, userID)
+	if err != nil {
+		cleanupStaleVerifications(phoneE64)
+		return false, err
+	}
+
+	if !codesMatch(vc.VerificationCode, code) {
+		if err := bumpAttempts(vc.ID); err != nil {
+			return false, err
+		}
+		logger.Warn("Invalid code", "component", "verification",
+			"phoneE64", phoneE64)
+		return false, nil
+	}
+
+	res, err := db.Exec(`
+		DELETE FROM phone_verification WHERE id = $1
+	`, vc.ID)
+	if err != nil {
+		return false, fmt.Errorf("failed to consume verification code: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("failed to check consumed code: %w", err)
+	}
+	if n == 0 {
+		return false, nil
+	}
+
+	logger.Info("Code consumed successfully",
+		"component", "verification", "phoneE64", phoneE64,
+		"purpose", purpose)
+	return true, nil
 }
 
 func cleanupExpiredCodes() error {
