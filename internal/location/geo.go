@@ -24,7 +24,7 @@ func ValidMileageUnit(unit string) bool {
 }
 
 // ResolveLocation looks up lat/lon for user-entered location text,
-// resolving via Grok and caching when not already stored.
+// resolving via Geoapify and caching when not already stored.
 func ResolveLocation(text string) (lat, lon float64, ok bool, err error) {
 	loc, ok, err := resolveAndStore(text)
 	if err != nil || !ok {
@@ -43,7 +43,7 @@ func FindLocation(text string) (id int, lat, lon float64, ok bool, err error) {
 }
 
 // FindLocationID looks up a location row ID for user-entered text,
-// resolving via Grok and caching when not already stored.
+// resolving via Geoapify and caching when not already stored.
 func FindLocationID(text string) (int, bool, error) {
 	id, _, _, ok, err := FindLocation(text)
 	return id, ok, err

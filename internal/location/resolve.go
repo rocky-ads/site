@@ -2,48 +2,54 @@ package location
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/logger"
-	"github.com/rocky-ads/site/internal/service/grok"
+	"github.com/rocky-ads/site/internal/service/geoapify"
 )
 
-const locationResolverConvID = "location-resolver"
-
-const locationResolverPrompt = `You are a location resolver for classified ads
-website.  Given a user input (which may be a address, city, state, zip code, or
-country), return a JSON object with the best guess for city, admin_area (state,
-province, or region), country, latitude, and longitude. The country field must
-be a 2-letter ISO country code (e.g., "US" for United States, "CA" for Canada,
-"GB" for United Kingdom). For US and Canada, the admin_area field must be the
-official 2-letter code (e.g., "OR" for Oregon, "NY" for New York, "BC" for
-British Columbia, "ON" for Ontario). For all other countries, use the full name
-for admin_area. Latitude and longitude should be decimal degrees (positive for
-North/East, negative for South/West).  If a field is unknown, leave it blank or
-null.  Example input: "97333" -> {"city": "Corvallis", "admin_area": "OR",
-"country": "US", "latitude": 44.5646, "longitude": -123.2620}`
-
-// LocationResponse is the JSON shape returned by Grok location resolution.
+// LocationResponse is the normalized shape stored in locations.
 type LocationResponse struct {
-	City      string   `json:"city"`
-	AdminArea string   `json:"admin_area"`
-	Country   string   `json:"country"`
-	Latitude  *float64 `json:"latitude"`
-	Longitude *float64 `json:"longitude"`
+	City      string
+	AdminArea string
+	Country   string
+	Latitude  float64
+	Longitude float64
 }
 
-func resolveWithGrok(text string) (*LocationResponse, error) {
-	resp, err := grok.CallGrokConv(
-		locationResolverPrompt, text, locationResolverConvID,
-	)
+func resolveWithGeoapify(text string) (*LocationResponse, error) {
+	result, err := geoapify.Geocode(text)
 	if err != nil {
-		return nil, fmt.Errorf("resolve location with grok: %w", err)
+		return nil, fmt.Errorf("resolve location with geoapify: %w", err)
 	}
-	return parseLocationResponse(resp)
+	if result == nil {
+		return nil, fmt.Errorf("geoapify returned no results")
+	}
+	return locationFromGeoapify(result), nil
+}
+
+func locationFromGeoapify(r *geoapify.Result) *LocationResponse {
+	country := strings.ToUpper(strings.TrimSpace(r.CountryCode))
+	admin := strings.TrimSpace(r.StateCode)
+	if country != "US" && country != "CA" {
+		admin = strings.TrimSpace(r.State)
+	} else if admin == "" {
+		admin = strings.TrimSpace(r.State)
+	}
+	city := strings.TrimSpace(r.City)
+	if city == "" {
+		city = strings.TrimSpace(r.County)
+	}
+	return &LocationResponse{
+		City:      city,
+		AdminArea: admin,
+		Country:   country,
+		Latitude:  r.Lat,
+		Longitude: r.Lon,
+	}
 }
 
 type resolvedLoc struct {
@@ -70,13 +76,10 @@ func resolveAndStore(text string) (resolvedLoc, bool, error) {
 		return resolvedLoc{}, false, fmt.Errorf("resolve location: %w", err)
 	}
 
-	resolved, err := resolveWithGrok(text)
+	resolved, err := resolveWithGeoapify(text)
 	if err != nil {
-		logger.Warn("resolve location: grok failed", "text", text, "error", err)
-		return resolvedLoc{}, false, nil
-	}
-	if resolved.Latitude == nil || resolved.Longitude == nil {
-		logger.Warn("resolve location: missing coordinates", "text", text)
+		logger.Warn("resolve location: geoapify failed",
+			"text", text, "error", err)
 		return resolvedLoc{}, false, nil
 	}
 
@@ -86,7 +89,7 @@ func resolveAndStore(text string) (resolvedLoc, bool, error) {
 		 VALUES ($1, $2, $3, $4, $5, $6)
 		 ON CONFLICT(raw_text) DO NOTHING`,
 		text, resolved.City, resolved.AdminArea, resolved.Country,
-		*resolved.Latitude, *resolved.Longitude,
+		resolved.Latitude, resolved.Longitude,
 	)
 	if err != nil {
 		return resolvedLoc{}, false, fmt.Errorf("resolve location: %w", err)
@@ -101,34 +104,4 @@ func resolveAndStore(text string) (resolvedLoc, bool, error) {
 		return resolvedLoc{}, false, fmt.Errorf("resolve location: %w", err)
 	}
 	return loc, true, nil
-}
-
-func parseLocationResponse(resp string) (*LocationResponse, error) {
-	resp = strings.TrimSpace(trimCodeFence(resp))
-	var loc LocationResponse
-	if err := json.Unmarshal([]byte(resp), &loc); err != nil {
-		return nil, fmt.Errorf("parse location response: %w", err)
-	}
-	if loc.Latitude == nil || loc.Longitude == nil {
-		return nil, fmt.Errorf("location response missing coordinates")
-	}
-	return &loc, nil
-}
-
-func trimCodeFence(s string) string {
-	if !strings.HasPrefix(s, "```") {
-		return s
-	}
-	lines := strings.Split(s, "\n")
-	if len(lines) < 2 {
-		return s
-	}
-	end := len(lines) - 1
-	for end > 0 && strings.TrimSpace(lines[end]) == "" {
-		end--
-	}
-	if strings.HasPrefix(strings.TrimSpace(lines[end]), "```") {
-		return strings.Join(lines[1:end], "\n")
-	}
-	return strings.Join(lines[1:], "\n")
 }

@@ -960,6 +960,26 @@ func AboutPage() []g.Node {
 					),
 				),
 			),
+			P(
+				Class("text-sm text-zinc-500 dark:text-zinc-400"),
+				g.Text("Location data powered by "),
+				A(
+					Href("https://www.geoapify.com/"),
+					Target("_blank"),
+					Rel("noopener noreferrer"),
+					Class("text-blue-600 dark:text-blue-400 hover:underline"),
+					g.Text("Geoapify"),
+				),
+				g.Text(". © "),
+				A(
+					Href("https://www.openstreetmap.org/copyright"),
+					Target("_blank"),
+					Rel("noopener noreferrer"),
+					Class("text-blue-600 dark:text-blue-400 hover:underline"),
+					g.Text("OpenStreetMap contributors"),
+				),
+				g.Text("."),
+			),
 		),
 	}
 }

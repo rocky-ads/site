@@ -26,6 +26,7 @@ flowchart LR
   Site --> Ollama
   Site --> Twilio
   Site --> Grok["Grok API<br/>x.ai"]
+  Site --> Geoapify
   Twilio -->|SMS webhooks| Site
 ```
 
@@ -68,9 +69,10 @@ Phone verification, account recovery, and notification SMS use Twilio. Required 
 - `DATABASE_URL` — PostgreSQL DSN. Default: `postgres://localhost:5432/rockyads?sslmode=disable`. With docker-compose Postgres: `postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable`.
 - `DB_ENCRYPTION_KEY` — required. Base64-encoded 32-byte (256-bit) key for encrypting user name/phone.
 
-### LLM APIs
+### LLM / geocoding APIs
 
 - `GROK_API_KEY` — xAI Grok API key (chat completions for rock opinions / AI features).
+- `GEOAPIFY_API_KEY` — Geoapify API key (forward geocoding for locations table cache misses).
 - `OLLAMA_URL` — Ollama HTTP endpoint for embeddings (`nomic-embed-text`). Default: `http://localhost:11434`.
 - `FAL_API_KEY` — fal.ai key for `go run ./cmd/gen_images` only (not required by the server).
 
@@ -112,7 +114,7 @@ MINIO_BUCKET_NAME=rockyads
 OLLAMA_URL=http://localhost:11434
 ```
 
-Add Twilio (`TWILIO_*`), `GROK_API_KEY`, and `FAL_API_KEY` when you need real SMS, Grok, or image generation.
+Add Twilio (`TWILIO_*`), `GROK_API_KEY`, `GEOAPIFY_API_KEY`, and `FAL_API_KEY` when you need real SMS, Grok, location geocoding, or image generation.
 
 Initialize the database via the jump-server admin TUI:
 

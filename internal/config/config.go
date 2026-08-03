@@ -43,6 +43,9 @@ const (
 	GrokModel           = "grok-4.3"
 	GrokReasoningEffort = "none"
 
+	// Geoapify geocoding
+	GeoapifyGeocodeURL = "https://api.geoapify.com/v1/geocode/search"
+
 	// Ollama embedding configuration
 	OllamaEmbeddingModel      = "nomic-embed-text"
 	OllamaEmbeddingDimensions = 768
@@ -92,8 +95,9 @@ var (
 	MinIOBucketName   = getEnvWithDefault("MINIO_BUCKET_NAME", "")
 
 	// AI/ML API configuration
-	GrokAPIKey = getEnvWithDefault("GROK_API_KEY", "")
-	OllamaURL  = getEnvWithDefault("OLLAMA_URL", "http://localhost:11434")
+	GrokAPIKey     = getEnvWithDefault("GROK_API_KEY", "")
+	GeoapifyAPIKey = getEnvWithDefault("GEOAPIFY_API_KEY", "")
+	OllamaURL      = getEnvWithDefault("OLLAMA_URL", "http://localhost:11434")
 
 	// SMS/Twilio configuration
 	TwilioAccountSID = getEnvWithDefault("TWILIO_ACCOUNT_SID", "")
