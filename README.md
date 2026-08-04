@@ -21,10 +21,13 @@ All you need is your phone number to [get started](https://rockyads.com/register
 flowchart LR
   Browser -->|HTTP / HTMX| Site["Site<br/>Go / Fiber"]
   Browser -->|presigned PUT/GET| MinIO
+  Browser -->|Turnstile| Cloudflare["Cloudflare<br/>Turnstile"]
   Site --> Postgres[(Postgres)]
+  Site --> Redis[(Redis)]
   Site --> MinIO
   Site --> Ollama
   Site --> Twilio
+  Site --> Cloudflare
   Site --> Grok["Grok API<br/>x.ai"]
   Site --> Geoapify
   Twilio -->|SMS webhooks| Site
@@ -75,6 +78,18 @@ Required at server start unless `ALLOW_TEST_REGISTRATION=true`:
 - `DATABASE_URL` — PostgreSQL DSN. Default: `postgres://localhost:5432/rockyads?sslmode=disable`. With docker-compose Postgres: `postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable`.
 - `DB_ENCRYPTION_KEY` — required. Base64-encoded 32-byte (256-bit) key for encrypting user name/phone.
 
+### Redis
+
+- `REDIS_URL` — required. Redis URL for shared rate limits (registration/recovery IP + per-phone OTP starts). Local: `redis://localhost:6379` with `docker compose up -d redis`. Render: Key Value internal URL (e.g. `redis://red-xxx:6379`).
+
+Inspect local Redis:
+
+```bash
+docker compose exec redis redis-cli
+```
+
+Useful commands: `SCAN 0 MATCH otp:* COUNT 100`, `GET otp:cd:+1…`, `TTL otp:hr:+1…`, `SCAN 0 MATCH reg:* COUNT 100`. Prefer `SCAN` over `KEYS *`. Keys look like `otp:cd:<e164>`, `otp:hr:<e164>`, `reg:<ip>`, `rec:<ip>`, `srv:<ip>` (Fiber limiter values are binary). For a GUI, [Redis Insight](https://redis.io/insight/) against `localhost:6379` works well. On Render, use an external Key Value URL if enabled, or `redis-cli` from a service on the private network.
+
 ### LLM / geocoding APIs
 
 - `GROK_API_KEY` — xAI Grok API key (chat completions for rock opinions / AI features).
@@ -101,13 +116,14 @@ Required at server start unless `ALLOW_TEST_REGISTRATION=true`:
 ### Local dev with docker-compose
 
 ```bash
-docker compose up -d   # starts postgres, minio, jump-server, ollama
+docker compose up -d   # starts postgres, redis, minio, jump-server, ollama
 ```
 
 Set in `.env`:
 
 ```
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable
+REDIS_URL=redis://localhost:6379
 DB_ENCRYPTION_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
 JWT_SECRET=local-dev-jwt-secret-key-min-32-chars
 LOCAL_DEVELOPMENT=true
@@ -119,6 +135,8 @@ MINIO_ROOT_PASSWORD=minioadmin
 MINIO_BUCKET_NAME=rockyads
 OLLAMA_URL=http://localhost:11434
 ```
+
+`REDIS_URL` is required; start Redis via Compose before running the server.
 
 Add Twilio (`TWILIO_*`), `GROK_API_KEY`, `GEOAPIFY_API_KEY`, and `FAL_API_KEY` when you need real SMS, Grok, location geocoding, or image generation.
 

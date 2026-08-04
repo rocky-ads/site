@@ -19,6 +19,11 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
   - Foreign key constraints enabled
   - Indexes optimized for search performance
 
+### Cache / shared rate limits
+- **Redis** - Shared counters for registration/recovery IP limits and per-phone
+  OTP starts (`REDIS_URL`, required). Docker Compose service `redis` on
+  port 6379.
+
 ### Database Libraries
 - **sqlx v1.4.0** - SQL toolkit providing extensions to database/sql
   - Named parameter support

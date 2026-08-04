@@ -75,17 +75,19 @@ Current intended settings (keep Console aligned with this doc):
 | `TWILIO_VERIFY_SERVICE_SID` | Yes* | Verify Service SID (`VA…`) |
 | `TURNSTILE_SITE_KEY` | Yes* | Cloudflare Turnstile site key |
 | `TURNSTILE_SECRET_KEY` | Yes* | Cloudflare Turnstile secret |
+| `REDIS_URL` | Yes | Shared rate-limit store (`redis://…:6379`) |
 | `ALLOW_TEST_REGISTRATION` | Dev only | Skips Verify, Turnstile, and Twilio startup checks for `+1555010xxxx` |
 
-\*Required at server start unless `ALLOW_TEST_REGISTRATION=true`.
+\*Required at server start unless `ALLOW_TEST_REGISTRATION=true` (Twilio/Turnstile
+only; `REDIS_URL` is always required).
 
 ### OTP start rate limits (code constants)
 
-- Per IP: existing registration limiter (3 / 15 min; relaxed under test allow).
+- Per IP: registration limiter (3 / 15 min; relaxed under test allow).
 - Per phone: 1 OTP start / 60s and max 5 / hour (register and change-phone).
 
-Multi-instance deployments share in-memory counters per process only; for
-horizontal scale, move counters to Postgres or Redis later.
+Counters live in **Redis** (`REDIS_URL`) so limits are shared across app
+instances.
 
 ## Test / local development
 

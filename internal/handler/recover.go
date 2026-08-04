@@ -2,31 +2,14 @@ package handler
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/rocky-ads/site/internal/accountrecovery"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/ui"
 )
-
-// RecoveryRateLimiter limits recovery session starts per IP.
-var RecoveryRateLimiter = limiter.New(limiter.Config{
-	Max:        config.EffectiveRecoveryRateLimitMax(),
-	Expiration: config.RecoveryRateLimitExp,
-	KeyGenerator: func(c *fiber.Ctx) string {
-		return c.IP()
-	},
-	LimitReached: func(c *fiber.Ctx) error {
-		minutes := int(config.RecoveryRateLimitExp.Minutes())
-		errorMsg := fmt.Sprintf("Too many recovery attempts. "+
-			"Please try again in %d minutes.", minutes)
-		return fiber.NewError(fiber.StatusTooManyRequests, errorMsg)
-	},
-})
 
 func setNoStore(c *fiber.Ctx) {
 	c.Set("Cache-Control", "no-store")

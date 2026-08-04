@@ -22,7 +22,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/cookie"
@@ -30,6 +32,7 @@ import (
 	"github.com/rocky-ads/site/internal/db/testdb"
 	"github.com/rocky-ads/site/internal/handler"
 	"github.com/rocky-ads/site/internal/imagestore"
+	"github.com/rocky-ads/site/internal/kv"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/seed"
 	"github.com/rocky-ads/site/internal/vector"
@@ -135,6 +138,14 @@ func TestMain(m *testing.M) {
 	}
 	handler.SetAdImageStore(imagestore.NewLocal(testImageDir))
 
+	mr, err := miniredis.Run()
+	if err != nil {
+		db.Close()
+		panic(fmt.Sprintf("Failed to start miniredis: %v", err))
+	}
+	kv.InitWithClient(redis.NewClient(&redis.Options{Addr: mr.Addr()}))
+	handler.InitRateLimiters(kv.Storage())
+
 	// Setup test server
 	testServer = setupApp()
 
@@ -174,6 +185,8 @@ func TestMain(m *testing.M) {
 
 	// Close database
 	db.Close()
+	_ = kv.Close()
+	mr.Close()
 
 	if testImageDir != "" {
 		os.RemoveAll(testImageDir)

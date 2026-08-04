@@ -9,6 +9,7 @@ import (
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/handler"
 	"github.com/rocky-ads/site/internal/imagestore"
+	"github.com/rocky-ads/site/internal/kv"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/service/sms"
 	"github.com/rocky-ads/site/internal/service/turnstile"
@@ -36,6 +37,10 @@ func setupApp() *fiber.App {
 	app.Use(limiter.New(limiter.Config{
 		Max:        config.ServerRateLimitMax,
 		Expiration: config.ServerRateLimitExp,
+		Storage:    kv.Storage(),
+		KeyGenerator: func(c *fiber.Ctx) string {
+			return "srv:" + c.IP()
+		},
 	}))
 
 	app.Use(handler.JWTMiddleware)
@@ -184,6 +189,12 @@ func main() {
 	}
 
 	config.SecurityCheck()
+
+	if err := kv.Init(); err != nil {
+		logger.Fatal("Failed to initialize Redis", "error", err)
+	}
+	defer kv.Close()
+	handler.InitRateLimiters(kv.Storage())
 
 	if err := db.Init(config.DatabaseURL); err != nil {
 		logger.Fatal("Failed to open database", "error", err)

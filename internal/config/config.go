@@ -90,6 +90,10 @@ var (
 	// Database configuration
 	DatabaseURL = getEnvWithDefault("DATABASE_URL", "postgres://localhost:5432/rockyads?sslmode=disable")
 
+	// Redis (shared rate limits). Required.
+	// Example: redis://localhost:6379 or redis://red-xxx:6379
+	RedisURL = getEnvWithDefault("REDIS_URL", "")
+
 	// MinIO configuration
 	MinIOAPIURL       = getEnvWithDefault("MINIO_API_URL", "")
 	MinIOPublicURL    = getEnvWithDefault("MINIO_PUBLIC_URL", "")

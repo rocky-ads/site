@@ -24,6 +24,7 @@ func TurnstileWidget() g.Node {
 			Class("cf-turnstile"),
 			g.Attr("data-sitekey", config.TurnstileSiteKey),
 			g.Attr("data-theme", "auto"),
+			g.Attr("data-size", "flexible"),
 		),
 	)
 }

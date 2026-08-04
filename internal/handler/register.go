@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/nyaruka/phonenumbers"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/cookie"
@@ -21,22 +20,6 @@ import (
 	"github.com/rocky-ads/site/internal/ui"
 	"github.com/rocky-ads/site/internal/user"
 )
-
-// RegistrationRateLimiter is a strict rate limiter for registration (per IP)
-var RegistrationRateLimiter = limiter.New(limiter.Config{
-	Max:        config.EffectiveRegistrationRateLimitMax(),
-	Expiration: config.RegistrationRateLimitExp,
-	KeyGenerator: func(c *fiber.Ctx) string {
-		// Rate limit per IP address
-		return c.IP()
-	},
-	LimitReached: func(c *fiber.Ctx) error {
-		minutes := int(config.RegistrationRateLimitExp.Minutes())
-		errorMsg := fmt.Sprintf("Too many registration attempts. "+
-			"Please try again in %d minutes.", minutes)
-		return showError(c, errorMsg)
-	},
-})
 
 func RegisterHandler(c *fiber.Ctx) error {
 	logout(c)
