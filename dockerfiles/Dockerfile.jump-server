@@ -45,6 +45,7 @@ RUN apt-get update && \
     tcpdump \
     strace \
     postgresql-client \
+    redis-tools \
     ca-certificates \
     ufw \
     rsyslog \

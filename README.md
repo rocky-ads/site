@@ -82,13 +82,18 @@ Required at server start unless `ALLOW_TEST_REGISTRATION=true`:
 
 - `REDIS_URL` — required. Redis URL for shared rate limits (registration/recovery IP + per-phone OTP starts). Local: `redis://localhost:6379` with `docker compose up -d redis`. Render: Key Value internal URL (e.g. `redis://red-xxx:6379`).
 
-Inspect local Redis:
+Inspect Redis:
 
 ```bash
+# local compose (Redis container)
 docker compose exec redis redis-cli
+
+# jump server (rebuild image for redis-tools)
+docker compose exec -it jump-server sh -c 'redis-cli -u "$REDIS_URL"'
+# on Render SSH / shell (REDIS_URL from BASE):
+redis-cli -u "$REDIS_URL"
 ```
 
-Useful commands: `SCAN 0 MATCH otp:* COUNT 100`, `GET otp:cd:+1…`, `TTL otp:hr:+1…`, `SCAN 0 MATCH reg:* COUNT 100`. Prefer `SCAN` over `KEYS *`. Keys look like `otp:cd:<e164>`, `otp:hr:<e164>`, `reg:<ip>`, `rec:<ip>`, `srv:<ip>` (Fiber limiter values are binary). For a GUI, [Redis Insight](https://redis.io/insight/) against `localhost:6379` works well. On Render, use an external Key Value URL if enabled, or `redis-cli` from a service on the private network.
 
 ### LLM / geocoding APIs
 

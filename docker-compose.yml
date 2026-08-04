@@ -58,6 +58,7 @@ services:
       - "8000:10000"
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/rockyads?sslmode=disable
+      REDIS_URL: redis://redis:6379
       DB_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       MINIO_API_URL: http://minio:9000
       MINIO_ROOT_USER: minioadmin
@@ -65,6 +66,8 @@ services:
       MINIO_BUCKET_NAME: rockyads
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       minio:
         condition: service_healthy

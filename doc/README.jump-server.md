@@ -1,6 +1,6 @@
 # Jump Server
 
-The jump server image includes database utilities, image migration, and the MinIO client (`mc`).
+The jump server image includes database utilities (`psql`), Redis CLI (`redis-cli`), image migration, and the MinIO client (`mc`).
 
 ## Building
 
@@ -64,6 +64,20 @@ Use `-dry-run` to preview without uploading. MinIO connection uses `MINIO_API_UR
 
 On the jump server, you can also mirror files with `mc` (see below).
 
+## Using redis-cli
+
+`redis-tools` is pre-installed. With `REDIS_URL` in the environment (BASE env group on Render; compose sets `redis://redis:6379`):
+
+```bash
+redis-cli -u "$REDIS_URL"
+redis-cli -u "$REDIS_URL" PING
+redis-cli -u "$REDIS_URL" --scan --pattern 'otp:*'
+```
+
+Prefer `--scan` / `SCAN` over `KEYS *`. Rate-limit keys look like `otp:cd:<e164>`, `otp:hr:<e164>`, `reg:<ip>`, `rec:<ip>`, `srv:<ip>`.
+
+Local alternative without jump: `docker compose exec redis redis-cli`.
+
 ## Using mc
 
 The MinIO client is pre-installed:
@@ -87,3 +101,5 @@ See the [MinIO Client documentation](https://docs.min.io/docs/minio-client-quick
 | `migrate_images` | One-time upload of local ad image files to MinIO |
 | `quote_server` | Quote-of-the-day page on port 10000 |
 | `mc` | MinIO command-line client |
+| `redis-cli` | Redis / Render Key Value CLI (`redis-tools`) |
+| `psql` | PostgreSQL client |
