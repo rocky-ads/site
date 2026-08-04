@@ -660,6 +660,7 @@ func ChangePhoneRequestForm() g.Node {
 				Required(),
 			),
 		),
+		TurnstileWidget(),
 		settingsFormActions(buttonProps{
 			Type: "submit",
 			Text: "Send Verification Code",

@@ -57,12 +57,18 @@ Browsers upload WebP derivatives via short-lived **presigned PUT** URLs. Listing
 
 ### SMS (Twilio)
 
-Phone verification, account recovery, and notification SMS use Twilio. Required at server start unless `ALLOW_TEST_REGISTRATION=true` (which skips Twilio validation for local/test).
+Phone verification (register / change-phone) uses **Twilio Verify**. Account
+recovery inbound SMS and unread-message alerts use **Programmable Messaging**.
+See [doc/DOC_SMS_OTP_AND_PUMPING_DEFENSES.md](doc/DOC_SMS_OTP_AND_PUMPING_DEFENSES.md).
+
+Required at server start unless `ALLOW_TEST_REGISTRATION=true`:
 
 - `TWILIO_ACCOUNT_SID` — Twilio account SID (must start with `AC`).
 - `TWILIO_AUTH_TOKEN` — Twilio auth token.
-- `TWILIO_FROM_NUMBER` — sender number in E.164 (e.g. `+12025550123`).
-- `TWILIO_WEBHOOK_URL` — public base URL for Twilio webhooks and SMS links. Must be a non-localhost `http`/`https` URL (use ngrok locally).
+- `TWILIO_FROM_NUMBER` — Messaging sender in E.164 (e.g. `+12025550123`).
+- `TWILIO_WEBHOOK_URL` — public base URL for webhooks and SMS links (non-localhost).
+- `TWILIO_VERIFY_SERVICE_SID` — Verify Service SID (must start with `VA`).
+- `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` — Cloudflare Turnstile (bot gate on OTP start).
 
 ### DB (Postgres)
 

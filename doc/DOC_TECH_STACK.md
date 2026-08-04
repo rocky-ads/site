@@ -94,8 +94,11 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
   - Bucket CORS must allow PUT (and typically GET) from the site origin
 
 ### Communication Services
-- **Twilio** - SMS messaging service
+- **Twilio Verify** — Registration and change-phone OTP (Fraud Guard + geo permissions)
+- **Twilio Programmable Messaging** — Unread alerts, inbound STOP/RECOVER webhooks
   - Account SID and Auth Token authentication
+  - See `doc/DOC_SMS_OTP_AND_PUMPING_DEFENSES.md`
+- **Cloudflare Turnstile** — Bot challenge before OTP start
 
 ### AI/ML Services
 - **Ollama embeddings** - Local `nomic-embed-text` (768-dim) for ad and query vector search

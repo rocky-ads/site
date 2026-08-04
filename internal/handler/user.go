@@ -2,20 +2,19 @@ package handler
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
-	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/message"
+	"github.com/rocky-ads/site/internal/otplimit"
 	"github.com/rocky-ads/site/internal/password"
-	"github.com/rocky-ads/site/internal/phoneverification"
 	"github.com/rocky-ads/site/internal/rock"
-	"github.com/rocky-ads/site/internal/service/sms"
+	"github.com/rocky-ads/site/internal/service/turnstile"
+	"github.com/rocky-ads/site/internal/service/verify"
 	"github.com/rocky-ads/site/internal/ui"
 	"github.com/rocky-ads/site/internal/user"
 	g "maragu.dev/gomponents"
@@ -217,39 +216,21 @@ func ChangePhoneRequestHandler(c *fiber.Ctx) error {
 		return render(c, ui.ChangePhoneVerifySection(phoneE64))
 	}
 
-	code, err := phoneverification.GenerateCode()
-	if err != nil {
-		logger.Error("Failed to generate verification code", "error", err)
+	if err := turnstile.Verify(c.FormValue("cf-turnstile-response"), c.IP()); err != nil {
+		logger.Warn("Turnstile failed on change-phone", "error", err, "ip", c.IP())
 		return showErrorTo(c, ui.SettingsChangePhoneErrorID,
-			"Unable to generate verification code. Please try again.")
+			"Please complete the verification challenge and try again.")
 	}
 
-	uid := userID
-	err = phoneverification.StoreCode(phoneE64, code,
-		phoneverification.PurposeChangePhone, &uid)
-	if err != nil {
-		logger.Error("Failed to store verification code",
+	if err := otplimit.AllowStart(phoneE64); err != nil {
+		return showErrorTo(c, ui.SettingsChangePhoneErrorID, err.Error())
+	}
+
+	if err := verify.StartSMS(phoneE64, verify.PurposeChangePhone); err != nil {
+		logger.Error("Failed to start Verify SMS for change-phone",
 			"error", err, "phone", phoneE64)
 		return showErrorTo(c, ui.SettingsChangePhoneErrorID,
-			"Unable to create verification code. Please try again.")
-	}
-
-	message := fmt.Sprintf("Your %s verification code is: %s. "+
-		"This code expires in 10 minutes. Reply STOP to unsubscribe.",
-		config.ServerName, code)
-	err = sms.SendMessage(phoneE64, message)
-	if err != nil {
-		logger.Error("Failed to send SMS", "error", err, "phone", phoneE64)
-		if errors.Is(err, sms.ErrBlockedNumber) {
-			return showErrorTo(c, ui.SettingsChangePhoneErrorID,
-				fmt.Sprintf(
-					"This phone number was previously opted out of text messages. "+
-						"To receive verification codes, please reply UNSTOP to %s "+
-						"from this phone number, then try again.",
-					config.TwilioFromNumber))
-		}
-		return showErrorTo(c, ui.SettingsChangePhoneErrorID,
-			"Unable to send verification code. Please try again.")
+			verifyStartErrorMessage(err))
 	}
 
 	return render(c, ui.ChangePhoneVerifySection(phoneE64))
@@ -276,18 +257,11 @@ func ChangePhoneVerifyHandler(c *fiber.Ctx) error {
 	}
 
 	if !allowTestRegistration(phoneE64) {
-		uid := userID
-		valid, err := phoneverification.ValidateCode(phoneE64, code,
-			phoneverification.PurposeChangePhone, &uid)
-		if err != nil {
-			logger.Warn("Change-phone verification error",
+		if err := verify.Check(phoneE64, code); err != nil {
+			logger.Warn("Change-phone Verify check failed",
 				"error", err, "phone", phoneE64)
 			return showErrorTo(c, ui.SettingsChangePhoneErrorID,
-				"Invalid or expired verification code. Please request a new code.")
-		}
-		if !valid {
-			return showErrorTo(c, ui.SettingsChangePhoneErrorID,
-				"Invalid verification code. Please check your code and try again.")
+				verifyCheckErrorMessage(err))
 		}
 	}
 

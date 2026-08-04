@@ -7,7 +7,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/accountrecovery"
 	"github.com/rocky-ads/site/internal/logger"
-	"github.com/rocky-ads/site/internal/phoneverification"
 	"github.com/rocky-ads/site/internal/service/sms"
 )
 
@@ -54,18 +53,14 @@ func SMSWebhookHandler(c *fiber.Ctx) error {
 		sms.SetMessageStatus(webhookData.MessageSid, status)
 	}
 
-	// Incoming STOP invalidates pending verification codes only. SMS notification
-	// preference is controlled in app settings (sms_opted_out), not via carrier STOP.
+	// Incoming STOP: OTP codes are owned by Twilio Verify (short TTL). Carrier
+	// STOP may also block Programmable Messaging delivery. App notification
+	// preference remains sms_opted_out in settings.
 	body := strings.ToUpper(strings.TrimSpace(webhookData.Body))
 	phone := webhookData.From
 	if body == "STOP" {
-		logger.Info("STOP received; invalidating verification codes only",
-			"component", "SMS")
-		if err := phoneverification.InvalidateCodes(phone); err != nil {
-			logger.Error("Failed to invalidate verification codes",
-				"error", err, "component", "SMS")
-			return err
-		}
+		logger.Info("STOP received; Verify OTPs expire on their own",
+			"component", "SMS", "phone", phone)
 		return c.JSON(fiber.Map{"status": "success"})
 	}
 

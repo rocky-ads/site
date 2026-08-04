@@ -11,7 +11,6 @@ import (
 
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/password"
-	"github.com/rocky-ads/site/internal/phoneverification"
 	"github.com/rocky-ads/site/internal/rock"
 	"github.com/rocky-ads/site/internal/vector"
 )
@@ -405,11 +404,6 @@ func CreateUser(username, phoneE64, plainPassword string) (User, error) {
 		return User{}, fmt.Errorf("failed to update user with encrypted fields: %w", err)
 	}
 
-	if err := phoneverification.InvalidateCodesTx(tx, phoneE64,
-		phoneverification.PurposeRegister, nil); err != nil {
-		return User{}, fmt.Errorf("failed to cleanup verification codes: %w", err)
-	}
-
 	if err := tx.Commit(); err != nil {
 		return User{}, fmt.Errorf("failed to commit transaction: %w", err)
 	}
@@ -462,12 +456,6 @@ func UpdatePhone(userID int, phoneE64 string) error {
 	`, encryptedPhoneBytes, phoneNonceBytes, phoneHash, userID)
 	if err != nil {
 		return fmt.Errorf("failed to update phone: %w", err)
-	}
-
-	uid := userID
-	if err := phoneverification.InvalidateCodesTx(tx, phoneE64,
-		phoneverification.PurposeChangePhone, &uid); err != nil {
-		return fmt.Errorf("failed to cleanup verification codes: %w", err)
 	}
 
 	return tx.Commit()

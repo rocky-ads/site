@@ -11,6 +11,8 @@ import (
 	"github.com/rocky-ads/site/internal/imagestore"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/service/sms"
+	"github.com/rocky-ads/site/internal/service/turnstile"
+	"github.com/rocky-ads/site/internal/service/verify"
 	"github.com/rocky-ads/site/internal/vector"
 	"github.com/sasha-s/go-deadlock"
 
@@ -209,6 +211,12 @@ func main() {
 
 	if err := sms.Init(); err != nil {
 		logger.Fatal("Failed to initialize SMS service", "error", err)
+	}
+	if err := verify.Init(); err != nil {
+		logger.Fatal("Failed to initialize Twilio Verify", "error", err)
+	}
+	if err := turnstile.Init(); err != nil {
+		logger.Fatal("Failed to initialize Turnstile", "error", err)
 	}
 	sms.StartSMSWorker()
 	handler.StartAdExpireWorker()

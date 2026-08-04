@@ -21,6 +21,8 @@ const (
 	RecoveryRateLimitExp     = 15 * time.Minute // Within 15 minutes
 	RecoverySessionTTL       = 10 * time.Minute // Recover session / code lifetime
 	RegistrationTicketTTL    = 10 * time.Minute // Post-OTP registration ticket lifetime
+	OTPStartMinInterval      = 60 * time.Second // Min time between OTP starts per phone
+	OTPStartMaxPerHour       = 5                // Max OTP starts per phone per hour
 
 	// MinIO configuration
 	MinIOPresignedPutExpiry = 15 * time.Minute
@@ -101,12 +103,17 @@ var (
 	OllamaURL      = getEnvWithDefault("OLLAMA_URL", "http://localhost:11434")
 
 	// SMS/Twilio configuration
-	TwilioAccountSID = getEnvWithDefault("TWILIO_ACCOUNT_SID", "")
-	TwilioAuthToken  = getEnvWithDefault("TWILIO_AUTH_TOKEN", "")
-	TwilioFromNumber = getEnvWithDefault("TWILIO_FROM_NUMBER", "")
+	TwilioAccountSID       = getEnvWithDefault("TWILIO_ACCOUNT_SID", "")
+	TwilioAuthToken        = getEnvWithDefault("TWILIO_AUTH_TOKEN", "")
+	TwilioFromNumber       = getEnvWithDefault("TWILIO_FROM_NUMBER", "")
+	TwilioVerifyServiceSID = getEnvWithDefault("TWILIO_VERIFY_SERVICE_SID", "")
 
 	// Twilio webhook URL - used for webhook callbacks and notification links
 	TwilioWebhookURL = getTwilioWebhookURL("TWILIO_WEBHOOK_URL")
+
+	// Cloudflare Turnstile (bot gate before OTP start)
+	TurnstileSiteKey   = getEnvWithDefault("TURNSTILE_SITE_KEY", "")
+	TurnstileSecretKey = getEnvWithDefault("TURNSTILE_SECRET_KEY", "")
 
 	// JWT configuration
 	JWTSecret = []byte(getEnvWithDefault("JWT_SECRET", ""))

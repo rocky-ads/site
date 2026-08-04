@@ -79,6 +79,7 @@ func RegisterForm(username string) g.Node {
 		userNameInput(true, "username", true, username),
 		phoneInput(),
 		offers(),
+		TurnstileWidget(),
 		Div(
 			Class("flex items-center gap-4"),
 			standardButton(buttonProps{

@@ -12,11 +12,12 @@ import (
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/logger"
+	"github.com/rocky-ads/site/internal/otplimit"
 	"github.com/rocky-ads/site/internal/password"
-	"github.com/rocky-ads/site/internal/phoneverification"
 	"github.com/rocky-ads/site/internal/registrationticket"
 	"github.com/rocky-ads/site/internal/service/grok"
-	"github.com/rocky-ads/site/internal/service/sms"
+	"github.com/rocky-ads/site/internal/service/turnstile"
+	"github.com/rocky-ads/site/internal/service/verify"
 	"github.com/rocky-ads/site/internal/ui"
 	"github.com/rocky-ads/site/internal/user"
 )
@@ -192,36 +193,19 @@ func RegisterStep1Handler(c *fiber.Ctx) error {
 		return render(c, ui.RegisterPassword(username, phoneE64))
 	}
 
-	code, err := phoneverification.GenerateCode()
-	if err != nil {
-		logger.Error("Failed to generate verification code",
-			"error", err)
-		return showError(c, "Unable to generate verification code. Please try again.")
+	if err := turnstile.Verify(c.FormValue("cf-turnstile-response"), c.IP()); err != nil {
+		logger.Warn("Turnstile failed on register", "error", err, "ip", c.IP())
+		return showError(c, "Please complete the verification challenge and try again.")
 	}
 
-	err = phoneverification.StoreCode(phoneE64, code,
-		phoneverification.PurposeRegister, nil)
-	if err != nil {
-		logger.Error("Failed to store verification code",
+	if err := otplimit.AllowStart(phoneE64); err != nil {
+		return showError(c, err.Error())
+	}
+
+	if err := verify.StartSMS(phoneE64, verify.PurposeRegister); err != nil {
+		logger.Error("Failed to start Verify SMS",
 			"error", err, "phone", phoneE64)
-		return showError(c, "Unable to create verification code. Please try again.")
-	}
-
-	// Send SMS
-	message := fmt.Sprintf("Your %s verification code is: %s. "+
-		"This code expires in 10 minutes. Reply STOP to unsubscribe.", config.ServerName, code)
-	err = sms.SendMessage(phoneE64, message)
-	if err != nil {
-		logger.Error("Failed to send SMS", "error", err, "phone", phoneE64)
-		// Check if this is a blocked number error
-		if errors.Is(err, sms.ErrBlockedNumber) {
-			unstopMessage := fmt.Sprintf(
-				"This phone number was previously opted out of text messages. "+
-					"To receive verification codes, please reply UNSTOP to %s from this phone number, then try registering again.",
-				config.TwilioFromNumber)
-			return showError(c, unstopMessage)
-		}
-		return showError(c, "Unable to send verification code. Please try again.")
+		return showError(c, verifyStartErrorMessage(err))
 	}
 
 	return render(c, ui.RegisterVerify(username, phoneE64))
@@ -254,12 +238,10 @@ func RegisterStep2Handler(c *fiber.Ctx) error {
 		return render(c, ui.RegisterPassword(username, phoneE64))
 	}
 
-	ok, err := phoneverification.ConsumeCode(phoneE64, code,
-		phoneverification.PurposeRegister, nil)
-	if err != nil || !ok {
-		logger.Warn("Verification code consume failed",
+	if err := verify.Check(phoneE64, code); err != nil {
+		logger.Warn("Verify check failed on register",
 			"error", err, "phone", phoneE64)
-		return showError(c, "Invalid or expired verification code. Please request a new code.")
+		return showError(c, verifyCheckErrorMessage(err))
 	}
 
 	if err := registrationticket.Issue(c, username, phoneE64); err != nil {

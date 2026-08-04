@@ -43,11 +43,12 @@ func ConfigureHelmet() fiber.Handler {
 	}
 
 	csp := "default-src 'self'; " +
-		"script-src 'self' 'unsafe-inline'; " +
+		"script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; " +
 		"style-src 'self' 'unsafe-inline'; " +
 		"img-src " + imgSrc + "; " +
 		"font-src 'self' data:; " +
-		"connect-src " + connectSrc + "; " +
+		"connect-src " + connectSrc + " https://challenges.cloudflare.com; " +
+		"frame-src https://challenges.cloudflare.com; " +
 		"frame-ancestors 'none';" +
 		"base-uri 'self';" +
 		"form-action 'self';"
