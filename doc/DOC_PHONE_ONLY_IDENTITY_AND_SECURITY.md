@@ -5,7 +5,8 @@
 **Document type:** Design and security analysis  
 **Audience:** Product, engineering, and security reviewers  
 **Scope:** How Rocky Ads uses a phone number as the sole contact identifier for registration, account management, and communications; why other personal data is intentionally omitted; and how the system can still be attacked despite a small PII footprint.  
-**Based on:** Current Rocky Ads site implementation (Go / Fiber / Postgres / Twilio / JWT), August 2026.
+**Based on:** Rocky Ads site implementation (Go / Fiber / Postgres / Redis / Twilio Verify + Messaging / Turnstile / JWT / Geoapify), August 2026.  
+**Companion runbook:** [DOC_SMS_OTP_AND_PUMPING_DEFENSES.md](DOC_SMS_OTP_AND_PUMPING_DEFENSES.md) (OTP pumping, Console geo, spend alerts).
 
 ---
 
@@ -15,6 +16,8 @@ Rocky Ads is classified advertising rebuilt for the web: post an ad, get contact
 
 That choice is not a gimmick. It is a privacy architecture. Collecting less personal data reduces the blast radius of a breach, simplifies compliance narratives, and matches the mental model of classic newspaper classifieds—where a phone number was enough to complete a transaction. At the same time, **low PII is not the same as low risk.** Phone numbers are high-value identifiers. SMS channels can be abused. Sessions, passwords, message content, uploaded media, and operational secrets remain attractive targets. This paper explains the product rationale, maps how phone numbers are used in the running system, and explores realistic exploit paths that survive even when the user record is intentionally thin.
 
+Recent hardening (Twilio Verify, registration tickets, Turnstile, Redis OTP/IP limits) closes several earlier gaps—especially plaintext in-app OTPs and unbound registration step 3—without changing the phone-only product model.
+
 ---
 
 ## 1. Product thesis: one identifier, many jobs
@@ -23,9 +26,9 @@ Traditional consumer marketplaces accumulate identity over time: email for login
 
 Rocky Ads reverses that default. The FAQ states the ideal plainly: the service would prefer to collect no personal information at all, but still needs a reliable way to reach a real person. A text-capable phone number fills three roles at once:
 
-1. **Proof of a reachable human** during registration (one-time SMS verification).
-2. **Account recovery channel** when a user loses password access (inbound SMS proof of possession).
-3. **Operational notification channel** when unread messages arrive (outbound SMS with a link into the authenticated messages UI).
+1. **Proof of a reachable human** during registration (one-time SMS verification via Twilio Verify).
+2. **Account recovery channel** when a user loses password access (inbound SMS proof of possession on Programmable Messaging).
+3. **Operational notification channel** when unread messages arrive (outbound Programmable Messaging with a link into the authenticated messages UI).
 
 Everything else is optional or absent by design. Login itself is username plus password, not phone-as-password. Other users never see the number. Marketing SMS unrelated to the account is out of scope. The public surface of a member is closer to a classified-ad persona than to a social-network profile: username, ads, optional account picture, and activity signals—not a contact card.
 
@@ -53,7 +56,20 @@ For this paper, **PII** means data that identifies or can reasonably identify a 
 
 At the user-record level, the durable personal contact field is the phone number (E.164), stored encrypted with AES-GCM under a server-held key, with a SHA-256 lookup hash for uniqueness checks. The username is similarly encrypted. Passwords are stored as Argon2id hashes. Soft-delete leaves a time-bounded hold so a phone cannot be immediately reused after account deletion.
 
-Ephemeral or operational stores also touch the phone briefly: Twilio Verify holds OTPs out-of-process; recovery sessions are bound after an inbound text; SMS notification queue rows and server logs may include request metadata or phone identifiers during SMS flows. Administrators with elevated access can decrypt phones for support and moderation. Backups preserve ciphertext blobs.
+Ephemeral or operational stores also touch identity briefly:
+
+| Store | Contents |
+|-------|----------|
+| **Twilio Verify** | Register / change-phone OTPs (out of process; not in app DB) |
+| **Redis** (`REDIS_URL`) | Registration/recovery IP counters; per-phone OTP start keys (`otp:cd:…`, `otp:hr:…`) that include E.164 |
+| **`reg_ticket` cookie** | Short-lived JWT binding verified username + phone after OTP success |
+| **`account_recovery`** | HMAC’d session/code; bound `user_id` after inbound SMS |
+| **`sms_notification_queue`** | User/conversation IDs for unread alerts |
+| **`locations`** | Cached geocodes (city/admin/country/lat/lon) from **Geoapify** on cache miss |
+| **Server logs** | IP, UA, path; some SMS logs may include phone E.164 |
+| **Admin UI / backups** | Decrypted phones for admins; ciphertext in backups |
+
+There is **no** application `phone_verification` table storing plaintext OTPs (removed when OTP moved to Twilio Verify).
 
 The privacy claim is therefore precise: **Rocky Ads does not need other contact PII to operate the product**, not that the system stores zero information about people. Ads, images, message journals, click history, and geo facets still create a behavioral and content footprint. Minimizing *required contact PII* is the design win; it does not erase all privacy risk.
 
@@ -65,17 +81,17 @@ The privacy claim is therefore precise: **Rocky Ads does not need other contact 
 
 Registration is a three-step HTMX flow:
 
-1. **Step 1 — claim username and phone.** The user consents to SMS (`offers=true`), passes Turnstile (unless test registration), the system checks availability and rate limits, optionally screens the username via a moderation model, and starts a **Twilio Verify** SMS (Fraud Guard + Verify geo).
+1. **Step 1 — claim username and phone.** The user consents to SMS (`offers=true`), passes **Cloudflare Turnstile** (unless test registration), the system checks availability, enforces **per-IP registration limits** and **per-phone OTP start limits** (both in Redis), screens the username via Grok, and starts a **Twilio Verify** SMS (Fraud Guard + Verify geographic permissions; intended Console: US+CA allow, elsewhere monitor+block fraud).
 2. **Step 2 — prove possession.** The user submits the OTP. The server runs a Verify check; on success it sets a short-lived HttpOnly **`reg_ticket` cookie**: a JWT (HS256 with `JWT_SECRET`) bound to that username and phone (~10 minute TTL). The raw OTP is not placed in the password form.
 3. **Step 3 — set password and accept terms.** Before `CreateUser`, the handler **consumes** the cookie (`registrationticket.Consume`): verify signature and expiry, check username/phone match the form, clear the cookie. Only then is the user row created, a JWT session cookie issued, and the browser redirected to the authenticated welcome path. Replay of a consumed flow is blocked in practice by username/phone uniqueness on create.
 
-Test environments may allow a reserved phone range (`+1555010xxxx`) to skip Turnstile and Verify when explicitly enabled; those paths still issue and consume the registration cookie. That flag must never be on in production.
+Test environments may allow a reserved phone range (`+1555010xxxx`) to skip Turnstile and Verify when `ALLOW_TEST_REGISTRATION=true`; those paths still issue and consume the registration cookie. That flag must never be on in production. `REDIS_URL` is always required at startup.
 
 ### 3.2 Day-to-day account management
 
 Once registered, the phone number remains the user’s contact anchor:
 
-- Settings displays the current number and supports **change phone** (password + OTP to the new number).
+- Settings displays the current number and supports **change phone** (password + Turnstile + Verify OTP to the new number; same per-phone OTP start limits).
 - Users can toggle SMS notifications (`sms_opted_out`).
 - Password changes invalidate sessions by rotating a salt bound into the JWT claims.
 - Account deletion is soft-delete with a phone reuse hold (on the order of ten days).
@@ -85,13 +101,24 @@ Login remains username/password. The phone is not a daily credential; it is the 
 
 ### 3.3 Communications
 
-Outbound SMS covers verification codes and unread-message alerts. A background worker drains a notification queue, applies suppression (for example, avoiding SMS spam when the user was recently texted or has no unread messages), decrypts the phone, and sends via Twilio. Inbound SMS on the Twilio number handles carrier-style `STOP` handling for pending verification traffic and `RECOVER <code>` for account recovery.
+| Channel | Use |
+|---------|-----|
+| **Twilio Verify** | Registration and change-phone OTP |
+| **Programmable Messaging** | Unread-message alerts; inbound `STOP` / `RECOVER` |
 
-Account recovery is possession-based rather than email-based: the browser starts a short-lived recovery session and shows a code; the user texts that code from their registered number; the webhook, after Twilio signature verification, binds the session to the matching user; the browser then reveals the username and allows password reset.
+A background worker drains a notification queue, applies suppression (for example, avoiding SMS spam when the user was recently texted or has no unread messages), decrypts the phone, and sends via Messaging. Intended Messaging geo: **US + CA only**.
+
+**STOP vs in-app opt-out:** carrier `STOP` is logged; OTP codes live in Verify (short TTL) and are not cleared by an app table. App notification preference remains `sms_opted_out` in Settings. Carrier STOP may still block Messaging delivery independently. Product copy and Settings should stay clear about that split (see recommendations).
+
+Account recovery is possession-based rather than email-based: the browser starts a short-lived recovery session and shows a code; the user texts that code from their registered number; the webhook, after Twilio signature verification, binds the session to the matching user; the browser then reveals the username and allows password reset. Recovery starts are rate-limited per IP in Redis.
 
 ### 3.4 What other users see
 
 Other members interact through usernames, ads, and the messaging product. The phone stays server-side. That preserves the classifieds metaphor—people call *the system’s messaging layer*, not a publicly printed mobile number—while still letting Rocky Ads nudge the seller when activity happens.
+
+### 3.5 Location (related contact-adjacent data)
+
+Ad location text is resolved via **Geoapify** on cache miss and stored in `locations` (city, admin area, country, lat/lon). That allows durable caching under Geoapify’s terms (with attribution). It is not phone PII, but it is another third party that sees free-text location queries.
 
 ---
 
@@ -103,7 +130,7 @@ If an attacker obtains a user table, the absence of emails, payment instruments,
 
 ### 4.2 Smaller third-party fan-out
 
-Email-centric products often share addresses with ESP vendors, support desks, analytics, and CRM tools. Rocky Ads’ contact channel is SMS via Twilio. That is still a third party—and a concentrated one—but it avoids the sprawling email marketing stack that usually accumulates shadow copies of identity.
+Email-centric products often share addresses with ESP vendors, support desks, analytics, and CRM tools. Rocky Ads’ contact channel is SMS via Twilio (Verify + Messaging), plus Turnstile for bots and Geoapify for geocoding. That is still a concentrated set of third parties—but it avoids the sprawling email marketing stack that usually accumulates shadow copies of identity.
 
 ### 4.3 Better match to threat of over-collection
 
@@ -125,15 +152,17 @@ Rocky Ads is not relying on obscurity alone. Relevant controls in the current st
 - **JWT session cookies** (HttpOnly, SameSite=Strict, Secure outside local development), with password-salt binding so password changes invalidate tokens.
 - **CSRF** protection (double-submit), with a deliberate exemption for the Twilio webhook path.
 - **Helmet / CSP** and related browser hardening headers.
-- **Rate limits** on registration and recovery starts, plus a global per-IP ceiling.
-- **OTP attempt limits** and expiry (Twilio Verify).
-- **Twilio Verify** for register/change-phone OTP, then a signed HttpOnly **`reg_ticket` cookie** (JWT) for step 3 so the password form never round-trips the raw OTP; a parallel client without that cookie cannot finish signup.
-- **Cloudflare Turnstile** and per-phone OTP start limits before Verify create.
+- **Redis-backed rate limits:** registration IP (3 / 15 min), recovery start IP (3 / 15 min), per-phone OTP starts (1 / 60s and max 5 / hour); shared across app instances via `REDIS_URL`.
+- **Twilio Verify** for register/change-phone OTP (Fraud Guard + Console geo), then a signed HttpOnly **`reg_ticket` cookie** for step 3 so the password form never round-trips the raw OTP.
+- **Cloudflare Turnstile** before OTP start (register and change-phone).
 - **Recovery secrets** stored as HMAC digests rather than raw tokens.
 - **Twilio request signature verification** on inbound webhooks.
 - **Soft-delete phone hold** to slow account recycling abuse.
+- **Geoapify** for forward geocoding with durable `locations` cache (allowed storage model).
 
-These controls matter because the phone-only model concentrates trust in SMS possession, password strength, session integrity, and the secrecy of encryption/JWT/Twilio credentials. The following sections assume those controls exist and ask what still goes wrong.
+Ops detail for pumping and Console settings: [DOC_SMS_OTP_AND_PUMPING_DEFENSES.md](DOC_SMS_OTP_AND_PUMPING_DEFENSES.md).
+
+These controls matter because the phone-only model concentrates trust in SMS possession, password strength, session integrity, and the secrecy of encryption/JWT/Twilio/Redis credentials. The following sections assume those controls exist and ask what still goes wrong.
 
 ---
 
@@ -163,11 +192,12 @@ So “phone only” means different things. WhatsApp makes the number the *socia
 
 ### 6.2 Registration and OTP economics
 
-Even with IP rate limits, SMS OTP systems face familiar abuses:
+Even with current controls, SMS OTP systems face familiar abuses:
 
-- **SMS pumping / toll fraud:** bots register with numbers that route SMS to premium or incentivized destinations, burning Twilio spend. Mitigations: Twilio Verify + Fraud Guard, Verify geo US+CA allow (elsewhere monitor+block fraud), Messaging geo US+CA only, Turnstile, per-IP/per-phone OTP start limits, spend alerts — see [DOC_SMS_OTP_AND_PUMPING_DEFENSES.md](DOC_SMS_OTP_AND_PUMPING_DEFENSES.md).
-- **OTP flooding:** harassment by repeatedly triggering codes to a victim phone (limited by registration rate limits, Turnstile, per-phone OTP start limits, and Twilio Verify Fraud Guard; change-phone shares the same OTP-start limits).
-- **Step binding (mitigated):** registration previously trusted step 2 alone at password submission. That gap is closed: step 2 completes Twilio Verify and sets a signed `reg_ticket` cookie; step 3 must present that cookie matching the form. See [DOC_SMS_OTP_AND_PUMPING_DEFENSES.md](DOC_SMS_OTP_AND_PUMPING_DEFENSES.md).
+- **SMS pumping / toll fraud:** bots submit numbers that route SMS to premium or incentivized destinations, burning Twilio spend. Mitigations in place: Twilio Verify + Fraud Guard, Verify/Messaging geo (US+CA posture), Turnstile, per-IP/per-phone OTP start limits, spend-alert runbook — see [DOC_SMS_OTP_AND_PUMPING_DEFENSES.md](DOC_SMS_OTP_AND_PUMPING_DEFENSES.md). Deferred: app-level geo allowlist, Lookup risk scores, prefix denylist.
+- **OTP flooding / harassment:** mitigated by Turnstile, Redis per-phone cooldown/hourly caps, and registration IP limits; change-phone shares OTP-start limits.
+- **Step binding (mitigated):** registration previously trusted step 2 alone at password submission. That gap is closed: step 2 completes Twilio Verify and sets `reg_ticket`; step 3 must present that cookie matching the form.
+- **Redis phone keys:** OTP limit keys embed E.164. A Redis dump does not yield OTPs or passwords, but it can reveal which numbers recently requested codes—treat Redis as sensitive alongside Postgres.
 
 OTP codes for register/change-phone are owned by Twilio Verify and are not stored in the application database.
 
@@ -180,13 +210,13 @@ Because daily login is username/password:
 - CSRF protections must stay correct for state-changing routes;
 - a leaked `JWT_SECRET` is catastrophic regardless of how little PII is stored.
 
-Low PII does not help a user whose password is `Summer2024!` and whose username is guessable from their public ads.
+Low PII does not help a user whose password is `Summer2024!` and whose username is guessable from their public ads. There is still **no dedicated login rate limit** beyond the global per-IP ceiling.
 
 ### 6.4 Account recovery as a target
 
 The recovery design is elegant for a no-email product, but it creates a crisp attack graph:
 
-1. Attacker starts many recovery sessions (mitigated by per-IP rate limits).
+1. Attacker starts many recovery sessions (mitigated by per-IP Redis rate limits).
 2. Attacker tries to guess or intercept the on-screen code path, or socially engineer the victim to text a code.
 3. If the attacker can send SMS *from* the victim’s number (compromised phone, spoofing depending on carrier path—Twilio’s `From` is the authentic inbound peer for webhook handling), they bind recovery and reset the password.
 
@@ -194,11 +224,11 @@ Webhook security is load-bearing. Signature verification must use the correct pu
 
 ### 6.5 Lookup hashes and offline correlation
 
-Encrypting phone and name at rest is strong against casual database reads **if** `DB_ENCRYPTION_KEY` remains secret. Unsalted (or un-peppered) SHA-256 hashes of E.164 phones are still amenable to dictionary attack: the phone number space is structured and far smaller than a general password space. An attacker with the hash column can test candidate numbers offline and correlate users to real-world identities even without the AES key. That does not expose message plaintext by itself, but it undercuts the narrative that ciphertext alone equals anonymity.
+Encrypting phone and name at rest is strong against casual database reads **if** `DB_ENCRYPTION_KEY` remains secret. Unsalted (or un-peppered) SHA-256 hashes of E.164 phones (`db.HashString`) are still amenable to dictionary attack: the phone number space is structured and far smaller than a general password space. An attacker with the hash column can test candidate numbers offline and correlate users to real-world identities even without the AES key. That does not expose message plaintext by itself, but it undercuts the narrative that ciphertext alone equals anonymity.
 
 ### 6.6 Content and metadata are still PII-rich
 
-Users will put phone numbers, meetup addresses, and workplace details into ad text and messages. Image uploads may contain faces, license plates, or document photos. Geo facets and locations tables describe where goods are. Click and bookmark tables describe interest graphs. Encrypted journals protect disks and backups better than plaintext, but participants and anyone who can act as a participant (account takeover) can read them.
+Users will put phone numbers, meetup addresses, and workplace details into ad text and messages. Image uploads may contain faces, license plates, or document photos. Geo facets and the `locations` table describe where goods are. Click and bookmark tables describe interest graphs. Encrypted journals protect disks and backups better than plaintext, but participants and anyone who can act as a participant (account takeover) can read them.
 
 In other words: **the registration form is minimal; the product corpus is not.** A breach of message stores or object storage is a privacy incident even if the `users` table lacks email.
 
@@ -210,12 +240,15 @@ A thin user record still decrypts to a phone number for admins. Compromised admi
 
 | Dependency | Failure mode |
 |------------|----------------|
-| Twilio | Account takeover → SMS redirect, outbound spam as Rocky Ads, inbound webhook forgery if signatures fail |
+| Twilio (Verify + Messaging) | Account takeover → SMS redirect, outbound spam as Rocky Ads, inbound webhook forgery if signatures fail; Verify Console misconfig reopens pumping |
 | `TWILIO_WEBHOOK_URL` misconfig | Notification SMS can point users at a phishing host that mimics login |
-| Grok username screening | Usernames leave the trust boundary to a model API |
+| Cloudflare Turnstile | Misconfig / downtime can block registration or (if bypassed in code paths) weaken bot friction |
+| Redis | Compromise exposes rate-limit keys (including recent E.164s) and can disable OTP/IP throttles |
+| Grok | Usernames (and other AI features: rock opinions, suggestions, compress) leave the trust boundary |
+| Geoapify | Location query text leaves the trust boundary; durable cache in Postgres is intentional |
 | MinIO / presigned URLs | Stolen long-lived GET URLs leak images; PUT URL abuse if minting is too loose |
-| `ALLOW_TEST_REGISTRATION` | Skips real SMS proof for allowlisted numbers if enabled in prod |
-| Ollama / other internal services | Usually not PII routers, but expand operational attack surface |
+| `ALLOW_TEST_REGISTRATION` | Skips Turnstile and Verify for allowlisted numbers if enabled in prod |
+| Ollama | Embeddings only today; expands operational attack surface |
 
 ### 6.9 Product abuse that is not “hacking the crypto”
 
@@ -238,13 +271,13 @@ The following scenarios are illustrative threat stories grounded in how the syst
 
 An attacker social-engineers the victim’s carrier, ports the number, starts recovery on Rocky Ads, texts `RECOVER <code>` from the newly controlled line, resets the password, and reads message history about local meetups. No email inbox was needed. The “low PII” database still yielded conversation content and ad activity once the account was owned.
 
-### Narrative B — Database backup without the encryption key—but with hashes
+### Narrative B — Database / Redis backup without the encryption key
 
-An attacker steals a logical backup. AES-GCM phone ciphertext resists direct read. Register/change-phone OTPs are not in the app database (Twilio Verify). Unsalted phone hashes still enable bulk correlation of which real numbers have accounts. The attacker may then phishing-SMS those numbers with a lookalike “verify your Rocky Ads phone” link.
+An attacker steals a logical Postgres backup. AES-GCM phone ciphertext resists direct read. Register/change-phone OTPs are not in the app database (Twilio Verify). Unsalted phone hashes still enable bulk correlation of which real numbers have accounts. A separate Redis dump may list E.164s that recently hit OTP start limits. The attacker may then phishing-SMS those numbers with a lookalike “verify your Rocky Ads phone” link.
 
 ### Narrative C — Registration step confusion / race *(mitigated)*
 
-**Previously:** an attacker who knew an in-flight username + phone could POST step 3 without the OTP, because account creation trusted that step 2 had already succeeded. The victim’s verified phone could become an ownership-transfer mechanism.
+**Previously:** an attacker who knew an in-flight username + phone could POST step 3 without the OTP, because account creation trusted that step 2 had already succeeded. The victim’s verified phone could become an ownership-transfer mechanism. An earlier interim also kept OTP material in the password form / app store.
 
 **Now:** step 2 completes Twilio Verify and sets a signed `reg_ticket` cookie; step 3 verifies and clears that cookie. Without the cookie, enrollment fails. Remaining related risks are cookie theft from the browser and SMS/Verify-channel attacks—not username/phone guessing alone. See [DOC_SMS_OTP_AND_PUMPING_DEFENSES.md](DOC_SMS_OTP_AND_PUMPING_DEFENSES.md).
 
@@ -258,23 +291,31 @@ Public usernames from ads are tried with passwords from unrelated breaches again
 
 ### Narrative F — Marketplace trust exploits
 
-A scammer verifies a disposable SMS number, posts attractive ads, and social-engineers buyers inside encrypted message journals. When reports arrive, the operator has a phone hash and ciphertext—not a rich KYC file. The low PII posture that protects honest users also limits investigative breadcrumbs.
+A scammer verifies a disposable SMS number (harder with Fraud Guard / geo / Turnstile, not impossible), posts attractive ads, and social-engineers buyers inside encrypted message journals. When reports arrive, the operator has a phone hash and ciphertext—not a rich KYC file. The low PII posture that protects honest users also limits investigative breadcrumbs.
+
+### Narrative G — SMS pumping *(partially mitigated)*
+
+Bots drive Verify creates toward premium destinations. Current stack raises cost (Turnstile, Redis limits, Fraud Guard, geo). Residual risk is Console drift, new pumping routes, and notification Messaging paths—hence the spend-alert runbook.
 
 ---
 
 ## 8. Risk matrix (condensed)
 
-| Threat | Needs large PII store? | Primary impact | Severity if unmitigated |
-|--------|------------------------|----------------|-------------------------|
-| SIM swap / SMS interception | No | Account recovery / phone change | High |
-| Password stuffing / weak passwords | No | Full account takeover | High |
-| JWT or encryption key leak | No | Mass session or field decrypt | Critical |
-| Twilio console compromise | No | SMS redirect, spam, trust break | Critical |
-| Presigned media URL leak | No | Image/PII-in-photo exposure | Medium |
-| Admin token abuse | No | Bulk phone disclosure | High |
-| SMS pumping | No | Direct financial loss | Medium–High |
-| Content scams / harassment | No | User harm, brand trust | High |
-| Offline phone-hash correlation | No | Re-identification of members | Medium |
+| Threat | Needs large PII store? | Primary impact | Severity if unmitigated | Notes |
+|--------|------------------------|----------------|-------------------------|--------|
+| SIM swap / SMS interception | No | Account recovery / phone change | High | Carrier-layer |
+| Password stuffing / weak passwords | No | Full account takeover | High | No login-specific throttle yet |
+| JWT or encryption key leak | No | Mass session or field decrypt | Critical | |
+| Twilio console compromise | No | SMS redirect, spam, trust break | Critical | |
+| SMS pumping | No | Direct financial loss | Medium–High | Mitigated; ops-dependent |
+| Registration step-3 without OTP | No | Account hijack at signup | ~~High~~ Mitigated | `reg_ticket` + Verify |
+| In-app plaintext OTP table | No | Signup hijack + phone harvest | ~~High~~ Mitigated | Moved to Verify |
+| Redis compromise | No | Recent E.164s; throttle bypass | Medium | Treat as sensitive |
+| Presigned media URL leak | No | Image/PII-in-photo exposure | Medium | |
+| Admin token abuse | No | Bulk phone disclosure | High | |
+| Content scams / harassment | No | User harm, brand trust | High | |
+| Offline phone-hash correlation | No | Re-identification of members | Medium | Still unsalted SHA-256 |
+| Geoapify / Grok third-party leak | No | Location text / usernames leave boundary | Low–Medium | By design for those features |
 
 The pattern is consistent: **almost none of the serious threats require Rocky Ads to have collected email or credit cards.**
 
@@ -282,19 +323,21 @@ The pattern is consistent: **almost none of the serious threats require Rocky Ad
 
 ## 9. Recommendations aligned with the phone-only philosophy
 
-These suggestions aim to harden the model without abandoning it.
+Status relative to the current codebase:
 
-1. ~~**Treat registration as a single server-side capability token.**~~ **Done.** Step 2 completes Twilio Verify and sets a signed HttpOnly `reg_ticket` JWT cookie; step 3 verifies binding and clears it. OTP codes are not stored in-app.
-2. ~~**Hash or encrypt OTPs at rest.**~~ **Done for register/change-phone:** OTP codes are owned by Twilio Verify (not stored in the app database).
-3. **Pepper phone/name lookup hashes** with a server-side secret so offline dictionary attacks on E.164 space require both DB and secret compromise.
-4. **Add login-specific throttling and lockouts** (per username and per IP), not only global request ceilings.
-5. ~~**Rate-limit all SMS-sending endpoints** and monitor Twilio spend.~~ **Done (OTP path):** Twilio Verify + Fraud Guard, Turnstile, per-phone OTP start limits; spend-alert runbook in [DOC_SMS_OTP_AND_PUMPING_DEFENSES.md](DOC_SMS_OTP_AND_PUMPING_DEFENSES.md). Notification SMS remain on Programmable Messaging.
-6. **Make STOP and in-app opt-out consistent** so carrier unsubscribe language matches `sms_opted_out` behavior users expect.
-7. **Bound notification link bases** to a first-party canonical site URL distinct from misconfigurable webhook bases where possible; alert on host mismatch.
-8. **Shorten admin phone exposure** (just-in-time decrypt, audit logs) and invalidate admin privilege changes immediately rather than waiting on JWT lifetime alone.
-9. **Document SIM-swap reality** in user-facing recovery copy: phone possession is powerful; users should protect carrier accounts.
-10. **Keep `ALLOW_TEST_REGISTRATION` impossible in production** via startup refusal when release mode is live.
+1. ~~**Treat registration as a single server-side capability token.**~~ **Done.** Step 2 completes Twilio Verify and sets a signed HttpOnly `reg_ticket` JWT cookie; step 3 verifies binding and clears it.
+2. ~~**Keep register/change-phone OTPs out of the app DB.**~~ **Done.** Twilio Verify owns codes.
+3. **Pepper phone/name lookup hashes** with a server-side secret so offline dictionary attacks on E.164 space require both DB and secret compromise. *(Still open — `db.HashString` is plain SHA-256.)*
+4. **Add login-specific throttling and lockouts** (per username and per IP), not only global request ceilings. *(Still open.)*
+5. ~~**Rate-limit OTP starts and monitor Twilio spend.**~~ **Done (OTP path):** Verify + Fraud Guard, Turnstile, Redis per-phone/IP limits; spend runbook in [DOC_SMS_OTP_AND_PUMPING_DEFENSES.md](DOC_SMS_OTP_AND_PUMPING_DEFENSES.md). Notification SMS remain on Programmable Messaging.
+6. **Make STOP and in-app opt-out consistent** (or document clearly) so carrier unsubscribe language matches `sms_opted_out` behavior users expect. *(Still open — STOP does not set `sms_opted_out`.)*
+7. **Bound notification link bases** to a first-party canonical site URL distinct from misconfigurable webhook bases where possible; alert on host mismatch. *(Still open.)*
+8. **Shorten admin phone exposure** (just-in-time decrypt, audit logs) and invalidate admin privilege changes immediately rather than waiting on JWT lifetime alone. *(Still open.)*
+9. **Document SIM-swap reality** in user-facing recovery copy: phone possession is powerful; users should protect carrier accounts. *(Still open.)*
+10. **Keep `ALLOW_TEST_REGISTRATION` impossible in production** via startup refusal when release mode is live. *(Still open — policy + env discipline today.)*
 11. **Preserve the non-collection stance** when new features are proposed—receipts, digests, and “magic links” should not silently reintroduce email as a second identity without a deliberate privacy review.
+12. **Treat Redis as PII-adjacent** (ACLs, no public exposure, backups/retention policy) because OTP keys contain E.164. *(Operational — enforce in deploy.)*
+13. **Optional later:** move username screening (and other chat completions) to local Ollama; keep Geoapify (or self-hosted Nominatim) for geocoding rather than LLM coordinate guessing.
 
 ---
 
@@ -302,9 +345,9 @@ These suggestions aim to harden the model without abandoning it.
 
 Rocky Ads’ phone-only approach is a coherent privacy strategy: one practical contact channel, hidden from other users, reused for verification, recovery, and message notifications, with a deliberate refusal to assemble an email-and-profile dossier. That stance reduces certain breach harms and keeps the product honest about classifieds-scale identity.
 
-It does not, however, create a small security problem space. Concentrating identity into SMS possession raises the stakes of carrier-side attacks and OTP plumbing. Passwords, JWTs, webhook signatures, encryption keys, admin tools, media storage, and user-generated content remain full-fidelity targets. The correct reading of the architecture is not “little PII, therefore safe,” but **“little PII, therefore the remaining controls on phone proof, sessions, secrets, and content access must be excellent.”**
+Recent work moved OTP ownership to Twilio Verify, bound registration completion to a signed `reg_ticket`, added Turnstile and Redis-backed OTP/IP limits, and documented pumping defenses. Those changes shrink several of the highest-leverage *application* bugs and cost attacks. They do not shrink carrier-layer SIM risk, password stuffing, JWT/key compromise, content scams, or unsalted phone-hash correlation.
 
-Privacy minimization is necessary and valuable. For Rocky Ads, it is also a bet that engineering discipline around a single contact identifier can outperform the false comfort of collecting more personal data “for security.” That bet only pays off if the phone channel, the password channel, and the operational envelope are hardened with the same seriousness that motivated collecting so little in the first place.
+The correct reading of the architecture remains: not “little PII, therefore safe,” but **“little PII, therefore the remaining controls on phone proof, sessions, secrets, and content access must be excellent.”** Privacy minimization is necessary and valuable. For Rocky Ads, it is also a bet that engineering discipline around a single contact identifier can outperform the false comfort of collecting more personal data “for security.” That bet only pays off if the phone channel, the password channel, and the operational envelope keep hardening with the same seriousness that motivated collecting so little in the first place.
 
 ---
 
@@ -312,20 +355,36 @@ Privacy minimization is necessary and valuable. For Rocky Ads, it is also a bet 
 
 | Area | Location |
 |------|----------|
-| Registration / OTP handlers | `internal/handler/register.go` (Verify + `reg_ticket`) |
+| Registration / OTP handlers | `internal/handler/register.go` (Turnstile + Verify + `reg_ticket`) |
 | Twilio Verify | `internal/service/verify/` |
 | Turnstile | `internal/service/turnstile/` |
 | Registration ticket cookie | `internal/registrationticket/`, `internal/cookie/register_ticket.go` |
+| OTP start limits (Redis) | `internal/otplimit/`, `internal/kv/` |
+| IP registration/recovery limiters | `internal/handler/ratelimit.go` |
 | Login / JWT | `internal/handler/login.go`, `internal/handler/jwt.go`, `internal/cookie/jwt.go` |
 | Recovery | `internal/handler/recover.go`, `internal/accountrecovery/` |
 | SMS send/queue/worker/webhook | `internal/service/sms/`, `internal/handler/sms.go` |
 | Settings / change phone | `internal/handler/user.go`, `internal/user/` |
+| Geocoding | `internal/service/geoapify/`, `internal/location/resolve.go` |
 | Encryption helpers | `internal/encryption/`, `internal/user/encryption.go` |
+| Lookup hashes | `internal/db/db.go` (`HashString`) |
 | Schema | `internal/db/schema.sql` |
 | Privacy / FAQ copy | `internal/ui/legal.go`, `internal/ui/faq.go` |
 | Env and dependency overview | `README.md`, `doc/DOC_TECH_STACK.md` |
+| SMS pumping runbook | `doc/DOC_SMS_OTP_AND_PUMPING_DEFENSES.md` |
 
 ## Appendix B — Related public claims
 
 Product README: phone number is enough to get started; no email; number stays hidden from the classifieds-style public view.  
 In-app FAQ (`/faq/phone-number`): phone is collected mainly for message notifications and reachability; email, mailing address, and payment details are not requested as contact profile data; numbers are not sold or shown to other users.
+
+## Appendix C — Change log (security-relevant)
+
+| Change | Effect on this analysis |
+|--------|-------------------------|
+| Twilio Verify + Fraud Guard / geo | OTPs leave app DB; pumping mitigations; Console becomes load-bearing |
+| `reg_ticket` cookie | Closes unbound registration step 3 |
+| Turnstile | Bot friction before OTP start |
+| Redis (`REDIS_URL`) rate limits | Shared OTP/IP throttles; E.164 in Redis keys |
+| Geoapify for locations | Replaces LLM geocoding; durable cache OK under Geoapify terms |
+| Companion SMS pumping doc | Ops runbook split from this privacy/threat paper |

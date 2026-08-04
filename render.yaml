@@ -25,6 +25,12 @@ projects:
       - rockyads.com
       - www.rockyads.com
       autoDeployTrigger: commit
+    - type: keyvalue
+      name: redis
+      plan: starter
+      region: oregon
+      maxmemoryPolicy: noeviction
+      ipAllowList: [] # internal network only (rate-limit keys include phone E.164)
     - type: web
       name: minio
       runtime: image
