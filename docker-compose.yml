@@ -60,6 +60,7 @@ services:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/rockyads?sslmode=disable
       REDIS_URL: redis://redis:6379
       DB_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      DB_HASH_PEPPER: AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=
       MINIO_API_URL: http://minio:9000
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin

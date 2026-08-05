@@ -121,13 +121,16 @@ func resolveUserID(u UserRow, backupKey []byte) (int, error) {
 	encPhoneBytes, _ := base64.StdEncoding.DecodeString(encPhone)
 	phoneNonceBytes, _ := base64.StdEncoding.DecodeString(phoneNonce)
 
+	nameHash := db.HashString(name)
+	phoneHash := db.HashString(phone)
+
 	_, err = db.Exec(`
 		UPDATE users SET
-			encrypted_name = $1, name_nonce = $2,
-			encrypted_phone = $3, phone_nonce = $4
-		WHERE id = $5`,
-		encNameBytes, nameNonceBytes,
-		encPhoneBytes, phoneNonceBytes,
+			encrypted_name = $1, name_nonce = $2, name_hash = $3,
+			encrypted_phone = $4, phone_nonce = $5, phone_hash = $6
+		WHERE id = $7`,
+		encNameBytes, nameNonceBytes, nameHash,
+		encPhoneBytes, phoneNonceBytes, phoneHash,
 		id,
 	)
 	if err != nil {

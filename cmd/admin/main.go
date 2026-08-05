@@ -494,6 +494,13 @@ func mustInit(quiet bool) {
 			"DB_ENCRYPTION_KEY must be set (32-byte base64)")
 		os.Exit(1)
 	}
+	if len(config.DBHashPepper) != 32 {
+		fmt.Fprintln(os.Stderr,
+			"DB_HASH_PEPPER must be set (32-byte base64, "+
+				"distinct from DB_ENCRYPTION_KEY)")
+		os.Exit(1)
+	}
+	db.SetHashPepper(config.DBHashPepper)
 	if err := db.Init(config.DatabaseURL); err != nil {
 		fmt.Fprintf(os.Stderr, "database: %v\n", err)
 		os.Exit(1)

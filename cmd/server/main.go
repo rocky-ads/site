@@ -14,6 +14,7 @@ import (
 	"github.com/rocky-ads/site/internal/service/sms"
 	"github.com/rocky-ads/site/internal/service/turnstile"
 	"github.com/rocky-ads/site/internal/service/verify"
+	"github.com/rocky-ads/site/internal/user"
 	"github.com/rocky-ads/site/internal/vector"
 	"github.com/sasha-s/go-deadlock"
 
@@ -189,6 +190,7 @@ func main() {
 	}
 
 	config.SecurityCheck()
+	db.SetHashPepper(config.DBHashPepper)
 
 	if err := kv.Init(); err != nil {
 		logger.Fatal("Failed to initialize Redis", "error", err)
@@ -205,6 +207,12 @@ func main() {
 
 	if err := db.CheckSchema(); err != nil {
 		logger.Fatal("Database not ready", "error", err)
+	}
+
+	if n, err := user.RehashLookupHashes(); err != nil {
+		logger.Fatal("Failed to rehash user lookup hashes", "error", err)
+	} else if n > 0 {
+		logger.Info("Rehashed user lookup hashes", "updated", n)
 	}
 
 	if err := ad.LoadCategories(); err != nil {

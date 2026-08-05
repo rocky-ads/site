@@ -1,6 +1,7 @@
 package db
 
 import (
+	"crypto/hmac"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
@@ -18,6 +19,7 @@ var (
 	db          *sqlx.DB
 	once        sync.Once
 	databaseURL string
+	hashPepper  []byte
 )
 
 func Init(url string) error {
@@ -58,6 +60,12 @@ func ResetForTest() {
 	db = nil
 	databaseURL = ""
 	once = sync.Once{}
+}
+
+// SetHashPepper configures the HMAC key for HashString. Required before
+// hashing name/phone lookup values.
+func SetHashPepper(pepper []byte) {
+	hashPepper = pepper
 }
 
 func Query(query string, args ...any) (*sql.Rows, error) {
@@ -117,8 +125,14 @@ func Close() error {
 	return nil
 }
 
-// HashString creates a SHA256 hash of a value for database lookups
+// HashString returns a peppered HMAC-SHA256 hex digest for DB lookups
+// (name_hash / phone_hash). Without the pepper, E.164 / username
+// dictionaries cannot be matched offline against a DB dump alone.
 func HashString(value string) string {
-	hash := sha256.Sum256([]byte(value))
-	return hex.EncodeToString(hash[:])
+	if len(hashPepper) == 0 {
+		panic("db: hash pepper not configured")
+	}
+	mac := hmac.New(sha256.New, hashPepper)
+	mac.Write([]byte(value))
+	return hex.EncodeToString(mac.Sum(nil))
 }

@@ -78,15 +78,21 @@ func TestMain(m *testing.M) {
 	// Set test encryption key before anything else
 	// Must match the key used when seeding the test database
 	testDBEncryptionKey := "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" // base64 encoded 32 bytes of zeros
+	testDBHashPepper := "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="    // 32×0x01
 	testJWTSecret := "test-jwt-secret-key-for-ci-minimum-32-chars-long"
 
 	os.Setenv("DB_ENCRYPTION_KEY", testDBEncryptionKey)
+	os.Setenv("DB_HASH_PEPPER", testDBHashPepper)
 	os.Setenv("JWT_SECRET", testJWTSecret)
 
 	// Update config variables using reflection since they're initialized at package import time
 	if key, err := base64.StdEncoding.DecodeString(testDBEncryptionKey); err == nil {
 		configValue := reflect.ValueOf(&config.DBEncryptionKey).Elem()
 		configValue.Set(reflect.ValueOf(key))
+	}
+	if pepper, err := base64.StdEncoding.DecodeString(testDBHashPepper); err == nil {
+		reflect.ValueOf(&config.DBHashPepper).Elem().Set(reflect.ValueOf(pepper))
+		db.SetHashPepper(pepper)
 	}
 
 	// Set JWTSecret

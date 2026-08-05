@@ -42,4 +42,5 @@ jobs:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable
         JWT_SECRET: 'test-jwt-secret-key-for-ci-minimum-32-chars-long'
         DB_ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
+        DB_HASH_PEPPER: 'AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE='
         LOCAL_DEVELOPMENT: 'true'

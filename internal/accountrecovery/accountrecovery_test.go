@@ -19,6 +19,7 @@ import (
 
 const (
 	testDBEncryptionKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+	testDBHashPepper    = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="
 	testJWTSecret       = "test-jwt-secret-key-for-accountrecovery-tests"
 )
 
@@ -32,9 +33,14 @@ func TestMain(m *testing.M) {
 	}
 	os.Setenv("DATABASE_URL", testURL)
 	os.Setenv("DB_ENCRYPTION_KEY", testDBEncryptionKey)
+	os.Setenv("DB_HASH_PEPPER", testDBHashPepper)
 	os.Setenv("JWT_SECRET", testJWTSecret)
 	if key, err := base64.StdEncoding.DecodeString(testDBEncryptionKey); err == nil {
 		reflect.ValueOf(&config.DBEncryptionKey).Elem().Set(reflect.ValueOf(key))
+	}
+	if pepper, err := base64.StdEncoding.DecodeString(testDBHashPepper); err == nil {
+		reflect.ValueOf(&config.DBHashPepper).Elem().Set(reflect.ValueOf(pepper))
+		db.SetHashPepper(pepper)
 	}
 	reflect.ValueOf(&config.JWTSecret).Elem().Set(reflect.ValueOf([]byte(testJWTSecret)))
 	if err := logger.Init("error", "text", ""); err != nil {

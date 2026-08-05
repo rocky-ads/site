@@ -71,12 +71,19 @@ Required at server start unless `ALLOW_TEST_REGISTRATION=true`:
 - `TWILIO_FROM_NUMBER` — Messaging sender in E.164 (e.g. `+12025550123`).
 - `TWILIO_WEBHOOK_URL` — public base URL for webhooks and SMS links (non-localhost).
 - `TWILIO_VERIFY_SERVICE_SID` — Verify Service SID (must start with `VA`).
-- `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` — Cloudflare Turnstile (bot gate on OTP start).
+
+### Turnstile (Cloudflare)
+
+Bot gate before OTP start (register / change-phone). Required at server start unless `ALLOW_TEST_REGISTRATION=true`:
+
+- `TURNSTILE_SITE_KEY` — public site key (browser widget).
+- `TURNSTILE_SECRET_KEY` — secret key (server-side verification).
 
 ### DB (Postgres)
 
 - `DATABASE_URL` — PostgreSQL DSN. Default: `postgres://localhost:5432/rockyads?sslmode=disable`. With docker-compose Postgres: `postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable`.
 - `DB_ENCRYPTION_KEY` — required. Base64-encoded 32-byte (256-bit) key for encrypting user name/phone.
+- `DB_HASH_PEPPER` — required. Base64-encoded 32-byte (256-bit) HMAC pepper for `name_hash` / `phone_hash` lookups. Must differ from `DB_ENCRYPTION_KEY`.
 
 ### Redis
 
@@ -93,7 +100,6 @@ docker compose exec -it jump-server sh -c 'redis-cli -u "$REDIS_URL"'
 # on Render SSH / shell (REDIS_URL from BASE):
 redis-cli -u "$REDIS_URL"
 ```
-
 
 ### LLM / geocoding APIs
 
@@ -130,6 +136,7 @@ Set in `.env`:
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable
 REDIS_URL=redis://localhost:6379
 DB_ENCRYPTION_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+DB_HASH_PEPPER=AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=
 JWT_SECRET=local-dev-jwt-secret-key-min-32-chars
 LOCAL_DEVELOPMENT=true
 ALLOW_TEST_REGISTRATION=true

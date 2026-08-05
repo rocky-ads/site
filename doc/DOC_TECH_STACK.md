@@ -41,6 +41,7 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
   - 256-bit keys
   - HKDF-SHA256 for key derivation
   - Used for message and user data encryption
+- **HMAC-SHA256** - Peppered `name_hash` / `phone_hash` lookups (`DB_HASH_PEPPER`)
 
 ### Security Middleware
 - **Helmet** (Fiber middleware) - Security headers
