@@ -642,22 +642,18 @@ func MessageModalHandler(c *fiber.Ctx) error {
 }
 
 func renderLoggedOutConversationModal(c *fiber.Ctx, a ad.Ad) error {
-	ownerName, ownerDeleted := message.DisplayName(a.UserID)
-	ownerRockCount, err := rock.GetRockCountForUser(a.UserID)
-	if err != nil {
-		ownerRockCount = 0
-	}
+	// Do not reveal the owner's username (or a profile link) while logged out.
 	conv := message.Conversation{
 		ID:         0,
 		AdID:       a.ID,
-		OwnerID:    a.UserID,
+		OwnerID:    0,
 		InquirerID: 0,
 	}
 	data := conversationModalData(
-		conv, 0, 0, ownerRockCount,
-		a.Title, ownerName, "Not logged in",
+		conv, 0, 0, 0,
+		a.Title, "<hidden>", "Not logged in",
 		"", false, false, false,
-		ownerDeleted, false, nil, "",
+		false, false, nil, "",
 	)
 	data.DisabledInputPlaceholder = "Login to send a message"
 	return render(c, ui.ConversationModalWithRock(data))
