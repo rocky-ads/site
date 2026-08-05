@@ -28,10 +28,14 @@ func SwitchCategoryHandler(c *fiber.Ctx) error {
 	return c.Redirect(redirect, fiber.StatusFound)
 }
 
+// ShortCategoryHandler handles QR / deep links (/c/:id). Always switches to
+// that category (cookie + facet cleanup), same as a manual home category
+// change, regardless of any previous category cookie.
 func ShortCategoryHandler(c *fiber.Ctx) error {
 	categoryID := param.GetCategoryID(c)
 	cookie.SetCategoryID(c, categoryID)
-	switchCategoryHome(c, categoryID)
+	state := clearFacetFilters(cookie.GetSearchState(c), categoryID)
+	cookie.SetSearchState(c, state)
 	return c.Redirect("/", fiber.StatusFound)
 }
 

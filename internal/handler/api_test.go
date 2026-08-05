@@ -89,7 +89,7 @@ func TestShortCategoryHandler(t *testing.T) {
 	app := fiber.New()
 	app.Get("/c/:category", ShortCategoryHandler)
 
-	resp, err := app.Test(httptest.NewRequest("GET", "/c/6", nil))
+	resp, err := app.Test(httptest.NewRequest("GET", "/c/4", nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,4 +99,6 @@ func TestShortCategoryHandler(t *testing.T) {
 	if got := resp.Header.Get("Location"); got != "/" {
 		t.Fatalf("Location = %q, want /", got)
 	}
+	// Cookie value needs loaded categories (see integration TestShortCategoryRoute).
+	// Locals + Set-Cookie overwrite is covered by cookie.TestSetCategoryID*.
 }

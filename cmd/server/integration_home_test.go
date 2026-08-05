@@ -308,6 +308,13 @@ func TestShortCategoryRoute(t *testing.T) {
 		},
 	}
 
+	// Prior navigation left a different category cookie.
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		t.Fatalf("parse baseURL: %v", err)
+	}
+	jar.SetCookies(u, []*http.Cookie{{Name: "category", Value: "5"}})
+
 	resp, _ := getRequestWithCookies(t, client, baseURL+"/c/6")
 	if resp.StatusCode != http.StatusFound {
 		t.Fatalf("expected 302, got %d", resp.StatusCode)
@@ -323,7 +330,7 @@ func TestShortCategoryRoute(t *testing.T) {
 		}
 	}
 	if categoryVal != "6" {
-		t.Fatalf("expected category cookie 6, got %q", categoryVal)
+		t.Fatalf("expected category cookie 6 (path wins over prior 5), got %q", categoryVal)
 	}
 }
 

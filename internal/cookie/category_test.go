@@ -1,6 +1,7 @@
 package cookie
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -40,5 +41,32 @@ func TestSetCategoryIDNotOverwrittenByLaterGet(t *testing.T) {
 	if !strings.Contains(strings.ToLower(resp.Header.Get("Set-Cookie")), "samesite=lax") {
 		t.Fatalf("expected SameSite=Lax for QR deep links, got %q",
 			resp.Header.Get("Set-Cookie"))
+	}
+}
+
+func TestSetCategoryIDOverridesPreviousCookie(t *testing.T) {
+	app := fiber.New()
+	app.Get("/c/:id", func(c *fiber.Ctx) error {
+		SetCategoryID(c, 4)
+		_ = GetCategoryID(c)
+		return c.SendStatus(fiber.StatusNoContent)
+	})
+
+	req := httptest.NewRequest("GET", "/c/4", nil)
+	req.AddCookie(&http.Cookie{Name: "category", Value: "5"})
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var category string
+	for _, c := range resp.Cookies() {
+		if c.Name == "category" {
+			category = c.Value
+		}
+	}
+	if category != "4" {
+		t.Fatalf("category cookie = %q, want %q (Set-Cookie: %s)",
+			category, "4", resp.Header.Get("Set-Cookie"))
 	}
 }
