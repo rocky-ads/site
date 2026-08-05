@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -125,6 +126,9 @@ var (
 	// DB encryption (user name/phone; journals on restore / later at rest)
 	DBEncryptionKey = getEncryptionKey("DB_ENCRYPTION_KEY")
 
+	// Pepper for name_hash / phone_hash HMAC lookups (not the encryption key)
+	DBHashPepper = getEncryptionKey("DB_HASH_PEPPER")
+
 	// Server configuration
 	ServerPort   = getEnvWithDefault("PORT", "10000")
 	ServerName   = getEnvWithDefault("APP_NAME", "Rocky Ads")
@@ -241,6 +245,24 @@ func SecurityCheck() {
 		logger.Fatal("DB_ENCRYPTION_KEY must be 32 bytes (256 bits)")
 	}
 	logger.Info("DB encryption key configured", "length", len(DBEncryptionKey))
+
+	pepperStr := os.Getenv("DB_HASH_PEPPER")
+	if pepperStr == "" {
+		logger.Fatal("Security configuration error",
+			"error", "DB_HASH_PEPPER environment variable is required but not set")
+	}
+	if len(DBHashPepper) == 0 {
+		logger.Fatal("Security configuration error",
+			"error", "DB_HASH_PEPPER is invalid base64 format")
+	}
+	if len(DBHashPepper) != 32 {
+		logger.Fatal("DB_HASH_PEPPER must be 32 bytes (256 bits)")
+	}
+	if bytes.Equal(DBHashPepper, DBEncryptionKey) {
+		logger.Fatal("Security configuration error",
+			"error", "DB_HASH_PEPPER must differ from DB_ENCRYPTION_KEY")
+	}
+	logger.Info("DB hash pepper configured", "length", len(DBHashPepper))
 
 	if AllowTestRegistration {
 		logger.Warn("ALLOW_TEST_REGISTRATION is enabled: test phone signup skips SMS verification")

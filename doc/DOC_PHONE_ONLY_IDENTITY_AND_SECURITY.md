@@ -54,7 +54,7 @@ For this paper, **PII** means data that identifies or can reasonably identify a 
 
 ### What is stored for an account
 
-At the user-record level, the durable personal contact field is the phone number (E.164), stored encrypted with AES-GCM under a server-held key, with a SHA-256 lookup hash for uniqueness checks. The username is similarly encrypted. Passwords are stored as Argon2id hashes. Soft-delete leaves a time-bounded hold so a phone cannot be immediately reused after account deletion.
+At the user-record level, the durable personal contact field is the phone number (E.164), stored encrypted with AES-GCM under a server-held key, with an HMAC-SHA256 lookup hash (peppered with `DB_HASH_PEPPER`) for uniqueness checks. The username is similarly encrypted and hashed. Passwords are stored as Argon2id hashes. Soft-delete leaves a time-bounded hold so a phone cannot be immediately reused after account deletion.
 
 Ephemeral or operational stores also touch identity briefly:
 
@@ -148,6 +148,7 @@ Rocky Ads is not relying on obscurity alone. Relevant controls in the current st
 
 - **Password hashing** with Argon2id.
 - **Field encryption** for username and phone (AES-GCM with per-user key derivation from `DB_ENCRYPTION_KEY`).
+- **Peppered lookup hashes** for username/phone (`HMAC-SHA256` with `DB_HASH_PEPPER`) so a DB dump alone cannot offline-dictionary E.164 / username space.
 - **Message journal encryption** at rest.
 - **JWT session cookies** (HttpOnly, SameSite=Strict, Secure outside local development), with password-salt binding so password changes invalidate tokens.
 - **CSRF** protection (double-submit), with a deliberate exemption for the Twilio webhook path.
@@ -224,7 +225,7 @@ Webhook security is load-bearing. Signature verification must use the correct pu
 
 ### 6.5 Lookup hashes and offline correlation
 
-Encrypting phone and name at rest is strong against casual database reads **if** `DB_ENCRYPTION_KEY` remains secret. Unsalted (or un-peppered) SHA-256 hashes of E.164 phones (`db.HashString`) are still amenable to dictionary attack: the phone number space is structured and far smaller than a general password space. An attacker with the hash column can test candidate numbers offline and correlate users to real-world identities even without the AES key. That does not expose message plaintext by itself, but it undercuts the narrative that ciphertext alone equals anonymity.
+Encrypting phone and name at rest is strong against casual database reads **if** `DB_ENCRYPTION_KEY` remains secret. Lookup columns (`name_hash`, `phone_hash`) use **HMAC-SHA256 with `DB_HASH_PEPPER`**, so an attacker with only the database (no pepper) cannot dictionary-match E.164 numbers or usernames against those hashes. A dump that also includes the pepper (or both secrets) still allows recomputing hashes; the encryption key separately unlocks ciphertext. Keep `DB_HASH_PEPPER` distinct from `DB_ENCRYPTION_KEY` and treat both as production secrets.
 
 ### 6.6 Content and metadata are still PII-rich
 
@@ -273,7 +274,7 @@ An attacker social-engineers the victim’s carrier, ports the number, starts re
 
 ### Narrative B — Database / Redis backup without the encryption key
 
-An attacker steals a logical Postgres backup. AES-GCM phone ciphertext resists direct read. Register/change-phone OTPs are not in the app database (Twilio Verify). Unsalted phone hashes still enable bulk correlation of which real numbers have accounts. A separate Redis dump may list E.164s that recently hit OTP start limits. The attacker may then phishing-SMS those numbers with a lookalike “verify your Rocky Ads phone” link.
+An attacker steals a logical Postgres backup. AES-GCM phone ciphertext resists direct read. Register/change-phone OTPs are not in the app database (Twilio Verify). Peppered phone hashes resist offline E.164 dictionaries without `DB_HASH_PEPPER`. A separate Redis dump may list E.164s that recently hit OTP start limits. The attacker may then phishing-SMS those numbers with a lookalike “verify your Rocky Ads phone” link.
 
 ### Narrative C — Registration step confusion / race *(mitigated)*
 
@@ -314,7 +315,7 @@ Bots drive Verify creates toward premium destinations. Current stack raises cost
 | Presigned media URL leak | No | Image/PII-in-photo exposure | Medium | |
 | Admin token abuse | No | Bulk phone disclosure | High | |
 | Content scams / harassment | No | User harm, brand trust | High | |
-| Offline phone-hash correlation | No | Re-identification of members | Medium | Still unsalted SHA-256 |
+| Offline phone-hash correlation | No | Re-identification of members | ~~Medium~~ Mitigated | Needs `DB_HASH_PEPPER` + DB |
 | Geoapify / Grok third-party leak | No | Location text / usernames leave boundary | Low–Medium | By design for those features |
 
 The pattern is consistent: **almost none of the serious threats require Rocky Ads to have collected email or credit cards.**
@@ -327,7 +328,7 @@ Status relative to the current codebase:
 
 1. ~~**Treat registration as a single server-side capability token.**~~ **Done.** Step 2 completes Twilio Verify and sets a signed HttpOnly `reg_ticket` JWT cookie; step 3 verifies binding and clears it.
 2. ~~**Keep register/change-phone OTPs out of the app DB.**~~ **Done.** Twilio Verify owns codes.
-3. **Pepper phone/name lookup hashes** with a server-side secret so offline dictionary attacks on E.164 space require both DB and secret compromise. *(Still open — `db.HashString` is plain SHA-256.)*
+3. ~~**Pepper phone/name lookup hashes**~~ **Done.** `db.HashString` is HMAC-SHA256 with required `DB_HASH_PEPPER`; startup `user.RehashLookupHashes` upgrades legacy unsalted rows; restore recomputes hashes.
 4. **Add login-specific throttling and lockouts** (per username and per IP), not only global request ceilings. *(Still open.)*
 5. ~~**Rate-limit OTP starts and monitor Twilio spend.**~~ **Done (OTP path):** Verify + Fraud Guard, Turnstile, Redis per-phone/IP limits; spend runbook in [DOC_SMS_OTP_AND_PUMPING_DEFENSES.md](DOC_SMS_OTP_AND_PUMPING_DEFENSES.md). Notification SMS remain on Programmable Messaging.
 6. **Make STOP and in-app opt-out consistent** (or document clearly) so carrier unsubscribe language matches `sms_opted_out` behavior users expect. *(Still open — STOP does not set `sms_opted_out`.)*
@@ -367,7 +368,8 @@ The correct reading of the architecture remains: not “little PII, therefore sa
 | Settings / change phone | `internal/handler/user.go`, `internal/user/` |
 | Geocoding | `internal/service/geoapify/`, `internal/location/resolve.go` |
 | Encryption helpers | `internal/encryption/`, `internal/user/encryption.go` |
-| Lookup hashes | `internal/db/db.go` (`HashString`) |
+| Lookup hashes | `internal/db/db.go` (`HashString` + `SetHashPepper`) |
+| Hash rehash migration | `internal/user/rehash.go` |
 | Schema | `internal/db/schema.sql` |
 | Privacy / FAQ copy | `internal/ui/legal.go`, `internal/ui/faq.go` |
 | Env and dependency overview | `README.md`, `doc/DOC_TECH_STACK.md` |
@@ -387,4 +389,5 @@ In-app FAQ (`/faq/phone-number`): phone is collected mainly for message notifica
 | Turnstile | Bot friction before OTP start |
 | Redis (`REDIS_URL`) rate limits | Shared OTP/IP throttles; E.164 in Redis keys |
 | Geoapify for locations | Replaces LLM geocoding; durable cache OK under Geoapify terms |
+| `DB_HASH_PEPPER` + HMAC lookup hashes | Offline dictionary of `phone_hash` / `name_hash` needs pepper |
 | Companion SMS pumping doc | Ops runbook split from this privacy/threat paper |

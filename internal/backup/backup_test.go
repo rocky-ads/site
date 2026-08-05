@@ -29,6 +29,7 @@ import (
 
 const keyA = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 const keyB = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE="
+const testDBHashPepper = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="
 
 func TestMain(m *testing.M) {
 	if err := chdirModuleRoot(); err != nil {
@@ -40,7 +41,9 @@ func TestMain(m *testing.M) {
 	}
 	os.Setenv("DATABASE_URL", testURL)
 	os.Setenv("DB_ENCRYPTION_KEY", keyA)
+	os.Setenv("DB_HASH_PEPPER", testDBHashPepper)
 	setDBKey(keyA)
+	setHashPepper(testDBHashPepper)
 	if err := logger.Init("error", "text", os.DevNull); err != nil {
 		panic(err)
 	}
@@ -53,6 +56,15 @@ func setDBKey(b64 string) {
 		panic(err)
 	}
 	reflect.ValueOf(&config.DBEncryptionKey).Elem().Set(reflect.ValueOf(key))
+}
+
+func setHashPepper(b64 string) {
+	pepper, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		panic(err)
+	}
+	reflect.ValueOf(&config.DBHashPepper).Elem().Set(reflect.ValueOf(pepper))
+	db.SetHashPepper(pepper)
 }
 
 func chdirModuleRoot() error {

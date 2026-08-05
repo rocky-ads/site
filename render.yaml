@@ -19,6 +19,7 @@ projects:
       - fromGroup: TWILIO
       - fromGroup: MINIO
       - fromGroup: LLMs
+      - fromGroup: TURNSTILE
       region: oregon
       healthCheckPath: /health
       domains:
