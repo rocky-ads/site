@@ -13,13 +13,26 @@ import (
 )
 
 const (
-	printDPI     = 300
+	printDPI = 300
+	// Staples.com upload: full artwork 3.75"×2.25", finished cut 3.5"×2".
 	trimWidthIn  = 3.5
 	trimHeightIn = 2.0
-	bleedIn      = 0.125
+	bleedIn      = 0.125 // extends file to 3.75"×2.25"
+	safeInsetIn  = 0.125 // keep content inside trim (Staples safe zone)
 )
 
-var brandBlack = color.RGBA{R: 0x00, G: 0x00, B: 0x00, A: 0xFF}
+var (
+	// Site dark mode: body bg-zinc-900, text-zinc-200.
+	cardBG    = color.RGBA{R: 0x18, G: 0x18, B: 0x1B, A: 0xFF}
+	brandText = color.RGBA{R: 0xE4, G: 0xE4, B: 0xE7, A: 0xFF}
+	// Category pill: dark:border-blue-400 dark:bg-blue-900.
+	pillBorder = color.RGBA{R: 0x60, G: 0xA5, B: 0xFA, A: 0xFF}
+	pillFill   = color.RGBA{R: 0x1E, G: 0x3A, B: 0x8A, A: 0xFF}
+	// Category icons: dark:invert dark:opacity-80 (NRGBA; Go RGBA is premul).
+	pillIcon = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xCC}
+	// About-page block.svg red filter approximation.
+	noIconRed = color.RGBA{R: 0xDC, G: 0x26, B: 0x26, A: 0xFF}
+)
 
 // PrintCardOptions configures flat business card image generation.
 type PrintCardOptions struct {
@@ -28,8 +41,9 @@ type PrintCardOptions struct {
 	ImagesRoot string
 }
 
-// RenderPrintCard draws a print-ready business card image at 300 DPI with
-// standard bleed margins for professional printing.
+// RenderPrintCard draws a Staples-ready business card at 300 DPI:
+// 3.75"×2.25" canvas (with 0.125" bleed), content inside the 3.5"×2" trim
+// and an additional 0.125" safe inset from the trim edge.
 func RenderPrintCard(opts PrintCardOptions) (*image.RGBA, error) {
 	if opts.Host == "" {
 		return nil, fmt.Errorf("host is required")
@@ -43,115 +57,338 @@ func RenderPrintCard(opts PrintCardOptions) (*image.RGBA, error) {
 	trimW := inchesToPx(trimWidthIn)
 	trimH := inchesToPx(trimHeightIn)
 	bleedPx := inchesToPx(bleedIn)
+	contentPad := inchesToPx(safeInsetIn)
 
 	canvas := image.NewRGBA(image.Rect(0, 0, totalW, totalH))
+	draw.Draw(canvas, canvas.Bounds(), &image.Uniform{C: cardBG}, image.Point{}, draw.Src)
 
 	trim := image.Rect(bleedPx, bleedPx, bleedPx+trimW, bleedPx+trimH)
-	cx := trim.Min.X + trimW/2
+
+	// Match site homepage visual proportions: icon ink slightly taller than
+	// adjacent capitals (nav rock vs "Rocky Ads"; pill icon vs category).
+	const cssScale = 3.0
+	px := func(cssPx float64) int {
+		return int(cssPx*cssScale + 0.5)
+	}
+	titleSize := 20.0 * cssScale * 72 / printDPI
+	categorySize := 16.0 * cssScale * 72 / printDPI
+	logoGap := px(8)
+	pillIconGap := px(8)
+	pillPadX := px(20)
+	pillPadY := px(8)
+	pillBorderW := px(2)
+	colGap := px(20)
+	stackGap := px(10)
+	bodyGap := px(18)
 
 	const (
-		titleSize    = 26.0
-		categorySize = 18.0
-		taglineSize  = 11.0
-		iconSize     = 100
-		iconGap      = 20
-		qrSize       = 300
-		taglineGap   = 12
+		titleText     = "Rocky Ads"
+		iconToText    = 1.35 // CSS boxes are larger than ink; bias icons up
+		titleHeavy    = 1    // light embolden for title
+		categoryHeavy = 0    // bold only for category
 	)
 
-	const (
-		titleText   = "Rocky Ads"
-		taglineText = "Scan to browse"
+	contentLeft := trim.Min.X + contentPad
+	contentRight := trim.Max.X - contentPad
+
+	hostLabel := opts.Host
+	hostSize := 11.0 * cssScale * 72 / printDPI
+	hostGap := px(8)
+	hostH, err := textHeight(hostLabel, hostSize, fontRegular)
+	if err != nil {
+		return nil, err
+	}
+
+	// QR on the right; leave room for the left column and host label.
+	qrSize := int(float64(trimH)*0.48 + 0.5)
+	maxQRH := trimH - 2*contentPad - hostGap - hostH
+	if qrSize > maxQRH {
+		qrSize = maxQRH
+	}
+	qrX := contentRight - qrSize
+	leftMaxW := qrX - colGap - contentLeft
+	if leftMaxW < 120 {
+		qrSize = trimW/2 - contentPad
+		if qrSize > maxQRH {
+			qrSize = maxQRH
+		}
+		qrX = contentRight - qrSize
+		leftMaxW = qrX - colGap - contentLeft
+	}
+
+	titleH, err := textHeight(titleText, titleSize, fontBold)
+	if err != nil {
+		return nil, err
+	}
+	catH, err := textHeight(opts.Category.Name, categorySize, fontBold)
+	if err != nil {
+		return nil, err
+	}
+	rockTargetH := int(float64(titleH)*iconToText + 0.5)
+	iconTargetH := int(float64(catH)*iconToText + 0.5)
+
+	rockPath := filepath.Join(filepath.Dir(opts.ImagesRoot), "rock.svg")
+	rock, err := renderSVGScaledToInkHeight(rockPath, rockTargetH, nil)
+	if err != nil {
+		return nil, fmt.Errorf("render rock icon: %w", err)
+	}
+	rockSize := rock.Bounds().Dy()
+	rockW := rock.Bounds().Dx()
+
+	titleW, err := textWidth(titleText, titleSize, fontBold)
+	if err != nil {
+		return nil, err
+	}
+	logoW := rockW + logoGap + titleW + 2*titleHeavy
+
+	// Shrink category text until the pill fits the left column.
+	var (
+		icon         *image.RGBA
+		pillIconSize int
+		catW         int
+		pillH        int
+		pillW        int
 	)
+	for try := 0; try < 8; try++ {
+		catH, err = textHeight(opts.Category.Name, categorySize, fontBold)
+		if err != nil {
+			return nil, err
+		}
+		iconTargetH = int(float64(catH)*iconToText + 0.5)
+		iconPath := filepath.Join(opts.ImagesRoot, opts.Category.ImageFile)
+		icon, err = renderSVGScaledToInkHeight(iconPath, iconTargetH, pillIcon)
+		if err != nil {
+			return nil, fmt.Errorf("render icon %s: %w", iconPath, err)
+		}
+		pillIconSize = icon.Bounds().Dy()
+		catW, err = textWidth(opts.Category.Name, categorySize, fontBold)
+		if err != nil {
+			return nil, err
+		}
+		pillInnerH := pillIconSize
+		if catH > pillInnerH {
+			pillInnerH = catH
+		}
+		pillH = pillInnerH + 2*pillPadY
+		pillW = icon.Bounds().Dx() + pillIconGap + catW + 2*pillPadX +
+			2*categoryHeavy
+		if pillW <= leftMaxW && logoW <= leftMaxW {
+			break
+		}
+		categorySize *= 0.9
+		if logoW > leftMaxW {
+			titleSize *= 0.9
+			titleH, err = textHeight(titleText, titleSize, fontBold)
+			if err != nil {
+				return nil, err
+			}
+			rockTargetH = int(float64(titleH)*iconToText + 0.5)
+			rock, err = renderSVGScaledToInkHeight(rockPath, rockTargetH, nil)
+			if err != nil {
+				return nil, err
+			}
+			rockSize = rock.Bounds().Dy()
+			rockW = rock.Bounds().Dx()
+			titleW, err = textWidth(titleText, titleSize, fontBold)
+			if err != nil {
+				return nil, err
+			}
+			logoW = rockW + logoGap + titleW + 2*titleHeavy
+		}
+	}
 
-	titleH, err := textHeight(titleText, titleSize)
-	if err != nil {
-		return nil, err
+	logoH := rockSize
+	if titleH > logoH {
+		logoH = titleH
 	}
-	taglineH, err := textHeight(taglineText, taglineSize)
-	if err != nil {
-		return nil, err
-	}
+	leftTop := trim.Min.Y + contentPad
 
-	stackH := titleH + iconSize + qrSize + taglineGap + taglineH
-	outerMargin := (trimH - stackH) / 2
-	if outerMargin < 0 {
-		outerMargin = 0
-	}
-
-	titleTop := trim.Min.Y + outerMargin
-	titleBaseline, err := textBaselineFromTop(titleText, titleTop, titleSize)
-	if err != nil {
-		return nil, err
-	}
-	titleBottom, err := textBottomY(titleText, titleBaseline, titleSize)
-	if err != nil {
-		return nil, err
-	}
-
-	taglineBottom := trim.Max.Y - outerMargin
-	taglineBaseline, err := textBaselineFromTop(
-		taglineText, taglineBottom-taglineH, taglineSize,
+	logoCenterY := leftTop + logoH/2
+	titleBaseline, err := textBaselineForCenterY(
+		titleText, logoCenterY, titleSize, fontBold,
 	)
 	if err != nil {
 		return nil, err
 	}
-	taglineTop := taglineBottom - taglineH
 
-	qrY := taglineTop - taglineGap - qrSize
-
-	if err := drawCenteredText(
-		canvas, titleText, cx, titleBaseline, titleSize, brandBlack,
+	drawAt(canvas, rock, contentLeft, logoCenterY-rockSize/2)
+	if err := drawLeftTextEmboldened(
+		canvas, titleText, contentLeft+rockW+logoGap, titleBaseline,
+		titleSize, fontBold, brandText, titleHeavy,
 	); err != nil {
 		return nil, err
 	}
 
-	categoryRowCenterY := (titleBottom + qrY) / 2
-	categoryBaseline, err := textBaselineForCenterY(
-		opts.Category.Name, categoryRowCenterY, categorySize,
+	pillTop := leftTop + logoH + stackGap
+	pillRect := image.Rect(
+		contentLeft, pillTop, contentLeft+pillW, pillTop+pillH,
+	)
+	fillRoundedRect(canvas, pillRect, pillH/2, pillBorder)
+	inner := image.Rect(
+		pillRect.Min.X+pillBorderW,
+		pillRect.Min.Y+pillBorderW,
+		pillRect.Max.X-pillBorderW,
+		pillRect.Max.Y-pillBorderW,
+	)
+	fillRoundedRect(canvas, inner, (pillH-2*pillBorderW)/2, pillFill)
+
+	pillCenterY := pillTop + pillH/2
+	pillContentLeft := pillRect.Min.X + pillPadX
+	iconW := icon.Bounds().Dx()
+	drawAt(canvas, icon, pillContentLeft, pillCenterY-pillIconSize/2)
+
+	catBaseline, err := textBaselineForCenterY(
+		opts.Category.Name, pillCenterY, categorySize, fontBold,
 	)
 	if err != nil {
 		return nil, err
 	}
-
-	categoryWidth, err := textWidth(opts.Category.Name, categorySize)
-	if err != nil {
-		return nil, err
-	}
-	groupWidth := iconSize + iconGap + categoryWidth
-	groupLeft := cx - groupWidth/2
-
-	iconPath := filepath.Join(opts.ImagesRoot, opts.Category.ImageFile)
-	icon, err := renderSVGRGBA(iconPath, iconSize, brandBlack)
-	if err != nil {
-		return nil, fmt.Errorf("render icon %s: %w", iconPath, err)
-	}
-
-	iconX := groupLeft
-	iconY := categoryRowCenterY - iconSize/2
-	drawAt(canvas, icon, iconX, iconY)
-
-	categoryX := groupLeft + iconSize + iconGap
-	if err := drawLeftText(
-		canvas, opts.Category.Name, categoryX, categoryBaseline,
-		categorySize, brandBlack,
+	if err := drawLeftTextEmboldened(
+		canvas, opts.Category.Name,
+		pillContentLeft+iconW+pillIconGap, catBaseline,
+		categorySize, fontBold, brandText, categoryHeavy,
 	); err != nil {
 		return nil, err
 	}
 
-	if err := drawCenteredText(
-		canvas, taglineText, cx, taglineBaseline, taglineSize, brandBlack,
-	); err != nil {
-		return nil, err
+	bodyTop := pillTop + pillH + bodyGap
+
+	aboutBlurb := "Remember classified ads? Post ad with your number and " +
+		"folks call you. Rocky Ads works the same way—except your " +
+		"number stays hidden."
+	noItems := []string{
+		"No email",
+		"No Facebook friends",
+		"No posting fees",
+		"No credit cards",
 	}
 
+	bodyBottom := trim.Max.Y - contentPad
+	availBodyH := bodyBottom - bodyTop
+
+	bodySize := 10.0 * cssScale * 72 / printDPI
+	listSize := 10.0 * cssScale * 72 / printDPI
+	lineGap := px(2)
+	paraGap := px(12)
+	itemGap := px(3)
+	noIconGap := px(4)
+
+	blockPath := filepath.Join(filepath.Dir(opts.ImagesRoot), "block.svg")
+	var (
+		bodyLines []string
+		lineH     int
+		listLineH int
+		noIconSz  int
+		noIconImg *image.RGBA
+	)
+	for try := 0; try < 10; try++ {
+		var err error
+		bodyLines, err = wrapLines(aboutBlurb, leftMaxW, bodySize, fontRegular)
+		if err != nil {
+			return nil, err
+		}
+		lineH, err = textHeight("Ay", bodySize, fontRegular)
+		if err != nil {
+			return nil, err
+		}
+		listLineH, err = textHeight("Ay", listSize, fontBold)
+		if err != nil {
+			return nil, err
+		}
+		noIconSz = listLineH
+		bodyH := len(bodyLines)*lineH + (len(bodyLines)-1)*lineGap
+		if len(bodyLines) > 0 {
+			bodyH += paraGap
+		}
+		listH := len(noItems)*noIconSz + (len(noItems)-1)*itemGap
+		if bodyH+listH <= availBodyH {
+			noIconImg, err = renderSVGScaledToInkHeight(
+				blockPath, noIconSz, noIconRed,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("render block icon: %w", err)
+			}
+			break
+		}
+		bodySize *= 0.92
+		listSize *= 0.92
+		lineGap = max(1, int(float64(lineGap)*0.92))
+		paraGap = max(2, int(float64(paraGap)*0.92))
+		itemGap = max(1, int(float64(itemGap)*0.92))
+		if try == 9 {
+			noIconImg, err = renderSVGScaledToInkHeight(
+				blockPath, max(8, noIconSz), noIconRed,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("render block icon: %w", err)
+			}
+		}
+	}
+
+	y := bodyTop
+	for i, line := range bodyLines {
+		baseline, err := textBaselineFromTop(
+			line, y, bodySize, fontRegular,
+		)
+		if err != nil {
+			return nil, err
+		}
+		if err := drawLeftText(
+			canvas, line, contentLeft, baseline,
+			bodySize, fontRegular, brandText,
+		); err != nil {
+			return nil, err
+		}
+		y += lineH
+		if i < len(bodyLines)-1 {
+			y += lineGap
+		}
+	}
+	y += paraGap
+
+	for _, item := range noItems {
+		iconY := y + (noIconSz-noIconImg.Bounds().Dy())/2
+		drawAt(canvas, noIconImg, contentLeft, iconY)
+		itemBaseline, err := textBaselineForCenterY(
+			item, y+noIconSz/2, listSize, fontBold,
+		)
+		if err != nil {
+			return nil, err
+		}
+		if err := drawLeftText(
+			canvas, item,
+			contentLeft+noIconImg.Bounds().Dx()+noIconGap, itemBaseline,
+			listSize, fontBold, brandText,
+		); err != nil {
+			return nil, err
+		}
+		y += noIconSz + itemGap
+	}
+
+	qrBlockH := qrSize + hostGap + hostH
+	qrY := trim.Min.Y + (trimH-qrBlockH)/2
+	if qrY < trim.Min.Y+contentPad {
+		qrY = trim.Min.Y + contentPad
+	}
 	qrURL := CategoryURL(opts.Host, opts.Category.ID)
-	qr, err := renderQRRGBA(qrURL, qrSize, brandBlack)
+	qr, err := renderQRRGBA(qrURL, qrSize, brandText)
 	if err != nil {
 		return nil, err
 	}
-	qrX := cx - qrSize/2
 	drawAt(canvas, qr, qrX, qrY)
+
+	hostBaseline, err := textBaselineFromTop(
+		hostLabel, qrY+qrSize+hostGap, hostSize, fontRegular,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if err := drawCenteredText(
+		canvas, hostLabel, qrX+qrSize/2, hostBaseline,
+		hostSize, fontRegular, brandText,
+	); err != nil {
+		return nil, err
+	}
 
 	return canvas, nil
 }
@@ -176,6 +413,7 @@ func renderQRRGBA(url string, size int, fg color.Color) (*image.RGBA, error) {
 	if err != nil {
 		return nil, err
 	}
+	code.DisableBorder = true
 	img := code.Image(size)
 	rgba := image.NewRGBA(image.Rect(0, 0, size, size))
 	for y := 0; y < size; y++ {

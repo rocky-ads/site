@@ -56,7 +56,8 @@ func TestRenderPrintCard(t *testing.T) {
 
 	b := img.Bounds()
 	if b.Dx() != 1125 || b.Dy() != 675 {
-		t.Fatalf("expected 1125x675 with bleed, got %dx%d", b.Dx(), b.Dy())
+		t.Fatalf("expected 1125x675 (3.75\"x2.25\" @ 300 DPI), got %dx%d",
+			b.Dx(), b.Dy())
 	}
 
 	var buf bytes.Buffer
@@ -75,9 +76,21 @@ func TestRenderPrintCard(t *testing.T) {
 		t.Fatal("decoded PNG size mismatch")
 	}
 
-	black := countColorNear(img, 0x00, 0x00, 0x00)
-	if black < 500 {
-		t.Fatalf("expected visible card content, got %d black pixels", black)
+	bg := countColorNear(img, 0x18, 0x18, 0x1B)
+	if bg < 1000 {
+		t.Fatalf("expected dark zinc-900 background, got %d pixels", bg)
+	}
+	light := countColorNear(img, 0xE4, 0xE4, 0xE7)
+	if light < 500 {
+		t.Fatalf("expected zinc-200 content, got %d pixels", light)
+	}
+	blue := countColorNear(img, 0x60, 0xA5, 0xFA)
+	if blue < 100 {
+		t.Fatalf("expected category pill border, got %d blue pixels", blue)
+	}
+	pillBG := countColorNear(img, 0x1E, 0x3A, 0x8A)
+	if pillBG < 100 {
+		t.Fatalf("expected category pill fill, got %d blue-900 pixels", pillBG)
 	}
 }
 

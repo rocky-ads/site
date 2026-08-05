@@ -117,6 +117,38 @@ func TestAdExpireToolbarVisibility(t *testing.T) {
 		if strings.Contains(html, "/images/copy.svg") {
 			t.Fatal("did not expect copy-ad icon for paused ad")
 		}
+		if strings.Contains(html, "/images/bookmark") {
+			t.Fatal("did not expect bookmark icon for paused ad")
+		}
+		if strings.Contains(html, "/images/share.svg") {
+			t.Fatal("did not expect share icon for paused ad")
+		}
+		if !strings.Contains(html, "/images/restore.svg") {
+			t.Fatal("expected restore icon for paused ad owner")
+		}
+	})
+
+	t.Run("deleted_hides_bookmark_share", func(t *testing.T) {
+		deleted := detail
+		deleted.Active = false
+		deleted.Deleted = true
+		html := renderAdNodes(t, Ad(deleted, 42, "csrf"))
+		if strings.Contains(html, "/images/bookmark") {
+			t.Fatal("did not expect bookmark icon for deleted ad")
+		}
+		if strings.Contains(html, "/images/share.svg") {
+			t.Fatal("did not expect share icon for deleted ad")
+		}
+	})
+
+	t.Run("active_shows_bookmark_share", func(t *testing.T) {
+		html := renderAdNodes(t, Ad(detail, 42, "csrf"))
+		if !strings.Contains(html, "/images/bookmark") {
+			t.Fatal("expected bookmark icon for active ad when logged in")
+		}
+		if !strings.Contains(html, "/images/share.svg") {
+			t.Fatal("expected share icon for active ad")
+		}
 	})
 }
 

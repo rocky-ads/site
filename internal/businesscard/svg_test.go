@@ -11,7 +11,7 @@ import (
 
 func TestSVGRGBAHasInk(t *testing.T) {
 	path := ResolveRepoPath("static/images/category/bicycle.svg")
-	img, err := renderSVGRGBA(path, 96, brandBlack)
+	img, err := renderSVGRGBA(path, 96, brandText)
 	if err != nil {
 		t.Fatalf("renderSVGRGBA: %v", err)
 	}

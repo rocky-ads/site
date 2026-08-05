@@ -330,12 +330,13 @@ func adButtons(adID, userID, ownerID int, bookmarked, active, inactive, reachabl
 	isOwner := local.IsLoggedIn(userID) && userID == ownerID
 	return Div(
 		Class("flex shrink-0 items-center gap-2 justify-self-end"),
-		g.If(local.IsLoggedIn(userID), BookmarkButton(adID, bookmarked, csrfToken)),
+		g.If(active && local.IsLoggedIn(userID),
+			BookmarkButton(adID, bookmarked, csrfToken)),
 		g.If(active && reachable && !isOwner, messageButton(adID)),
 		g.If(active && isOwner, editButton(adID)),
 		g.If(active && isOwner, deleteButton(adID)),
 		g.If(inactive && isOwner, restoreButton(adID, csrfToken)),
-		shareButton(adID),
+		g.If(active, shareButton(adID)),
 	)
 }
 
