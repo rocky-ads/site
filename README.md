@@ -87,7 +87,7 @@ Bot gate before OTP start (register / change-phone). Required at server start un
 
 ### Redis
 
-- `REDIS_URL` — required. Redis URL for shared rate limits (registration/recovery IP + per-phone OTP starts). Local: `redis://localhost:6379` with `docker compose up -d redis`. Render: Key Value internal URL (e.g. `redis://red-xxx:6379`).
+- `REDIS_URL` — required. Redis URL for shared rate limits (registration/recovery/login IP + per-username login failures + per-phone OTP starts). Local: `redis://localhost:6379` with `docker compose up -d redis`. Render: Key Value internal URL (e.g. `redis://red-xxx:6379`).
 
 Inspect Redis:
 

@@ -153,7 +153,7 @@ Rocky Ads is not relying on obscurity alone. Relevant controls in the current st
 - **JWT session cookies** (HttpOnly, SameSite=Strict, Secure outside local development), with password-salt binding so password changes invalidate tokens.
 - **CSRF** protection (double-submit), with a deliberate exemption for the Twilio webhook path.
 - **Helmet / CSP** and related browser hardening headers.
-- **Redis-backed rate limits:** registration IP (3 / 15 min), recovery start IP (3 / 15 min), per-phone OTP starts (1 / 60s and max 5 / hour); shared across app instances via `REDIS_URL`.
+- **Redis-backed rate limits:** registration IP (3 / 15 min), recovery start IP (3 / 15 min), login IP (20 / 15 min), per-username login failures (10 / 15 min, cleared on success), per-phone OTP starts (1 / 60s and max 5 / hour); shared across app instances via `REDIS_URL`.
 - **Twilio Verify** for register/change-phone OTP (Fraud Guard + Console geo), then a signed HttpOnly **`reg_ticket` cookie** for step 3 so the password form never round-trips the raw OTP.
 - **Cloudflare Turnstile** before OTP start (register and change-phone).
 - **Recovery secrets** stored as HMAC digests rather than raw tokens.
@@ -211,7 +211,7 @@ Because daily login is username/password:
 - CSRF protections must stay correct for state-changing routes;
 - a leaked `JWT_SECRET` is catastrophic regardless of how little PII is stored.
 
-Low PII does not help a user whose password is `Summer2024!` and whose username is guessable from their public ads. There is still **no dedicated login rate limit** beyond the global per-IP ceiling.
+Low PII does not help a user whose password is `Summer2024!` and whose username is guessable from their public ads. Login is throttled per IP (Fiber) and per username (Redis failure lockout); residual risk is distributed stuffing below those caps and weak passwords.
 
 ### 6.4 Account recovery as a target
 
@@ -286,9 +286,9 @@ An attacker steals a logical Postgres backup. AES-GCM phone ciphertext resists d
 
 A deployment sets `TWILIO_WEBHOOK_URL` to a wrong host. Legitimate unread-message texts contain that host. Users, trained by Rocky Ads to trust SMS links into `/auth/user/messages`, submit passwords to an attacker site. The application’s cryptography never failed; the operational URL did.
 
-### Narrative E — Credential stuffing without any phone involvement
+### Narrative E — Credential stuffing without any phone involvement *(mitigated)*
 
-Public usernames from ads are tried with passwords from unrelated breaches against `/api/login`. Without a dedicated login rate limit beyond the global ceiling, spraying may be practical. On success, the attacker disables SMS notifications or changes the phone after password entry, isolating the victim from alerts. Phone-only registration did not slow this path because login does not require the phone.
+Public usernames from ads are tried with passwords from unrelated breaches against `/api/login`. Per-IP login ceilings and per-username failure lockouts slow spraying; residual risk is slow distributed stuffing and weak reused passwords. On success, the attacker can still disable SMS notifications or change the phone after password entry, isolating the victim from alerts. Phone-only registration does not slow this path because login does not require the phone.
 
 ### Narrative F — Marketplace trust exploits
 
@@ -305,7 +305,7 @@ Bots drive Verify creates toward premium destinations. Current stack raises cost
 | Threat | Needs large PII store? | Primary impact | Severity if unmitigated | Notes |
 |--------|------------------------|----------------|-------------------------|--------|
 | SIM swap / SMS interception | No | Account recovery / phone change | High | Carrier-layer |
-| Password stuffing / weak passwords | No | Full account takeover | High | No login-specific throttle yet |
+| Password stuffing / weak passwords | No | Full account takeover | High | Login IP + per-username lockout; weak passwords remain |
 | JWT or encryption key leak | No | Mass session or field decrypt | Critical | |
 | Twilio console compromise | No | SMS redirect, spam, trust break | Critical | |
 | SMS pumping | No | Direct financial loss | Medium–High | Mitigated; ops-dependent |
@@ -329,7 +329,7 @@ Status relative to the current codebase:
 1. ~~**Treat registration as a single server-side capability token.**~~ **Done.** Step 2 completes Twilio Verify and sets a signed HttpOnly `reg_ticket` JWT cookie; step 3 verifies binding and clears it.
 2. ~~**Keep register/change-phone OTPs out of the app DB.**~~ **Done.** Twilio Verify owns codes.
 3. ~~**Pepper phone/name lookup hashes**~~ **Done.** `db.HashString` is HMAC-SHA256 with required `DB_HASH_PEPPER`; startup `user.RehashLookupHashes` upgrades legacy unsalted rows; restore recomputes hashes.
-4. **Add login-specific throttling and lockouts** (per username and per IP), not only global request ceilings. *(Still open.)*
+4. ~~**Add login-specific throttling and lockouts** (per username and per IP), not only global request ceilings.~~ **Done.** Fiber login IP limiter (20 / 15 min) plus Redis per-username failure lockout (10 / 15 min, cleared on success).
 5. ~~**Rate-limit OTP starts and monitor Twilio spend.**~~ **Done (OTP path):** Verify + Fraud Guard, Turnstile, Redis per-phone/IP limits; spend runbook in [DOC_SMS_OTP_AND_PUMPING_DEFENSES.md](DOC_SMS_OTP_AND_PUMPING_DEFENSES.md). Notification SMS remain on Programmable Messaging.
 6. **Make STOP and in-app opt-out consistent** (or document clearly) so carrier unsubscribe language matches `sms_opted_out` behavior users expect. *(Still open — STOP does not set `sms_opted_out`.)*
 7. **Bound notification link bases** to a first-party canonical site URL distinct from misconfigurable webhook bases where possible; alert on host mismatch. *(Still open.)*
@@ -346,7 +346,7 @@ Status relative to the current codebase:
 
 Rocky Ads’ phone-only approach is a coherent privacy strategy: one practical contact channel, hidden from other users, reused for verification, recovery, and message notifications, with a deliberate refusal to assemble an email-and-profile dossier. That stance reduces certain breach harms and keeps the product honest about classifieds-scale identity.
 
-Recent work moved OTP ownership to Twilio Verify, bound registration completion to a signed `reg_ticket`, added Turnstile and Redis-backed OTP/IP limits, and documented pumping defenses. Those changes shrink several of the highest-leverage *application* bugs and cost attacks. They do not shrink carrier-layer SIM risk, password stuffing, JWT/key compromise, content scams, or unsalted phone-hash correlation.
+Recent work moved OTP ownership to Twilio Verify, bound registration completion to a signed `reg_ticket`, added Turnstile and Redis-backed OTP/IP/login limits, and documented pumping defenses. Those changes shrink several of the highest-leverage *application* bugs and cost attacks. They do not shrink carrier-layer SIM risk, weak passwords under the login caps, JWT/key compromise, or content scams.
 
 The correct reading of the architecture remains: not “little PII, therefore safe,” but **“little PII, therefore the remaining controls on phone proof, sessions, secrets, and content access must be excellent.”** Privacy minimization is necessary and valuable. For Rocky Ads, it is also a bet that engineering discipline around a single contact identifier can outperform the false comfort of collecting more personal data “for security.” That bet only pays off if the phone channel, the password channel, and the operational envelope keep hardening with the same seriousness that motivated collecting so little in the first place.
 
@@ -361,7 +361,8 @@ The correct reading of the architecture remains: not “little PII, therefore sa
 | Turnstile | `internal/service/turnstile/` |
 | Registration ticket cookie | `internal/registrationticket/`, `internal/cookie/register_ticket.go` |
 | OTP start limits (Redis) | `internal/otplimit/`, `internal/kv/` |
-| IP registration/recovery limiters | `internal/handler/ratelimit.go` |
+| IP registration/recovery/login limiters | `internal/handler/ratelimit.go` |
+| Login username failure lockout | `internal/loginlimit/` |
 | Login / JWT | `internal/handler/login.go`, `internal/handler/jwt.go`, `internal/cookie/jwt.go` |
 | Recovery | `internal/handler/recover.go`, `internal/accountrecovery/` |
 | SMS send/queue/worker/webhook | `internal/service/sms/`, `internal/handler/sms.go` |
@@ -387,7 +388,8 @@ In-app FAQ (`/faq/phone-number`): phone is collected mainly for message notifica
 | Twilio Verify + Fraud Guard / geo | OTPs leave app DB; pumping mitigations; Console becomes load-bearing |
 | `reg_ticket` cookie | Closes unbound registration step 3 |
 | Turnstile | Bot friction before OTP start |
-| Redis (`REDIS_URL`) rate limits | Shared OTP/IP throttles; E.164 in Redis keys |
+| Redis (`REDIS_URL`) rate limits | Shared OTP/IP/login throttles; E.164 in OTP Redis keys |
+| Login IP + per-username lockout | Slows credential stuffing on `/api/login` |
 | Geoapify for locations | Replaces LLM geocoding; durable cache OK under Geoapify terms |
 | `DB_HASH_PEPPER` + HMAC lookup hashes | Offline dictionary of `phone_hash` / `name_hash` needs pepper |
 | Companion SMS pumping doc | Ops runbook split from this privacy/threat paper |

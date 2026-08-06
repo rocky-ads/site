@@ -5,6 +5,7 @@ import (
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/logger"
+	"github.com/rocky-ads/site/internal/loginlimit"
 	"github.com/rocky-ads/site/internal/password"
 	"github.com/rocky-ads/site/internal/ui"
 	"github.com/rocky-ads/site/internal/user"
@@ -39,7 +40,6 @@ func LoginSubmitHandler(c *fiber.Ctx) error {
 
 	logger.Info("Login attempt", "userName", userName)
 
-	// Validate input
 	if userName == "" {
 		return showError(c, "Username is required")
 	}
@@ -47,19 +47,23 @@ func LoginSubmitHandler(c *fiber.Ctx) error {
 		return showError(c, "Password is required")
 	}
 
-	// Get user from database
+	if err := loginlimit.Allow(userName); err != nil {
+		return showError(c, err.Error())
+	}
+
 	u, err := user.GetByName(userName)
 	if err != nil {
-		// User not found or error - don't reveal which
+		loginlimit.RecordFailure(userName)
 		return showError(c, "Invalid username or password")
 	}
 
-	// Verify password
 	if !password.VerifyPassword(passwd, u.PasswordHash, u.PasswordSalt) {
+		loginlimit.RecordFailure(userName)
 		return showError(c, "Invalid username or password")
 	}
 
-	// Generate JWT token
+	loginlimit.Clear(userName)
+
 	token, err := generateJWTToken(&u)
 	if err != nil {
 		logger.Error("Failed to generate token", "error", err)

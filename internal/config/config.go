@@ -20,6 +20,10 @@ const (
 	RegistrationRateLimitExp = 15 * time.Minute // Within 15 minutes
 	RecoveryRateLimitMax     = 3                // Allow 3 recovery starts per IP
 	RecoveryRateLimitExp     = 15 * time.Minute // Within 15 minutes
+	LoginRateLimitMax        = 20               // Allow 20 login POSTs per IP
+	LoginRateLimitExp        = 15 * time.Minute // Within 15 minutes
+	LoginUserFailMax         = 10               // Failed auths per username
+	LoginUserFailExp         = 15 * time.Minute // Username failure window
 	RecoverySessionTTL       = 10 * time.Minute // Recover session / code lifetime
 	RegistrationTicketTTL    = 10 * time.Minute // Post-OTP registration ticket lifetime
 	OTPStartMinInterval      = 60 * time.Second // Min time between OTP starts per phone
@@ -164,6 +168,22 @@ func EffectiveRecoveryRateLimitMax() int {
 		return 100
 	}
 	return RecoveryRateLimitMax
+}
+
+// EffectiveLoginRateLimitMax returns the login IP rate limit max attempts.
+func EffectiveLoginRateLimitMax() int {
+	if AllowTestRegistration {
+		return 100
+	}
+	return LoginRateLimitMax
+}
+
+// EffectiveLoginUserFailMax returns the per-username failed-login cap.
+func EffectiveLoginUserFailMax() int {
+	if AllowTestRegistration {
+		return 100
+	}
+	return LoginUserFailMax
 }
 
 // getEnvWithDefault returns the environment variable value or a default if not set
