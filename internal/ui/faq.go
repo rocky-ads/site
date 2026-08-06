@@ -14,6 +14,7 @@ type faqSectionData struct {
 var faqOrder = []string{
 	"rocks",
 	"phone-number",
+	"account-recovery",
 	"sms-notifications",
 }
 
@@ -86,6 +87,36 @@ var faqSections = map[string]faqSectionData{
 					"We do not sell your phone number, share it " +
 						"with other users, or use it for marketing " +
 						"unrelated to your account.",
+				)),
+			}
+		},
+	},
+	"account-recovery": {
+		title: "How does account recovery work?",
+		body: func() []g.Node {
+			return []g.Node{
+				faqParagraph(g.Textf(
+					"If you forget your password, %s recovery proves "+
+						"you control the phone number on your account. "+
+						"You start recovery in the browser, text a "+
+						"one-time code from that number, then set a "+
+						"new password.",
+					config.ServerName,
+				)),
+				faqParagraph(g.Text(
+					"That means phone possession is powerful. If " +
+						"someone takes over your number at the " +
+						"carrier—for example through a SIM swap or " +
+						"an unauthorized port—they may complete " +
+						"recovery and change your password.",
+				)),
+				faqParagraph(g.Textf(
+					"Use a strong, unique password on %s, and "+
+						"protect your carrier account (account PIN, "+
+						"port-out or SIM locks where available). We "+
+						"do not collect email as a second recovery "+
+						"channel by design.",
+					config.ServerName,
 				)),
 			}
 		},

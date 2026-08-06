@@ -82,6 +82,22 @@ func RecoverWaitingPanel(code, twilioFrom string, expiresAt time.Time) g.Node {
 			Class("text-sm text-zinc-600 dark:text-zinc-400"),
 			g.Text("Waiting for your text message…"),
 		),
+		P(
+			Class("text-sm text-zinc-600 dark:text-zinc-400"),
+			g.Text(
+				"Anyone who can send texts from your registered "+
+					"number can complete recovery and set a new "+
+					"password. Protect your carrier account "+
+					"(account PIN, port-out or SIM locks where "+
+					"available). ",
+			),
+			A(
+				Href("/faq/account-recovery"),
+				Class("text-blue-600 dark:text-blue-400 hover:underline"),
+				g.Text("See FAQ"),
+			),
+			g.Text("."),
+		),
 		recoverBackToLogin(),
 	)
 }

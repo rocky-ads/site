@@ -334,7 +334,7 @@ Status relative to the current codebase:
 6. ~~**Make STOP and in-app opt-out consistent**~~ **Done.** Inbound STOP/START (and common Twilio opt keywords) set/clear `sms_opted_out`; FAQ notes residual carrier blocking until START.
 7. ~~**Bound notification link bases** to a first-party canonical site URL~~ **Superseded.** Single `PUBLIC_SITE_URL` is the public base for both SMS deep links and Twilio webhooks (replaces `TWILIO_WEBHOOK_URL`). No provider-specific URL fallbacks.
 8. ~~**Shorten admin phone exposure**~~ **Partial.** Web admin shows no user PII (insights only). Jump-server `cmd/admin` Users list reveals a phone on demand and owns promote/demote/delete. ~~Privilege changes take effect on the next request~~ (`JWTMiddleware` loads `is_admin` from DB into locals; not a JWT claim). Still open: optional audit logs for phone reveal.
-9. **Document SIM-swap reality** in user-facing recovery copy: phone possession is powerful; users should protect carrier accounts. *(Still open.)*
+9. ~~**Document SIM-swap reality**~~ **Done.** Recovery waiting panel and `/faq/account-recovery` explain that phone possession can reset the password and that users should protect carrier accounts.
 10. **Keep `ALLOW_TEST_REGISTRATION` impossible in production** via startup refusal when release mode is live. *(Still open — policy + env discipline today.)*
 11. **Preserve the non-collection stance** when new features are proposed—receipts, digests, and “magic links” should not silently reintroduce email as a second identity without a deliberate privacy review.
 12. **Treat Redis as PII-adjacent** (ACLs, no public exposure, backups/retention policy) because OTP keys contain E.164. *(Operational — enforce in deploy.)*
@@ -380,7 +380,8 @@ The correct reading of the architecture remains: not “little PII, therefore sa
 ## Appendix B — Related public claims
 
 Product README: phone number is enough to get started; no email; number stays hidden from the classifieds-style public view.  
-In-app FAQ (`/faq/phone-number`): phone is collected mainly for message notifications and reachability; email, mailing address, and payment details are not requested as contact profile data; numbers are not sold or shown to other users.
+In-app FAQ (`/faq/phone-number`): phone is collected mainly for message notifications and reachability; email, mailing address, and payment details are not requested as contact profile data; numbers are not sold or shown to other users.  
+In-app FAQ (`/faq/account-recovery`): recovery is phone-possession based; SIM swap / carrier takeover can reset the password; carrier-account protections recommended.
 
 ## Appendix C — Change log (security-relevant)
 
@@ -397,3 +398,4 @@ In-app FAQ (`/faq/phone-number`): phone is collected mainly for message notifica
 | `DB_HASH_PEPPER` + HMAC lookup hashes | Offline dictionary of `phone_hash` / `name_hash` needs pepper |
 | Companion SMS pumping doc | Ops runbook split from this privacy/threat paper |
 | Live `is_admin` via `SessionAuth` | Promote/demote effective next request; not a JWT claim |
+| Recovery + FAQ SIM-swap copy | Users warned phone possession can reset password |
