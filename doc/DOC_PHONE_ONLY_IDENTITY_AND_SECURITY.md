@@ -338,7 +338,7 @@ Status relative to the current codebase:
 10. **Keep `ALLOW_TEST_REGISTRATION` impossible in production** via startup refusal when release mode is live. *(Still open — policy + env discipline today.)*
 11. **Preserve the non-collection stance** when new features are proposed—receipts, digests, and “magic links” should not silently reintroduce email as a second identity without a deliberate privacy review.
 12. **Treat Redis as PII-adjacent** (ACLs, no public exposure, backups/retention policy) because OTP keys contain E.164. *(Operational — enforce in deploy.)*
-13. **Optional later:** move username screening (and other chat completions) to local Ollama; keep Geoapify (or self-hosted Nominatim) for geocoding rather than LLM coordinate guessing.
+13. **Optional later:** run username screening and other chat completions on local Ollama. *(Geocoding already uses Geoapify; keep it that way — don’t use LLMs for coordinates. Self-hosted Nominatim is an optional later alternative to Geoapify.)*
 
 ---
 
