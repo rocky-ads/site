@@ -142,9 +142,8 @@ func introBanner() g.Node {
 			"border-b border-yellow-400 "+
 			"text-zinc-700"),
 		A(
-			Href("/about"),
 			Class("font-medium text-zinc-900 "+
-				"hover:underline"),
+				"hover:underline cursor-pointer"),
 			hx.Get("/api/intro-banner/dismiss?redirect=/about"),
 			hx.Swap("none"),
 			g.Text("What is Rocky Ads?"),

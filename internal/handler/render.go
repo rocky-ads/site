@@ -42,8 +42,7 @@ func renderPage(c *fiber.Ctx, title string, body []gomponents.Node) error {
 	closeSSE(userID)
 
 	showIntroBanner := !local.IsLoggedIn(userID) &&
-		!cookie.IsIntroBannerDismissed(c) &&
-		c.Path() != "/about"
+		!cookie.IsIntroBannerDismissed(c)
 
 	return render(c, ui.Page(userID, hasUnread, userName, title,
 		c.Path(), csrfToken, showIntroBanner, body))
