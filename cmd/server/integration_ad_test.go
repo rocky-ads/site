@@ -400,9 +400,9 @@ func TestAdTagsPersistViaMultipartForm(t *testing.T) {
 func TestIntegrationGetAdNullLocationID(t *testing.T) {
 	var adID int
 	err := db.QueryRow(`INSERT INTO ads (category_id, title, description, user_id, location_id,
-		 expires_at, expire_grant)
+		 expires_at)
 		VALUES ($1, 'No location ad', 'desc', $2, NULL,
-		        NOW() + INTERVAL '3 months', INTERVAL '3 months') RETURNING id`,
+		        NOW() + INTERVAL '3 months') RETURNING id`,
 		integrationCarsCategory, integrationTestUserID).Scan(&adID)
 	if err != nil {
 		t.Fatal(err)

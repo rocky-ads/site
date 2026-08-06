@@ -60,16 +60,16 @@ const (
 	OllamaEmbeddingDimensions = 768
 
 	// Ad configuration
-	MaxImagesPerAd         = 20
-	MaxRockCount           = 2 // Maximum rock count to allow in search results
-	MaxOutstandingRocks    = 3 // Rocks granted at signup; max a user can have thrown at once
-	DefaultAdCategoryName  = "Car & Truck Parts"
-	MaxAdTitleLength       = 64   // Maximum length for ad title
-	MaxAdDescriptionLength = 1000 // Maximum length for ad description
-	AdExpireInitialMonths  = 3    // Initial expire_grant for new ads
-	AdExpireSaleEndDelay   = 7 * 24 * time.Hour
-	AdExpireMinGrant       = 24 * time.Hour
-	AdExpireWorkerInterval = 1 * time.Hour
+	MaxImagesPerAd            = 20
+	MaxRockCount              = 2 // Maximum rock count to allow in search results
+	MaxOutstandingRocks       = 3 // Rocks granted at signup; max a user can have thrown at once
+	DefaultAdCategoryName     = "Car & Truck Parts"
+	MaxAdTitleLength          = 64   // Maximum length for ad title
+	MaxAdDescriptionLength    = 1000 // Maximum length for ad description
+	AdExpireMonths            = 3    // create, reactivate, and renew lifetime
+	AdExpireRenewWithinMonths = 1    // show Renew when this little time remains
+	AdExpireSaleEndDelay      = 7 * 24 * time.Hour
+	AdExpireWorkerInterval    = 1 * time.Hour
 
 	// Password/Argon2 configuration
 	Argon2Memory = 64 * 1024

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/pgvector/pgvector-go"
-	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/dbinit"
@@ -118,12 +117,6 @@ func runRestore(fromDir string, store imagestore.Store, backupKey []byte,
 	}
 
 	adRefToID := make(map[int]int, len(ads))
-	saleEndByAdRef := make(map[int]string, len(ads))
-	for _, f := range facets {
-		if f.Key == "sale_end_date" && f.Text != nil && *f.Text != "" {
-			saleEndByAdRef[f.AdRef] = *f.Text
-		}
-	}
 	for _, a := range ads {
 		ownerID, ok := userHashToID[a.OwnerHash]
 		if !ok {
@@ -139,8 +132,6 @@ func runRestore(fromDir string, store imagestore.Store, backupKey []byte,
 			}
 			locationID = locID
 		}
-		expiresAt, grantNs := resolveExpireFields(a, saleEndByAdRef[a.Ref])
-		grantSecs := float64(grantNs) / float64(time.Second)
 		var emb any
 		if len(a.Embedding) > 0 {
 			floats, err := decodeEmbedding(a.Embedding)
@@ -157,13 +148,13 @@ func runRestore(fromDir string, store imagestore.Store, backupKey []byte,
 		err := db.QueryRow(`
 			INSERT INTO ads (
 				category_id, title, description, created_at, expires_at,
-				expire_grant, inactive_at, deleted_at, user_id, image_count,
+				inactive_at, deleted_at, user_id, image_count,
 				location_id, tags, embedding, vector_metadata
-			) VALUES ($1, $2, $3, $4, $5, $6 * INTERVAL '1 second',
-			          $7, $8, $9, $10, $11, $12, $13, $14::jsonb)
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+			          $13::jsonb)
 			RETURNING id`,
-			a.CategoryID, a.Title, a.Description, a.CreatedAt, expiresAt,
-			grantSecs, a.InactiveAt, a.DeletedAt, ownerID, a.ImageCount,
+			a.CategoryID, a.Title, a.Description, a.CreatedAt, a.ExpiresAt,
+			a.InactiveAt, a.DeletedAt, ownerID, a.ImageCount,
 			locationID, a.Tags, emb, meta,
 		).Scan(&newID)
 		if err != nil {
@@ -511,24 +502,6 @@ func syncIdentitySequences() error {
 		}
 	}
 	return nil
-}
-
-func resolveExpireFields(a AdRow, saleEnd string) (time.Time, int64) {
-	grant := ad.InitialExpireGrant(a.CreatedAt)
-	grantNs := int64(grant)
-	if a.ExpireGrantNs > 0 {
-		grantNs = a.ExpireGrantNs
-		grant = time.Duration(grantNs)
-	}
-	if !a.ExpiresAt.IsZero() {
-		return a.ExpiresAt, grantNs
-	}
-	if saleEnd != "" {
-		if t, err := ad.ExpiresAtFromSaleEnd(saleEnd); err == nil {
-			return t, grantNs
-		}
-	}
-	return a.CreatedAt.Add(grant), grantNs
 }
 
 func prepareFreshDatabase() error {

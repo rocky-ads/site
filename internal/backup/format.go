@@ -152,7 +152,6 @@ type AdRow struct {
 	Description    string          `json:"description" db:"description"`
 	CreatedAt      time.Time       `json:"created_at" db:"created_at"`
 	ExpiresAt      time.Time       `json:"expires_at" db:"expires_at"`
-	ExpireGrantNs  int64           `json:"expire_grant_ns" db:"expire_grant_ns"`
 	InactiveAt     *time.Time      `json:"inactive_at,omitempty" db:"inactive_at"`
 	DeletedAt      *time.Time      `json:"deleted_at,omitempty" db:"deleted_at"`
 	OwnerHash      string          `json:"owner_hash"`
@@ -164,21 +163,20 @@ type AdRow struct {
 }
 
 type adDBRow struct {
-	ID              int        `db:"id"`
-	CategoryID      int        `db:"category_id"`
-	Title           string     `db:"title"`
-	Description     string     `db:"description"`
-	CreatedAt       time.Time  `db:"created_at"`
-	ExpiresAt       time.Time  `db:"expires_at"`
-	ExpireGrantSecs float64    `db:"expire_grant_secs"`
-	InactiveAt      *time.Time `db:"inactive_at"`
-	DeletedAt       *time.Time `db:"deleted_at"`
-	UserID          int        `db:"user_id"`
-	ImageCount      int        `db:"image_count"`
-	LocationID      *int       `db:"location_id"`
-	Tags            string     `db:"tags"`
-	EmbeddingText   *string    `db:"embedding_text"`
-	VectorMetadata  *string    `db:"vector_metadata"`
+	ID             int        `db:"id"`
+	CategoryID     int        `db:"category_id"`
+	Title          string     `db:"title"`
+	Description    string     `db:"description"`
+	CreatedAt      time.Time  `db:"created_at"`
+	ExpiresAt      time.Time  `db:"expires_at"`
+	InactiveAt     *time.Time `db:"inactive_at"`
+	DeletedAt      *time.Time `db:"deleted_at"`
+	UserID         int        `db:"user_id"`
+	ImageCount     int        `db:"image_count"`
+	LocationID     *int       `db:"location_id"`
+	Tags           string     `db:"tags"`
+	EmbeddingText  *string    `db:"embedding_text"`
+	VectorMetadata *string    `db:"vector_metadata"`
 }
 
 func encodeEmbedding(text string) (B64, error) {

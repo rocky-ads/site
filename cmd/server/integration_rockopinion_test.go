@@ -13,9 +13,9 @@ func setupIntegrationRockOpinion(t *testing.T) (message.Conversation, int) {
 	t.Helper()
 	var adID int
 	err := db.QueryRow(`INSERT INTO ads (category_id, title, description, user_id,
-		 expires_at, expire_grant)
+		 expires_at)
 		VALUES ($1, 'Rock opinion test ad', 'desc', $2,
-		        NOW() + INTERVAL '3 months', INTERVAL '3 months') RETURNING id`,
+		        NOW() + INTERVAL '3 months') RETURNING id`,
 		integrationCarsCategory, integrationTestUserID).Scan(&adID)
 	if err != nil {
 		t.Fatal(err)

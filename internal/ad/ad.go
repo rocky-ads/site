@@ -5,25 +5,24 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/facet"
 )
 
 type Ad struct {
 	// Core database fields
-	ID          int       `db:"id"`
-	CategoryID  int       `db:"category_id"`
-	Title       string    `db:"title"`
-	Description string    `db:"description"`
-	CreatedAt   time.Time `db:"created_at"`
-	ExpiresAt   time.Time `db:"expires_at"`
-	// ExpireGrantSecs is EXTRACT(EPOCH FROM expire_grant); use ExpireGrant().
-	ExpireGrantSecs float64    `db:"expire_grant_secs"`
-	InactiveAt      *time.Time `db:"inactive_at"`
-	DeletedAt       *time.Time `db:"deleted_at"`
-	UserID          int        `db:"user_id"`
-	ImageCount      int        `db:"image_count"`
-	LocationID      *int       `db:"location_id"`
+	ID          int        `db:"id"`
+	CategoryID  int        `db:"category_id"`
+	Title       string     `db:"title"`
+	Description string     `db:"description"`
+	CreatedAt   time.Time  `db:"created_at"`
+	ExpiresAt   time.Time  `db:"expires_at"`
+	InactiveAt  *time.Time `db:"inactive_at"`
+	DeletedAt   *time.Time `db:"deleted_at"`
+	UserID      int        `db:"user_id"`
+	ImageCount  int        `db:"image_count"`
+	LocationID  *int       `db:"location_id"`
 
 	// Location fields from join
 	City        string `db:"city"`
@@ -40,10 +39,6 @@ type Ad struct {
 
 	// Tags selected for the ad; loaded lazily on ad detail (ads.tags JSON)
 	Tags []Suggestion
-}
-
-func (a Ad) ExpireGrant() time.Duration {
-	return time.Duration(a.ExpireGrantSecs * float64(time.Second))
 }
 
 func (a Ad) IsActive() bool {
@@ -93,7 +88,6 @@ func GetAds(userID int, ids []int, tz *time.Location) ([]Ad, error) {
 			a.description,
 			a.created_at,
 			a.expires_at,
-			EXTRACT(EPOCH FROM a.expire_grant) AS expire_grant_secs,
 			a.inactive_at,
 			a.deleted_at,
 			a.user_id,
@@ -274,7 +268,6 @@ func Pause(id int) error {
 }
 
 // Activate restores an inactive ad to live listings and renews expires_at.
-// Sale-end ads recalculate from sale_end_date; others halve expire_grant.
 func Activate(id int) error {
 	a, err := GetAd(0, id, time.UTC)
 	if err != nil {
@@ -283,28 +276,34 @@ func Activate(id int) error {
 	if !a.IsInactive() {
 		return fmt.Errorf("ad is not inactive")
 	}
-	now := time.Now().UTC()
-	if s, ok := SaleEndDateString(a.Facets); ok {
-		expiresAt, err := ExpiresAtFromSaleEnd(s)
-		if err != nil {
-			return err
-		}
-		_, err = db.Exec(`
-			UPDATE ads
-			SET inactive_at = NULL, expires_at = $1
-			WHERE id = $2 AND deleted_at IS NULL AND inactive_at IS NOT NULL
-		`, expiresAt, id)
-		return err
-	}
-	grant := HalfExpireGrant(a.ExpireGrant())
-	expiresAt := now.Add(grant)
+	expiresAt := ComputeExpiresAt(a.Facets, time.Now().UTC())
 	_, err = db.Exec(`
 		UPDATE ads
-		SET inactive_at = NULL,
-		    expire_grant = $1 * INTERVAL '1 second',
-		    expires_at = $2
-		WHERE id = $3 AND deleted_at IS NULL AND inactive_at IS NOT NULL
-	`, grant.Seconds(), expiresAt, id)
+		SET inactive_at = NULL, expires_at = $1
+		WHERE id = $2 AND deleted_at IS NULL AND inactive_at IS NOT NULL
+	`, expiresAt, id)
+	return err
+}
+
+// Renew sets an active ad's expires_at to now + AdExpireMonths.
+func Renew(id int) error {
+	a, err := GetAd(0, id, time.UTC)
+	if err != nil {
+		return err
+	}
+	if !a.IsActive() {
+		return fmt.Errorf("ad is not active")
+	}
+	now := time.Now().UTC()
+	if !RenewEligible(a.ExpiresAt.UTC(), now) {
+		return fmt.Errorf("ad is not eligible to renew")
+	}
+	expiresAt := now.AddDate(0, config.AdExpireMonths, 0)
+	_, err = db.Exec(`
+		UPDATE ads
+		SET expires_at = $1
+		WHERE id = $2 AND deleted_at IS NULL AND inactive_at IS NULL
+	`, expiresAt, id)
 	return err
 }
 

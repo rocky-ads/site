@@ -91,6 +91,7 @@ func setupApp() *fiber.App {
 	auth.Post("/ad/:id/pause", handler.PauseAdHandler)
 	auth.Delete("/ad/:id/delete", handler.DeleteAdHandler)
 	auth.Post("/ad/:id/restore", handler.RestoreAdHandler)
+	auth.Post("/ad/:id/renew", handler.RenewAdHandler)
 	auth.Get("/ad/:id/new-conversation", handler.MessageModalHandler)
 	auth.Post("/ad/:id/send", handler.SendMessageHandler)
 	auth.Get("/ad/:id/rock/:ordinal", handler.AdRockConversationHandler)

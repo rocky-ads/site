@@ -133,7 +133,7 @@ func UpdateAd(input UpdateInput) error {
 
 	expiresAt := a.ExpiresAt.UTC()
 	if _, ok := SaleEndDateString(values); ok {
-		expiresAt = ComputeExpiresAt(values, now.UTC(), a.ExpireGrant())
+		expiresAt = ComputeExpiresAt(values, now.UTC())
 	}
 
 	_, err = tx.Exec(

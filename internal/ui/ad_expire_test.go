@@ -24,7 +24,7 @@ func TestFormatExpiresIn(t *testing.T) {
 		{"one_month_days", now.AddDate(0, 1, 12), "Expires in 1 month 12 days"},
 		{"months", now.AddDate(0, 2, 0), "Expires in 2 months"},
 		{"months_days", now.AddDate(0, 2, 12), "Expires in 2 months 12 days"},
-		// Fresh InitialExpireGrant is AddDate(0, 3, 0); must not pick up
+		// Fresh AdExpireMonths grant is AddDate(0, 3, 0); must not pick up
 		// leftover days from 30-day-month math (~91–92 real days).
 		{"initial_grant", now.AddDate(0, 3, 0), "Expires in 3 months"},
 	}
@@ -79,6 +79,9 @@ func TestAdExpireToolbarVisibility(t *testing.T) {
 		if !strings.Contains(html, "Expires in") {
 			t.Fatal("expected expire countdown for owner")
 		}
+		if strings.Contains(html, `/auth/ad/1/renew`) {
+			t.Fatal("did not expect Renew for fresh 3-month expires_at")
+		}
 		if !strings.Contains(html, "/images/post_add.svg") {
 			t.Fatal("expected new-ad icon for owner")
 		}
@@ -87,6 +90,18 @@ func TestAdExpireToolbarVisibility(t *testing.T) {
 		}
 		if !strings.Contains(html, `/auth/ad/1/copy`) {
 			t.Fatal("expected copy-ad link for owner")
+		}
+	})
+
+	t.Run("owner_renew_when_due", func(t *testing.T) {
+		due := detail
+		due.ExpiresAt = created.AddDate(0, 0, 20)
+		html := renderAdNodes(t, Ad(due, 42, "csrf"))
+		if !strings.Contains(html, "Renew") {
+			t.Fatal("expected Renew when <= 1 month remains")
+		}
+		if !strings.Contains(html, `/auth/ad/1/renew`) {
+			t.Fatal("expected renew endpoint for owner")
 		}
 	})
 

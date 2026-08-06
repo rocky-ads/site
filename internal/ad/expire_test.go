@@ -95,24 +95,20 @@ func createTestAd(t *testing.T, userID int, title string) int {
 	return adID
 }
 
-func TestActivateHalvesGrantKeepsCreatedAt(t *testing.T) {
+func TestActivateFreshExpiresAtKeepsCreatedAt(t *testing.T) {
 	resetAdDB(t)
 
 	u, err := user.CreateUser("expireowner", "+15559872001", "password1")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	adID := createTestAd(t, u.ID, "Activate half")
+	adID := createTestAd(t, u.ID, "Activate fresh")
 
 	oldCreated := time.Now().UTC().AddDate(0, -1, 0)
 	_, err = db.Exec(`UPDATE ads SET created_at = $1 WHERE id = $2`,
 		oldCreated, adID)
 	if err != nil {
 		t.Fatalf("backdate created_at: %v", err)
-	}
-	before, err := ad.GetAd(u.ID, adID, time.UTC)
-	if err != nil {
-		t.Fatalf("get before: %v", err)
 	}
 	if err := ad.Pause(adID); err != nil {
 		t.Fatalf("pause: %v", err)
@@ -134,14 +130,53 @@ func TestActivateHalvesGrantKeepsCreatedAt(t *testing.T) {
 		t.Fatalf("created_at changed: got %v, want ~%v",
 			a.CreatedAt, oldCreated)
 	}
-	wantGrant := ad.HalfExpireGrant(before.ExpireGrant())
-	if diff := a.ExpireGrant() - wantGrant; diff < -time.Second ||
-		diff > time.Second {
-		t.Fatalf("expire_grant = %v, want ~%v", a.ExpireGrant(), wantGrant)
-	}
-	wantExpires := activateAt.Add(wantGrant)
+	wantExpires := activateAt.AddDate(0, config.AdExpireMonths, 0)
 	if a.ExpiresAt.UTC().Sub(wantExpires).Abs() > 2*time.Second {
 		t.Fatalf("expires_at = %v, want ~%v", a.ExpiresAt, wantExpires)
+	}
+}
+
+func TestRenewExtendsExpiresAt(t *testing.T) {
+	resetAdDB(t)
+
+	u, err := user.CreateUser("expirerenew", "+15559872005", "password1")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	adID := createTestAd(t, u.ID, "Renew me")
+
+	soon := time.Now().UTC().AddDate(0, 0, 10)
+	_, err = db.Exec(`UPDATE ads SET expires_at = $1 WHERE id = $2`, soon, adID)
+	if err != nil {
+		t.Fatalf("set expires_at: %v", err)
+	}
+
+	renewAt := time.Now().UTC()
+	if err := ad.Renew(adID); err != nil {
+		t.Fatalf("renew: %v", err)
+	}
+
+	a, err := ad.GetAd(u.ID, adID, time.UTC)
+	if err != nil {
+		t.Fatalf("get ad: %v", err)
+	}
+	wantExpires := renewAt.AddDate(0, config.AdExpireMonths, 0)
+	if a.ExpiresAt.UTC().Sub(wantExpires).Abs() > 2*time.Second {
+		t.Fatalf("expires_at = %v, want ~%v", a.ExpiresAt, wantExpires)
+	}
+}
+
+func TestRenewRejectsWhenNotEligible(t *testing.T) {
+	resetAdDB(t)
+
+	u, err := user.CreateUser("expirerenew2", "+15559872006", "password1")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	adID := createTestAd(t, u.ID, "Too fresh")
+
+	if err := ad.Renew(adID); err == nil {
+		t.Fatal("expected renew to fail for fresh 3-month expires_at")
 	}
 }
 
@@ -209,7 +244,7 @@ func TestCreateAdSetsExpiresAt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
-	want := before.Add(ad.InitialExpireGrant(before))
+	want := before.AddDate(0, config.AdExpireMonths, 0)
 	if a.ExpiresAt.UTC().Sub(want).Abs() > 2*time.Second {
 		t.Fatalf("expires_at = %v, want ~%v", a.ExpiresAt, want)
 	}

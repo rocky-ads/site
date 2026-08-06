@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/local"
 	uiads "github.com/rocky-ads/site/internal/ui/ads"
@@ -448,7 +449,7 @@ func AdShareModal(path string) g.Node {
 func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 	nodes := []g.Node{}
 	if userID == d.OwnerID && d.Active {
-		nodes = append(nodes, adExpireToolbar(d.ID, d.ExpiresAt))
+		nodes = append(nodes, adExpireToolbar(d.ID, d.ExpiresAt, csrfToken))
 	}
 	nodes = append(nodes, Div(
 		Class("flex flex-col relative rounded-none sm:rounded-lg shadow-lg dark:shadow-xl dark:shadow-zinc-900/50 my-4 -mx-6 sm:mx-2 col-span-full overflow-hidden bg-white dark:bg-zinc-800 border-y sm:border border-zinc-200 dark:border-zinc-700"),
@@ -491,18 +492,32 @@ func Ad(d AdDetail, userID int, csrfToken string) []g.Node {
 	return nodes
 }
 
-func adExpireToolbar(adID int, expiresAt time.Time) g.Node {
+func adExpireToolbar(adID int, expiresAt time.Time, csrfToken string) g.Node {
 	return Div(
 		Class("flex items-center justify-between gap-2 mx-2 mt-4 mb-0 col-span-full"),
-		Span(
-			Class("text-xs text-zinc-500"),
-			g.Text(formatExpiresIn(expiresAt)),
+		Div(
+			Class("flex items-center gap-2 min-w-0 text-xs text-zinc-500"),
+			Span(g.Text(formatExpiresIn(expiresAt))),
+			g.If(ad.RenewEligible(expiresAt, time.Now()),
+				renewExpireLink(adID, csrfToken)),
 		),
 		Div(
 			Class("flex items-center gap-2 shrink-0"),
 			newAdLink(),
 			copyAdLink(adID),
 		),
+	)
+}
+
+func renewExpireLink(adID int, csrfToken string) g.Node {
+	return A(
+		Href("#"),
+		Class("underline cursor-pointer"),
+		hx.Post(fmt.Sprintf("/auth/ad/%d/renew", adID)),
+		hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
+		hx.Target("body"),
+		hx.Swap("outerHTML"),
+		g.Text("Renew"),
 	)
 }
 
@@ -526,7 +541,7 @@ func formatExpiresIn(expiresAt time.Time) string {
 	if expiresAt.Sub(now) < 24*time.Hour {
 		return "Expires soon"
 	}
-	// Calendar months match InitialExpireGrant (AddDate months), not
+	// Calendar months match AdExpireMonths (AddDate months), not
 	// fixed 30-day blocks — else a fresh 3-month grant reads as
 	// "3 months 1 day" / "3 months 2 days".
 	months, days := calendarMonthsDays(now, expiresAt)

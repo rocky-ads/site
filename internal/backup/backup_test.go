@@ -172,19 +172,15 @@ func TestBackupRestoreCrossKey(t *testing.T) {
 
 	var restoredID int
 	var expiresAt time.Time
-	var grantSecs float64
 	err = db.QueryRow(`
-		SELECT id, expires_at, EXTRACT(EPOCH FROM expire_grant)
+		SELECT id, expires_at
 		FROM ads WHERE title = $1`, "Backup Test Car",
-	).Scan(&restoredID, &expiresAt, &grantSecs)
+	).Scan(&restoredID, &expiresAt)
 	if err != nil {
 		t.Fatalf("query restored ad: %v", err)
 	}
 	if expiresAt.IsZero() {
 		t.Fatal("expected restored expires_at")
-	}
-	if grantSecs <= 0 {
-		t.Fatalf("expire_grant secs = %v, want > 0", grantSecs)
 	}
 
 	var gotVec pgvector.Vector

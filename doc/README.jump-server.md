@@ -47,8 +47,6 @@ Menu:
 
 Backup verify-decrypts users with `DB_ENCRYPTION_KEY` and stores ciphertext in the archive. Restore re-keys users to the target `DB_ENCRYPTION_KEY`, recomputes peppered lookup hashes with `DB_HASH_PEPPER`, and seals conversation journals. Restore resets the DB like init (schema + categories) before import. Ad embeddings and `vector_metadata` are included in the archive (base64 pgvector binary on each ad) so search works without recomputing after restore. Older archives without embeddings still restore; those ads get vectors from the server backfill on startup.
 
-Ad `expires_at` / `expire_grant` are included in new archives. Older archives without those fields are still restorable: restore backfills `expires_at` from `sale_end_date` (+1 week) when present, otherwise `created_at` + 3 months, and sets `expire_grant` to 3 months.
-
 ## Ad images
 
 Images are stored in MinIO (required). After seeding the database, populate images from your dev machine with `go run ./cmd/gen_images` (requires `FAL_API_KEY`) or upload existing local files with `migrate_images` on the jump server (see below).

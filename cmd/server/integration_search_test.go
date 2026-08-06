@@ -300,9 +300,9 @@ func insertIntegrationAdWithCondition(t *testing.T, title, condition string) {
 	t.Helper()
 	var id int
 	err := db.QueryRow(`INSERT INTO ads (category_id, title, description, user_id,
-		 expires_at, expire_grant)
+		 expires_at)
 		VALUES ($1, $2, 'desc', $3,
-		        NOW() + INTERVAL '3 months', INTERVAL '3 months') RETURNING id`,
+		        NOW() + INTERVAL '3 months') RETURNING id`,
 		integrationCarsCategory, title, integrationTestUserID).Scan(&id)
 	if err != nil {
 		t.Fatal(err)
@@ -328,9 +328,9 @@ func insertIntegrationAdWithMileage(t *testing.T, title string, mileage int) {
 	t.Helper()
 	var id int
 	err := db.QueryRow(`INSERT INTO ads (category_id, title, description, user_id,
-		 expires_at, expire_grant)
+		 expires_at)
 		VALUES ($1, $2, 'desc', $3,
-		        NOW() + INTERVAL '3 months', INTERVAL '3 months') RETURNING id`,
+		        NOW() + INTERVAL '3 months') RETURNING id`,
 		integrationCarsCategory, title, integrationTestUserID).Scan(&id)
 	if err != nil {
 		t.Fatal(err)
@@ -345,9 +345,9 @@ func insertIntegrationAdWithDate(t *testing.T, title, date string) {
 	t.Helper()
 	var id int
 	err := db.QueryRow(`INSERT INTO ads (category_id, title, description, user_id,
-		 expires_at, expire_grant)
+		 expires_at)
 		VALUES ($1, $2, 'desc', $3,
-		        NOW() + INTERVAL '3 months', INTERVAL '3 months') RETURNING id`,
+		        NOW() + INTERVAL '3 months') RETURNING id`,
 		integrationGarageCategory, title, integrationTestUserID).Scan(&id)
 	if err != nil {
 		t.Fatal(err)
@@ -362,9 +362,9 @@ func insertIntegrationAdWithPricingStyle(t *testing.T, title, jsonVal string) {
 	t.Helper()
 	var id int
 	err := db.QueryRow(`INSERT INTO ads (category_id, title, description, user_id,
-		 expires_at, expire_grant)
+		 expires_at)
 		VALUES ($1, $2, 'desc', $3,
-		        NOW() + INTERVAL '3 months', INTERVAL '3 months') RETURNING id`,
+		        NOW() + INTERVAL '3 months') RETURNING id`,
 		integrationGarageCategory, title, integrationTestUserID).Scan(&id)
 	if err != nil {
 		t.Fatal(err)

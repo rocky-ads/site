@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
@@ -334,6 +335,39 @@ func RestoreAdHandler(c *fiber.Ctx) error {
 			"error", err, "adID", adID)
 	} else {
 		NotifyConversationsStatus(convs, userID)
+	}
+
+	c.Set("HX-Redirect", fmt.Sprintf("/ad/%d", adID))
+	return c.SendStatus(fiber.StatusOK)
+}
+
+func RenewAdHandler(c *fiber.Ctx) error {
+	adID, err := param.GetAdID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
+	}
+
+	userID := local.GetUserID(c)
+	tz := cookie.GetTimezone(c)
+
+	a, err := ad.GetAd(userID, adID, tz)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
+	}
+
+	if a.UserID != userID {
+		return fiber.NewError(fiber.StatusForbidden, "You are not the owner of this ad")
+	}
+	if !a.IsActive() {
+		return fiber.NewError(fiber.StatusBadRequest, "Only active ads can be renewed")
+	}
+	if !ad.RenewEligible(a.ExpiresAt.UTC(), time.Now().UTC()) {
+		return fiber.NewError(fiber.StatusBadRequest,
+			"Ad is not eligible to renew yet")
+	}
+
+	if err := ad.Renew(adID); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to renew ad")
 	}
 
 	c.Set("HX-Redirect", fmt.Sprintf("/ad/%d", adID))

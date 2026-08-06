@@ -81,7 +81,6 @@ CREATE TABLE ads (
     description TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     expires_at TIMESTAMP NOT NULL,
-    expire_grant INTERVAL NOT NULL,
     inactive_at TIMESTAMP,
     deleted_at TIMESTAMP,
     user_id INTEGER NOT NULL REFERENCES users(id),

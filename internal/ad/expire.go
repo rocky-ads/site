@@ -7,20 +7,6 @@ import (
 	"github.com/rocky-ads/site/internal/facet"
 )
 
-// InitialExpireGrant is the lifetime granted when an ad is first created.
-func InitialExpireGrant(now time.Time) time.Duration {
-	return now.AddDate(0, config.AdExpireInitialMonths, 0).Sub(now)
-}
-
-// HalfExpireGrant returns the next reactivate grant (half of prev, floored).
-func HalfExpireGrant(prev time.Duration) time.Duration {
-	half := prev / 2
-	if half < config.AdExpireMinGrant {
-		return config.AdExpireMinGrant
-	}
-	return half
-}
-
 // ExpiresAtFromSaleEnd is end of sale_end_date (UTC) plus the sale-end delay.
 func ExpiresAtFromSaleEnd(dateYYYYMMDD string) (time.Time, error) {
 	day, err := time.ParseInLocation("2006-01-02", dateYYYYMMDD, time.UTC)
@@ -44,13 +30,19 @@ func SaleEndDateString(facets map[string]facet.Value) (string, bool) {
 	return s, true
 }
 
-// ComputeExpiresAt prefers sale_end_date + delay when present; otherwise now+grant.
-func ComputeExpiresAt(facets map[string]facet.Value, now time.Time,
-	grant time.Duration) time.Time {
+// ComputeExpiresAt prefers sale_end_date + delay when present; otherwise
+// now + AdExpireMonths.
+func ComputeExpiresAt(facets map[string]facet.Value, now time.Time) time.Time {
 	if s, ok := SaleEndDateString(facets); ok {
 		if t, err := ExpiresAtFromSaleEnd(s); err == nil {
 			return t
 		}
 	}
-	return now.Add(grant)
+	return now.AddDate(0, config.AdExpireMonths, 0)
+}
+
+// RenewEligible is true when expires_at is within AdExpireRenewWithinMonths.
+func RenewEligible(expiresAt, now time.Time) bool {
+	limit := now.AddDate(0, config.AdExpireRenewWithinMonths, 0)
+	return !expiresAt.After(limit)
 }
