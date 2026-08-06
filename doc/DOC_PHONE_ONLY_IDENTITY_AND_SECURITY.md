@@ -242,7 +242,7 @@ A thin user record still decrypts to a phone number for admins. Compromised admi
 | Dependency | Failure mode |
 |------------|----------------|
 | Twilio (Verify + Messaging) | Account takeover → SMS redirect, outbound spam as Rocky Ads, inbound webhook forgery if signatures fail; Verify Console misconfig reopens pumping |
-| `TWILIO_WEBHOOK_URL` misconfig | Notification SMS can point users at a phishing host that mimics login |
+| `PUBLIC_SITE_URL` misconfig | Webhooks and SMS deep links both use this base; wrong host breaks Twilio and/or phishes users |
 | Cloudflare Turnstile | Misconfig / downtime can block registration or (if bypassed in code paths) weaken bot friction |
 | Redis | Compromise exposes rate-limit keys (including recent E.164s) and can disable OTP/IP throttles |
 | Grok | Usernames (and other AI features: rock opinions, suggestions, compress) leave the trust boundary |
@@ -284,7 +284,7 @@ An attacker steals a logical Postgres backup. AES-GCM phone ciphertext resists d
 
 ### Narrative D — SMS brand phishing via config foot-gun
 
-A deployment sets `TWILIO_WEBHOOK_URL` to a wrong host. Legitimate unread-message texts contain that host. Users, trained by Rocky Ads to trust SMS links into `/auth/user/messages`, submit passwords to an attacker site. The application’s cryptography never failed; the operational URL did.
+A deployment sets `PUBLIC_SITE_URL` to a wrong host. Legitimate unread-message texts and Twilio webhooks both use that host. Users, trained by Rocky Ads to trust SMS links into `/auth/user/messages`, may land on an attacker site. The application’s cryptography never failed; the operational URL did. Mitigation is ops discipline (set `PUBLIC_SITE_URL` to the real public site), not a second base URL.
 
 ### Narrative E — Credential stuffing without any phone involvement *(mitigated)*
 
@@ -332,7 +332,7 @@ Status relative to the current codebase:
 4. ~~**Add login-specific throttling and lockouts** (per username and per IP), not only global request ceilings.~~ **Done.** Fiber login IP limiter (20 / 15 min) plus Redis per-username failure lockout (10 / 15 min, cleared on success).
 5. ~~**Rate-limit OTP starts and monitor Twilio spend.**~~ **Done (OTP path):** Verify + Fraud Guard, Turnstile, Redis per-phone/IP limits; spend runbook in [DOC_SMS_OTP_AND_PUMPING_DEFENSES.md](DOC_SMS_OTP_AND_PUMPING_DEFENSES.md). Notification SMS remain on Programmable Messaging.
 6. ~~**Make STOP and in-app opt-out consistent**~~ **Done.** Inbound STOP/START (and common Twilio opt keywords) set/clear `sms_opted_out`; FAQ notes residual carrier blocking until START.
-7. **Bound notification link bases** to a first-party canonical site URL distinct from misconfigurable webhook bases where possible; alert on host mismatch. *(Still open.)*
+7. ~~**Bound notification link bases** to a first-party canonical site URL~~ **Superseded.** Single `PUBLIC_SITE_URL` is the public base for both SMS deep links and Twilio webhooks (replaces `TWILIO_WEBHOOK_URL`). No provider-specific URL fallbacks.
 8. **Shorten admin phone exposure** (just-in-time decrypt, audit logs) and invalidate admin privilege changes immediately rather than waiting on JWT lifetime alone. *(Still open.)*
 9. **Document SIM-swap reality** in user-facing recovery copy: phone possession is powerful; users should protect carrier accounts. *(Still open.)*
 10. **Keep `ALLOW_TEST_REGISTRATION` impossible in production** via startup refusal when release mode is live. *(Still open — policy + env discipline today.)*
@@ -392,6 +392,7 @@ In-app FAQ (`/faq/phone-number`): phone is collected mainly for message notifica
 | Redis (`REDIS_URL`) rate limits | Shared OTP/IP/login throttles; E.164 in OTP Redis keys |
 | Login IP + per-username lockout | Slows credential stuffing on `/api/login` |
 | STOP/START syncs `sms_opted_out` | Carrier unsubscribe matches Settings preference |
+| `PUBLIC_SITE_URL` | Single public base for SMS links + Twilio webhooks (no `TWILIO_WEBHOOK_URL`) |
 | Geoapify for locations | Replaces LLM geocoding; durable cache OK under Geoapify terms |
 | `DB_HASH_PEPPER` + HMAC lookup hashes | Offline dictionary of `phone_hash` / `name_hash` needs pepper |
 | Companion SMS pumping doc | Ops runbook split from this privacy/threat paper |

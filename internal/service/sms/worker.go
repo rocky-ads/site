@@ -149,7 +149,7 @@ func generateSMSMessage(userID int) (string, error) {
 		return "", fmt.Errorf("failed to get unread count: %w", err)
 	}
 
-	messageURL := fmt.Sprintf("%s/auth/user/messages", config.TwilioWebhookURL)
+	messageURL := fmt.Sprintf("%s/auth/user/messages", config.PublicSiteURL)
 	var message string
 	if unreadCount == 1 {
 		message = fmt.Sprintf("You have 1 new message. View: %s. Reply STOP to unsubscribe.", messageURL)

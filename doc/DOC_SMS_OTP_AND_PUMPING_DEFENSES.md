@@ -71,7 +71,7 @@ Current intended settings (keep Console aligned with this doc):
 | `TWILIO_ACCOUNT_SID` | Yes* | Shared by Verify and Messaging |
 | `TWILIO_AUTH_TOKEN` | Yes* | Shared |
 | `TWILIO_FROM_NUMBER` | Yes* | Messaging sender (alerts, inbound) |
-| `TWILIO_WEBHOOK_URL` | Yes* | Webhooks + notification link base |
+| `PUBLIC_SITE_URL` | Yes* | Public site base for Twilio webhooks and SMS deep links |
 | `TWILIO_VERIFY_SERVICE_SID` | Yes* | Verify Service SID (`VA…`) |
 | `TURNSTILE_SITE_KEY` | Yes* | Cloudflare Turnstile site key |
 | `TURNSTILE_SECRET_KEY` | Yes* | Cloudflare Turnstile secret |

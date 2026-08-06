@@ -175,11 +175,11 @@ func SendMessage(phoneE64, message string) error {
 			"component", "SMS", "phoneNumber", phoneE64)
 		return nil
 	}
-	statusCallbackURL := fmt.Sprintf("%s/api/sms/webhook", config.TwilioWebhookURL)
+	statusCallbackURL := fmt.Sprintf("%s/api/sms/webhook", config.PublicSiteURL)
 	logger.Debug("Setting SMS status callback",
 		"component", "SMS",
 		"statusCallbackURL", statusCallbackURL,
-		"baseWebhookURL", config.TwilioWebhookURL)
+		"baseWebhookURL", config.PublicSiteURL)
 
 	params := &Api.CreateMessageParams{}
 	params.SetTo(phoneE64)
@@ -359,8 +359,8 @@ func Init() error {
 	if config.TwilioFromNumber == "" {
 		return fmt.Errorf("TWILIO_FROM_NUMBER is required")
 	}
-	if config.TwilioWebhookURL == "" {
-		return fmt.Errorf("TWILIO_WEBHOOK_URL is required")
+	if config.PublicSiteURL == "" {
+		return fmt.Errorf("PUBLIC_SITE_URL is required")
 	}
 
 	// Validate Account SID format (should start with "AC" for Twilio)
@@ -379,36 +379,34 @@ func Init() error {
 		return fmt.Errorf("TWILIO_FROM_NUMBER must be in E.164 format (e.g., +12025550123)")
 	}
 
-	// Validate Webhook URL is a valid URL
-	parsedURL, err := url.Parse(config.TwilioWebhookURL)
+	parsedURL, err := url.Parse(config.PublicSiteURL)
 	if err != nil {
-		return fmt.Errorf("TWILIO_WEBHOOK_URL must be a valid URL: %w", err)
+		return fmt.Errorf("PUBLIC_SITE_URL must be a valid URL: %w", err)
 	}
 	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
-		return fmt.Errorf("TWILIO_WEBHOOK_URL must use http or https scheme")
+		return fmt.Errorf("PUBLIC_SITE_URL must use http or https scheme")
 	}
 	if parsedURL.Host == "" {
-		return fmt.Errorf("TWILIO_WEBHOOK_URL must include a host")
+		return fmt.Errorf("PUBLIC_SITE_URL must include a host")
 	}
 
-	// Check if TWILIO_WEBHOOK_URL is localhost (webhooks won't work)
 	hostname := parsedURL.Hostname()
 	if isLocalhost(hostname) {
-		return fmt.Errorf("TWILIO_WEBHOOK_URL cannot be localhost (webhooks won't work). Use ngrok or set TWILIO_WEBHOOK_URL to a public URL")
+		return fmt.Errorf("PUBLIC_SITE_URL cannot be localhost (Twilio webhooks won't work). Use ngrok or another public URL")
 	}
 
 	logger.Info("SMS enabled",
-		"component", "SMS", "twilioWebhookURL", config.TwilioWebhookURL)
+		"component", "SMS", "publicSiteURL", config.PublicSiteURL)
 
 	tryUpdateInboundWebhook()
 	return nil
 }
 
 func tryUpdateInboundWebhook() {
-	if config.TwilioWebhookURL == "" || config.TwilioFromNumber == "" {
+	if config.PublicSiteURL == "" || config.TwilioFromNumber == "" {
 		return
 	}
-	parsedURL, err := url.Parse(config.TwilioWebhookURL)
+	parsedURL, err := url.Parse(config.PublicSiteURL)
 	if err != nil || parsedURL.Host == "" || isLocalhost(parsedURL.Hostname()) {
 		return
 	}
@@ -422,11 +420,11 @@ func tryUpdateInboundWebhook() {
 }
 
 // UpdatePhoneNumberWebhook updates the Twilio phone number's incoming message webhook URL
-// This should be called at startup to automatically configure the webhook based on TWILIO_WEBHOOK_URL
+// This should be called at startup to automatically configure the webhook based on PUBLIC_SITE_URL
 // Only called from Init() after validation passes, so no need for defensive checks
 func UpdatePhoneNumberWebhook() error {
 
-	webhookURL := fmt.Sprintf("%s/api/sms/webhook", config.TwilioWebhookURL)
+	webhookURL := fmt.Sprintf("%s/api/sms/webhook", config.PublicSiteURL)
 
 	// Get the phone number SID first
 	params := &Api.ListIncomingPhoneNumberParams{}

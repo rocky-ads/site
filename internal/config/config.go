@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/rocky-ads/site/internal/logger"
@@ -92,6 +93,9 @@ const (
 
 // Global configuration variables
 var (
+	// PublicSiteURL — public base for SMS links and Twilio webhooks
+	PublicSiteURL = trimURLBase(os.Getenv("PUBLIC_SITE_URL"))
+
 	// Database configuration
 	DatabaseURL = getEnvWithDefault("DATABASE_URL", "postgres://localhost:5432/rockyads?sslmode=disable")
 
@@ -117,9 +121,6 @@ var (
 	TwilioFromNumber       = getEnvWithDefault("TWILIO_FROM_NUMBER", "")
 	TwilioVerifyServiceSID = getEnvWithDefault("TWILIO_VERIFY_SERVICE_SID", "")
 
-	// Twilio webhook URL - used for webhook callbacks and notification links
-	TwilioWebhookURL = getTwilioWebhookURL("TWILIO_WEBHOOK_URL")
-
 	// Cloudflare Turnstile (bot gate before OTP start)
 	TurnstileSiteKey   = getEnvWithDefault("TURNSTILE_SITE_KEY", "")
 	TurnstileSecretKey = getEnvWithDefault("TURNSTILE_SECRET_KEY", "")
@@ -142,7 +143,7 @@ var (
 	TestPort = getEnvWithDefault("PORT_TEST", "10001")
 
 	// Cookie security - set LOCAL_DEVELOPMENT=true to relax cookie security for local HTTP access
-	// When LOCAL_DEVELOPMENT is set, cookies will work over HTTP even if TWILIO_WEBHOOK_URL is HTTPS
+	// When LOCAL_DEVELOPMENT is set, cookies will work over HTTP even if PUBLIC_SITE_URL is HTTPS
 	CookieSecure = os.Getenv("LOCAL_DEVELOPMENT") != "true"
 
 	// AllowTestRegistration skips SMS verification for +1555010xxxx phones (dev/test harness).
@@ -194,20 +195,8 @@ func getEnvWithDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
-// getTwilioWebhookURL returns the Twilio webhook URL using the following logic:
-// 1. Use key if not empty
-// 2. Otherwise, if RENDER is set, use RENDER_EXTERNAL_URL
-// 3. Otherwise, return empty string
-func getTwilioWebhookURL(key string) string {
-	if url := os.Getenv(key); url != "" {
-		return url
-	}
-	if os.Getenv("RENDER") != "" {
-		if url := os.Getenv("RENDER_EXTERNAL_URL"); url != "" {
-			return url
-		}
-	}
-	return ""
+func trimURLBase(raw string) string {
+	return strings.TrimRight(strings.TrimSpace(raw), "/")
 }
 
 // getEncryptionKey loads and decodes a base64-encoded encryption key from environment
@@ -287,4 +276,10 @@ func SecurityCheck() {
 	if AllowTestRegistration {
 		logger.Warn("ALLOW_TEST_REGISTRATION is enabled: test phone signup skips SMS verification")
 	}
+
+	if PublicSiteURL == "" {
+		logger.Fatal("Security configuration error",
+			"error", "PUBLIC_SITE_URL environment variable is required but not set")
+	}
+	logger.Info("Public site URL configured", "url", PublicSiteURL)
 }

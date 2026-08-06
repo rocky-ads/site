@@ -64,12 +64,15 @@ Phone verification (register / change-phone) uses **Twilio Verify**. Account
 recovery inbound SMS and unread-message alerts use **Programmable Messaging**.
 See [doc/DOC_SMS_OTP_AND_PUMPING_DEFENSES.md](doc/DOC_SMS_OTP_AND_PUMPING_DEFENSES.md).
 
+Always required at server start:
+
+- `PUBLIC_SITE_URL` — public base URL for the site (non-localhost for real SMS). Used for Twilio webhooks (`…/api/sms/webhook`) and SMS deep links (e.g. `…/auth/user/messages`). Local: your ngrok (or similar) HTTPS URL.
+
 Required at server start unless `ALLOW_TEST_REGISTRATION=true`:
 
 - `TWILIO_ACCOUNT_SID` — Twilio account SID (must start with `AC`).
 - `TWILIO_AUTH_TOKEN` — Twilio auth token.
 - `TWILIO_FROM_NUMBER` — Messaging sender in E.164 (e.g. `+12025550123`).
-- `TWILIO_WEBHOOK_URL` — public base URL for webhooks and SMS links (non-localhost).
 - `TWILIO_VERIFY_SERVICE_SID` — Verify Service SID (must start with `VA`).
 
 ### Turnstile (Cloudflare)
@@ -138,6 +141,7 @@ REDIS_URL=redis://localhost:6379
 DB_ENCRYPTION_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
 DB_HASH_PEPPER=AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=
 JWT_SECRET=local-dev-jwt-secret-key-min-32-chars
+PUBLIC_SITE_URL=http://localhost:10000
 LOCAL_DEVELOPMENT=true
 ALLOW_TEST_REGISTRATION=true
 MINIO_API_URL=http://127.0.0.1:9000
@@ -150,7 +154,7 @@ OLLAMA_URL=http://localhost:11434
 
 `REDIS_URL` is required; start Redis via Compose before running the server.
 
-Add Twilio (`TWILIO_*`), `GROK_API_KEY`, `GEOAPIFY_API_KEY`, and `FAL_API_KEY` when you need real SMS, Grok, location geocoding, or image generation.
+Add Twilio (`TWILIO_*`), `GROK_API_KEY`, `GEOAPIFY_API_KEY`, and `FAL_API_KEY` when you need real SMS, Grok, location geocoding, or image generation. For real SMS locally, set `PUBLIC_SITE_URL` to an ngrok (or similar) HTTPS URL so Twilio can reach `/api/sms/webhook`.
 
 Initialize the database via the jump-server admin TUI:
 
