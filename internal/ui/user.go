@@ -389,6 +389,14 @@ func settingsAccountSection(userName, phoneE64 string) g.Node {
 }
 
 func NotificationsSection(smsOptedOut bool) g.Node {
+	return notificationsSection(smsOptedOut, false)
+}
+
+func NotificationsSectionSwapOOB(smsOptedOut bool) g.Node {
+	return notificationsSection(smsOptedOut, true)
+}
+
+func notificationsSection(smsOptedOut bool, oob bool) g.Node {
 	enabled := !smsOptedOut
 	statusClass := "text-green-600 dark:text-green-400"
 	statusText := "ON"
@@ -397,48 +405,56 @@ func NotificationsSection(smsOptedOut bool) g.Node {
 		statusText = "OFF"
 	}
 
-	return Div(
+	attrs := []g.Node{
 		ID("sms-notifications"),
 		Class("mt-8 p-6 border border-zinc-200 dark:border-zinc-700 rounded-lg"),
-		H2(Class("text-xl font-semibold mb-4"), g.Text("Notifications")),
-		Div(
-			Class("flex items-center justify-between gap-4"),
+	}
+	if oob {
+		attrs = append(attrs, hx.SwapOOB("outerHTML"))
+	}
+
+	return Div(
+		append(attrs,
+			H2(Class("text-xl font-semibold mb-4"), g.Text("Notifications")),
 			Div(
-				Class("flex items-center gap-3"),
-				Label(
-					Class("relative inline-flex items-center cursor-pointer"),
-					Input(
-						Type("checkbox"),
-						Name("enabled"),
-						Value("true"),
-						Class("sr-only peer"),
-						g.If(enabled, Checked()),
-						hx.Post("/auth/user/settings/notifications"),
-						hx.Target("#sms-notifications"),
-						hx.Swap("outerHTML"),
-						hx.Trigger("change"),
+				Class("flex items-center justify-between gap-4"),
+				Div(
+					Class("flex items-center gap-3"),
+					Label(
+						Class("relative inline-flex items-center cursor-pointer"),
+						Input(
+							Type("checkbox"),
+							Name("enabled"),
+							Value("true"),
+							Class("sr-only peer"),
+							g.If(enabled, Checked()),
+							hx.Post("/auth/user/settings/notifications"),
+							hx.Target("#sms-notifications"),
+							hx.Swap("outerHTML"),
+							hx.Trigger("change"),
+						),
+						Span(
+							Class("w-11 h-6 bg-zinc-300 dark:bg-zinc-600 rounded-full peer peer-checked:bg-green-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"),
+						),
 					),
-					Span(
-						Class("w-11 h-6 bg-zinc-300 dark:bg-zinc-600 rounded-full peer peer-checked:bg-green-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"),
-					),
+					Span(Class("text-sm font-medium"), g.Text("Text messages")),
 				),
-				Span(Class("text-sm font-medium"), g.Text("Text messages")),
-			),
-			Span(
-				Class("text-sm font-semibold "+statusClass),
-				g.Text("Text messages: "+statusText),
-			),
-		),
-		g.If(enabled,
-			P(
-				Class("mt-4 text-sm"),
-				A(
-					Href("/faq/sms-notifications"),
-					Class("text-blue-600 dark:text-blue-400 hover:underline"),
-					g.Text("Why am I not getting text messages?"),
+				Span(
+					Class("text-sm font-semibold "+statusClass),
+					g.Text("Text messages: "+statusText),
 				),
 			),
-		),
+			g.If(enabled,
+				P(
+					Class("mt-4 text-sm"),
+					A(
+						Href("/faq/sms-notifications"),
+						Class("text-blue-600 dark:text-blue-400 hover:underline"),
+						g.Text("Why am I not getting text messages?"),
+					),
+				),
+			),
+		)...,
 	)
 }
 
@@ -448,6 +464,7 @@ func SettingsPage(name, phoneE64 string, smsOptedOut bool,
 		pageTitle("Settings"),
 		settingsAccountSection(name, phoneE64),
 		AccountPictureSection(userID, hasAccountPicture, accountPictureURL, ""),
+		NotificationsSSESink(),
 		NotificationsSection(smsOptedOut),
 		ChangePhoneSection(),
 		settingsSection("Change Password",

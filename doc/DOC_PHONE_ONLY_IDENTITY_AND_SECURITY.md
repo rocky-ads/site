@@ -108,7 +108,7 @@ Login remains username/password. The phone is not a daily credential; it is the 
 
 A background worker drains a notification queue, applies suppression (for example, avoiding SMS spam when the user was recently texted or has no unread messages), decrypts the phone, and sends via Messaging. Intended Messaging geo: **US + CA only**.
 
-**STOP vs in-app opt-out:** carrier `STOP` is logged; OTP codes live in Verify (short TTL) and are not cleared by an app table. App notification preference remains `sms_opted_out` in Settings. Carrier STOP may still block Messaging delivery independently. Product copy and Settings should stay clear about that split (see recommendations).
+**STOP vs in-app opt-out:** inbound `STOP` / `START` (and common Twilio opt keywords) sync `sms_opted_out` so Settings matches what the user texted. Carrier-level blocking may still prevent Messaging delivery until the user texts `START`; FAQ covers that residual case. OTP codes remain in Twilio Verify (short TTL) and are not cleared by STOP.
 
 Account recovery is possession-based rather than email-based: the browser starts a short-lived recovery session and shows a code; the user texts that code from their registered number; the webhook, after Twilio signature verification, binds the session to the matching user; the browser then reveals the username and allows password reset. Recovery starts are rate-limited per IP in Redis.
 
@@ -331,7 +331,7 @@ Status relative to the current codebase:
 3. ~~**Pepper phone/name lookup hashes**~~ **Done.** `db.HashString` is HMAC-SHA256 with required `DB_HASH_PEPPER`; startup `user.RehashLookupHashes` upgrades legacy unsalted rows; restore recomputes hashes.
 4. ~~**Add login-specific throttling and lockouts** (per username and per IP), not only global request ceilings.~~ **Done.** Fiber login IP limiter (20 / 15 min) plus Redis per-username failure lockout (10 / 15 min, cleared on success).
 5. ~~**Rate-limit OTP starts and monitor Twilio spend.**~~ **Done (OTP path):** Verify + Fraud Guard, Turnstile, Redis per-phone/IP limits; spend runbook in [DOC_SMS_OTP_AND_PUMPING_DEFENSES.md](DOC_SMS_OTP_AND_PUMPING_DEFENSES.md). Notification SMS remain on Programmable Messaging.
-6. **Make STOP and in-app opt-out consistent** (or document clearly) so carrier unsubscribe language matches `sms_opted_out` behavior users expect. *(Still open — STOP does not set `sms_opted_out`.)*
+6. ~~**Make STOP and in-app opt-out consistent**~~ **Done.** Inbound STOP/START (and common Twilio opt keywords) set/clear `sms_opted_out`; FAQ notes residual carrier blocking until START.
 7. **Bound notification link bases** to a first-party canonical site URL distinct from misconfigurable webhook bases where possible; alert on host mismatch. *(Still open.)*
 8. **Shorten admin phone exposure** (just-in-time decrypt, audit logs) and invalidate admin privilege changes immediately rather than waiting on JWT lifetime alone. *(Still open.)*
 9. **Document SIM-swap reality** in user-facing recovery copy: phone possession is powerful; users should protect carrier accounts. *(Still open.)*
@@ -363,6 +363,7 @@ The correct reading of the architecture remains: not “little PII, therefore sa
 | OTP start limits (Redis) | `internal/otplimit/`, `internal/kv/` |
 | IP registration/recovery/login limiters | `internal/handler/ratelimit.go` |
 | Login username failure lockout | `internal/loginlimit/` |
+| SMS webhook (STOP/START → opt-out) | `internal/handler/sms.go` |
 | Login / JWT | `internal/handler/login.go`, `internal/handler/jwt.go`, `internal/cookie/jwt.go` |
 | Recovery | `internal/handler/recover.go`, `internal/accountrecovery/` |
 | SMS send/queue/worker/webhook | `internal/service/sms/`, `internal/handler/sms.go` |
@@ -390,6 +391,7 @@ In-app FAQ (`/faq/phone-number`): phone is collected mainly for message notifica
 | Turnstile | Bot friction before OTP start |
 | Redis (`REDIS_URL`) rate limits | Shared OTP/IP/login throttles; E.164 in OTP Redis keys |
 | Login IP + per-username lockout | Slows credential stuffing on `/api/login` |
+| STOP/START syncs `sms_opted_out` | Carrier unsubscribe matches Settings preference |
 | Geoapify for locations | Replaces LLM geocoding; durable cache OK under Geoapify terms |
 | `DB_HASH_PEPPER` + HMAC lookup hashes | Offline dictionary of `phone_hash` / `name_hash` needs pepper |
 | Companion SMS pumping doc | Ops runbook split from this privacy/threat paper |

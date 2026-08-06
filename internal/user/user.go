@@ -470,6 +470,15 @@ func SetSMSOptOut(userID int, optedOut bool) error {
 	return err
 }
 
+// SetSMSOptOutByPhoneE64 sets sms_opted_out for the active user with this phone.
+func SetSMSOptOutByPhoneE64(phoneE64 string, optedOut bool) error {
+	u, err := GetByPhoneE64(phoneE64)
+	if err != nil {
+		return err
+	}
+	return SetSMSOptOut(u.ID, optedOut)
+}
+
 func UpdatePassword(userID int, hash, salt, algo string) error {
 	_, err := db.Exec("UPDATE users SET password_hash = $1, password_salt = $2, password_algo = $3 WHERE id = $4", hash, salt, algo, userID)
 	return err

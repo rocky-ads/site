@@ -100,11 +100,17 @@ var faqSections = map[string]faqSectionData{
 					faqLink("/auth/user/settings", "Settings"),
 					g.Text(" and confirm text messages are turned on."),
 				),
+				faqParagraph(g.Text(
+					"Replying STOP to a text from us also turns off " +
+						"message notifications in Settings. Replying " +
+						"START (or turning notifications back on in " +
+						"Settings) turns them on again in the app.",
+				)),
 				smsResumeNote(fromNumber),
 				faqParagraph(
 					g.Text(
-						"You can also turn notifications off or on "+
-							"anytime from ",
+						"You can turn notifications off or on anytime "+
+							"from ",
 					),
 					faqLink("/auth/user/settings", "Settings"),
 					g.Text(" without texting STOP or START."),
@@ -147,16 +153,17 @@ func faqNote(children ...g.Node) g.Node {
 func smsResumeNote(fromNumber string) g.Node {
 	if fromNumber == "" {
 		return faqNote(g.Text(
-			"If you previously replied STOP to a text message from us, " +
-				"your carrier may have blocked further texts. " +
-				"Text START to our number to resume delivery.",
+			"If you previously replied STOP, your carrier may still " +
+				"block further texts even after you turn notifications " +
+				"back on in Settings. Text START to our number to " +
+				"resume delivery.",
 		))
 	}
 	return faqNote(
 		g.Text(
-			"If you previously replied STOP to a text message "+
-				"from us, your carrier may have blocked further "+
-				"texts. Text START to ",
+			"If you previously replied STOP, your carrier may still "+
+				"block further texts even after you turn notifications "+
+				"back on in Settings. Text START to ",
 		),
 		Span(Class("font-mono"), g.Text(fromNumber)),
 		g.Text(" to resume delivery."),

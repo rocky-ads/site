@@ -13,6 +13,7 @@ import (
 const (
 	SSEEventUnread           = "unread"
 	SSEEventConversationList = "conversation-list"
+	SSEEventNotifications    = "notifications"
 )
 
 func SSEEventConversation(conversationID int) string {
@@ -43,4 +44,8 @@ func ConversationListSSESink() g.Node {
 
 func UnreadSSESink() g.Node {
 	return sseOOBSink(SSEEventUnread, "unread-sse")
+}
+
+func NotificationsSSESink() g.Node {
+	return sseOOBSink(SSEEventNotifications, "notifications-sse")
 }

@@ -1,6 +1,7 @@
 package user
 
 import (
+	"database/sql"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -220,5 +221,45 @@ func TestPhoneActiveBlocks(t *testing.T) {
 	_, err = CreateUser("activetwo", "+15559871201", "password1")
 	if !errors.Is(err, ErrUserAlreadyExists) {
 		t.Fatalf("expected ErrUserAlreadyExists, got %v", err)
+	}
+}
+
+func TestSetSMSOptOutByPhoneE64(t *testing.T) {
+	resetSchema(t)
+
+	phone := "+15559871301"
+	u, err := CreateUser("optoutuser", phone, "password1")
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if u.SMSOptedOut {
+		t.Fatal("new user should not be opted out")
+	}
+
+	if err := SetSMSOptOutByPhoneE64(phone, true); err != nil {
+		t.Fatalf("opt out: %v", err)
+	}
+	got, err := GetByID(u.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if !got.SMSOptedOut {
+		t.Fatal("expected opted out after STOP sync")
+	}
+
+	if err := SetSMSOptOutByPhoneE64(phone, false); err != nil {
+		t.Fatalf("opt in: %v", err)
+	}
+	got, err = GetByID(u.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.SMSOptedOut {
+		t.Fatal("expected opted in after START sync")
+	}
+
+	err = SetSMSOptOutByPhoneE64("+15559871399", true)
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("unknown phone: got %v, want sql.ErrNoRows", err)
 	}
 }

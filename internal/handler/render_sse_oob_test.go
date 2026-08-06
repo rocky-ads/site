@@ -92,6 +92,9 @@ func TestSSEEventNames(t *testing.T) {
 	if ui.SSEEventConversationList != "conversation-list" {
 		t.Fatalf("list = %q", ui.SSEEventConversationList)
 	}
+	if ui.SSEEventNotifications != "notifications" {
+		t.Fatalf("notifications = %q", ui.SSEEventNotifications)
+	}
 	if got := ui.SSEEventConversation(5); got != "conversation-5" {
 		t.Fatalf("conversation = %q", got)
 	}
@@ -131,5 +134,14 @@ func TestUnreadAndListSSESinks(t *testing.T) {
 	list := buf.String()
 	if !strings.Contains(list, `sse-swap="conversation-list"`) {
 		t.Fatalf("list sink: %s", list)
+	}
+
+	buf.Reset()
+	if err := ui.NotificationsSSESink().Render(&buf); err != nil {
+		t.Fatal(err)
+	}
+	notes := buf.String()
+	if !strings.Contains(notes, `sse-swap="notifications"`) {
+		t.Fatalf("notifications sink: %s", notes)
 	}
 }
