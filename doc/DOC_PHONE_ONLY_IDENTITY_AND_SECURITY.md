@@ -235,7 +235,7 @@ In other words: **the registration form is minimal; the product corpus is not.**
 
 ### 6.7 Admin and insider risk
 
-Web admin is insights-only (SMS queue, embeddings, clicks aggregates)—no usernames or phones. User PII and write ops (list, show phone, promote/demote/delete, DB tools, embedding backfill) live on jump-server `cmd/admin`. Compromised admin JWTs, over-broad `is_admin` claims that survive until token expiry after demotion, or jump-server access to production keys remain privileged-path risks. Low external PII does not remove insider risk.
+Web admin is insights-only (SMS queue, embeddings, clicks aggregates)—no usernames or phones. User PII and write ops (list, show phone, promote/demote/delete, DB tools, embedding backfill) live on jump-server `cmd/admin`. Compromised admin JWTs or jump-server access to production keys remain privileged-path risks; promote/demote takes effect on the next request because `JWTMiddleware` refreshes `is_admin` from the DB into locals (it is not trusted from the JWT claim). Low external PII does not remove insider risk.
 
 ### 6.8 Third-party and configuration failures
 
@@ -333,7 +333,7 @@ Status relative to the current codebase:
 5. ~~**Rate-limit OTP starts and monitor Twilio spend.**~~ **Done (OTP path):** Verify + Fraud Guard, Turnstile, Redis per-phone/IP limits; spend runbook in [DOC_SMS_OTP_AND_PUMPING_DEFENSES.md](DOC_SMS_OTP_AND_PUMPING_DEFENSES.md). Notification SMS remain on Programmable Messaging.
 6. ~~**Make STOP and in-app opt-out consistent**~~ **Done.** Inbound STOP/START (and common Twilio opt keywords) set/clear `sms_opted_out`; FAQ notes residual carrier blocking until START.
 7. ~~**Bound notification link bases** to a first-party canonical site URL~~ **Superseded.** Single `PUBLIC_SITE_URL` is the public base for both SMS deep links and Twilio webhooks (replaces `TWILIO_WEBHOOK_URL`). No provider-specific URL fallbacks.
-8. ~~**Shorten admin phone exposure**~~ **Partial.** Web admin shows no user PII (insights only). Jump-server `cmd/admin` Users list reveals a phone on demand and owns promote/demote/delete. Still open: invalidate admin privilege changes immediately rather than waiting on JWT lifetime alone; optional audit logs for phone reveal.
+8. ~~**Shorten admin phone exposure**~~ **Partial.** Web admin shows no user PII (insights only). Jump-server `cmd/admin` Users list reveals a phone on demand and owns promote/demote/delete. ~~Privilege changes take effect on the next request~~ (`JWTMiddleware` loads `is_admin` from DB into locals; not a JWT claim). Still open: optional audit logs for phone reveal.
 9. **Document SIM-swap reality** in user-facing recovery copy: phone possession is powerful; users should protect carrier accounts. *(Still open.)*
 10. **Keep `ALLOW_TEST_REGISTRATION` impossible in production** via startup refusal when release mode is live. *(Still open — policy + env discipline today.)*
 11. **Preserve the non-collection stance** when new features are proposed—receipts, digests, and “magic links” should not silently reintroduce email as a second identity without a deliberate privacy review.
@@ -396,3 +396,4 @@ In-app FAQ (`/faq/phone-number`): phone is collected mainly for message notifica
 | Geoapify for locations | Replaces LLM geocoding; durable cache OK under Geoapify terms |
 | `DB_HASH_PEPPER` + HMAC lookup hashes | Offline dictionary of `phone_hash` / `name_hash` needs pepper |
 | Companion SMS pumping doc | Ops runbook split from this privacy/threat paper |
+| Live `is_admin` via `SessionAuth` | Promote/demote effective next request; not a JWT claim |

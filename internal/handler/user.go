@@ -39,25 +39,27 @@ func userProfileData(u user.User, activeAdCount, userRockCount int,
 }
 
 func loadUserMenuContext(userID int, tz *time.Location) (name, memberSince string,
-	isAdmin, hasUnread bool, rockCount, userRockCount int, err error) {
+	hasUnread bool, rockCount, userRockCount int, err error) {
 	u, err := user.GetByID(userID)
 	if err != nil {
-		return "", "", false, false, 0, 0, err
+		return "", "", false, 0, 0, err
 	}
 	hasUnread, _ = message.GetHasUnread(userID)
 	rockCount, _ = rock.GetUserRockCount(userID)
 	userRockCount, _ = rock.GetRockCountForUser(userID)
 	memberSince = u.CreatedAt.In(tz).Format(memberSinceLayoutSummary)
-	return u.Name, memberSince, u.IsAdmin, hasUnread, rockCount, userRockCount, nil
+	return u.Name, memberSince, hasUnread, rockCount, userRockCount, nil
 }
 
 func UserMenuHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
 	tz := cookie.GetTimezone(c)
-	name, memberSince, isAdmin, hasUnread, rockCount, userRockCount, err := loadUserMenuContext(userID, tz)
+	name, memberSince, hasUnread, rockCount, userRockCount, err :=
+		loadUserMenuContext(userID, tz)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to load user menu")
 	}
+	isAdmin := local.GetUserIsAdmin(c)
 	return render(c, ui.UserMenu(name, memberSince, userID, isAdmin, hasUnread, rockCount, userRockCount))
 }
 

@@ -32,17 +32,16 @@ func JWTMiddleware(c *fiber.Ctx) error {
 	}
 
 	userID := getUserID(claims)
-	salt, ok := user.PasswordSalt(userID)
+	salt, isAdmin, ok := user.SessionAuth(userID)
 	if !ok || salt != claims.PasswordSalt {
 		// User gone or password changed — revoke session
 		clearAuth(c)
 		return c.Next()
 	}
 
-	// Set user ID, username, and admin status in context
 	local.SetUserID(c, userID)
 	local.SetUserName(c, getUserName(claims))
-	local.SetUserIsAdmin(c, getUserIsAdmin(claims))
+	local.SetUserIsAdmin(c, isAdmin)
 
 	return c.Next()
 }
@@ -50,7 +49,6 @@ func JWTMiddleware(c *fiber.Ctx) error {
 type claims struct {
 	UserID       int    `json:"user_id"`
 	UserName     string `json:"user_name"`
-	IsAdmin      bool   `json:"is_admin"`
 	PasswordSalt string `json:"pwd_salt"`
 	jwt.RegisteredClaims
 }
@@ -63,7 +61,6 @@ func generateJWTToken(u *user.User) (string, error) {
 	claims := claims{
 		UserID:       u.ID,
 		UserName:     u.Name,
-		IsAdmin:      u.IsAdmin,
 		PasswordSalt: u.PasswordSalt,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
@@ -105,9 +102,4 @@ func getUserID(claims *claims) int {
 // getUserName extracts the username from validated claims
 func getUserName(claims *claims) string {
 	return claims.UserName
-}
-
-// getUserIsAdmin extracts the admin status from validated claims
-func getUserIsAdmin(claims *claims) bool {
-	return claims.IsAdmin
 }

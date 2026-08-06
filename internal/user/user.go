@@ -181,17 +181,19 @@ func Exists(id int) bool {
 	return err == nil
 }
 
-// PasswordSalt returns the password salt for an active user without decryption.
-// ok is false if the user does not exist or is deleted.
-func PasswordSalt(id int) (salt string, ok bool) {
+// SessionAuth returns password salt and admin flag for an active user
+// without decryption. ok is false if the user does not exist or is deleted.
+func SessionAuth(id int) (salt string, isAdmin bool, ok bool) {
+	var isAdminInt int
 	err := db.QueryRow(
-		`SELECT password_salt FROM users WHERE id = $1 AND deleted_at IS NULL`,
+		`SELECT password_salt, is_admin FROM users
+		 WHERE id = $1 AND deleted_at IS NULL`,
 		id,
-	).Scan(&salt)
+	).Scan(&salt, &isAdminInt)
 	if err != nil {
-		return "", false
+		return "", false, false
 	}
-	return salt, true
+	return salt, isAdminInt == 1, true
 }
 
 func GetByPhoneE64(phoneE64 string) (User, error) {
