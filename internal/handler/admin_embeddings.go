@@ -22,7 +22,7 @@ func AdminEmbeddingsHandler(c *fiber.Ctx) error {
 		return showError(c, "Failed to load embedding data")
 	}
 	return render(c, ui.AdminDashboardContainerWithEmbeddings(
-		"embeddings", nil, "", "", currentUserID, data,
+		"embeddings", data,
 	))
 }
 
@@ -31,11 +31,6 @@ func embeddingCategoryID(c *fiber.Ctx) int {
 		return ad.ParseCategory(q)
 	}
 	return cookie.GetCategoryID(c)
-}
-
-func AdminEmbeddingsBackfillHandler(c *fiber.Ctx) error {
-	vector.TriggerBackfill()
-	return AdminEmbeddingsHandler(c)
 }
 
 func AdminEmbeddingsClearQueryCacheHandler(c *fiber.Ctx) error {

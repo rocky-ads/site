@@ -24,8 +24,6 @@ func ClicksTab(d ClickAdminData) g.Node {
 		clickSummaryCards(d),
 		clickTopAdsSection(d.TopAds),
 		clickTopImagesSection(d.TopImages),
-		clickRecentSection(d.RecentActivity),
-		clickTopUsersSection(d.TopUsers),
 	)
 }
 
@@ -127,55 +125,6 @@ func clickTopImageRows(rows []ClickImageRow) []g.Node {
 	return out
 }
 
-func clickRecentSection(rows []ClickActivityRow) g.Node {
-	return clickTableSection(
-		"Recent activity",
-		"Latest logged-in ad views and image navigations.",
-		clickRecentHeader(),
-		clickRecentRows(rows),
-	)
-}
-
-func clickRecentRows(rows []ClickActivityRow) []g.Node {
-	if len(rows) == 0 {
-		return nil
-	}
-	out := make([]g.Node, len(rows))
-	for i, r := range rows {
-		out[i] = Div(
-			Class("grid grid-cols-5 gap-2 px-4 py-2 text-xs text-zinc-900 dark:text-zinc-200"),
-			Div(g.Text(r.When)),
-			Div(
-				A(
-					Href(fmt.Sprintf("/auth/user/%d", r.UserID)),
-					Class("text-blue-600 dark:text-blue-400 hover:underline"),
-					g.Text(r.UserName),
-				),
-			),
-			Div(
-				Class("truncate"),
-				A(
-					Href(fmt.Sprintf("/ad/%d", r.AdID)),
-					Class("text-blue-600 dark:text-blue-400 hover:underline"),
-					g.Text(r.AdTitle),
-				),
-			),
-			Div(g.Text(r.ClickLabel)),
-			Div(g.Text(fmt.Sprintf("%d×", r.ClickCount))),
-		)
-	}
-	return out
-}
-
-func clickTopUsersSection(rows []ClickUserRow) g.Node {
-	return clickTableSection(
-		"Most engaged users",
-		"Users with the most logged-in ad and image click activity.",
-		clickTopUserHeader(),
-		clickTopUserRows(rows),
-	)
-}
-
 func clickTopAdHeader() g.Node {
 	return Div(
 		Class("grid grid-cols-6 gap-2 bg-zinc-50 dark:bg-zinc-900 px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 text-xs"),
@@ -199,55 +148,11 @@ func clickTopImageHeader() g.Node {
 	)
 }
 
-func clickRecentHeader() g.Node {
-	return Div(
-		Class("grid grid-cols-5 gap-2 bg-zinc-50 dark:bg-zinc-900 px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 text-xs"),
-		clickHeaderCell("When"),
-		clickHeaderCell("User"),
-		clickHeaderCell("Ad"),
-		clickHeaderCell("Type"),
-		clickHeaderCell("Total"),
-	)
-}
-
-func clickTopUserHeader() g.Node {
-	return Div(
-		Class("grid grid-cols-4 gap-2 bg-zinc-50 dark:bg-zinc-900 px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 text-xs"),
-		clickHeaderCell("User"),
-		clickHeaderCell("Ad clicks"),
-		clickHeaderCell("Image clicks"),
-		clickHeaderCell("Last active"),
-	)
-}
-
 func clickHeaderCell(label string) g.Node {
 	return Div(
 		Class("font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider"),
 		g.Text(label),
 	)
-}
-
-func clickTopUserRows(rows []ClickUserRow) []g.Node {
-	if len(rows) == 0 {
-		return nil
-	}
-	out := make([]g.Node, len(rows))
-	for i, r := range rows {
-		out[i] = Div(
-			Class("grid grid-cols-4 gap-2 px-4 py-2 text-xs text-zinc-900 dark:text-zinc-200"),
-			Div(
-				A(
-					Href(fmt.Sprintf("/auth/user/%d", r.UserID)),
-					Class("text-blue-600 dark:text-blue-400 hover:underline"),
-					g.Text(r.UserName),
-				),
-			),
-			Div(g.Text(strconv.Itoa(r.AdClicks))),
-			Div(g.Text(strconv.Itoa(r.ImageClicks))),
-			Div(g.Text(r.LastActive)),
-		)
-	}
-	return out
 }
 
 func clickTableSection(title, subtitle string, header g.Node,

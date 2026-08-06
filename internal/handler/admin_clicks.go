@@ -6,22 +6,17 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
-	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/ui"
-	"github.com/rocky-ads/site/internal/user"
 )
 
 func AdminClicksHandler(c *fiber.Ctx) error {
-	currentUserID := local.GetUserID(c)
 	data, err := clickAdminData()
 	if err != nil {
 		logger.Error("Failed to load click admin data", "error", err)
 		return showError(c, "Failed to load click data")
 	}
-	return render(c, ui.AdminDashboardContainerWithClicks(
-		"clicks", nil, "", "", currentUserID, data,
-	))
+	return render(c, ui.AdminDashboardContainerWithClicks("clicks", data))
 }
 
 func clickAdminData() (ui.ClickAdminData, error) {
@@ -37,18 +32,6 @@ func clickAdminData() (ui.ClickAdminData, error) {
 	if err != nil {
 		return ui.ClickAdminData{}, err
 	}
-	recent, err := ad.GetRecentClickActivity(25)
-	if err != nil {
-		return ui.ClickAdminData{}, err
-	}
-	topUsers, err := ad.GetTopUsersByClicks(15)
-	if err != nil {
-		return ui.ClickAdminData{}, err
-	}
-	names, err := userNameMap()
-	if err != nil {
-		return ui.ClickAdminData{}, err
-	}
 	return ui.ClickAdminData{
 		UsersWithClicks: summary.UsersWithClicks,
 		AdsClicked:      summary.AdsClicked,
@@ -57,21 +40,7 @@ func clickAdminData() (ui.ClickAdminData, error) {
 		ActiveLast7Days: summary.ActiveLast7Days,
 		TopAds:          clickAdRows(topAds),
 		TopImages:       clickImageRows(topImages),
-		RecentActivity:  clickActivityRows(recent, names),
-		TopUsers:        clickUserRows(topUsers, names),
 	}, nil
-}
-
-func userNameMap() (map[int]string, error) {
-	users, err := user.GetAllUsers("id", "ASC")
-	if err != nil {
-		return nil, err
-	}
-	names := make(map[int]string, len(users))
-	for _, u := range users {
-		names[u.ID] = u.Name
-	}
-	return names, nil
 }
 
 func clickAdRows(rows []ad.TopAdClick) []ui.ClickAdRow {
@@ -100,50 +69,6 @@ func clickImageRows(rows []ad.TopImageClick) []ui.ClickImageRow {
 			UserCount:  r.UserCount,
 			Clicks:     r.Clicks,
 			LastClick:  formatClickTime(r.LastClickedAt),
-		}
-	}
-	return out
-}
-
-func clickActivityRows(rows []ad.RecentClick,
-	names map[int]string) []ui.ClickActivityRow {
-	out := make([]ui.ClickActivityRow, len(rows))
-	for i, r := range rows {
-		label := "Ad view"
-		if r.ClickType == "image" && r.ImageIndex != nil {
-			label = fmt.Sprintf("Image %d", *r.ImageIndex)
-		}
-		name := names[r.UserID]
-		if name == "" {
-			name = fmt.Sprintf("user #%d", r.UserID)
-		}
-		out[i] = ui.ClickActivityRow{
-			When:       formatClickTime(&r.LastClickedAt),
-			UserName:   name,
-			UserID:     r.UserID,
-			AdID:       r.AdID,
-			AdTitle:    r.Title,
-			ClickLabel: label,
-			ClickCount: r.ClickCount,
-		}
-	}
-	return out
-}
-
-func clickUserRows(rows []ad.TopUserClick,
-	names map[int]string) []ui.ClickUserRow {
-	out := make([]ui.ClickUserRow, len(rows))
-	for i, r := range rows {
-		name := names[r.UserID]
-		if name == "" {
-			name = fmt.Sprintf("user #%d", r.UserID)
-		}
-		out[i] = ui.ClickUserRow{
-			UserID:      r.UserID,
-			UserName:    name,
-			AdClicks:    r.AdClicks,
-			ImageClicks: r.ImageClicks,
-			LastActive:  formatClickTime(r.LastActive),
 		}
 	}
 	return out

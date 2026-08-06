@@ -162,7 +162,7 @@ Initialize the database via the jump-server admin TUI:
 docker compose exec -it jump-server admin
 ```
 
-Choose **Init database**.
+Main menu: **Database** · **Users** · **Embeddings**. Under Database, choose **Init database** (`[I]`). User PII and promote/demote/delete live under Users (not the web admin dashboard).
 
 Run the site (loads `.env` into the environment):
 

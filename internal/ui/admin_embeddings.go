@@ -90,11 +90,6 @@ func embeddingActions() g.Node {
 	return Div(
 		Class("flex flex-wrap gap-3"),
 		embeddingActionButton(
-			"Backfill missing",
-			"/admin/embeddings/backfill",
-			"Start background embedding for ads without vectors",
-		),
-		embeddingActionButton(
 			"Clear query cache",
 			"/admin/embeddings/cache/query/clear",
 			"Clear cached search-query embeddings",

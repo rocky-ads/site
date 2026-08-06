@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/rocky-ads/site/internal/db"
-	"github.com/rocky-ads/site/internal/user"
 )
 
 // Notification represents a queued SMS notification
@@ -23,7 +22,6 @@ type Notification struct {
 type QueueEntry struct {
 	ID              int
 	RecipientUserID int
-	RecipientName   string
 	ConversationID  int
 	AdTitle         string
 	Status          string
@@ -221,16 +219,6 @@ func GetQueueEntries(status string, limit, offset int) ([]QueueEntry, error) {
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating queue entries: %w", err)
-	}
-
-	// Decrypt user names
-	for i := range entries {
-		user, err := user.GetByID(entries[i].RecipientUserID)
-		if err != nil {
-			entries[i].RecipientName = fmt.Sprintf("User %d", entries[i].RecipientUserID)
-		} else {
-			entries[i].RecipientName = user.Name
-		}
 	}
 
 	return entries, nil

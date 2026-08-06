@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,7 +16,9 @@ import (
 	"github.com/rocky-ads/site/internal/dbinit"
 	"github.com/rocky-ads/site/internal/imagestore"
 	"github.com/rocky-ads/site/internal/logger"
+	"github.com/rocky-ads/site/internal/message"
 	"github.com/rocky-ads/site/internal/user"
+	"github.com/rocky-ads/site/internal/vector"
 	"golang.org/x/term"
 )
 
@@ -23,6 +26,7 @@ type screen int
 
 const (
 	screenMenu screen = iota
+	screenDBMenu
 	screenBackupConfirm
 	screenBackupRunning
 	screenRestorePick
@@ -31,35 +35,38 @@ const (
 	screenRestoreRunning
 	screenInitConfirm
 	screenInitRunning
-	screenAdminName
-	screenAdminRunning
+	screenUsersList
+	screenUserDeleteConfirm
+	screenUserRunning
+	screenEmbMenu
+	screenEmbRunning
 	screenResult
 )
 
 type menuItem int
 
 const (
-	menuBackup menuItem = iota
-	menuRestore
-	menuInit
-	menuInitSeed
-	menuPromote
-	menuDemote
+	menuDatabase menuItem = iota
+	menuUsers
+	menuEmbeddings
 	menuQuit
 )
 
 type model struct {
 	screen        screen
 	menuCursor    int
+	dbCursor      int
+	embCursor     int
 	archives      []string
 	archiveCursor int
-	nameInput     textinput.Model
 	keyInput      textinput.Model
-	adminMode     string // promote | demote
+	users         []user.User
+	userCursor    int
 	initSeed      bool
 	selected      string
 	status        string
 	err           string
+	resultBack    screen
 	store         imagestore.Store
 	dbTarget      string
 }
@@ -69,12 +76,12 @@ type doneMsg struct {
 	err error
 }
 
-func initialModel(store imagestore.Store, dbTarget string) model {
-	ni := textinput.New()
-	ni.Placeholder = "username"
-	ni.CharLimit = 64
-	ni.Width = 40
+type usersLoadedMsg struct {
+	users []user.User
+	err   error
+}
 
+func initialModel(store imagestore.Store, dbTarget string) model {
 	ki := textinput.New()
 	ki.Placeholder = "BACKUP_DB_ENCRYPTION_KEY (empty = DB_ENCRYPTION_KEY)"
 	ki.EchoMode = textinput.EchoPassword
@@ -82,11 +89,11 @@ func initialModel(store imagestore.Store, dbTarget string) model {
 	ki.Width = 60
 
 	return model{
-		screen:    screenMenu,
-		nameInput: ni,
-		keyInput:  ki,
-		store:     store,
-		dbTarget:  dbTarget,
+		screen:     screenMenu,
+		keyInput:   ki,
+		store:      store,
+		dbTarget:   dbTarget,
+		resultBack: screenMenu,
 	}
 }
 
@@ -104,10 +111,29 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.screen = screenResult
 		return m, nil
+	case usersLoadedMsg:
+		if msg.err != nil {
+			m.err = msg.err.Error()
+			m.status = ""
+			m.resultBack = screenMenu
+			m.screen = screenResult
+			return m, nil
+		}
+		m.users = msg.users
+		if m.userCursor >= len(m.users) && len(m.users) > 0 {
+			m.userCursor = len(m.users) - 1
+		}
+		if len(m.users) == 0 {
+			m.userCursor = 0
+		}
+		m.screen = screenUsersList
+		return m, nil
 	case tea.KeyMsg:
 		switch m.screen {
 		case screenMenu:
 			return m.updateMenu(msg)
+		case screenDBMenu:
+			return m.updateDBMenu(msg)
 		case screenBackupConfirm:
 			return m.updateBackupConfirm(msg)
 		case screenRestorePick:
@@ -118,26 +144,45 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateRestoreConfirm(msg)
 		case screenInitConfirm:
 			return m.updateInitConfirm(msg)
-		case screenAdminName:
-			return m.updateAdminName(msg)
+		case screenUsersList:
+			return m.updateUsersList(msg)
+		case screenUserDeleteConfirm:
+			return m.updateUserDeleteConfirm(msg)
+		case screenEmbMenu:
+			return m.updateEmbMenu(msg)
 		case screenResult:
 			if msg.String() == "enter" || msg.String() == "esc" {
-				m.screen = screenMenu
+				back := m.resultBack
 				m.status = ""
 				m.err = ""
+				switch back {
+				case screenUsersList:
+					m.screen = screenUserRunning
+					return m, loadUsersCmd()
+				case screenDBMenu:
+					m.screen = screenDBMenu
+				case screenEmbMenu:
+					m.screen = screenEmbMenu
+				default:
+					m.screen = screenMenu
+				}
 			}
 			return m, nil
 		}
 	}
 
 	var cmd tea.Cmd
-	switch m.screen {
-	case screenAdminName:
-		m.nameInput, cmd = m.nameInput.Update(msg)
-	case screenRestoreKey:
+	if m.screen == screenRestoreKey {
 		m.keyInput, cmd = m.keyInput.Update(msg)
 	}
 	return m, cmd
+}
+
+func loadUsersCmd() tea.Cmd {
+	return func() tea.Msg {
+		users, err := user.GetAllUsers("id", "ASC")
+		return usersLoadedMsg{users: users, err: err}
+	}
 }
 
 func (m model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -154,41 +199,15 @@ func (m model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "enter":
 		switch menuItem(m.menuCursor) {
-		case menuBackup:
-			m.screen = screenBackupConfirm
-		case menuRestore:
-			names, err := backup.ListArchives()
-			if err != nil {
-				m.err = err.Error()
-				m.screen = screenResult
-				return m, nil
-			}
-			if len(names) == 0 {
-				m.err = "no backups in " + backup.DefaultDir + "/"
-				m.screen = screenResult
-				return m, nil
-			}
-			m.archives = names
-			m.archiveCursor = 0
-			m.screen = screenRestorePick
-		case menuInit:
-			m.initSeed = false
-			m.screen = screenInitConfirm
-		case menuInitSeed:
-			m.initSeed = true
-			m.screen = screenInitConfirm
-		case menuPromote:
-			m.adminMode = "promote"
-			m.nameInput.SetValue("")
-			m.nameInput.Focus()
-			m.screen = screenAdminName
-			return m, textinput.Blink
-		case menuDemote:
-			m.adminMode = "demote"
-			m.nameInput.SetValue("")
-			m.nameInput.Focus()
-			m.screen = screenAdminName
-			return m, textinput.Blink
+		case menuDatabase:
+			m.dbCursor = 0
+			m.screen = screenDBMenu
+		case menuUsers:
+			m.screen = screenUserRunning
+			return m, loadUsersCmd()
+		case menuEmbeddings:
+			m.embCursor = 0
+			m.screen = screenEmbMenu
 		case menuQuit:
 			return m, tea.Quit
 		}
@@ -196,12 +215,236 @@ func (m model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m model) updateDBMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "q", "ctrl+c":
+		return m, tea.Quit
+	case "esc":
+		m.screen = screenMenu
+	case "up", "k":
+		if m.dbCursor > 0 {
+			m.dbCursor--
+		}
+	case "down", "j":
+		if m.dbCursor < 4 {
+			m.dbCursor++
+		}
+	case "b", "B":
+		m.screen = screenBackupConfirm
+	case "r", "R":
+		return m.startRestorePick()
+	case "i", "I":
+		m.initSeed = false
+		m.screen = screenInitConfirm
+	case "s", "S":
+		m.initSeed = true
+		m.screen = screenInitConfirm
+	case "enter":
+		switch m.dbCursor {
+		case 0:
+			m.screen = screenBackupConfirm
+		case 1:
+			return m.startRestorePick()
+		case 2:
+			m.initSeed = false
+			m.screen = screenInitConfirm
+		case 3:
+			m.initSeed = true
+			m.screen = screenInitConfirm
+		case 4:
+			m.screen = screenMenu
+		}
+	}
+	return m, nil
+}
+
+func (m model) startRestorePick() (tea.Model, tea.Cmd) {
+	names, err := backup.ListArchives()
+	if err != nil {
+		m.err = err.Error()
+		m.resultBack = screenDBMenu
+		m.screen = screenResult
+		return m, nil
+	}
+	if len(names) == 0 {
+		m.err = "no backups in " + backup.DefaultDir + "/"
+		m.resultBack = screenDBMenu
+		m.screen = screenResult
+		return m, nil
+	}
+	m.archives = names
+	m.archiveCursor = 0
+	m.screen = screenRestorePick
+	return m, nil
+}
+
+func (m model) updateEmbMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "q", "ctrl+c":
+		return m, tea.Quit
+	case "esc":
+		m.screen = screenMenu
+	case "up", "k":
+		if m.embCursor > 0 {
+			m.embCursor--
+		}
+	case "down", "j":
+		if m.embCursor < 1 {
+			m.embCursor++
+		}
+	case "b", "B":
+		return m.startBackfill()
+	case "enter":
+		if m.embCursor == 0 {
+			return m.startBackfill()
+		}
+		m.screen = screenMenu
+	}
+	return m, nil
+}
+
+func (m model) startBackfill() (tea.Model, tea.Cmd) {
+	m.screen = screenEmbRunning
+	m.resultBack = screenEmbMenu
+	return m, func() tea.Msg {
+		if err := vector.InitEmbedder(); err != nil {
+			return doneMsg{err: fmt.Errorf("embedder: %w", err)}
+		}
+		remaining, err := vector.BackfillAllAdsSync()
+		if err != nil {
+			return doneMsg{err: err}
+		}
+		if remaining == 0 {
+			return doneMsg{ok: "Backfill complete (nothing left missing)"}
+		}
+		return doneMsg{ok: fmt.Sprintf(
+			"Backfill pass done; %d ads still missing", remaining,
+		)}
+	}
+}
+
+func (m model) updateUsersList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "q", "ctrl+c":
+		return m, tea.Quit
+	case "esc":
+		m.screen = screenMenu
+		return m, nil
+	case "up", "k":
+		if m.userCursor > 0 {
+			m.userCursor--
+		}
+	case "down", "j":
+		if m.userCursor < len(m.users)-1 {
+			m.userCursor++
+		}
+	case "p", "P":
+		return m.runUserAction("promote")
+	case "d", "D":
+		return m.runUserAction("demote")
+	case "s", "S":
+		return m.runUserAction("phone")
+	case "x", "X":
+		if len(m.users) == 0 {
+			return m, nil
+		}
+		u := m.users[m.userCursor]
+		if u.DeletedAt != nil {
+			m.err = u.Name + " is already deleted"
+			m.resultBack = screenUsersList
+			m.screen = screenResult
+			return m, nil
+		}
+		m.screen = screenUserDeleteConfirm
+	}
+	return m, nil
+}
+
+func (m model) selectedUser() (user.User, bool) {
+	if len(m.users) == 0 || m.userCursor < 0 ||
+		m.userCursor >= len(m.users) {
+		return user.User{}, false
+	}
+	return m.users[m.userCursor], true
+}
+
+func (m model) runUserAction(action string) (tea.Model, tea.Cmd) {
+	u, ok := m.selectedUser()
+	if !ok {
+		return m, nil
+	}
+	m.screen = screenUserRunning
+	m.resultBack = screenUsersList
+	store := m.store
+	id := u.ID
+	name := u.Name
+	isAdmin := u.IsAdmin
+	deleted := u.DeletedAt != nil
+	return m, func() tea.Msg {
+		switch action {
+		case "promote":
+			if deleted {
+				return doneMsg{err: fmt.Errorf("%s is deleted", name)}
+			}
+			if isAdmin {
+				return doneMsg{ok: name + " is already an admin"}
+			}
+			if err := user.PromoteToAdmin(id); err != nil {
+				return doneMsg{err: err}
+			}
+			return doneMsg{ok: "Promoted " + name + " to admin"}
+		case "demote":
+			if deleted {
+				return doneMsg{err: fmt.Errorf("%s is deleted", name)}
+			}
+			if !isAdmin {
+				return doneMsg{ok: name + " is not an admin"}
+			}
+			if err := user.DemoteFromAdmin(id); err != nil {
+				return doneMsg{err: err}
+			}
+			return doneMsg{ok: "Demoted " + name + " from admin"}
+		case "phone":
+			full, err := user.GetByIDIncludingDeleted(id)
+			if err != nil {
+				return doneMsg{err: err}
+			}
+			opt := "SMS notifications on"
+			if full.SMSOptedOut {
+				opt = "SMS opted out"
+			}
+			return doneMsg{ok: fmt.Sprintf(
+				"%s\nphone: %s\n%s", full.Name, full.PhoneE64, opt,
+			)}
+		case "delete":
+			if err := user.DeleteUser(id); err != nil {
+				return doneMsg{err: err}
+			}
+			_ = store.DeleteUserAccount(id)
+			_, _ = message.CloseConversationsForDeletedAccount(id)
+			return doneMsg{ok: "Deleted " + name}
+		}
+		return doneMsg{err: fmt.Errorf("unknown action")}
+	}
+}
+
+func (m model) updateUserDeleteConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc", "n":
+		m.screen = screenUsersList
+	case "y":
+		return m.runUserAction("delete")
+	}
+	return m, nil
+}
+
 func (m model) updateBackupConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
-		m.screen = screenMenu
+		m.screen = screenDBMenu
 	case "y", "enter":
 		m.screen = screenBackupRunning
+		m.resultBack = screenDBMenu
 		store := m.store
 		return m, func() tea.Msg {
 			path, err := backup.BackupToArchive("", store, false, false)
@@ -217,9 +460,10 @@ func (m model) updateBackupConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m model) updateInitConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc", "n":
-		m.screen = screenMenu
+		m.screen = screenDBMenu
 	case "y":
 		m.screen = screenInitRunning
+		m.resultBack = screenDBMenu
 		loadSeed := m.initSeed
 		return m, func() tea.Msg {
 			if err := dbinit.Rebuild(loadSeed); err != nil {
@@ -237,7 +481,7 @@ func (m model) updateInitConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m model) updateRestorePick(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
-		m.screen = screenMenu
+		m.screen = screenDBMenu
 		return m, nil
 	case "up", "k":
 		if m.archiveCursor > 0 {
@@ -280,6 +524,7 @@ func (m model) updateRestoreConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.screen = screenRestoreKey
 	case "y":
 		m.screen = screenRestoreRunning
+		m.resultBack = screenDBMenu
 		store := m.store
 		selected := m.selected
 		keyStr := strings.TrimSpace(m.keyInput.Value())
@@ -305,49 +550,6 @@ func (m model) updateRestoreConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) updateAdminName(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		m.screen = screenMenu
-		return m, nil
-	case "enter":
-		name := strings.TrimSpace(m.nameInput.Value())
-		if name == "" {
-			return m, nil
-		}
-		m.screen = screenAdminRunning
-		mode := m.adminMode
-		return m, func() tea.Msg {
-			u, err := user.GetByName(name)
-			if err != nil {
-				return doneMsg{err: fmt.Errorf("user %q: %w", name, err)}
-			}
-			switch mode {
-			case "promote":
-				if u.IsAdmin {
-					return doneMsg{ok: name + " is already an admin"}
-				}
-				if err := user.PromoteToAdmin(u.ID); err != nil {
-					return doneMsg{err: err}
-				}
-				return doneMsg{ok: "Promoted " + name + " to admin"}
-			case "demote":
-				if !u.IsAdmin {
-					return doneMsg{ok: name + " is not an admin"}
-				}
-				if err := user.DemoteFromAdmin(u.ID); err != nil {
-					return doneMsg{err: err}
-				}
-				return doneMsg{ok: "Demoted " + name + " from admin"}
-			}
-			return doneMsg{err: fmt.Errorf("unknown mode")}
-		}
-	}
-	var cmd tea.Cmd
-	m.nameInput, cmd = m.nameInput.Update(msg)
-	return m, cmd
-}
-
 func (m model) View() string {
 	title := lipgloss.NewStyle().Bold(true).Render("Rocky Ads Admin")
 	if m.dbTarget != "" {
@@ -357,26 +559,36 @@ func (m model) View() string {
 	var body string
 	switch m.screen {
 	case screenMenu:
-		items := []string{
-			"Backup database",
-			"Restore database",
-			"Init database (categories only)",
-			"Init database with seed",
-			"Promote admin",
-			"Demote admin",
+		body = menuView(m.menuCursor, []string{
+			"Database",
+			"Users",
+			"Embeddings",
 			"Quit",
+		}, "↑/↓ move · enter select · q quit")
+	case screenDBMenu:
+		body = menuView(m.dbCursor, []string{
+			"[B] Backup database",
+			"[R] Restore database",
+			"[I] Init database (categories only)",
+			"[S] Init database with seed",
+			"Back",
+		}, "↑/↓ or letter · enter select · esc back")
+	case screenEmbMenu:
+		body = menuView(m.embCursor, []string{
+			"[B] Backfill missing embeddings",
+			"Back",
+		}, "↑/↓ or b · enter select · esc back")
+	case screenUsersList:
+		body = m.usersListView()
+	case screenUserDeleteConfirm:
+		name := "?"
+		if u, ok := m.selectedUser(); ok {
+			name = u.Name
 		}
-		var b strings.Builder
-		b.WriteString("Choose an action:\n\n")
-		for i, item := range items {
-			cursor := "  "
-			if i == m.menuCursor {
-				cursor = "> "
-			}
-			b.WriteString(cursor + item + "\n")
-		}
-		b.WriteString("\n↑/↓ move · enter select · q quit")
-		body = b.String()
+		body = fmt.Sprintf(
+			"Delete user %s?\nThis soft-deletes the account.\n\ny confirm · n/esc cancel",
+			name,
+		)
 	case screenBackupConfirm:
 		body = "Create backup in " + backup.DefaultDir + "/ ?\n\n" +
 			"y/enter confirm · esc cancel"
@@ -388,8 +600,8 @@ func (m model) View() string {
 			body = "Wipe DB and reload schema + categories only?\n\n" +
 				"y confirm · n/esc cancel"
 		}
-	case screenBackupRunning, screenRestoreRunning, screenAdminRunning,
-		screenInitRunning:
+	case screenBackupRunning, screenRestoreRunning, screenInitRunning,
+		screenUserRunning, screenEmbRunning:
 		body = "Working…"
 	case screenRestorePick:
 		var b strings.Builder
@@ -412,9 +624,6 @@ func (m model) View() string {
 			"Restore %s?\nThis WIPES the current database.\n\ny confirm · n/esc cancel",
 			m.selected,
 		)
-	case screenAdminName:
-		body = m.adminMode + " user:\n\n" + m.nameInput.View() +
-			"\n\nenter submit · esc cancel"
 	case screenResult:
 		if m.err != "" {
 			body = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).
@@ -427,12 +636,63 @@ func (m model) View() string {
 	return title + "\n\n" + body + "\n"
 }
 
+func menuView(cursor int, items []string, help string) string {
+	var b strings.Builder
+	b.WriteString("Choose an action:\n\n")
+	for i, item := range items {
+		cursorMark := "  "
+		if i == cursor {
+			cursorMark = "> "
+		}
+		b.WriteString(cursorMark + item + "\n")
+	}
+	b.WriteString("\n" + help)
+	return b.String()
+}
+
+func (m model) usersListView() string {
+	var b strings.Builder
+	b.WriteString("Users (no phones until [S]):\n\n")
+	b.WriteString(fmt.Sprintf(
+		"  %-4s %-18s %-5s %-19s %s\n",
+		"ID", "Name", "Admin", "Created", "Deleted",
+	))
+	if len(m.users) == 0 {
+		b.WriteString("  (no users)\n")
+	}
+	for i, u := range m.users {
+		cursor := "  "
+		if i == m.userCursor {
+			cursor = "> "
+		}
+		admin := "no"
+		if u.IsAdmin {
+			admin = "yes"
+		}
+		deleted := "—"
+		if u.DeletedAt != nil {
+			deleted = u.DeletedAt.Format(time.DateTime)
+		}
+		name := u.Name
+		if len(name) > 18 {
+			name = name[:15] + "…"
+		}
+		b.WriteString(fmt.Sprintf(
+			"%s%-4d %-18s %-5s %-19s %s\n",
+			cursor, u.ID, name, admin,
+			u.CreatedAt.Format(time.DateTime), deleted,
+		))
+	}
+	b.WriteString("\n↑/↓ select · [P]romote [D]emote [S]how phone [X] delete · esc back")
+	return b.String()
+}
+
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "-h", "--help", "help":
 			fmt.Print(`Usage:
-  admin    Interactive TUI (backup, restore, init DB, promote/demote)
+  admin    Interactive TUI (Database, Users, Embeddings)
 `)
 			return
 		default:

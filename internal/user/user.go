@@ -65,7 +65,7 @@ func processUserRow(id int, encryptedNameBytes, nameNonceBytes []byte,
 	encryptedPhoneBytes, phoneNonceBytes []byte, passwordHash, passwordSalt,
 	passwordAlgo string, phoneVerifiedInt int, createdAt time.Time, isAdminInt int,
 	smsOptedOutInt, hasAccountPictureInt int, accountPictureURL sql.NullString,
-	deletedAt *time.Time) (User, error) {
+	deletedAt *time.Time, withPhone bool) (User, error) {
 	var u User
 
 	u.ID = id
@@ -93,9 +93,11 @@ func processUserRow(id int, encryptedNameBytes, nameNonceBytes []byte,
 	if err != nil {
 		return User{}, fmt.Errorf("failed to decrypt name: %w", err)
 	}
-	u.PhoneE64, err = decryptPhone(u.ID, u.EncryptedPhone, u.PhoneNonce)
-	if err != nil {
-		return User{}, fmt.Errorf("failed to decrypt phone: %w", err)
+	if withPhone {
+		u.PhoneE64, err = decryptPhone(u.ID, u.EncryptedPhone, u.PhoneNonce)
+		if err != nil {
+			return User{}, fmt.Errorf("failed to decrypt phone: %w", err)
+		}
 	}
 
 	return u, nil
@@ -107,6 +109,10 @@ type scanner interface {
 }
 
 func scanUserFields(s scanner) (User, error) {
+	return scanUserFieldsOpt(s, true)
+}
+
+func scanUserFieldsOpt(s scanner, withPhone bool) (User, error) {
 	var id int
 	var encryptedNameBytes, nameNonceBytes []byte
 	var encryptedPhoneBytes, phoneNonceBytes []byte
@@ -150,6 +156,7 @@ func scanUserFields(s scanner) (User, error) {
 		hasAccountPictureInt,
 		accountPictureURL,
 		deletedAt,
+		withPhone,
 	)
 }
 
@@ -484,12 +491,12 @@ func UpdatePassword(userID int, hash, salt, algo string) error {
 	return err
 }
 
-// GetAllUsers returns all users (including deleted) with optional sorting
+// GetAllUsers returns all users (including deleted) with optional sorting.
+// Phones are not decrypted; use GetByName / GetByID when a phone is needed.
 func GetAllUsers(sortBy string, sortOrder string) ([]User, error) {
 	validSortColumns := map[string]bool{
 		"id":         true,
 		"name":       true,
-		"phone":      true,
 		"is_admin":   true,
 		"created_at": true,
 		"deleted_at": true,
@@ -505,7 +512,7 @@ func GetAllUsers(sortBy string, sortOrder string) ([]User, error) {
 
 	query := userSelectFields
 
-	needsInMemorySort := sortBy == "name" || sortBy == "phone"
+	needsInMemorySort := sortBy == "name"
 	if !needsInMemorySort {
 		query += " ORDER BY " + sortBy + " " + sortOrder
 	}
@@ -518,7 +525,7 @@ func GetAllUsers(sortBy string, sortOrder string) ([]User, error) {
 
 	var users []User
 	for rows.Next() {
-		u, err := scanUserFields(rows)
+		u, err := scanUserFieldsOpt(rows, false)
 		if err != nil {
 			return nil, err
 		}
@@ -531,13 +538,7 @@ func GetAllUsers(sortBy string, sortOrder string) ([]User, error) {
 
 	if needsInMemorySort {
 		sort.Slice(users, func(i, j int) bool {
-			var less bool
-			switch sortBy {
-			case "name":
-				less = users[i].Name < users[j].Name
-			case "phone":
-				less = users[i].PhoneE64 < users[j].PhoneE64
-			}
+			less := users[i].Name < users[j].Name
 			if sortOrder == "DESC" {
 				return !less
 			}

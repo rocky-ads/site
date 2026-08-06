@@ -17,16 +17,6 @@ type UserProfileData struct {
 	AccountPictureURL string
 }
 
-// UserRowData holds presentation fields for an admin user table row.
-type UserRowData struct {
-	ID        int
-	Name      string
-	PhoneE64  string
-	IsAdmin   bool
-	CreatedAt time.Time
-	DeletedAt *time.Time
-}
-
 // AdHistoryEntry holds one edit-history block on the ad detail page.
 type AdHistoryEntry struct {
 	Header       string
@@ -130,12 +120,11 @@ type CategoryOption struct {
 
 // SMSQueueEntryInput holds raw queue entry fields for UI formatting.
 type SMSQueueEntryInput struct {
-	ID            int
-	RecipientName string
-	AdTitle       string
-	Status        string
-	CreatedAt     time.Time
-	ProcessedAt   *time.Time
+	ID          int
+	AdTitle     string
+	Status      string
+	CreatedAt   time.Time
+	ProcessedAt *time.Time
 }
 
 // MessageItemData holds presentation fields for a single chat message.
@@ -230,8 +219,6 @@ type ClickAdminData struct {
 	ActiveLast7Days int
 	TopAds          []ClickAdRow
 	TopImages       []ClickImageRow
-	RecentActivity  []ClickActivityRow
-	TopUsers        []ClickUserRow
 }
 
 // ClickAdRow is one row in the top-ads table.
@@ -253,24 +240,4 @@ type ClickImageRow struct {
 	UserCount  int
 	Clicks     int
 	LastClick  string
-}
-
-// ClickActivityRow is one row in recent click activity.
-type ClickActivityRow struct {
-	When       string
-	UserName   string
-	UserID     int
-	AdID       int
-	AdTitle    string
-	ClickLabel string
-	ClickCount int
-}
-
-// ClickUserRow is one row in the top-users table.
-type ClickUserRow struct {
-	UserID      int
-	UserName    string
-	AdClicks    int
-	ImageClicks int
-	LastActive  string
 }
