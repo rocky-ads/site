@@ -537,7 +537,10 @@ func copyAdLink(adID int) g.Node {
 }
 
 func formatExpiresIn(expiresAt time.Time) string {
-	now := time.Now()
+	return formatExpiresInAt(expiresAt, time.Now())
+}
+
+func formatExpiresInAt(expiresAt, now time.Time) string {
 	if expiresAt.Sub(now) < 24*time.Hour {
 		return "Expires soon"
 	}

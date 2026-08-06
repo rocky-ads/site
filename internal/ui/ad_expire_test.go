@@ -10,7 +10,9 @@ import (
 )
 
 func TestFormatExpiresIn(t *testing.T) {
-	now := time.Now()
+	// Fixed midday UTC so calendar-day math does not depend on wall clock
+	// (AddDate+hour near midnight UTC used to flip "1 day" → "2 days" in CI).
+	now := time.Date(2026, 8, 6, 12, 0, 0, 0, time.UTC)
 	tests := []struct {
 		name string
 		at   time.Time
@@ -18,8 +20,8 @@ func TestFormatExpiresIn(t *testing.T) {
 	}{
 		{"soon_minutes", now.Add(30 * time.Minute), "Expires soon"},
 		{"soon_hours", now.Add(5 * time.Hour), "Expires soon"},
-		{"one_day", now.AddDate(0, 0, 1).Add(time.Hour), "Expires in 1 day"},
-		{"days", now.AddDate(0, 0, 5).Add(time.Hour), "Expires in 5 days"},
+		{"one_day", now.AddDate(0, 0, 1), "Expires in 1 day"},
+		{"days", now.AddDate(0, 0, 5), "Expires in 5 days"},
 		{"one_month", now.AddDate(0, 1, 0), "Expires in 1 month"},
 		{"one_month_days", now.AddDate(0, 1, 12), "Expires in 1 month 12 days"},
 		{"months", now.AddDate(0, 2, 0), "Expires in 2 months"},
@@ -30,7 +32,7 @@ func TestFormatExpiresIn(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := formatExpiresIn(tt.at)
+			got := formatExpiresInAt(tt.at, now)
 			if got != tt.want {
 				t.Fatalf("formatExpiresIn(%v) = %q, want %q", tt.at, got, tt.want)
 			}
