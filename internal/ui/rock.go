@@ -68,33 +68,44 @@ func StaticRockIcons(rockCount int) g.Node {
 	)
 }
 
+func rockThrowLabel(currentUserID, ownerID int, inquirerName string) string {
+	if currentUserID == ownerID {
+		return fmt.Sprintf("Throw Rock at %s", inquirerName)
+	}
+	return "Throw Rock at Ad"
+}
+
 // RockThrowLink renders a button to throw/unthrow a rock in the conversation modal
-// hasThrownRock: whether the current user has thrown a rock at this conversation
-// canThrow: whether the current user can throw a rock (is participant and has < 3 rocks)
-func RockThrowLink(conversationID int, hasThrownRock, canThrow bool,
-	csrfToken string) g.Node {
-	// Only show if user has thrown a rock (to remove it) OR user can throw a rock
-	if !hasThrownRock && !canThrow {
+func RockThrowLink(d ConversationModalData) g.Node {
+	if !d.HasThrownRock && !d.CanThrowRock {
 		return g.Raw("")
 	}
 
 	var attrs []g.Node
 	var label string
 
-	if hasThrownRock {
+	if d.HasThrownRock {
 		label = "Unthrow Rock"
 		attrs = []g.Node{
-			hx.Delete(fmt.Sprintf("/auth/conversation/%d/rock/unthrow", conversationID)),
-			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
-			hx.Target(ConversationMessagesSelector(conversationID)),
+			hx.Delete(fmt.Sprintf(
+				"/auth/conversation/%d/rock/unthrow", d.ConversationID)),
+			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, d.CSRFToken)),
+			hx.Target(ConversationMessagesSelector(d.ConversationID)),
 			hx.Swap(conversationMessagesAppendSwap()),
 		}
-	} else if canThrow {
-		label = "Throw Rock"
+	} else if d.CanThrowRock {
+		label = rockThrowLabel(d.CurrentUserID, d.OwnerID, d.InquirerName)
+		var postURL string
+		if d.ConversationID == 0 {
+			postURL = fmt.Sprintf("/auth/ad/%d/rock/throw", d.AdID)
+		} else {
+			postURL = fmt.Sprintf(
+				"/auth/conversation/%d/rock/throw", d.ConversationID)
+		}
 		attrs = []g.Node{
-			hx.Post(fmt.Sprintf("/auth/conversation/%d/rock/throw", conversationID)),
-			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, csrfToken)),
-			hx.Target(ConversationMessagesSelector(conversationID)),
+			hx.Post(postURL),
+			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, d.CSRFToken)),
+			hx.Target(ConversationMessagesSelector(d.ConversationID)),
 			hx.Swap(conversationMessagesAppendSwap()),
 		}
 	} else {
@@ -107,7 +118,7 @@ func RockThrowLink(conversationID int, hasThrownRock, canThrow bool,
 		Class("flex-shrink-0 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"),
 		Title(label),
 		g.Attr("aria-label", label),
-		g.Attr("aria-pressed", fmt.Sprintf("%t", hasThrownRock)),
+		g.Attr("aria-pressed", fmt.Sprintf("%t", d.HasThrownRock)),
 		g.Text(label),
 	)
 }

@@ -147,12 +147,16 @@ const (
 // RockEventData holds presentation fields for a rock journal timeline entry.
 // EventAt is in the viewer's timezone.
 type RockEventData struct {
-	ThrowerID     int
-	CurrentUserID int
-	Kind          RockEventKind
-	EventAt       time.Time
-	OwnerID       int
-	InquirerID    int
+	ConversationID     int
+	ThrowerID          int
+	CurrentUserID      int
+	Kind               RockEventKind
+	EventAt            time.Time
+	OwnerID            int
+	InquirerID         int
+	OwnerName          string
+	InquirerName       string
+	ShowAssessmentHint bool
 }
 
 // CloseEventData holds presentation fields for an ad/account close journal entry.

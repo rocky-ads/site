@@ -43,10 +43,14 @@ func TestRenderMessageAppendOOB(t *testing.T) {
 
 func TestRenderRockEventAppendOOB(t *testing.T) {
 	event := ui.RockEventData{
-		ThrowerID: 4, CurrentUserID: 3,
+		ConversationID: 5,
+		ThrowerID:      4, CurrentUserID: 3,
 		Kind:    ui.RockEventThrown,
 		EventAt: time.Now().UTC(),
 		OwnerID: 3, InquirerID: 4,
+		OwnerName:          "sfeldma",
+		InquirerName:       "bob",
+		ShowAssessmentHint: true,
 	}
 	var buf bytes.Buffer
 	node := ui.RockEventMessage(event, ui.ConversationMessageAppendOOB(5))
@@ -57,8 +61,24 @@ func TestRenderRockEventAppendOOB(t *testing.T) {
 	if !strings.Contains(html, `hx-swap-oob="beforeend:#conversation-5-messages-list"`) {
 		t.Fatalf("missing oob attr: %s", html)
 	}
-	if !strings.Contains(html, "Rock thrown") {
+	if !strings.Contains(html, "Rock thrown at ad by bob") {
 		t.Fatalf("missing rock event label: %s", html)
+	}
+	if !strings.Contains(html, "for dispute assessment") {
+		t.Fatalf("missing assessment hint: %s", html)
+	}
+	if !strings.Contains(html, "rock-assessment-hint") {
+		t.Fatalf("missing assessment hint class: %s", html)
+	}
+
+	event.ShowAssessmentHint = false
+	buf.Reset()
+	if err := ui.RockEventMessage(event).Render(&buf); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), "for dispute assessment") {
+		t.Fatalf("hint should be absent without ShowAssessmentHint: %s",
+			buf.String())
 	}
 }
 

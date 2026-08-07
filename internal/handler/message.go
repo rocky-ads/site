@@ -65,19 +65,23 @@ func messageItemData(msg message.Message, currentUserID int,
 	}
 }
 
-func rockEventData(event message.RockJournalEvent, currentUserID, ownerID,
-	inquirerID int) ui.RockEventData {
+func rockEventData(event message.RockJournalEvent, conversationID,
+	currentUserID, ownerID, inquirerID int,
+	ownerName, inquirerName string) ui.RockEventData {
 	kind := ui.RockEventThrown
 	if event.Kind == "unthrown" {
 		kind = ui.RockEventUnthrown
 	}
 	return ui.RockEventData{
-		ThrowerID:     event.UserID,
-		CurrentUserID: currentUserID,
-		Kind:          kind,
-		EventAt:       event.CreatedAt,
-		OwnerID:       ownerID,
-		InquirerID:    inquirerID,
+		ConversationID: conversationID,
+		ThrowerID:      event.UserID,
+		CurrentUserID:  currentUserID,
+		Kind:           kind,
+		EventAt:        event.CreatedAt,
+		OwnerID:        ownerID,
+		InquirerID:     inquirerID,
+		OwnerName:      ownerName,
+		InquirerName:   inquirerName,
 	}
 }
 
@@ -86,8 +90,14 @@ func rockEventsFromView(view message.ConversationModalView,
 	conv := view.Conversation
 	events := make([]ui.RockEventData, len(view.RockEvents))
 	for i, event := range view.RockEvents {
-		events[i] = rockEventData(event, currentUserID, conv.OwnerID,
-			conv.InquirerID)
+		events[i] = rockEventData(event, conv.ID, currentUserID, conv.OwnerID,
+			conv.InquirerID, view.OwnerName, view.InquirerName)
+	}
+	if conv.RockThrowerID != nil && len(events) > 0 {
+		last := &events[len(events)-1]
+		if last.Kind == ui.RockEventThrown && last.ConversationID > 0 {
+			last.ShowAssessmentHint = true
+		}
 	}
 	return events
 }
@@ -223,9 +233,14 @@ func buildRockEventUpdateNodes(conv message.Conversation, viewerID int,
 			ui.ConversationMessageAppendOOB(conv.ID))
 	}
 
+	d := rockEventData(lastEvent, conv.ID, viewerID,
+		conv.OwnerID, conv.InquirerID, view.OwnerName, view.InquirerName)
+	if conv.RockThrowerID != nil && d.Kind == ui.RockEventThrown {
+		d.ShowAssessmentHint = true
+	}
+
 	nodes := []g.Node{
-		ui.RockEventMessage(rockEventData(lastEvent, viewerID,
-			conv.OwnerID, conv.InquirerID), rockAttrs...),
+		ui.RockEventMessage(d, rockAttrs...),
 		ui.ConversationMessageActionsSwapOOB(
 			conversationModalDataFromView(view, viewerID, csrfToken, "", nil)),
 	}

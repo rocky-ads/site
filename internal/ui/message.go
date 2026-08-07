@@ -65,6 +65,36 @@ func MessageItem(d MessageItemData, attrs ...g.Node) g.Node {
 	)
 }
 
+func rockEventLabel(d RockEventData) string {
+	action := "Rock thrown"
+	if d.Kind == RockEventUnthrown {
+		action = "Rock unthrown"
+	}
+
+	var target string
+	if d.ThrowerID == d.InquirerID {
+		target = "at ad"
+	} else if d.CurrentUserID == d.InquirerID {
+		target = "at you"
+	} else {
+		target = fmt.Sprintf("at %s", d.InquirerName)
+	}
+
+	var actor string
+	switch d.ThrowerID {
+	case d.CurrentUserID:
+		actor = "you"
+	case d.OwnerID:
+		actor = d.OwnerName
+	case d.InquirerID:
+		actor = d.InquirerName
+	default:
+		actor = "someone"
+	}
+
+	return fmt.Sprintf("%s %s by %s", action, target, actor)
+}
+
 // RockEventMessage renders a journal entry for a rock throw or unthrow.
 func RockEventMessage(d RockEventData, attrs ...g.Node) g.Node {
 	isSent := d.ThrowerID == d.CurrentUserID
@@ -79,10 +109,7 @@ func RockEventMessage(d RockEventData, attrs ...g.Node) g.Node {
 		containerClass = "flex justify-start"
 	}
 
-	label := "Rock thrown"
-	if d.Kind == RockEventUnthrown {
-		label = "Rock unthrown"
-	}
+	label := rockEventLabel(d)
 
 	fullTimestamp := d.EventAt.Format("2006-01-02 03:04:05 PM MST")
 
@@ -90,6 +117,13 @@ func RockEventMessage(d RockEventData, attrs ...g.Node) g.Node {
 		Class(containerClass + " mb-2"),
 		Title(fullTimestamp),
 	}, attrs...)
+
+	scalesClass := "w-6 h-6 flex-shrink-0"
+	if isSent {
+		scalesClass += " invert"
+	} else {
+		scalesClass += " dark:invert dark:opacity-80"
+	}
 
 	return Div(
 		g.Group(allAttrs),
@@ -100,9 +134,24 @@ func RockEventMessage(d RockEventData, attrs ...g.Node) g.Node {
 				Img(
 					Src("/images/rock.svg"),
 					Alt(label),
-					Class("w-5 h-5 flex-shrink-0"),
+					Class("w-8 h-8 flex-shrink-0"),
 				),
-				g.Text(label),
+				Div(
+					Class("min-w-0 flex flex-col gap-1"),
+					Span(g.Text(label)),
+					g.If(d.ShowAssessmentHint,
+						Span(
+							Class("rock-assessment-hint"),
+							g.Text("Click "),
+							Img(
+								Src("/images/balance.svg"),
+								Alt(""),
+								Class(scalesClass),
+							),
+							g.Text(" for dispute assessment"),
+						),
+					),
+				),
 			),
 			Div(
 				Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1 px-1"),
@@ -251,8 +300,7 @@ func ConversationMessageActionsBanner(d ConversationModalData,
 		g.If(d.CanPost && d.RockThrowerID != nil,
 			RockOpinionLink(d.ConversationID),
 		),
-		RockThrowLink(d.ConversationID, d.HasThrownRock,
-			d.CanThrowRock, d.CSRFToken),
+		RockThrowLink(d),
 	)
 }
 

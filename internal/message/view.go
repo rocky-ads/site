@@ -118,6 +118,7 @@ func BuildConversationModal(conv Conversation, currentUserID int,
 	messagingOK := MessagingAllowed(conv)
 	if conv.ID == 0 {
 		view.CanPost = messagingOK && a.IsActive()
+		view.CanThrowRock = view.CanPost && userUnderRockLimit(currentUserID)
 		return view, nil
 	}
 
@@ -146,6 +147,14 @@ func rockCountForUser(userID int) int {
 	return count
 }
 
+func userUnderRockLimit(userID int) bool {
+	userRockCount, err := rock.GetUserRockCount(userID)
+	if err != nil || userRockCount >= config.MaxOutstandingRocks {
+		return false
+	}
+	return true
+}
+
 func rockThrowPermissions(conversationID, userID int,
 	canPost bool) (hasThrown, canThrow bool) {
 	hasThrown, err := rock.HasUserThrownRock(userID, conversationID)
@@ -159,8 +168,7 @@ func rockThrowPermissions(conversationID, userID int,
 	if err != nil || rockCount > 0 {
 		return hasThrown, false
 	}
-	userRockCount, err := rock.GetUserRockCount(userID)
-	if err != nil || userRockCount >= config.MaxOutstandingRocks {
+	if !userUnderRockLimit(userID) {
 		return hasThrown, false
 	}
 	return hasThrown, true

@@ -2720,6 +2720,17 @@
   .rock-opinion-link.htmx-request img {
     animation: var(--animate-spin);
   }
+  .rock-assessment-hint {
+    display: none;
+    align-items: center;
+    gap: calc(var(--spacing) * 1);
+    font-size: var(--text-xs);
+    line-height: var(--tw-leading, var(--text-xs--line-height));
+    opacity: 90%;
+  }
+  body:has(.rock-opinion-link) .rock-assessment-hint {
+    display: inline-flex;
+  }
   .rock-throw-link {
     display: inline-flex;
     flex-shrink: 0;
