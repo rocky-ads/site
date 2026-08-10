@@ -182,7 +182,7 @@ func GetConversation(conversationID, userID int) (Conversation, error) {
 	query := `
 		SELECT ` + conversationColumns + `
 		FROM conversations c
-		WHERE c.id = $1 AND (c.owner_id = $2 OR c.inquirer_id = $3 OR c.rock_thrower_id IS NOT NULL)
+		WHERE c.id = $1 AND (c.owner_id = $2 OR c.inquirer_id = $3)
 	`
 	conv, err := scanConversationRow(db.QueryRow(query, conversationID, userID, userID))
 	if err != nil {
@@ -211,7 +211,8 @@ func GetConversationByID(conversationID int) (Conversation, error) {
 	return conv, nil
 }
 
-// IsPublic checks if a conversation is public (has a rock thrown)
+// HasRock reports whether a conversation currently has a rock thrown
+// (assessment may be public; the message thread is not).
 func IsPublic(conversationID int) (bool, error) {
 	var rockThrowerID sql.NullInt64
 	err := db.QueryRow(`

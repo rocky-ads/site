@@ -10,16 +10,11 @@ import (
 )
 
 // RockOpinionModalData holds presentation fields for a dispute assessment modal.
+// Party identities are never shown; roles are Owner / Inquirer only.
 type RockOpinionModalData struct {
 	ConversationID   int
 	AdID             int
 	AdTitle          string
-	OwnerID          int
-	InquirerID       int
-	OwnerName        string
-	InquirerName     string
-	CurrentUserID    int
-	RockThrowerID    int
 	Unavailable      bool
 	Summary          string
 	AssessmentScore  int
@@ -125,8 +120,6 @@ func opinionSection(title, body string) g.Node {
 func RockOpinionModal(d RockOpinionModalData) g.Node {
 	modalName := fmt.Sprintf("rock-opinion-%d", d.ConversationID)
 
-	var rockUserID = d.RockThrowerID
-
 	return g.Group([]g.Node{
 		modalBackdrop(modalName),
 		Div(
@@ -148,15 +141,9 @@ func RockOpinionModal(d RockOpinionModalData) g.Node {
 							Class("text-sm font-semibold text-zinc-800 dark:text-zinc-200"),
 							g.Text("Dispute assessment"),
 						),
-						Div(
+						P(
 							Class("text-xs text-zinc-500 dark:text-zinc-400 mt-1"),
-							g.Text("Rock thrown by: "),
-							Span(Class("text-zinc-700 dark:text-zinc-300 font-medium"),
-								g.If(rockUserID == d.OwnerID,
-									UserNameLink(d.OwnerID, d.OwnerName)),
-								g.If(rockUserID == d.InquirerID,
-									UserNameLink(d.InquirerID, d.InquirerName)),
-							),
+							g.Text("Parties are shown only as Owner and Inquirer."),
 						),
 					),
 					modalClose(modalName),

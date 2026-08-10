@@ -747,11 +747,6 @@ func SendConversationMessageHandler(c *fiber.Ctx) error {
 
 func rockOpinionModalData(conv message.Conversation, currentUserID int,
 	tz *time.Location) (ui.RockOpinionModalData, error) {
-	ownerName, inquirerName, err := message.OwnerAndInquirerNames(conv)
-	if err != nil {
-		return ui.RockOpinionModalData{}, err
-	}
-
 	a, err := ad.GetAd(currentUserID, conv.AdID, tz)
 	if err != nil {
 		return ui.RockOpinionModalData{}, err
@@ -761,15 +756,7 @@ func rockOpinionModalData(conv message.Conversation, currentUserID int,
 		ConversationID: conv.ID,
 		AdID:           conv.AdID,
 		AdTitle:        a.Title,
-		OwnerID:        conv.OwnerID,
-		InquirerID:     conv.InquirerID,
-		OwnerName:      ownerName,
-		InquirerName:   inquirerName,
-		CurrentUserID:  currentUserID,
 		AdFacts:        rockopinion.AdFactLines(a, tz),
-	}
-	if conv.RockThrowerID != nil {
-		d.RockThrowerID = *conv.RockThrowerID
 	}
 
 	op, err := rockopinion.GetOrGenerate(conv, tz)
@@ -819,9 +806,6 @@ func RockOpinionHandler(c *fiber.Ctx) error {
 	conv, err := message.GetConversationByID(conversationID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
-	}
-	if !message.CanViewConversation(conv, currentUserID) {
-		return fiber.NewError(fiber.StatusForbidden, "Conversation not found")
 	}
 	if conv.RockThrowerID == nil {
 		return fiber.NewError(fiber.StatusNotFound, "No dispute assessment")

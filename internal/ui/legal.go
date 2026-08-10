@@ -358,7 +358,10 @@ func TermsOfServicePage() []g.Node {
 				),
 				legalList(
 					legalLi(g.Text(
-						"Rocks on an ad are visible to other users")),
+						"Rocks on an ad are visible on the listing; "+
+							"anyone can open the dispute assessment "+
+							"(parties labeled only as Owner and "+
+							"Inquirer)")),
 					legalLi(g.Textf(
 						"An ad with more than %d rocks is excluded "+
 							"from search listings",

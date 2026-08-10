@@ -26,10 +26,10 @@ func TestIntegrationOpenConversationReadMarking(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("skips read for non-participant", func(t *testing.T) {
+	t.Run("denies non-participant even when rocked", func(t *testing.T) {
 		_, marked, err := message.OpenConversation(convID, 5)
-		if err != nil {
-			t.Fatal(err)
+		if err != message.ErrModalAccess {
+			t.Fatalf("err = %v, want ErrModalAccess", err)
 		}
 		if marked {
 			t.Fatal("non-participant should not mark conversation read")

@@ -35,17 +35,15 @@ type ConversationModalView struct {
 }
 
 func CanViewConversation(conv Conversation, userID int) bool {
-	return conv.RockThrowerID != nil ||
-		conv.OwnerID == userID ||
-		conv.InquirerID == userID
+	return userID > 0 && IsParticipant(conv, userID)
 }
 
 func IsParticipant(conv Conversation, userID int) bool {
 	return conv.OwnerID == userID || conv.InquirerID == userID
 }
 
-// OpenConversation loads a conversation the user may view and marks it read
-// when the user is a participant. The second return value is true when marked.
+// OpenConversation loads a conversation the user may view (participants only)
+// and marks it read. The second return value is true when marked.
 func OpenConversation(conversationID, userID int) (Conversation, bool, error) {
 	conv, err := GetConversationByID(conversationID)
 	if err != nil {
@@ -55,10 +53,8 @@ func OpenConversation(conversationID, userID int) (Conversation, bool, error) {
 		return Conversation{}, false, ErrModalAccess
 	}
 	markedRead := false
-	if IsParticipant(conv, userID) {
-		if err := MarkConversationAsRead(conversationID, userID); err == nil {
-			markedRead = true
-		}
+	if err := MarkConversationAsRead(conversationID, userID); err == nil {
+		markedRead = true
 	}
 	return conv, markedRead, nil
 }

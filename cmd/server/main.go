@@ -70,6 +70,7 @@ func setupApp() *fiber.App {
 	app.Get("/faq", handler.FAQHandler)
 	app.Get("/faq/:section", handler.FAQHandler)
 	app.Get("/ad/:id", handler.AdHandler)
+	app.Get("/ad/:id/rock/:ordinal", handler.PublicAdRockOpinionHandler)
 	app.Get("/c/:category", handler.ShortCategoryHandler)
 
 	// Auth routes

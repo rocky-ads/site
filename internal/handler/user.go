@@ -434,18 +434,17 @@ func UserRockConversationHandler(c *fiber.Ctx) error {
 	tz := cookie.GetTimezone(c)
 	csrfToken := local.GetCSRFToken(c)
 
-	// Get conversation ID by ordinal
 	conversationID, err := rock.GetConversationIDForUserRockByOrdinal(userID, ordinal)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Rock conversation not found")
 	}
 
-	conv, _, err := message.OpenConversation(conversationID, currentUserID)
-	if errors.Is(err, message.ErrModalAccess) {
-		return fiber.NewError(fiber.StatusForbidden, "Conversation not found")
-	}
+	conv, err := message.GetConversationByID(conversationID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
+	}
+	if conv.RockThrowerID == nil {
+		return fiber.NewError(fiber.StatusNotFound, "No dispute assessment")
 	}
 
 	if message.IsParticipant(conv, currentUserID) {

@@ -43,7 +43,7 @@ func renderRockIconsByOrdinal(rockCount int, urlPattern string, id int) g.Node {
 // Each icon links to a rock by ordinal position
 // Only shows rocks bound to the ad (when inquirer throws)
 func RockIcons(adID int, rockCount int) g.Node {
-	return renderRockIconsByOrdinal(rockCount, "/auth/ad/%d/rock/%d", adID)
+	return renderRockIconsByOrdinal(rockCount, "/ad/%d/rock/%d", adID)
 }
 
 // UserRockIcons renders clickable rock icons for a user

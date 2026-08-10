@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -124,6 +123,14 @@ func adTagDisplays(a ad.Ad) []string {
 }
 
 func AdRockConversationHandler(c *fiber.Ctx) error {
+	return renderAdRockOpinion(c)
+}
+
+func PublicAdRockOpinionHandler(c *fiber.Ctx) error {
+	return renderAdRockOpinion(c)
+}
+
+func renderAdRockOpinion(c *fiber.Ctx) error {
 	adID, err := c.ParamsInt("id")
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
@@ -136,25 +143,20 @@ func AdRockConversationHandler(c *fiber.Ctx) error {
 
 	currentUserID := local.GetUserID(c)
 	tz := cookie.GetTimezone(c)
-	csrfToken := local.GetCSRFToken(c)
 
-	// Get conversation ID by ordinal
 	conversationID, err := rock.GetPublicConversationIDByOrdinal(adID, ordinal)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Rock conversation not found")
 	}
 
-	conv, _, err := message.OpenConversation(conversationID, currentUserID)
-	if errors.Is(err, message.ErrModalAccess) {
-		return fiber.NewError(fiber.StatusForbidden, "Conversation not found")
-	}
+	conv, err := message.GetConversationByID(conversationID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Conversation not found")
 	}
-
-	if message.IsParticipant(conv, currentUserID) {
-		return renderConversationModal(c, conv, currentUserID, tz, csrfToken)
+	if conv.RockThrowerID == nil {
+		return fiber.NewError(fiber.StatusNotFound, "No dispute assessment")
 	}
+
 	return renderRockOpinionModal(c, conv, currentUserID, tz)
 }
 
