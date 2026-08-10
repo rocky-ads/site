@@ -14,7 +14,7 @@ func TestMessagesAndRockEventsFromJournal(t *testing.T) {
 	t3 := time.Date(2026, 7, 10, 22, 40, 0, 0, loc)
 
 	j := journal.AppendMessage("", 12, "hello", t1, loc)
-	j = journal.AppendRock(j, journal.RockThrown, 12, t2, loc)
+	j = journal.AppendRock(j, journal.RockThrown, 12, "conduct", t2, loc)
 	j = journal.AppendMessage(j, 34, "reply", t3, loc)
 
 	msgs := MessagesFromJournal(7, j, loc)
@@ -35,6 +35,12 @@ func TestMessagesAndRockEventsFromJournal(t *testing.T) {
 	}
 	if events[0].Kind != "thrown" || events[0].UserID != 12 {
 		t.Errorf("event: %+v", events[0])
+	}
+	if events[0].Reason != "conduct" {
+		t.Errorf("reason = %q", events[0].Reason)
+	}
+	if LatestThrownReason(j) != "conduct" {
+		t.Errorf("LatestThrownReason = %q", LatestThrownReason(j))
 	}
 }
 

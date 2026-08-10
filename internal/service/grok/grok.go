@@ -17,9 +17,21 @@ type GrokRequest struct {
 	Messages        []GrokMessage `json:"messages"`
 }
 
+// GrokMessage is a chat message. Content is either a string or []ContentPart.
 type GrokMessage struct {
 	Role    string `json:"role"`
-	Content string `json:"content"`
+	Content any    `json:"content"`
+}
+
+type ContentPart struct {
+	Type     string    `json:"type"`
+	Text     string    `json:"text,omitempty"`
+	ImageURL *ImageURL `json:"image_url,omitempty"`
+}
+
+type ImageURL struct {
+	URL    string `json:"url"`
+	Detail string `json:"detail,omitempty"`
 }
 
 type GrokResponse struct {
@@ -39,6 +51,14 @@ func CallGrok(systemPrompt, userPrompt string) (string, error) {
 // requests sharing a conv ID route to the same server, maximizing prompt
 // cache hits on a constant system prompt.
 func CallGrokConv(systemPrompt, userPrompt, convID string) (string, error) {
+	return CallGrokConvParts(systemPrompt, []ContentPart{
+		{Type: "text", Text: userPrompt},
+	}, convID)
+}
+
+// CallGrokConvParts sends a multimodal user message (text + images).
+func CallGrokConvParts(systemPrompt string, parts []ContentPart,
+	convID string) (string, error) {
 	apiKey := config.GrokAPIKey
 	if apiKey == "" {
 		return "", fmt.Errorf("GROK_API_KEY environment variable not set")
@@ -54,7 +74,7 @@ func CallGrokConv(systemPrompt, userPrompt, convID string) (string, error) {
 			},
 			{
 				Role:    "user",
-				Content: userPrompt,
+				Content: parts,
 			},
 		},
 	}
@@ -64,10 +84,8 @@ func CallGrokConv(systemPrompt, userPrompt, convID string) (string, error) {
 		return "", fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
-	//printGrokRequest(payload, convID)
-
 	logger.Debug("Grok API request",
-		"systemPrompt", systemPrompt, "userPrompt", userPrompt)
+		"systemPrompt", systemPrompt, "parts", len(parts))
 
 	req, err := http.NewRequest("POST", config.GrokAPIURL, bytes.NewBuffer(data))
 	if err != nil {
@@ -89,7 +107,8 @@ func CallGrokConv(systemPrompt, userPrompt, convID string) (string, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("Grok API returned status %d: %s", resp.StatusCode, string(body))
+		return "", fmt.Errorf("Grok API returned status %d: %s",
+			resp.StatusCode, string(body))
 	}
 
 	var grokResp GrokResponse
@@ -102,21 +121,5 @@ func CallGrokConv(systemPrompt, userPrompt, convID string) (string, error) {
 		return "", fmt.Errorf("no response from Grok API")
 	}
 
-	//fmt.Println("RESPONSE")
-	//fmt.Println(grokResp.Choices[0].Message.Content)
-
 	return grokResp.Choices[0].Message.Content, nil
 }
-
-/*
-func printGrokRequest(payload GrokRequest, convID string) {
-	fmt.Printf("Grok request: model=%s reasoning=%s", payload.Model, payload.ReasoningEffort)
-	if convID != "" {
-		fmt.Printf(" conv=%s", convID)
-	}
-	fmt.Println()
-	for _, msg := range payload.Messages {
-		fmt.Printf("--- %s ---\n%s\n", msg.Role, msg.Content)
-	}
-}
-*/

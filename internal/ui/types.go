@@ -156,6 +156,7 @@ type RockEventData struct {
 	InquirerID         int
 	OwnerName          string
 	InquirerName       string
+	Reason             string
 	ShowAssessmentHint bool
 }
 

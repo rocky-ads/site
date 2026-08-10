@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/rocky-ads/site/internal/rock"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -92,7 +93,14 @@ func rockEventLabel(d RockEventData) string {
 		actor = "someone"
 	}
 
-	return fmt.Sprintf("%s %s by %s", action, target, actor)
+	label := fmt.Sprintf("%s %s by %s", action, target, actor)
+	if d.Kind == RockEventThrown && d.Reason != "" {
+		atAd := d.ThrowerID == d.InquirerID
+		if reasonLabel := rock.ReasonLabelForTarget(d.Reason, atAd); reasonLabel != "" {
+			label += " · " + reasonLabel
+		}
+	}
+	return label
 }
 
 // RockEventMessage renders a journal entry for a rock throw or unthrow.

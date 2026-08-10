@@ -35,9 +35,11 @@ var faqSections = map[string]faqSectionData{
 				)),
 				faqParagraph(g.Textf(
 					"Ads with more than %d rocks are excluded from "+
-						"search listings. Once the issue is resolved, "+
-						"the seller can return your rock. Rocks are "+
-						"limited — use them wisely.",
+						"search listings. Choose a reason before you "+
+						"throw; you can review a provisional dispute "+
+						"assessment first. Once the issue is resolved, "+
+						"you (the thrower) can Unthrow and get your "+
+						"rock back. Rocks are limited — use them wisely.",
 					config.MaxRockCount,
 				)),
 			}

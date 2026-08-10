@@ -34,6 +34,7 @@ import (
 	"github.com/rocky-ads/site/internal/imagestore"
 	"github.com/rocky-ads/site/internal/kv"
 	"github.com/rocky-ads/site/internal/logger"
+	"github.com/rocky-ads/site/internal/rockopinion"
 	"github.com/rocky-ads/site/internal/seed"
 	"github.com/rocky-ads/site/internal/vector"
 )
@@ -143,6 +144,7 @@ func TestMain(m *testing.M) {
 		panic(fmt.Sprintf("Failed to create test image dir: %v", err))
 	}
 	handler.SetAdImageStore(imagestore.NewLocal(testImageDir))
+	rockopinion.SetImageStore(imagestore.NewLocal(testImageDir))
 
 	mr, err := miniredis.Run()
 	if err != nil {

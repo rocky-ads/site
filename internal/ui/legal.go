@@ -9,14 +9,22 @@ import (
 const legalEffectiveDate = "July 27, 2026"
 
 func legalSection(title string, body ...g.Node) g.Node {
-	return Div(
-		Class("space-y-3"),
+	return legalSectionID("", title, body...)
+}
+
+func legalSectionID(id, title string, body ...g.Node) g.Node {
+	attrs := []g.Node{Class("space-y-3 scroll-mt-20")}
+	if id != "" {
+		attrs = append(attrs, ID(id))
+	}
+	attrs = append(attrs,
 		H2(
 			Class("text-xl font-semibold text-zinc-900 dark:text-zinc-100"),
 			g.Text(title),
 		),
 		Div(Class("space-y-3"), g.Group(body)),
 	)
+	return Div(attrs...)
 }
 
 func legalP(children ...g.Node) g.Node {
@@ -307,7 +315,7 @@ func TermsOfServicePage() []g.Node {
 						"notifications.",
 				)),
 			),
-			legalSection("Prohibited content and conduct",
+			legalSectionID("prohibited", "Prohibited content and conduct",
 				legalP(g.Text("You may not post or use the service for:")),
 				legalList(
 					legalLi(g.Text(
@@ -357,8 +365,11 @@ func TermsOfServicePage() []g.Node {
 						config.MaxRockCount,
 					)),
 					legalLi(g.Text(
-						"When the issue is resolved, the owner can "+
-							"return the rock")),
+						"Throwing requires choosing a reason; you may "+
+							"review a provisional assessment first")),
+					legalLi(g.Text(
+						"When the issue is resolved, the thrower can "+
+							"unthrow and reclaim the rock")),
 				),
 				legalP(g.Text(
 					"Do not email us to report listing problems, "+

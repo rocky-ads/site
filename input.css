@@ -43,11 +43,13 @@
     animation: nav-loading-sweep 1.2s ease-in-out infinite;
   }
 
-  .rock-opinion-link.htmx-request {
+  .rock-opinion-link.htmx-request,
+  .rock-throw-review-btn.htmx-request {
     @apply pointer-events-none;
   }
 
-  .rock-opinion-link.htmx-request img {
+  .rock-opinion-link.htmx-request img,
+  .rock-throw-review-btn.htmx-request img {
     @apply animate-spin;
   }
 

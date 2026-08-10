@@ -95,18 +95,15 @@ func RockThrowLink(d ConversationModalData) g.Node {
 		}
 	} else if d.CanThrowRock {
 		label = rockThrowLabel(d.CurrentUserID, d.OwnerID, d.InquirerName)
-		var postURL string
+		confirmURL := fmt.Sprintf(
+			"/auth/conversation/%d/rock/confirm", d.ConversationID)
 		if d.ConversationID == 0 {
-			postURL = fmt.Sprintf("/auth/ad/%d/rock/throw", d.AdID)
-		} else {
-			postURL = fmt.Sprintf(
-				"/auth/conversation/%d/rock/throw", d.ConversationID)
+			confirmURL = fmt.Sprintf("/auth/ad/%d/rock/confirm", d.AdID)
 		}
 		attrs = []g.Node{
-			hx.Post(postURL),
-			hx.Headers(fmt.Sprintf(`{"X-Csrf-Token": %q}`, d.CSRFToken)),
-			hx.Target(ConversationMessagesSelector(d.ConversationID)),
-			hx.Swap(conversationMessagesAppendSwap()),
+			hx.Get(confirmURL),
+			hx.Target("body"),
+			hx.Swap("beforeend"),
 		}
 	} else {
 		return g.Raw("")

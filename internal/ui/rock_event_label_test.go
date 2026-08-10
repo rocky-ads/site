@@ -75,6 +75,28 @@ func TestRockEventLabel(t *testing.T) {
 			},
 			want: "Rock thrown at bob by sfeldma",
 		},
+		{
+			name: "inquirer threw with policy reason",
+			d: RockEventData{
+				ThrowerID: 2, CurrentUserID: 2,
+				Kind:    RockEventThrown,
+				Reason:  "policy",
+				OwnerID: base.OwnerID, InquirerID: base.InquirerID,
+				OwnerName: base.OwnerName, InquirerName: base.InquirerName,
+			},
+			want: "Rock thrown at ad by you · Listing or content violates policies",
+		},
+		{
+			name: "owner threw with deal reason",
+			d: RockEventData{
+				ThrowerID: 1, CurrentUserID: 1,
+				Kind:    RockEventThrown,
+				Reason:  "deal",
+				OwnerID: base.OwnerID, InquirerID: base.InquirerID,
+				OwnerName: base.OwnerName, InquirerName: base.InquirerName,
+			},
+			want: "Rock thrown at bob by you · Deal or meetup went wrong",
+		},
 	}
 
 	for _, tt := range tests {

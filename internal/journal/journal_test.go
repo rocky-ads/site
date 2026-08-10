@@ -41,8 +41,8 @@ func TestAppendOldestFirst(t *testing.T) {
 	t3 := time.Date(2026, 7, 10, 22, 40, 0, 0, loc)
 
 	j := AppendMessage("", 12, "hello", t1, loc)
-	j = AppendRock(j, RockThrown, 12, t2, loc)
-	j = AppendRock(j, RockUnthrown, 12, t3, loc)
+	j = AppendRock(j, RockThrown, 12, "policy", t2, loc)
+	j = AppendRock(j, RockUnthrown, 12, "", t3, loc)
 
 	entries := Parse(j)
 	if len(entries) != 3 {
@@ -51,6 +51,9 @@ func TestAppendOldestFirst(t *testing.T) {
 	if entries[0].Kind != Message || entries[1].Kind != RockThrown ||
 		entries[2].Kind != RockUnthrown {
 		t.Fatalf("unexpected kinds: %+v", entries)
+	}
+	if entries[1].Body != "policy" {
+		t.Errorf("thrown reason = %q", entries[1].Body)
 	}
 	if !strings.Contains(j, "message  sender:12") {
 		t.Errorf("missing message meta: %q", j)
@@ -107,7 +110,7 @@ func TestLastMessagePreviewSkipsRock(t *testing.T) {
 
 	j := AppendMessage("", 1, "first", t1, loc)
 	j = AppendMessage(j, 2, "second", t2, loc)
-	j = AppendRock(j, RockThrown, 1, t3, loc)
+	j = AppendRock(j, RockThrown, 1, "deal", t3, loc)
 
 	content, at, ok := LastMessagePreview(j)
 	if !ok {

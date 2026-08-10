@@ -37,10 +37,10 @@ func AppendMessage(j string, senderID int, body string, at time.Time,
 	return entrylog.Append(j, Message, meta, body, at, tz)
 }
 
-func AppendRock(j, kind string, userID int, at time.Time,
+func AppendRock(j, kind string, userID int, reason string, at time.Time,
 	tz *time.Location) string {
 	meta := fmt.Sprintf("user:%d", userID)
-	return entrylog.Append(j, kind, meta, "", at, tz)
+	return entrylog.Append(j, kind, meta, reason, at, tz)
 }
 
 func AppendClose(j, kind string, userID int, at time.Time,

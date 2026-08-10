@@ -434,7 +434,7 @@ func buildConversationJournal(c ConversationRow, msgs []MessageRow,
 		events = append(events, journalEvent{
 			at: thrownAt,
 			append: func(j string) string {
-				return journal.AppendRock(j, journal.RockThrown, throwerID,
+				return journal.AppendRock(j, journal.RockThrown, throwerID, "",
 					thrownAt, time.UTC)
 			},
 		})

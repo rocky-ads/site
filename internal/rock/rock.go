@@ -19,7 +19,11 @@ var ErrRockAlreadyThrown = errors.New("a rock has already been thrown at this co
 // ThrowRock throws a rock at a conversation, making it public
 // If inquirer throws: rock_thrower_id = inquirer_id (bound to ad)
 // If owner throws: rock_thrower_id = owner_id (bound to inquirer)
-func ThrowRock(userID, conversationID int) error {
+func ThrowRock(userID, conversationID int, reason string) error {
+	if !ValidReason(reason) {
+		return ErrInvalidReason
+	}
+
 	conv, err := getConversationForRock(conversationID)
 	if err != nil {
 		return fmt.Errorf("failed to get conversation: %w", err)
@@ -51,7 +55,7 @@ func ThrowRock(userID, conversationID int) error {
 		return fmt.Errorf("open journal: %w", err)
 	}
 	newJournal := journal.AppendRock(plain, journal.RockThrown, userID,
-		now, time.UTC)
+		reason, now, time.UTC)
 	sealed, err := encryption.Seal(conversationID, newJournal, config.DBEncryptionKey)
 	if err != nil {
 		return fmt.Errorf("seal journal: %w", err)
@@ -138,8 +142,8 @@ func UnthrowRock(userID, conversationID int) error {
 	if err != nil {
 		return fmt.Errorf("open journal: %w", err)
 	}
-	newJournal := journal.AppendRock(plain, journal.RockUnthrown, userID, now,
-		time.UTC)
+	newJournal := journal.AppendRock(plain, journal.RockUnthrown, userID, "",
+		now, time.UTC)
 	sealed, err := encryption.Seal(conversationID, newJournal, config.DBEncryptionKey)
 	if err != nil {
 		return fmt.Errorf("seal journal: %w", err)
@@ -388,8 +392,8 @@ func forceUnthrow(conversationID, throwerID int, j string) error {
 	if err != nil {
 		return fmt.Errorf("open journal: %w", err)
 	}
-	newJournal := journal.AppendRock(plain, journal.RockUnthrown, throwerID, now,
-		time.UTC)
+	newJournal := journal.AppendRock(plain, journal.RockUnthrown, throwerID, "",
+		now, time.UTC)
 	sealed, err := encryption.Seal(conversationID, newJournal, config.DBEncryptionKey)
 	if err != nil {
 		return fmt.Errorf("seal journal: %w", err)

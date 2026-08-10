@@ -82,6 +82,7 @@ func rockEventData(event message.RockJournalEvent, conversationID,
 		InquirerID:     inquirerID,
 		OwnerName:      ownerName,
 		InquirerName:   inquirerName,
+		Reason:         event.Reason,
 	}
 }
 
@@ -252,7 +253,8 @@ func buildRockEventUpdateNodes(conv message.Conversation, viewerID int,
 }
 
 func renderConversationRockEventAppend(c *fiber.Ctx, conv message.Conversation,
-	currentUserID int, tz *time.Location, csrfToken string) error {
+	currentUserID int, tz *time.Location, csrfToken string,
+	closeThrowConfirm bool) error {
 	nodes, err := buildRockEventUpdateNodes(conv, currentUserID, tz,
 		csrfToken, false)
 	if err != nil {
@@ -260,6 +262,9 @@ func renderConversationRockEventAppend(c *fiber.Ctx, conv message.Conversation,
 			"conversationID", conv.ID)
 		return fiber.NewError(fiber.StatusInternalServerError,
 			"Failed to update conversation")
+	}
+	if closeThrowConfirm {
+		nodes = append(nodes, ui.CloseRockThrowModalsOOB()...)
 	}
 	return render(c, g.Group(nodes))
 }

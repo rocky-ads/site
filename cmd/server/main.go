@@ -11,6 +11,7 @@ import (
 	"github.com/rocky-ads/site/internal/imagestore"
 	"github.com/rocky-ads/site/internal/kv"
 	"github.com/rocky-ads/site/internal/logger"
+	"github.com/rocky-ads/site/internal/rockopinion"
 	"github.com/rocky-ads/site/internal/service/sms"
 	"github.com/rocky-ads/site/internal/service/turnstile"
 	"github.com/rocky-ads/site/internal/service/verify"
@@ -95,6 +96,8 @@ func setupApp() *fiber.App {
 	auth.Get("/ad/:id/new-conversation", handler.MessageModalHandler)
 	auth.Post("/ad/:id/send", handler.SendMessageHandler)
 	auth.Post("/ad/:id/rock/throw", handler.ThrowRockOnAdHandler)
+	auth.Get("/ad/:id/rock/confirm", handler.ConfirmRockOnAdHandler)
+	auth.Post("/ad/:id/rock/preview", handler.PreviewRockOnAdHandler)
 	auth.Get("/ad/:id/rock/:ordinal", handler.AdRockConversationHandler)
 
 	auth.Get("/user/menu", handler.UserMenuHandler)
@@ -125,6 +128,8 @@ func setupApp() *fiber.App {
 
 	auth.Get("/conversation/:id", handler.ConversationModalHandler)
 	auth.Get("/conversation/:id/rock-opinion", handler.RockOpinionHandler)
+	auth.Get("/conversation/:id/rock/confirm", handler.ConfirmRockHandler)
+	auth.Post("/conversation/:id/rock/preview", handler.PreviewRockHandler)
 	auth.Post("/conversation/:id/send", handler.SendConversationMessageHandler)
 	auth.Post("/conversation/:id/rock/throw", handler.ThrowRockHandler)
 	auth.Delete("/conversation/:id/rock/unthrow", handler.UnthrowRockHandler)
@@ -242,6 +247,7 @@ func main() {
 		logger.Fatal("Failed to initialize image store", "error", err)
 	}
 	handler.SetAdImageStore(imageStore)
+	rockopinion.SetImageStore(imageStore)
 	logger.Info("Image store configured",
 		"bucket", config.MinIOBucketName, "url", config.MinIOAPIURL)
 

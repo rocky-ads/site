@@ -9,7 +9,9 @@ import (
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/imagestore"
 	"github.com/rocky-ads/site/internal/local"
+	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/param"
+	"github.com/rocky-ads/site/internal/rockopinion"
 	"github.com/rocky-ads/site/internal/vector"
 )
 
@@ -113,6 +115,10 @@ func ConfirmAdImagesHandler(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
+	}
+	if err := rockopinion.InvalidateForAd(adID); err != nil {
+		logger.Error("Failed to invalidate rock opinions after images",
+			"error", err, "adID", adID)
 	}
 	vector.QueueAd(adID)
 

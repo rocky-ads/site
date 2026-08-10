@@ -7,6 +7,7 @@ import (
 
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/message"
+	"github.com/rocky-ads/site/internal/rock"
 )
 
 type promptInput struct {
@@ -20,7 +21,9 @@ type promptInput struct {
 	InquirerID    int
 	RockThrowerID int
 	RockThrownAt  time.Time
+	Reason        string
 	Tz            *time.Location
+	ImageCount    int
 }
 
 func buildUserPrompt(in promptInput) string {
@@ -50,6 +53,12 @@ func buildUserPrompt(in promptInput) string {
 		}
 	}
 
+	if in.ImageCount > 0 {
+		fmt.Fprintf(&b,
+			"\nListing images: %d image(s) attached to this request "+
+				"for visual review.\n", in.ImageCount)
+	}
+
 	complaintAt := in.RockThrownAt
 	if in.Tz != nil {
 		complaintAt = complaintAt.In(in.Tz)
@@ -66,6 +75,15 @@ func buildUserPrompt(in promptInput) string {
 	}
 	fmt.Fprintf(&b, "Complaint filed at: %s\n",
 		complaintAt.Format(time.RFC3339))
+	if in.Reason != "" {
+		atAd := in.RockThrowerID == in.InquirerID
+		label := rock.ReasonLabelForTarget(in.Reason, atAd)
+		if label == "" {
+			label = in.Reason
+		}
+		fmt.Fprintf(&b, "Complainant selected reason: %s (%s)\n",
+			in.Reason, label)
+	}
 
 	if len(in.Messages) > 0 {
 		b.WriteString("\nConversation:\n")

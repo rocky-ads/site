@@ -28,8 +28,9 @@ func AppendMessageEntry(j string, senderID int, body string, at time.Time,
 	return journal.AppendMessage(j, senderID, body, at, tz)
 }
 
-func AppendRockEntry(j, kind string, userID int, at time.Time, tz *time.Location) string {
-	return journal.AppendRock(j, kind, userID, at, tz)
+func AppendRockEntry(j, kind string, userID int, reason string, at time.Time,
+	tz *time.Location) string {
+	return journal.AppendRock(j, kind, userID, reason, at, tz)
 }
 
 func AppendCloseEntry(j, kind string, userID int, at time.Time,
@@ -77,6 +78,7 @@ func MessagesFromJournal(conversationID int, j string, tz *time.Location) []Mess
 type RockJournalEvent struct {
 	UserID    int
 	Kind      string
+	Reason    string
 	CreatedAt time.Time
 }
 
@@ -100,10 +102,22 @@ func RockEventsFromJournal(j string, tz *time.Location) []RockJournalEvent {
 		events = append(events, RockJournalEvent{
 			UserID:    e.UserID,
 			Kind:      kind,
+			Reason:    e.Body,
 			CreatedAt: at,
 		})
 	}
 	return events
+}
+
+// LatestThrownReason returns the reason on the most recent rock-thrown entry.
+func LatestThrownReason(j string) string {
+	entries := journal.Parse(j)
+	for i := len(entries) - 1; i >= 0; i-- {
+		if entries[i].Kind == journal.RockThrown {
+			return entries[i].Body
+		}
+	}
+	return ""
 }
 
 // CloseJournalEvent is an ad/account deletion timeline entry from the journal.

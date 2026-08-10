@@ -150,7 +150,7 @@ func TestAdRockCountSyncOnThrowUnthrow(t *testing.T) {
 	}
 
 	convID := createConv(t, adID, owner.ID, buyer.ID)
-	if err := rock.ThrowRock(buyer.ID, convID); err != nil {
+	if err := rock.ThrowRock(buyer.ID, convID, rock.ReasonPolicy); err != nil {
 		t.Fatalf("throw: %v", err)
 	}
 	if got := adRockCount(t, adID); got != 1 {
@@ -179,7 +179,7 @@ func TestOwnerThrowDoesNotChangeAdRockCount(t *testing.T) {
 	adID := createPricedAd(t, owner.ID, "Owner Rock Part")
 	convID := createConv(t, adID, owner.ID, buyer.ID)
 
-	if err := rock.ThrowRock(owner.ID, convID); err != nil {
+	if err := rock.ThrowRock(owner.ID, convID, rock.ReasonConduct); err != nil {
 		t.Fatalf("owner throw: %v", err)
 	}
 	if got := adRockCount(t, adID); got != 0 {

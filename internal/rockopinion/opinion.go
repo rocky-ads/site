@@ -10,6 +10,7 @@ import (
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/logger"
 	"github.com/rocky-ads/site/internal/message"
+	"github.com/rocky-ads/site/internal/rock"
 	"github.com/rocky-ads/site/internal/service/grok"
 	"github.com/rocky-ads/site/internal/user"
 )
@@ -42,7 +43,8 @@ func GetOrGenerate(conv message.Conversation,
 		return Opinion{}, err
 	}
 
-	op, err := generate(conv, tz)
+	reason := message.LatestThrownReason(conv.Journal)
+	op, err := generate(conv, *conv.RockThrowerID, reason, tz)
 	if err != nil {
 		return Opinion{}, err
 	}
@@ -50,6 +52,15 @@ func GetOrGenerate(conv message.Conversation,
 		return Opinion{}, err
 	}
 	return loadOpinion(conv.ID)
+}
+
+// Preview generates an ephemeral opinion without storing or requiring a rock.
+func Preview(conv message.Conversation, throwerID int, reason string,
+	tz *time.Location) (Opinion, error) {
+	if !rock.ValidReason(reason) {
+		return Opinion{}, rock.ErrInvalidReason
+	}
+	return generate(conv, throwerID, reason, tz)
 }
 
 func loadOpinion(conversationID int) (Opinion, error) {
@@ -114,7 +125,8 @@ func InvalidateForAd(adID int) error {
 	return nil
 }
 
-func generate(conv message.Conversation, tz *time.Location) (Opinion, error) {
+func generate(conv message.Conversation, throwerID int, reason string,
+	tz *time.Location) (Opinion, error) {
 	a, err := ad.GetAd(0, conv.AdID, tz)
 	if err != nil {
 		return Opinion{}, fmt.Errorf("load ad: %w", err)
@@ -158,6 +170,12 @@ func generate(conv message.Conversation, tz *time.Location) (Opinion, error) {
 		thrownAt = *conv.RockThrownAt
 	}
 
+	attachImages := shouldAttachImages(reason, redacted, a.ImageCount)
+	promptImageCount := 0
+	if attachImages {
+		promptImageCount = a.ImageCount
+	}
+
 	userPrompt := buildUserPrompt(promptInput{
 		AdTitle:       a.Title,
 		AdOriginal:    desc.Original,
@@ -167,13 +185,16 @@ func generate(conv message.Conversation, tz *time.Location) (Opinion, error) {
 		Messages:      redacted,
 		OwnerID:       conv.OwnerID,
 		InquirerID:    conv.InquirerID,
-		RockThrowerID: *conv.RockThrowerID,
+		RockThrowerID: throwerID,
 		RockThrownAt:  thrownAt,
+		Reason:        reason,
 		Tz:            tz,
+		ImageCount:    promptImageCount,
 	})
 
-	resp, err := grok.CallGrokConv(
-		opinionSystemPrompt, userPrompt, rockOpinionConvID,
+	parts := buildGrokParts(userPrompt, a.ID, a.ImageCount, attachImages)
+	resp, err := grok.CallGrokConvParts(
+		opinionSystemPrompt, parts, rockOpinionConvID,
 	)
 	if err != nil {
 		logger.Warn("rock opinion: grok call failed",
@@ -194,6 +215,9 @@ func generate(conv message.Conversation, tz *time.Location) (Opinion, error) {
 
 func listMessages(conversationID int,
 	tz *time.Location) ([]message.Message, error) {
+	if conversationID == 0 {
+		return nil, nil
+	}
 	conv, err := message.GetConversationByID(conversationID)
 	if err != nil {
 		return nil, fmt.Errorf("list messages: %w", err)
