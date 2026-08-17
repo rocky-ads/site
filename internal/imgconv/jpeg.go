@@ -7,7 +7,7 @@ import (
 	"image/jpeg"
 	"image/png"
 
-	"github.com/chai2010/webp"
+	"golang.org/x/image/webp"
 )
 
 const DefaultQuality = 80

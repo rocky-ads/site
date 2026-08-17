@@ -4,7 +4,6 @@ go 1.26.5
 
 require (
 	github.com/alicebob/miniredis/v2 v2.38.0
-	github.com/chai2010/webp v1.4.0
 	github.com/charmbracelet/bubbles v1.0.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
