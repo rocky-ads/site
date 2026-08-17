@@ -6,18 +6,19 @@ import (
 	"flag"
 	"fmt"
 	"image"
+	"image/jpeg"
 	"io"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/chai2010/webp"
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/db"
 	"github.com/rocky-ads/site/internal/imagestore"
+	"github.com/rocky-ads/site/internal/imgconv"
 	"github.com/rocky-ads/site/internal/logger"
 	"golang.org/x/image/draw"
 )
@@ -98,7 +99,7 @@ func generateImage(apiKey, prompt string) ([]byte, error) {
 	requestBody := FalRequest{
 		Prompt:       prompt,
 		ImageSize:    customSize,
-		OutputFormat: "webp",
+		OutputFormat: "jpeg",
 	}
 
 	jsonBody, err := json.Marshal(requestBody)
@@ -164,38 +165,36 @@ func imageExists(store imagestore.Store, adID, imgIdx int) bool {
 	return err == nil
 }
 
-// resizeImage resizes a webp image to the specified width (maintaining 4:3 aspect ratio)
+// resizeImage resizes an image to the specified width (4:3 aspect ratio)
 func resizeImage(imageData []byte, targetWidth int) ([]byte, error) {
-	// Decode webp image
-	img, err := webp.Decode(bytes.NewReader(imageData))
+	img, _, err := image.Decode(bytes.NewReader(imageData))
 	if err != nil {
-		return nil, fmt.Errorf("decoding webp: %w", err)
+		return nil, fmt.Errorf("decoding image: %w", err)
 	}
 
-	// Calculate target height (4:3 aspect ratio)
 	targetHeight := targetWidth * 3 / 4
-
-	// Create destination image
 	dst := image.NewRGBA(image.Rect(0, 0, targetWidth, targetHeight))
+	draw.ApproxBiLinear.Scale(dst, dst.Bounds(), img, img.Bounds(),
+		draw.Src, nil)
 
-	// Resize using high-quality scaling
-	draw.ApproxBiLinear.Scale(dst, dst.Bounds(), img, img.Bounds(), draw.Src, nil)
-
-	// Encode back to webp
 	var buf bytes.Buffer
-	if err := webp.Encode(&buf, dst, &webp.Options{Lossless: false, Quality: 85}); err != nil {
-		return nil, fmt.Errorf("encoding webp: %w", err)
+	opts := &jpeg.Options{Quality: 85}
+	if err := jpeg.Encode(&buf, dst, opts); err != nil {
+		return nil, fmt.Errorf("encoding jpeg: %w", err)
 	}
-
 	return buf.Bytes(), nil
 }
 
 func saveImage(store imagestore.Store, adID, imgIdx int, imageData []byte) error {
-	if err := store.Put(adID, imgIdx, "1200w", imageData); err != nil {
+	jpegData, err := imgconv.ToJPEG(imageData, 85)
+	if err != nil {
+		return fmt.Errorf("converting to jpeg: %w", err)
+	}
+	if err := store.Put(adID, imgIdx, "1200w", jpegData); err != nil {
 		return fmt.Errorf("saving 1200w image: %w", err)
 	}
 
-	image480, err := resizeImage(imageData, 480)
+	image480, err := resizeImage(jpegData, 480)
 	if err != nil {
 		return fmt.Errorf("resizing to 480w: %w", err)
 	}
@@ -203,7 +202,7 @@ func saveImage(store imagestore.Store, adID, imgIdx int, imageData []byte) error
 		return fmt.Errorf("saving 480w image: %w", err)
 	}
 
-	image160, err := resizeImage(imageData, 160)
+	image160, err := resizeImage(jpegData, 160)
 	if err != nil {
 		return fmt.Errorf("resizing to 160w: %w", err)
 	}

@@ -1,6 +1,6 @@
 # Jump Server
 
-The jump server image includes database utilities (`psql`), Redis CLI (`redis-cli`), image migration, and the MinIO client (`mc`).
+The jump server image includes database utilities (`psql`), Redis CLI (`redis-cli`), image migration, JPEG conversion, and the MinIO client (`mc`).
 
 ## Building
 
@@ -63,6 +63,17 @@ Use `-dry-run` to preview without uploading. MinIO connection uses `MINIO_API_UR
 
 On the jump server, you can also mirror files with `mc` (see below).
 
+### Convert legacy WebP/PNG objects to JPEG
+
+Stop the site first. Then on the jump server:
+
+```bash
+convert_images -dry-run
+convert_images
+```
+
+Rewrites MinIO objects in place to `.jpg` (`image/jpeg`, quality 80). Idempotent. Uses `MINIO_API_URL`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, and `MINIO_BUCKET_NAME`. Restart the JPEG-only site after it finishes.
+
 ## Using redis-cli
 
 `redis-tools` is pre-installed. With `REDIS_URL` in the environment (BASE env group on Render; compose sets `redis://redis:6379`):
@@ -87,7 +98,7 @@ mc mb local/rockyads --ignore-existing
 mc mirror static/images/ad/ local/rockyads/
 mc --version
 mc ls local/rockyads
-mc cp local/rockyads/23/1-480w.webp ./
+mc cp local/rockyads/23/1-480w.jpg ./
 ```
 
 See the [MinIO Client documentation](https://docs.min.io/docs/minio-client-quickstart-guide.html).
@@ -98,6 +109,7 @@ See the [MinIO Client documentation](https://docs.min.io/docs/minio-client-quick
 |--------|---------|
 | `admin` | Interactive TUI: backup/restore, init DB, promote/demote |
 | `migrate_images` | One-time upload of local ad image files to MinIO |
+| `convert_images` | One-time MinIO WebP/PNG → JPEG rewrite |
 | `quote_server` | Quote-of-the-day page on port 10000 |
 | `mc` | MinIO command-line client |
 | `redis-cli` | Redis / Render Key Value CLI (`redis-tools`) |

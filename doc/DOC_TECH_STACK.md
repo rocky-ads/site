@@ -70,7 +70,7 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
 
 ### JavaScript
 - **HTMX v2.0.10** — HTML-over-the-wire (self-hosted in `static/js/`)
-- **First-party scripts** for ad image upload: client-side WebP resize/encode and MinIO presigned PUT with progress (`image-preview.js`, `image-upload.js`)
+- **First-party scripts** for ad image upload: client-side JPEG resize/encode and MinIO presigned PUT with progress (`image-preview.js`, `image-upload.js`)
 - SSE extension for live updates
 - **HATEOAS** — server-driven hypermedia for most flows; image upload uses authenticated JSON + direct-to-MinIO PUTs
 
@@ -95,7 +95,7 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
 - **MinIO** - S3-compatible object storage for ad images
   - `MINIO_API_URL` — server-side S3 API (private network in production)
   - `MINIO_PUBLIC_URL` — host embedded in browser-facing presigned URLs
-  - **PUT:** short-lived (~15m) presigned uploads from the browser after create/edit; client encodes 160/480/1200 WebP derivatives
+  - **PUT:** short-lived (~15m) presigned uploads from the browser after create/edit; client encodes 160/480/1200 JPEG derivatives
   - **GET:** long-lived (~24h) presigned URLs reused in-process so `img src` stays stable and browsers can cache; app does not proxy image bodies
   - Bucket CORS must allow PUT (and typically GET) from the site origin
 

@@ -1,4 +1,4 @@
-// image-upload.js: client-side WebP derivatives + MinIO presigned PUT
+// image-upload.js: client-side JPEG derivatives + MinIO presigned PUT
 
 const IMAGE_SIZES = [
 	{ size: '160w', width: 160, quality: 0.6 },
@@ -101,7 +101,7 @@ async function loadImageBitmap(file) {
 	});
 }
 
-function encodeWebP(source, maxWidth, quality) {
+function encodeJPEG(source, maxWidth, quality) {
 	const sw = source.width || source.naturalWidth;
 	const sh = source.height || source.naturalHeight;
 	const scale = sw > maxWidth ? maxWidth / sw : 1;
@@ -110,16 +110,16 @@ function encodeWebP(source, maxWidth, quality) {
 	const canvas = document.createElement('canvas');
 	canvas.width = w;
 	canvas.height = h;
-	const ctx = canvas.getContext('2d');
+	const ctx = canvas.getContext('2d', { alpha: false });
 	ctx.drawImage(source, 0, 0, w, h);
 	return new Promise((resolve, reject) => {
 		canvas.toBlob((blob) => {
-			if (!blob) {
-				reject(new Error('WebP encode failed'));
+			if (!blob || blob.type !== 'image/jpeg') {
+				reject(new Error('JPEG encode failed'));
 				return;
 			}
 			resolve(blob);
-		}, 'image/webp', quality);
+		}, 'image/jpeg', quality);
 	});
 }
 
@@ -130,7 +130,7 @@ async function prepareDerivatives(file, onProgress) {
 		const total = IMAGE_SIZES.length;
 		for (let i = 0; i < total; i++) {
 			const spec = IMAGE_SIZES[i];
-			out[spec.size] = await encodeWebP(
+			out[spec.size] = await encodeJPEG(
 				bitmap, spec.width, spec.quality);
 			if (onProgress) {
 				onProgress((i + 1) / total);
@@ -148,7 +148,7 @@ function putWithProgress(url, blob, onProgress) {
 	return new Promise((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
 		xhr.open('PUT', url);
-		xhr.setRequestHeader('Content-Type', 'image/webp');
+		xhr.setRequestHeader('Content-Type', 'image/jpeg');
 		xhr.upload.onprogress = (e) => {
 			if (e.lengthComputable && onProgress) {
 				onProgress(e.loaded / e.total);

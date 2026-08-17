@@ -1,4 +1,4 @@
-// account-picture.js: single WebP encode + MinIO presigned PUT for settings
+// account-picture.js: JPEG encode + MinIO presigned PUT for settings
 
 const ACCOUNT_PICTURE_MAX_WIDTH = 1200;
 const ACCOUNT_PICTURE_QUALITY = 0.8;
@@ -68,7 +68,7 @@ async function loadAccountPictureBitmap(file) {
 	});
 }
 
-function encodeAccountPictureWebP(source, maxWidth, quality) {
+function encodeAccountPicture(source, maxWidth, quality) {
 	const sw = source.width || source.naturalWidth;
 	const sh = source.height || source.naturalHeight;
 	const scale = sw > maxWidth ? maxWidth / sw : 1;
@@ -77,16 +77,16 @@ function encodeAccountPictureWebP(source, maxWidth, quality) {
 	const canvas = document.createElement('canvas');
 	canvas.width = w;
 	canvas.height = h;
-	const ctx = canvas.getContext('2d');
+	const ctx = canvas.getContext('2d', { alpha: false });
 	ctx.drawImage(source, 0, 0, w, h);
 	return new Promise((resolve, reject) => {
 		canvas.toBlob((blob) => {
-			if (!blob) {
-				reject(new Error('WebP encode failed'));
+			if (!blob || blob.type !== 'image/jpeg') {
+				reject(new Error('JPEG encode failed'));
 				return;
 			}
 			resolve(blob);
-		}, 'image/webp', quality);
+		}, 'image/jpeg', quality);
 	});
 }
 
@@ -94,7 +94,7 @@ function putAccountPicture(url, blob) {
 	return new Promise((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
 		xhr.open('PUT', url);
-		xhr.setRequestHeader('Content-Type', 'image/webp');
+		xhr.setRequestHeader('Content-Type', 'image/jpeg');
 		xhr.onload = () => {
 			if (xhr.status >= 200 && xhr.status < 300) {
 				resolve();
@@ -113,14 +113,13 @@ async function uploadAccountPicture(file) {
 	const bitmap = await loadAccountPictureBitmap(file);
 	let blob;
 	try {
-		blob = await encodeAccountPictureWebP(
+		blob = await encodeAccountPicture(
 			bitmap, ACCOUNT_PICTURE_MAX_WIDTH, ACCOUNT_PICTURE_QUALITY);
 	} finally {
 		if (bitmap.close) {
 			bitmap.close();
 		}
 	}
-
 	setAccountPictureStatus('Preparing upload...');
 	const presignRes = await fetch(
 		'/auth/user/settings/account-picture/presign', {

@@ -646,7 +646,7 @@ func DemoteFromAdmin(userID int) error {
 	return err
 }
 
-// ConfirmAccountPicture marks that users/{id}/account.webp was uploaded.
+// ConfirmAccountPicture marks that users/{id}/account.jpg was uploaded.
 func ConfirmAccountPicture(userID int) error {
 	_, err := db.Exec(
 		`UPDATE users SET has_account_picture = 1 WHERE id = $1`, userID,

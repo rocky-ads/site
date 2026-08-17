@@ -13,7 +13,7 @@ import (
 	"github.com/rocky-ads/site/internal/user"
 )
 
-// PresignAccountPictureHandler returns a short-lived PUT URL for account.webp.
+// PresignAccountPictureHandler returns a short-lived PUT URL for account.jpg.
 func PresignAccountPictureHandler(c *fiber.Ctx) error {
 	userID := local.GetUserID(c)
 	if adImageStore == nil {

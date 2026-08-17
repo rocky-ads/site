@@ -66,7 +66,7 @@ func imageDataURIParts(adID, imageCount int) []grok.ContentPart {
 				"adID", adID, "index", i, "error", err)
 			continue
 		}
-		uri := "data:image/webp;base64," +
+		uri := "data:image/jpeg;base64," +
 			base64.StdEncoding.EncodeToString(data)
 		parts = append(parts, grok.ContentPart{
 			Type: "image_url",

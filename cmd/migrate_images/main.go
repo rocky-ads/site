@@ -14,7 +14,7 @@ import (
 	"github.com/rocky-ads/site/internal/logger"
 )
 
-var imageFilePattern = regexp.MustCompile(`^(\d+)-(\d+w)\.webp$`)
+var imageFilePattern = regexp.MustCompile(`^(\d+)-(\d+w)\.jpg$`)
 
 func main() {
 	sourceDir := flag.String("dir", "static/images/ad", "Local directory containing ad images to upload")

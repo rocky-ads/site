@@ -726,7 +726,7 @@ func putLocalAdImages(t *testing.T, adID int, startIndex, count int) {
 	for i := 0; i < count; i++ {
 		idx := startIndex + i
 		for _, size := range []string{"160w", "480w", "1200w"} {
-			if err := store.Put(adID, idx, size, []byte("webp-test")); err != nil {
+			if err := store.Put(adID, idx, size, []byte("jpeg-test")); err != nil {
 				t.Fatal(err)
 			}
 		}

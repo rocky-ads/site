@@ -7,7 +7,7 @@ import (
 	"github.com/rocky-ads/site/internal/cache"
 )
 
-// ImageSizes are the WebP derivative suffixes stored per ad image.
+// ImageSizes are the JPEG derivative suffixes stored per ad image.
 var ImageSizes = []string{"160w", "480w", "1200w"}
 
 // ImageRef identifies one stored ad image variant.

@@ -19,7 +19,7 @@ func (f *countingStore) PresignGet(adID, index int, suffix string,
 func TestURLCacheReusesUntilTTL(t *testing.T) {
 	dir := t.TempDir()
 	base := NewLocal(dir)
-	if err := base.Put(1, 1, "480w", []byte("webp")); err != nil {
+	if err := base.Put(1, 1, "480w", []byte("jpeg")); err != nil {
 		t.Fatal(err)
 	}
 	fake := &countingStore{LocalStore: base}

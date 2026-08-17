@@ -127,7 +127,7 @@ func TestCreateAdWithImages(t *testing.T) {
 		for idx := 1; idx <= 2; idx++ {
 			path := filepath.Join(
 				testImageDir, fmt.Sprintf("%d", adID),
-				fmt.Sprintf("%d-%s.webp", idx, size),
+				fmt.Sprintf("%d-%s.jpg", idx, size),
 			)
 			if _, err := os.Stat(path); err != nil {
 				t.Errorf("missing image file %s: %v", path, err)
@@ -340,7 +340,7 @@ func TestUpdateAdAppendImages(t *testing.T) {
 	}
 
 	path := filepath.Join(
-		testImageDir, fmt.Sprintf("%d", adID), "2-160w.webp",
+		testImageDir, fmt.Sprintf("%d", adID), "2-160w.jpg",
 	)
 	if _, err := os.Stat(path); err != nil {
 		t.Errorf("missing appended image file %s: %v", path, err)

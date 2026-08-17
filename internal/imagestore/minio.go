@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/url"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -23,30 +21,12 @@ type MinioStore struct {
 	bucket        string
 }
 
-var imageFilePattern = regexp.MustCompile(`^(\d+)-(\d+w)\.webp$`)
-
-func objectKey(adID, index int, suffix string) string {
-	return fmt.Sprintf("%d/%d-%s.webp", adID, index, suffix)
-}
-
-func userAccountObjectKey(userID int) string {
-	return fmt.Sprintf("users/%d/account.webp", userID)
-}
-
 func parseImageObjectKey(key string) (index int, suffix string, ok bool) {
 	parts := strings.Split(key, "/")
 	if len(parts) != 2 {
 		return 0, "", false
 	}
-	matches := imageFilePattern.FindStringSubmatch(parts[1])
-	if len(matches) != 3 {
-		return 0, "", false
-	}
-	index, err := strconv.Atoi(matches[1])
-	if err != nil {
-		return 0, "", false
-	}
-	return index, matches[2], true
+	return parseImageFileName(parts[1])
 }
 
 func minioClientFromURL(raw string) (*minio.Client, error) {
@@ -132,41 +112,31 @@ func NewMinio() (*MinioStore, error) {
 	}, nil
 }
 
-func (s *MinioStore) Put(adID, index int, suffix string, data []byte) error {
-	key := objectKey(adID, index, suffix)
+func (s *MinioStore) putObject(key string, data []byte) error {
 	ctx := context.Background()
 	_, err := s.client.PutObject(ctx, s.bucket, key,
 		bytes.NewReader(data), int64(len(data)),
 		minio.PutObjectOptions{
-			ContentType:  "image/webp",
+			ContentType:  ImageMIME,
 			CacheControl: config.MinIOObjectCacheControl,
 		})
-	if err != nil {
-		return fmt.Errorf("put object to MinIO: %w", err)
-	}
-	return nil
+	return err
 }
 
-func (s *MinioStore) Get(adID, index int, suffix string) ([]byte, error) {
-	key := objectKey(adID, index, suffix)
+func (s *MinioStore) getObject(key string) ([]byte, error) {
 	ctx := context.Background()
 	obj, err := s.client.GetObject(ctx, s.bucket, key, minio.GetObjectOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("get object from MinIO: %w", err)
+		return nil, err
 	}
 	defer obj.Close()
-
-	data, err := io.ReadAll(obj)
-	if err != nil {
-		return nil, fmt.Errorf("read object from MinIO: %w", err)
-	}
-	return data, nil
+	return io.ReadAll(obj)
 }
 
-func (s *MinioStore) Stat(adID, index int, suffix string) (bool, error) {
-	key := objectKey(adID, index, suffix)
+func (s *MinioStore) statKey(key string) (bool, error) {
 	ctx := context.Background()
-	_, err := s.client.StatObject(ctx, s.bucket, key, minio.StatObjectOptions{})
+	_, err := s.client.StatObject(ctx, s.bucket, key,
+		minio.StatObjectOptions{})
 	if err != nil {
 		errResp := minio.ToErrorResponse(err)
 		if errResp.Code == "NoSuchKey" || errResp.StatusCode == 404 {
@@ -175,6 +145,27 @@ func (s *MinioStore) Stat(adID, index int, suffix string) (bool, error) {
 		return false, fmt.Errorf("stat object in MinIO: %w", err)
 	}
 	return true, nil
+}
+
+func (s *MinioStore) Put(adID, index int, suffix string, data []byte) error {
+	key := objectKey(adID, index, suffix)
+	if err := s.putObject(key, data); err != nil {
+		return fmt.Errorf("put object to MinIO: %w", err)
+	}
+	return nil
+}
+
+func (s *MinioStore) Get(adID, index int, suffix string) ([]byte, error) {
+	key := objectKey(adID, index, suffix)
+	data, err := s.getObject(key)
+	if err != nil {
+		return nil, fmt.Errorf("get object from MinIO: %w", err)
+	}
+	return data, nil
+}
+
+func (s *MinioStore) Stat(adID, index int, suffix string) (bool, error) {
+	return s.statKey(objectKey(adID, index, suffix))
 }
 
 func (s *MinioStore) ListAd(adID int) ([]ImageRef, error) {
@@ -251,37 +242,21 @@ func (s *MinioStore) PresignGet(adID, index int, suffix string,
 
 func (s *MinioStore) PutUserAccount(userID int, data []byte) error {
 	key := userAccountObjectKey(userID)
-	ctx := context.Background()
-	_, err := s.client.PutObject(ctx, s.bucket, key,
-		bytes.NewReader(data), int64(len(data)),
-		minio.PutObjectOptions{
-			ContentType:  "image/webp",
-			CacheControl: config.MinIOObjectCacheControl,
-		})
-	if err != nil {
+	if err := s.putObject(key, data); err != nil {
 		return fmt.Errorf("put user account image: %w", err)
 	}
 	return nil
 }
 
 func (s *MinioStore) StatUserAccount(userID int) (bool, error) {
-	key := userAccountObjectKey(userID)
-	ctx := context.Background()
-	_, err := s.client.StatObject(ctx, s.bucket, key, minio.StatObjectOptions{})
-	if err != nil {
-		errResp := minio.ToErrorResponse(err)
-		if errResp.Code == "NoSuchKey" || errResp.StatusCode == 404 {
-			return false, nil
-		}
-		return false, fmt.Errorf("stat user account image: %w", err)
-	}
-	return true, nil
+	return s.statKey(userAccountObjectKey(userID))
 }
 
 func (s *MinioStore) DeleteUserAccount(userID int) error {
 	key := userAccountObjectKey(userID)
 	ctx := context.Background()
-	err := s.client.RemoveObject(ctx, s.bucket, key, minio.RemoveObjectOptions{})
+	err := s.client.RemoveObject(ctx, s.bucket, key,
+		minio.RemoveObjectOptions{})
 	if err != nil {
 		errResp := minio.ToErrorResponse(err)
 		if errResp.Code == "NoSuchKey" || errResp.StatusCode == 404 {
@@ -313,6 +288,58 @@ func (s *MinioStore) PresignGetUserAccount(userID int,
 		return "", fmt.Errorf("presign get user account: %w", err)
 	}
 	return u.String(), nil
+}
+
+// ListKeys returns every object key in the bucket.
+func (s *MinioStore) ListKeys() ([]string, error) {
+	ctx := context.Background()
+	var keys []string
+	for obj := range s.client.ListObjects(ctx, s.bucket, minio.ListObjectsOptions{
+		Recursive: true,
+	}) {
+		if obj.Err != nil {
+			return nil, fmt.Errorf("list objects: %w", obj.Err)
+		}
+		keys = append(keys, obj.Key)
+	}
+	return keys, nil
+}
+
+// ReadKey returns the object body for a raw bucket key.
+func (s *MinioStore) ReadKey(key string) ([]byte, error) {
+	data, err := s.getObject(key)
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w", key, err)
+	}
+	return data, nil
+}
+
+// WriteJPEG writes JPEG bytes to a raw bucket key.
+func (s *MinioStore) WriteJPEG(key string, data []byte) error {
+	if err := s.putObject(key, data); err != nil {
+		return fmt.Errorf("write %s: %w", key, err)
+	}
+	return nil
+}
+
+// DeleteKey removes a raw bucket key.
+func (s *MinioStore) DeleteKey(key string) error {
+	ctx := context.Background()
+	err := s.client.RemoveObject(ctx, s.bucket, key,
+		minio.RemoveObjectOptions{})
+	if err != nil {
+		errResp := minio.ToErrorResponse(err)
+		if errResp.Code == "NoSuchKey" || errResp.StatusCode == 404 {
+			return nil
+		}
+		return fmt.Errorf("delete %s: %w", key, err)
+	}
+	return nil
+}
+
+// KeyExists reports whether a raw bucket key is present.
+func (s *MinioStore) KeyExists(key string) (bool, error) {
+	return s.statKey(key)
 }
 
 func toObjectInfoCh(keys []string) <-chan minio.ObjectInfo {

@@ -17,11 +17,13 @@ import (
 	"github.com/rocky-ads/site/internal/dbinit"
 	"github.com/rocky-ads/site/internal/encryption"
 	"github.com/rocky-ads/site/internal/imagestore"
+	"github.com/rocky-ads/site/internal/imgconv"
 	"github.com/rocky-ads/site/internal/journal"
 	"github.com/rocky-ads/site/internal/logger"
 )
 
-var restoreImagePattern = regexp.MustCompile(`^(\d+)-(\d+w)\.webp$`)
+var restoreImagePattern = regexp.MustCompile(
+	`^(\d+)-(\d+w)\.(jpg|jpeg|webp|png)$`)
 
 func runRestore(fromDir string, store imagestore.Store, backupKey []byte,
 	dryRun, verbose bool) error {
@@ -374,6 +376,10 @@ func runRestore(fromDir string, store imagestore.Store, backupKey []byte,
 			if err != nil {
 				return fmt.Errorf("read image %s: %w", path, err)
 			}
+			data, err = imgconv.ToJPEG(data, imgconv.DefaultQuality)
+			if err != nil {
+				return fmt.Errorf("convert image %s: %w", rel, err)
+			}
 			if err := store.Put(adID, index, suffix, data); err != nil {
 				return fmt.Errorf("upload image %s: %w", rel, err)
 			}
@@ -522,7 +528,7 @@ func parseRestoreImagePath(rel string) (adRef, index int, suffix string, ok bool
 		return 0, 0, "", false
 	}
 	matches := restoreImagePattern.FindStringSubmatch(parts[1])
-	if len(matches) != 3 {
+	if len(matches) != 4 {
 		return 0, 0, "", false
 	}
 	index, err = strconv.Atoi(matches[1])

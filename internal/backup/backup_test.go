@@ -1,8 +1,11 @@
 package backup_test
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
+	"image"
+	"image/jpeg"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -148,7 +151,12 @@ func TestBackupRestoreCrossKey(t *testing.T) {
 
 	imageDir := t.TempDir()
 	store := imagestore.NewLocal(imageDir)
-	imageData := []byte("fake-webp-image-data")
+	var jpegBuf bytes.Buffer
+	px := image.NewRGBA(image.Rect(0, 0, 1, 1))
+	if err := jpeg.Encode(&jpegBuf, px, nil); err != nil {
+		t.Fatalf("encode test jpeg: %v", err)
+	}
+	imageData := jpegBuf.Bytes()
 	if err := store.Put(adID, 1, "480w", imageData); err != nil {
 		t.Fatalf("put image: %v", err)
 	}

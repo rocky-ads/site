@@ -335,7 +335,7 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 				return fmt.Errorf("get image ad %d index %d: %w",
 					a.ID, img.Index, err)
 			}
-			name := fmt.Sprintf("%d-%s.webp", img.Index, img.Suffix)
+			name := fmt.Sprintf("%d-%s.jpg", img.Index, img.Suffix)
 			path := filepath.Join(adDir, name)
 			if err := os.WriteFile(path, data, 0644); err != nil {
 				return fmt.Errorf("write image %s: %w", path, err)
