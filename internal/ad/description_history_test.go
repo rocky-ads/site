@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/entrylog"
 	"github.com/rocky-ads/site/internal/facet"
 )
@@ -62,7 +63,7 @@ func TestAppendHistoryEntryPrependsNewest(t *testing.T) {
 	if parts.Original != "Original text." {
 		t.Errorf("original = %q", parts.Original)
 	}
-	if parts.Body != "Original text.\n\nFirst edit." {
+	if parts.Body != "Original text." {
 		t.Errorf("body = %q", parts.Body)
 	}
 	if len(parts.History) != 2 {
@@ -76,27 +77,66 @@ func TestAppendHistoryEntryPrependsNewest(t *testing.T) {
 	}
 }
 
-func TestDescriptionBodyAppendsAdditions(t *testing.T) {
-	loc, _ := time.LoadLocation("America/Los_Angeles")
+func TestFoldDescriptionAdditions(t *testing.T) {
+	loc := time.UTC
 	origAt := time.Date(2026, 1, 5, 12, 0, 0, 0, loc)
 	first := time.Date(2026, 1, 7, 0, 34, 0, 0, loc)
 	second := time.Date(2026, 1, 8, 10, 0, 0, 0, loc)
 
-	desc := WrapDescription("", origAt, loc)
+	desc := WrapDescription("Original.", origAt, loc)
 	desc = AppendHistoryEntry(desc, DescriptionAdditionLabel, "asdfasdf", first, loc)
 	desc = AppendHistoryEntry(desc, "Price change", "now free", first, loc)
 	desc = AppendHistoryEntry(desc, DescriptionAdditionLabel, "more info", second, loc)
 
-	parts := ParseDescriptionForDisplay(desc)
-	if parts.Original != "" {
-		t.Errorf("original = %q, want empty", parts.Original)
+	got, changed := FoldDescriptionAdditions(desc)
+	if !changed {
+		t.Fatal("expected fold to change description")
 	}
-	wantBody := "asdfasdf\n\nmore info"
-	if parts.Body != wantBody {
-		t.Errorf("body = %q, want %q", parts.Body, wantBody)
+	parts := ParseDescriptionForDisplay(got)
+	if parts.Original != "Original.\n\nasdfasdf\n\nmore info" {
+		t.Errorf("original = %q", parts.Original)
 	}
-	if len(parts.History) != 3 {
-		t.Fatalf("history len = %d, want 3", len(parts.History))
+	if parts.Body != parts.Original {
+		t.Errorf("body = %q, want original", parts.Body)
+	}
+	if len(parts.History) != 1 {
+		t.Fatalf("history len = %d, want 1", len(parts.History))
+	}
+	if !strings.Contains(parts.History[0].Header, "Price change") {
+		t.Errorf("kept history = %q", parts.History[0].Header)
+	}
+	if _, changed := FoldDescriptionAdditions(got); changed {
+		t.Fatal("second fold should be a no-op")
+	}
+}
+
+func TestFoldDescriptionAdditionsEmptyOriginal(t *testing.T) {
+	loc := time.UTC
+	origAt := time.Date(2026, 1, 5, 12, 0, 0, 0, loc)
+	addAt := time.Date(2026, 1, 7, 0, 34, 0, 0, loc)
+
+	desc := WrapDescription("", origAt, loc)
+	desc = AppendHistoryEntry(
+		desc, DescriptionAdditionLabel, "only addition", addAt, loc,
+	)
+	got, changed := FoldDescriptionAdditions(desc)
+	if !changed {
+		t.Fatal("expected fold")
+	}
+	parts := ParseDescriptionForDisplay(got)
+	if parts.Original != "only addition" {
+		t.Errorf("original = %q", parts.Original)
+	}
+	if len(parts.History) != 0 {
+		t.Fatalf("history = %+v", parts.History)
+	}
+}
+
+func TestFoldDescriptionAdditionsNoOp(t *testing.T) {
+	desc := WrapDescription("no additions", time.Now(), time.UTC)
+	got, changed := FoldDescriptionAdditions(desc)
+	if changed || got != desc {
+		t.Fatalf("changed=%v got=%q", changed, got)
 	}
 }
 
@@ -204,6 +244,125 @@ func TestFormatLocationHistoryChangeAddressCategory(t *testing.T) {
 	}
 	if body := formatLocationHistoryChange(old, addr, garage); body != "" {
 		t.Fatalf("no-op = %q, want empty", body)
+	}
+}
+
+func TestApplyDescriptionEditReplacesBodyAndJournalsSummary(t *testing.T) {
+	loc, _ := time.LoadLocation("America/Los_Angeles")
+	origAt := time.Date(2026, 1, 5, 12, 0, 0, 0, loc)
+	editAt := time.Date(2026, 1, 7, 0, 34, 0, 0, loc)
+
+	orig := summarizeDescChangeFn
+	summarizeDescChangeFn = func(previous, current string) string {
+		if previous != "Original text." || current != "Updated text." {
+			t.Errorf("summarize args previous=%q current=%q", previous, current)
+		}
+		return "fixed some typos"
+	}
+	t.Cleanup(func() { summarizeDescChangeFn = orig })
+
+	desc := WrapDescription("Original text.", origAt, loc)
+	desc, err := applyDescriptionEdit(desc, "Updated text.", editAt, loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := ParseDescriptionForDisplay(desc)
+	if parts.Original != "Updated text." {
+		t.Errorf("original = %q", parts.Original)
+	}
+	if parts.Body != "Updated text." {
+		t.Errorf("body = %q", parts.Body)
+	}
+	if len(parts.History) != 1 {
+		t.Fatalf("got %d history entries, want 1", len(parts.History))
+	}
+	if !strings.Contains(parts.History[0].Header, DescriptionChangeLabel) {
+		t.Errorf("header = %q", parts.History[0].Header)
+	}
+	if parts.History[0].Body != "fixed some typos" {
+		t.Errorf("summary = %q", parts.History[0].Body)
+	}
+}
+
+func TestApplyDescriptionEditNoOpWhenUnchanged(t *testing.T) {
+	loc := time.UTC
+	origAt := time.Date(2026, 1, 5, 12, 0, 0, 0, loc)
+	desc := WrapDescription("Same text.", origAt, loc)
+
+	called := false
+	orig := summarizeDescChangeFn
+	summarizeDescChangeFn = func(string, string) string {
+		called = true
+		return "should not run"
+	}
+	t.Cleanup(func() { summarizeDescChangeFn = orig })
+
+	got, err := applyDescriptionEdit(desc, "Same text.", origAt, loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != desc {
+		t.Errorf("expected unchanged description")
+	}
+	if called {
+		t.Error("summarizer should not run when text is unchanged")
+	}
+}
+
+func TestApplyDescriptionEditKeepsOtherHistory(t *testing.T) {
+	loc := time.UTC
+	origAt := time.Date(2026, 1, 5, 12, 0, 0, 0, loc)
+	priceAt := time.Date(2026, 1, 6, 12, 0, 0, 0, loc)
+	editAt := time.Date(2026, 1, 7, 12, 0, 0, 0, loc)
+
+	orig := summarizeDescChangeFn
+	summarizeDescChangeFn = func(previous, current string) string {
+		if previous != "Original." {
+			t.Errorf("previous = %q", previous)
+		}
+		if current != "Rewritten listing with service records." {
+			t.Errorf("current = %q", current)
+		}
+		return "added service record details"
+	}
+	t.Cleanup(func() { summarizeDescChangeFn = orig })
+
+	desc := WrapDescription("Original.", origAt, loc)
+	desc = AppendHistoryEntry(
+		desc, "Price change", "Price dropped from $3,400 to $3,000",
+		priceAt, loc,
+	)
+	desc, err := applyDescriptionEdit(
+		desc, "Rewritten listing with service records.", editAt, loc,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := ParseDescriptionForDisplay(desc)
+	if parts.Original != "Rewritten listing with service records." {
+		t.Errorf("original = %q", parts.Original)
+	}
+	if len(parts.History) != 2 {
+		t.Fatalf("history = %+v", parts.History)
+	}
+	if !strings.Contains(parts.History[0].Header, DescriptionChangeLabel) {
+		t.Errorf("newest = %q", parts.History[0].Header)
+	}
+	if parts.History[0].Body != "added service record details" {
+		t.Errorf("summary = %q", parts.History[0].Body)
+	}
+	if !strings.Contains(parts.History[1].Header, "Price change") {
+		t.Errorf("kept = %q", parts.History[1].Header)
+	}
+}
+
+func TestApplyDescriptionEditRejectsTooLong(t *testing.T) {
+	loc := time.UTC
+	desc := WrapDescription("short", time.Now(), loc)
+	long := strings.Repeat("x", config.MaxAdDescriptionLength+1)
+	_, err := applyDescriptionEdit(desc, long, time.Now(), loc)
+	if err == nil {
+		t.Fatal("expected length error")
 	}
 }
 

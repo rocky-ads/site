@@ -223,13 +223,13 @@ func TestUpdateAd(t *testing.T) {
 	adID := adIDFromCreateResponse(t, resp, "Before edit")
 
 	editData := map[string]interface{}{
-		"title":                "After edit",
-		"description_addition": "Has the 2.0L engine.",
-		"price":                "3000",
-		"price_currency":       "USD",
-		"year":                 "2020",
-		"mileage":              "12000",
-		"mileage_unit":         "mi",
+		"title":          "After edit",
+		"description":    "Has the 2.0L engine.",
+		"price":          "3000",
+		"price_currency": "USD",
+		"year":           "2020",
+		"mileage":        "12000",
+		"mileage_unit":   "mi",
 	}
 	resp, _ = postFormRequest(t, baseURL+"/auth/ad/"+adID+"/edit", editData)
 	if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusOK {
@@ -242,11 +242,17 @@ func TestUpdateAd(t *testing.T) {
 	).Scan(&desc); err != nil {
 		t.Fatal(err)
 	}
+	parts := ad.ParseDescriptionForDisplay(desc)
+	if parts.Original != "Has the 2.0L engine." {
+		t.Errorf("original = %q, want rewritten description", parts.Original)
+	}
+	if parts.Body != "Has the 2.0L engine." {
+		t.Errorf("body = %q, want rewritten description", parts.Body)
+	}
 	display := ad.DisplayDescription(desc)
 	for _, want := range []string{
-		"Original listing text.",
-		"Description Addition",
 		"Has the 2.0L engine.",
+		ad.DescriptionChangeLabel,
 		"Title change",
 		"Price change",
 		"Price dropped",
@@ -254,6 +260,9 @@ func TestUpdateAd(t *testing.T) {
 		if !strings.Contains(display, want) {
 			t.Errorf("description missing %q: %q", want, display)
 		}
+	}
+	if strings.Contains(display, ad.DescriptionAdditionLabel) {
+		t.Errorf("legacy addition label in rewritten description: %q", display)
 	}
 }
 
@@ -292,6 +301,7 @@ func TestUpdateAdAppendImages(t *testing.T) {
 
 	editFields := map[string]interface{}{
 		"title":          "Edit Append Images",
+		"description":    "Original listing text.",
 		"year":           "2020",
 		"price":          "3400",
 		"price_currency": "USD",
@@ -379,6 +389,7 @@ func TestAdTagsPersistViaMultipartForm(t *testing.T) {
 
 	editData := map[string]interface{}{
 		"title":          "Tagged Ad",
+		"description":    "A test vehicle listing.",
 		"price":          "15000",
 		"price_currency": "USD",
 		"year":           "2020",

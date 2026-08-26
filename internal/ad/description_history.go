@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/currency"
@@ -15,8 +16,12 @@ import (
 
 const OriginalLabel = "original"
 
-// DescriptionAdditionLabel is the history label for text appended via edit.
+// DescriptionAdditionLabel is the legacy append-via-edit history marker.
+// FoldDescriptionAdditions merges those bodies into the original block.
 const DescriptionAdditionLabel = "Description Addition"
+
+// DescriptionChangeLabel is the history label for a description rewrite.
+const DescriptionChangeLabel = "Description change"
 
 // HistoryEntryDisplay is one parsed edit-history block for UI rendering.
 type HistoryEntryDisplay struct {
@@ -27,10 +32,9 @@ type HistoryEntryDisplay struct {
 
 // DescriptionDisplay holds original ad text and edit history for display.
 type DescriptionDisplay struct {
-	// Original is the immutable create-time body only.
+	// Original is the current listing text.
 	Original string
-	// Body is original plus description additions in chronological order,
-	// separated by a blank line — used for the main description area.
+	// Body is the current listing text (same as Original).
 	Body    string
 	History []HistoryEntryDisplay
 }
@@ -55,7 +59,7 @@ func DisplayDescription(desc string) string {
 	return b.String()
 }
 
-// WrapDescription stores plain body text as the immutable original entry.
+// WrapDescription stores plain body text as the original entry.
 func WrapDescription(body string, at time.Time, tz *time.Location) string {
 	body = strings.TrimSpace(SanitizeAdText(body))
 	return entrylog.BuildBlock(OriginalLabel, "", body, at, tz)
@@ -66,7 +70,7 @@ func ParseDescriptionForDisplay(desc string) DescriptionDisplay {
 	original, historyBlocks := splitDescriptionBlocks(desc)
 	out := DescriptionDisplay{
 		Original: original,
-		Body:     descriptionBody(original, historyBlocks),
+		Body:     original,
 	}
 	for _, b := range historyBlocks {
 		header := formatDisplayHeader(b)
@@ -84,27 +88,82 @@ func ParseDescriptionForDisplay(desc string) DescriptionDisplay {
 	return out
 }
 
-// descriptionBody joins original text with Description Addition bodies
-// in chronological order (oldest first).
-func descriptionBody(original string, history []entrylog.Block) string {
-	parts := make([]string, 0, 1+len(history))
-	if original != "" {
-		parts = append(parts, original)
+// applyDescriptionEdit replaces the original body when the posted
+// description differs, and journals a short Grok summary of the change.
+func applyDescriptionEdit(desc, newBody string, at time.Time,
+	tz *time.Location) (string, error) {
+	newBody = strings.TrimSpace(SanitizeAdText(newBody))
+	if utf8.RuneCountInString(newBody) > config.MaxAdDescriptionLength {
+		return "", fmt.Errorf(
+			"description must be at most %d characters",
+			config.MaxAdDescriptionLength,
+		)
 	}
+	previous := ParseDescriptionForDisplay(desc).Original
+	if previous == newBody {
+		return desc, nil
+	}
+	desc = replaceOriginalBody(desc, newBody, at, tz)
+	summary := summarizeDescChangeFn(previous, newBody)
+	return AppendHistoryEntry(
+		desc, DescriptionChangeLabel, summary, at, tz,
+	), nil
+}
+
+func replaceOriginalBody(desc, newBody string, at time.Time,
+	tz *time.Location) string {
+	newBody = strings.TrimSpace(SanitizeAdText(newBody))
+	blocks := entrylog.Parse(desc)
+	if len(blocks) == 0 {
+		return WrapDescription(newBody, at, tz)
+	}
+	orig := blocks[0]
+	orig.Body = newBody
+	return entrylog.Join(append([]entrylog.Block{orig}, blocks[1:]...), tz)
+}
+
+// FoldDescriptionAdditions merges legacy Description Addition bodies into
+// the original block (oldest first) and removes those history entries.
+// Other history is unchanged. changed is false when there is nothing to fold.
+func FoldDescriptionAdditions(desc string) (string, bool) {
+	blocks := entrylog.Parse(desc)
+	if len(blocks) == 0 {
+		return desc, false
+	}
+	history := blocks[1:]
+	var chrono []string
+	found := false
 	for i := len(history) - 1; i >= 0; i-- {
 		b := history[i]
 		if b.Label != DescriptionAdditionLabel {
 			continue
 		}
-		body := strings.TrimSpace(b.Body)
-		if body != "" {
-			parts = append(parts, body)
+		found = true
+		if body := strings.TrimSpace(b.Body); body != "" {
+			chrono = append(chrono, body)
 		}
 	}
-	return strings.Join(parts, "\n\n")
+	if !found {
+		return desc, false
+	}
+	rest := make([]entrylog.Block, 0, len(history))
+	for _, b := range history {
+		if b.Label == DescriptionAdditionLabel {
+			continue
+		}
+		rest = append(rest, b)
+	}
+	parts := make([]string, 0, 1+len(chrono))
+	if original := strings.TrimSpace(blocks[0].Body); original != "" {
+		parts = append(parts, original)
+	}
+	parts = append(parts, chrono...)
+	orig := blocks[0]
+	orig.Body = strings.Join(parts, "\n\n")
+	return entrylog.Join(append([]entrylog.Block{orig}, rest...), nil), true
 }
 
-// SplitDescription separates the immutable original body from server history.
+// SplitDescription separates the original body from server history.
 func SplitDescription(desc string) (original, history string) {
 	orig, blocks := splitDescriptionBlocks(desc)
 	if len(blocks) == 0 {

@@ -20,13 +20,10 @@ func NewAdFieldsPartial(facets []facet.Def, defaults facet.FormDefaults) g.Node 
 // AdFieldsPartial renders create or edit ad fields for the given category facets.
 func AdFieldsPartial(cfg AdFormConfig, facets []facet.Def) g.Node {
 	f := adFields{cfg: cfg}
-	descLabel := "Description"
-	if cfg.Mode == AdFormCreate {
-		descLabel = "Description (optional)"
-	}
 	nodes := []g.Node{
 		fieldBlock("Title", f.cfg.fieldID("title"), f.titleInput()),
-		fieldBlock(descLabel, "", f.descriptionFields()),
+		fieldBlock("Description (optional)", f.cfg.fieldID("description"),
+			f.descriptionFields()),
 	}
 	if !hasLocationFacet(facets) {
 		nodes = append(nodes, fieldBlock("Location (optional)", f.cfg.fieldID("location"), f.locationInput()))
@@ -315,32 +312,7 @@ func (f adFields) titleInput() g.Node {
 }
 
 func (f adFields) descriptionFields() g.Node {
-	if f.cfg.Mode == AdFormEdit {
-		return f.editDescriptionFields()
-	}
 	return descriptionWithSuggestionsBox(f.cfg)
-}
-
-func (f adFields) editDescriptionFields() g.Node {
-	nodes := []g.Node{
-		editDescriptionWithSuggestionsBox(f.cfg),
-		Div(
-			Class("field-group"),
-			Label(
-				Class("field-label"),
-				For(f.cfg.fieldID("description-addition")),
-				g.Text("Add to Description (optional)"),
-			),
-			Textarea(
-				Name("description_addition"),
-				ID(f.cfg.fieldID("description-addition")),
-				Class(fieldInputClass),
-				g.Attr("rows", "4"),
-				g.Attr("maxlength", strconv.Itoa(config.MaxAdDescriptionLength)),
-			),
-		),
-	}
-	return Div(Class("space-y-2"), g.Group(nodes))
 }
 
 func hasLocationFacet(facets []facet.Def) bool {

@@ -1,6 +1,9 @@
 package ads
 
 import (
+	"strconv"
+
+	"github.com/rocky-ads/site/internal/config"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
@@ -17,36 +20,6 @@ func descriptionWithSuggestionsBox(cfg AdFormConfig) g.Node {
 		Class("w-full "+controlClass+" overflow-hidden"),
 		descriptionInput(cfg),
 		suggestionsRow(cfg, cfg.Values.Suggestions, true),
-	)
-}
-
-func editDescriptionWithSuggestionsBox(cfg AdFormConfig) g.Node {
-	hasDesc := cfg.Values.OriginalDescription != ""
-	nodes := []g.Node{}
-	if hasDesc {
-		nodes = append(nodes, Div(
-			Class("p-2 bg-zinc-50 dark:bg-zinc-900 whitespace-pre-wrap "+
-				"text-zinc-700 dark:text-zinc-300"),
-			DescriptionTextWithLinks(cfg.Values.OriginalDescription),
-		))
-	}
-	nodes = append(nodes,
-		descriptionContextInput(cfg),
-		suggestionsRow(cfg, cfg.Values.Suggestions, hasDesc),
-	)
-	return Div(
-		Class("w-full "+controlClass+" overflow-hidden"),
-		g.Group(nodes),
-	)
-}
-
-func descriptionContextInput(cfg AdFormConfig) g.Node {
-	return Textarea(
-		Name("description"),
-		Class("hidden"),
-		g.Attr("aria-hidden", "true"),
-		g.Attr("tabindex", "-1"),
-		g.Text(cfg.Values.OriginalDescription),
 	)
 }
 
@@ -80,7 +53,7 @@ func descriptionInput(cfg AdFormConfig) g.Node {
 		ID(cfg.fieldID("description")),
 		Class("w-full p-2 border-0 rounded-none bg-transparent focus:outline-none focus:ring-0"),
 		g.Attr("rows", "6"),
-		g.Attr("maxlength", "1000"),
+		g.Attr("maxlength", strconv.Itoa(config.MaxAdDescriptionLength)),
 	}
 	if cfg.Values.OriginalDescription != "" {
 		attrs = append(attrs, g.Text(cfg.Values.OriginalDescription))

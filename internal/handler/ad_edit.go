@@ -77,15 +77,15 @@ func UpdateAdHandler(c *fiber.Ctx) error {
 	}
 
 	err = ad.UpdateAd(ad.UpdateInput{
-		AdID:                adID,
-		UserID:              userID,
-		Title:               c.FormValue("title"),
-		DescriptionAddition: c.FormValue("description_addition"),
-		LocationText:        c.FormValue("location"),
-		Facets:              facets,
-		Suggestions:         parseAdSuggestions(c),
-		ImagesAdded:         0,
-		Tz:                  tz,
+		AdID:         adID,
+		UserID:       userID,
+		Title:        c.FormValue("title"),
+		Description:  c.FormValue("description"),
+		LocationText: c.FormValue("location"),
+		Facets:       facets,
+		Suggestions:  parseAdSuggestions(c),
+		ImagesAdded:  0,
+		Tz:           tz,
 	})
 	if err != nil {
 		return showError(c, err.Error())

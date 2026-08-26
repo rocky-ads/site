@@ -8,21 +8,20 @@ import (
 
 	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/db"
-	"github.com/rocky-ads/site/internal/entrylog"
 	"github.com/rocky-ads/site/internal/facet"
 )
 
 type UpdateInput struct {
-	AdID                int
-	UserID              int
-	Title               string
-	DescriptionAddition string
-	LocationText        string
-	Facets              map[string]facet.Value
-	Suggestions         []Suggestion
-	ImagesAdded         int
-	Tz                  *time.Location
-	Now                 time.Time
+	AdID         int
+	UserID       int
+	Title        string
+	Description  string
+	LocationText string
+	Facets       map[string]facet.Value
+	Suggestions  []Suggestion
+	ImagesAdded  int
+	Tz           *time.Location
+	Now          time.Time
 }
 
 func UpdateAd(input UpdateInput) error {
@@ -53,11 +52,6 @@ func UpdateAd(input UpdateInput) error {
 		return fmt.Errorf("title cannot contain emoji")
 	}
 
-	addition := strings.TrimSpace(SanitizeAdText(input.DescriptionAddition))
-	if strings.Contains(addition, entrylog.Marker) {
-		return fmt.Errorf("invalid description addition")
-	}
-
 	if err := LoadTags(&a); err != nil {
 		return err
 	}
@@ -80,11 +74,11 @@ func UpdateAd(input UpdateInput) error {
 		now = time.Now()
 	}
 
-	desc := a.Description
-	if addition != "" {
-		desc = AppendHistoryEntry(
-			desc, DescriptionAdditionLabel, addition, now, input.Tz,
-		)
+	desc, err := applyDescriptionEdit(
+		a.Description, input.Description, now, input.Tz,
+	)
+	if err != nil {
+		return err
 	}
 	if input.ImagesAdded > 0 {
 		if a.ImageCount+input.ImagesAdded > config.MaxImagesPerAd {
