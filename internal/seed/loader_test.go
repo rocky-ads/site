@@ -1,6 +1,9 @@
 package seed
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -8,6 +11,31 @@ import (
 	"github.com/rocky-ads/site/internal/ad"
 	"github.com/rocky-ads/site/internal/entrylog"
 )
+
+func TestMain(m *testing.M) {
+	if err := chdirModuleRoot(); err != nil {
+		fmt.Fprintf(os.Stderr, "chdir module root: %v\n", err)
+		os.Exit(1)
+	}
+	os.Exit(m.Run())
+}
+
+func chdirModuleRoot() error {
+	dir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return os.Chdir(dir)
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return fmt.Errorf("go.mod not found")
+		}
+		dir = parent
+	}
+}
 
 func TestAssembleDescription(t *testing.T) {
 	createdAt := time.Date(2024, 7, 4, 0, 0, 0, 0, time.UTC)
@@ -34,6 +62,45 @@ func TestAssembleDescription(t *testing.T) {
 	}
 	if len(parts.History) != 1 {
 		t.Fatalf("got %d history entries", len(parts.History))
+	}
+}
+
+func TestPartsCategoriesIncludeLocalPickup(t *testing.T) {
+	cats, err := readCategoryJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantPickup := map[string]bool{
+		"Car & Truck Parts":            true,
+		"Motorcycle Parts":             true,
+		"Bicycle Parts":                true,
+		"Agricultural Equipment Parts": true,
+	}
+	found := make(map[string]bool)
+	for _, cat := range cats {
+		hasPickup := false
+		for _, key := range cat.Facets {
+			if key == "local_pickup" {
+				hasPickup = true
+				break
+			}
+		}
+		if want, ok := wantPickup[cat.Name]; ok {
+			found[cat.Name] = true
+			if hasPickup != want {
+				t.Errorf("%s local_pickup=%v, want %v",
+					cat.Name, hasPickup, want)
+			}
+			continue
+		}
+		if hasPickup {
+			t.Errorf("%s should not have local_pickup facet", cat.Name)
+		}
+	}
+	for name := range wantPickup {
+		if !found[name] {
+			t.Errorf("missing category %s", name)
+		}
 	}
 }
 

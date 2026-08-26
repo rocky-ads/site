@@ -206,6 +206,11 @@ func adDetailFacetDisplays(a ad.Ad) []string {
 		if s == "" {
 			continue
 		}
+		// Flag FormatFull is already the label text (e.g. "Local pick-up only").
+		if d.Kind == facet.Flag {
+			labels = append(labels, s)
+			continue
+		}
 		labels = append(labels, d.Label+": "+s)
 	}
 	return labels

@@ -12,10 +12,6 @@ import (
 
 // SearchFiltersPanel renders facet controls for the search widget.
 func SearchFiltersPanel(facets []facet.Def, f SearchFilters) g.Node {
-	var nodes []g.Node
-	for _, d := range facets {
-		nodes = append(nodes, facetFilterRow(d, f.Facets[d.Key]))
-	}
 	return Div(
 		Class("grid grid-cols-2 gap-4"),
 		ID("search-filters"),
@@ -27,8 +23,30 @@ func SearchFiltersPanel(facets []facet.Def, f SearchFilters) g.Node {
 		// document-wide "from:input" selector so typing in the search box does
 		// not trigger a search here (it searches on enter/blur instead).
 		hx.Trigger("input delay:500ms, change delay:300ms"),
-		g.Group(nodes),
+		g.Group(facetFilterNodes(facets, f)),
 	)
+}
+
+func facetFilterNodes(facets []facet.Def, f SearchFilters) []g.Node {
+	var nodes []g.Node
+	var flagRun []facet.Def
+	flushFlags := func() {
+		if len(flagRun) == 0 {
+			return
+		}
+		nodes = append(nodes, flagFilterGroup(flagRun, f))
+		flagRun = nil
+	}
+	for _, d := range facets {
+		if d.Filter == facet.FilterFlag {
+			flagRun = append(flagRun, d)
+			continue
+		}
+		flushFlags()
+		nodes = append(nodes, facetFilterRow(d, f.Facets[d.Key]))
+	}
+	flushFlags()
+	return nodes
 }
 
 func facetFilterRow(d facet.Def, filter facet.Filter) g.Node {
@@ -37,6 +55,8 @@ func facetFilterRow(d facet.Def, filter facet.Filter) g.Node {
 		return enumFilterRow(d, filter)
 	case facet.FilterCheckboxes:
 		return enumCheckboxesFilterRow(d, filter)
+	case facet.FilterFlag:
+		return flagFilterRow(d, filter)
 	default:
 		if d.Kind == facet.Date {
 			return dateRangeFilterRow(d.Key, d.Label, filter.TextMin, filter.TextMax)
@@ -95,6 +115,36 @@ func enumCheckboxesFilterRow(d facet.Def, filter facet.Filter) g.Node {
 		Class("col-span-2 field-group"),
 		Span(Class("field-label"), g.Text(d.Label)),
 		Div(Class("field-options"), g.Group(nodes)),
+	)
+}
+
+func flagFilterRow(d facet.Def, filter facet.Filter) g.Node {
+	id := "filter-" + d.Key
+	checked := filter.Value != nil && *filter.Value == "1"
+	attrs := []g.Node{
+		Type("checkbox"),
+		Name(d.Key),
+		Value("1"),
+		ID(id),
+	}
+	if checked {
+		attrs = append(attrs, g.Attr("checked", "checked"))
+	}
+	return Label(
+		Class("field-option"),
+		Input(attrs...),
+		g.Text(d.Label),
+	)
+}
+
+func flagFilterGroup(defs []facet.Def, f SearchFilters) g.Node {
+	items := make([]g.Node, len(defs))
+	for i, d := range defs {
+		items[i] = flagFilterRow(d, f.Facets[d.Key])
+	}
+	return Div(
+		Class("col-span-2 field-group"),
+		Div(Class("field-options flex-col items-start gap-2"), g.Group(items)),
 	)
 }
 

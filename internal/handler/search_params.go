@@ -140,6 +140,11 @@ func parseFacetFilters(c *fiber.Ctx,
 			if vals := parseEnumCheckboxQuery(c, d.Key, d.Enum); len(vals) > 0 {
 				filters[d.Key] = facet.Filter{Values: vals}
 			}
+		case facet.FilterFlag:
+			if c.Query(d.Key) == "1" {
+				one := "1"
+				filters[d.Key] = facet.Filter{Value: &one}
+			}
 		default:
 			if d.Kind == facet.Date {
 				min := parseOptionalDate(c.Query(d.Key + "_min"))

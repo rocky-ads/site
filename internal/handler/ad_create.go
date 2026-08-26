@@ -104,6 +104,10 @@ func parseAdFacets(c *fiber.Ctx,
 				continue
 			}
 			values[d.Key] = facet.EncodeMultiEnum(vals)
+		case facet.Flag:
+			if c.FormValue(d.Key) == "1" {
+				values[d.Key] = facet.EncodeFlag(true)
+			}
 		case facet.Location:
 			raw := strings.TrimSpace(c.FormValue(d.Key))
 			if raw == "" {

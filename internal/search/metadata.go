@@ -65,6 +65,11 @@ func vectorFilterClause(d facet.Def, f facet.Filter, pa *pgArgs) string {
 			clause += path + ` <= ` + pa.add(*f.TextMax)
 		}
 		return clause
+	case facet.Flag:
+		if f.Value != nil && *f.Value == "1" {
+			return `(` + path + `)::int = ` + pa.add(1)
+		}
+		return ""
 	case facet.Money, facet.Int:
 		numPath := `(` + path + `)::int`
 		clause := ""

@@ -198,15 +198,22 @@ func LoadUsers() error {
 	return nil
 }
 
-// LoadCategories loads ad-category.json into categories
-func LoadCategories() error {
+func readCategoryJSON() ([]categoryJSON, error) {
 	data, err := os.ReadFile("internal/seed/ad-category.json")
 	if err != nil {
-		return err
+		return nil, err
 	}
-
 	var categories []categoryJSON
 	if err := json.Unmarshal(data, &categories); err != nil {
+		return nil, err
+	}
+	return categories, nil
+}
+
+// LoadCategories loads ad-category.json into categories
+func LoadCategories() error {
+	categories, err := readCategoryJSON()
+	if err != nil {
 		return err
 	}
 

@@ -45,6 +45,7 @@ type AdFormValues struct {
 	Location            string
 	Facets              map[string]string
 	FacetMulti          map[string][]string
+	FacetFlags          map[string]bool
 	FacetUnits          map[string]string
 	PriceRow            PriceRowView
 	Suggestions         []SuggestionOption
@@ -89,6 +90,9 @@ func NewFormConfigWithValues(defaults facet.FormDefaults,
 	if values.FacetMulti == nil {
 		values.FacetMulti = make(map[string][]string)
 	}
+	if values.FacetFlags == nil {
+		values.FacetFlags = make(map[string]bool)
+	}
 	values.ImageCount = 0
 	return AdFormConfig{
 		Mode:           AdFormCreate,
@@ -114,6 +118,9 @@ func EditFormConfig(adID int, values AdFormValues,
 	}
 	if values.FacetMulti == nil {
 		values.FacetMulti = make(map[string][]string)
+	}
+	if values.FacetFlags == nil {
+		values.FacetFlags = make(map[string]bool)
 	}
 	return AdFormConfig{
 		Mode:           AdFormEdit,

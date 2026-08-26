@@ -9,7 +9,7 @@
     "name": "Car & Truck Parts",
     "image_file": "car.svg",
     "seed_ad_file": "ad-car-part.json",
-    "facets": ["condition", "price"]
+    "facets": ["condition", "local_pickup", "price"]
   },
   {
     "name": "Motorcycles",
@@ -21,7 +21,7 @@
     "name": "Motorcycle Parts",
     "image_file": "motorcycle.svg",
     "seed_ad_file": "ad-motorcycle-part.json",
-    "facets": ["condition", "price"]
+    "facets": ["condition", "local_pickup", "price"]
   },
   {
     "name": "Bicycles",
@@ -33,7 +33,7 @@
     "name": "Bicycle Parts",
     "image_file": "bicycle.svg",
     "seed_ad_file": "ad-bicycle-part.json",
-    "facets": ["condition", "price"]
+    "facets": ["condition", "local_pickup", "price"]
   },
   {
     "name": "Agricultural Equipment",
@@ -45,7 +45,7 @@
     "name": "Agricultural Equipment Parts",
     "image_file": "ag.svg",
     "seed_ad_file": "ad-agricultural-part.json",
-    "facets": ["condition", "price"]
+    "facets": ["condition", "local_pickup", "price"]
   },
   {
     "name": "Garage/Estate Sale",

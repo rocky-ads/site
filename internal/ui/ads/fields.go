@@ -31,9 +31,7 @@ func AdFieldsPartial(cfg AdFormConfig, facets []facet.Def) g.Node {
 	if !hasLocationFacet(facets) {
 		nodes = append(nodes, fieldBlock("Location (optional)", f.cfg.fieldID("location"), f.locationInput()))
 	}
-	for _, d := range facets {
-		nodes = append(nodes, f.facetFieldBlock(d, f.facetInput(d)))
-	}
+	nodes = append(nodes, f.facetFieldNodes(facets)...)
 
 	return Div(
 		ID("category-fields"),
@@ -58,6 +56,8 @@ func (f adFields) facetInput(d facet.Def) g.Node {
 		return f.formDate(d)
 	case facet.FormCheckboxes:
 		return f.formCheckboxes(d)
+	case facet.FormFlag:
+		return f.formFlag(d)
 	case facet.FormLocation:
 		return f.formLocation(d)
 	default:
@@ -117,6 +117,57 @@ func (f adFields) formRadio(d facet.Def) g.Node {
 		)
 	}
 	return Div(Class("field-options"), g.Group(nodes))
+}
+
+func (f adFields) facetFieldNodes(facets []facet.Def) []g.Node {
+	var nodes []g.Node
+	var flagRun []facet.Def
+	flushFlags := func() {
+		if len(flagRun) == 0 {
+			return
+		}
+		nodes = append(nodes, f.flagFieldGroup(flagRun))
+		flagRun = nil
+	}
+	for _, d := range facets {
+		if d.Kind == facet.Flag {
+			flagRun = append(flagRun, d)
+			continue
+		}
+		flushFlags()
+		nodes = append(nodes, f.facetFieldBlock(d, f.facetInput(d)))
+	}
+	flushFlags()
+	return nodes
+}
+
+func (f adFields) flagFieldGroup(defs []facet.Def) g.Node {
+	items := make([]g.Node, len(defs))
+	for i, d := range defs {
+		items[i] = f.formFlag(d)
+	}
+	return Div(
+		Class("field-group"),
+		Div(Class("field-options flex-col items-start gap-2"), g.Group(items)),
+	)
+}
+
+func (f adFields) formFlag(d facet.Def) g.Node {
+	id := f.cfg.fieldID(d.Key)
+	attrs := []g.Node{
+		Type("checkbox"),
+		Name(d.Key),
+		Value("1"),
+		ID(id),
+	}
+	if f.cfg.Values.FacetFlags[d.Key] {
+		attrs = append(attrs, g.Attr("checked", "checked"))
+	}
+	return Label(
+		Class("field-option"),
+		Input(attrs...),
+		Span(g.Text(d.Label)),
+	)
 }
 
 func (f adFields) formDate(d facet.Def) g.Node {

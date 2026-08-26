@@ -238,6 +238,10 @@ func TestCardLabel(t *testing.T) {
 	if d, ok := Get("sale_start_date"); !ok || !d.CardLabel() {
 		t.Error("sale_start_date should appear on listing cards")
 	}
+	pickup, ok := Get("local_pickup")
+	if !ok || pickup.CardLabel() {
+		t.Error("local_pickup should not appear on listing cards")
+	}
 }
 
 func TestDateFacet(t *testing.T) {
@@ -355,6 +359,49 @@ func TestMultiEnumFacet(t *testing.T) {
 	}
 	if err := pricing.Validate(EncodeMultiEnum([]string{"bogus"})); err == nil {
 		t.Error("invalid multi enum value should be rejected")
+	}
+}
+
+func TestFlagFacet(t *testing.T) {
+	pickup, ok := Get("local_pickup")
+	if !ok {
+		t.Fatal("local_pickup facet not registered")
+	}
+	if pickup.Kind != Flag {
+		t.Fatalf("Kind = %v, want Flag", pickup.Kind)
+	}
+	if pickup.Form != FormFlag {
+		t.Fatalf("Form = %v, want FormFlag", pickup.Form)
+	}
+	if pickup.Filter != FilterFlag {
+		t.Fatalf("Filter = %v, want FilterFlag", pickup.Filter)
+	}
+	if pickup.Required {
+		t.Error("local_pickup should be optional")
+	}
+	if !pickup.Filterable {
+		t.Error("local_pickup should be filterable")
+	}
+	if err := pickup.Validate(Value{}); err != nil {
+		t.Errorf("empty flag should be valid: %v", err)
+	}
+	v := EncodeFlag(true)
+	if err := pickup.Validate(v); err != nil {
+		t.Errorf("valid flag rejected: %v", err)
+	}
+	if got := pickup.FormatFull(v); got != "Local pick-up only" {
+		t.Errorf("FormatFull = %q", got)
+	}
+	if got := pickup.EmbeddingSnippet(v); got != "Local pick-up only" {
+		t.Errorf("EmbeddingSnippet = %q", got)
+	}
+	meta, ok := pickup.VectorMetadataValue(v)
+	if !ok || meta != 1 {
+		t.Errorf("VectorMetadataValue = %v ok=%v", meta, ok)
+	}
+	n := 2
+	if err := pickup.Validate(Value{Num: &n}); err == nil {
+		t.Error("invalid flag value should be rejected")
 	}
 }
 

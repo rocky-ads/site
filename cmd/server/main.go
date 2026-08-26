@@ -15,7 +15,6 @@ import (
 	"github.com/rocky-ads/site/internal/service/sms"
 	"github.com/rocky-ads/site/internal/service/turnstile"
 	"github.com/rocky-ads/site/internal/service/verify"
-	"github.com/rocky-ads/site/internal/user"
 	"github.com/rocky-ads/site/internal/vector"
 	"github.com/sasha-s/go-deadlock"
 
@@ -212,12 +211,6 @@ func main() {
 		logger.Fatal("Database not ready", "error", err)
 	}
 
-	if n, err := user.RehashLookupHashes(); err != nil {
-		logger.Fatal("Failed to rehash user lookup hashes", "error", err)
-	} else if n > 0 {
-		logger.Info("Rehashed user lookup hashes", "updated", n)
-	}
-
 	if err := ad.LoadCategories(); err != nil {
 		logger.Fatal("Failed to initialize ads", "error", err)
 	}
@@ -229,7 +222,6 @@ func main() {
 		logger.Fatal("Failed to initialize embedder", "error", err)
 	}
 	vector.StartBackgroundProcessor()
-	vector.ProcessAdsWithoutVectors()
 
 	if err := sms.Init(); err != nil {
 		logger.Fatal("Failed to initialize SMS service", "error", err)

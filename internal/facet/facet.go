@@ -29,9 +29,11 @@ const (
 	Date                  // ISO date YYYY-MM-DD in Value.Text
 	MultiEnum             // multiple enum selections, JSON array in Value.Text
 	Location              // user location text; resolves to ads.location_id
+	Flag                  // optional opt-in; Num == 1 when set
 )
 
 const dateLayout = "2006-01-02"
+const flagSetValue = 1
 
 // FormWidget controls the new-ad form control for a facet.
 type FormWidget int
@@ -44,6 +46,7 @@ const (
 	FormDate                         // date input (Kind Date)
 	FormCheckboxes                   // multi-select checkboxes (Kind MultiEnum)
 	FormLocation                     // location text input (Kind Location)
+	FormFlag                         // single opt-in checkbox (Kind Flag)
 )
 
 // FilterWidget controls the search filter panel for a facet.
@@ -53,6 +56,7 @@ const (
 	FilterRange      FilterWidget = iota // min/max inputs
 	FilterExact                          // single-select (Enum dropdown)
 	FilterCheckboxes                     // multi-select (Enum checkboxes)
+	FilterFlag                           // single opt-in checkbox (Flag)
 )
 
 // FormDefaults holds per-request values for new-ad form widgets.
@@ -211,6 +215,20 @@ func (v Value) Present() bool {
 func (f Filter) Active() bool {
 	return f.Min != nil || f.Max != nil || f.TextMin != nil ||
 		f.TextMax != nil || f.Value != nil || len(f.Values) > 0
+}
+
+// EncodeFlag builds a Flag value when checked.
+func EncodeFlag(checked bool) Value {
+	if !checked {
+		return Value{}
+	}
+	n := flagSetValue
+	return Value{Num: &n}
+}
+
+// FlagSet reports whether a Flag facet value is checked.
+func (v Value) FlagSet() bool {
+	return v.Num != nil && *v.Num != 0
 }
 
 // ParseDateValue parses an ISO date string into a Date facet value.
@@ -488,6 +506,15 @@ var defs = []Def{
 		Required:   false,
 	},
 	{
+		Key:        "local_pickup",
+		Label:      "Local pick-up only",
+		Kind:       Flag,
+		Form:       FormFlag,
+		Filter:     FilterFlag,
+		Filterable: true,
+		Required:   false,
+	},
+	{
 		Key:        "location",
 		Label:      "Location",
 		Kind:       Location,
@@ -610,6 +637,13 @@ func (d Def) Validate(v Value) error {
 			}
 			return nil
 		}
+	case Flag:
+		if v.Num == nil {
+			return nil
+		}
+		if *v.Num != 0 && *v.Num != flagSetValue {
+			return fmt.Errorf("invalid %s", d.Label)
+		}
 	}
 	return nil
 }
@@ -673,6 +707,11 @@ func (d Def) format(v Value, compact bool) string {
 			return ""
 		}
 		return *v.Text
+	case Flag:
+		if !v.FlagSet() {
+			return ""
+		}
+		return d.Label
 	}
 	return ""
 }
@@ -687,6 +726,12 @@ func formatCount(n int, compact bool) string {
 
 // EmbeddingSnippet returns a prompt line for vector encoding.
 func (d Def) EmbeddingSnippet(v Value) string {
+	if d.Kind == Flag {
+		if !v.FlagSet() {
+			return ""
+		}
+		return d.Label
+	}
 	s := d.FormatFull(v)
 	if s == "" {
 		return ""
@@ -716,6 +761,11 @@ func (d Def) VectorMetadataValue(v Value) (any, bool) {
 			return nil, false
 		}
 		return *v.Text, true
+	case Flag:
+		if !v.FlagSet() {
+			return nil, false
+		}
+		return flagSetValue, true
 	default:
 		return nil, false
 	}

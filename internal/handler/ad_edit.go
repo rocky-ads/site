@@ -110,6 +110,7 @@ func adFormValuesFrom(a ad.Ad) uiads.AdFormValues {
 		Facets:              make(map[string]string),
 		FacetUnits:          make(map[string]string),
 		FacetMulti:          make(map[string][]string),
+		FacetFlags:          make(map[string]bool),
 	}
 	for key, v := range a.Facets {
 		if key == "price" {
@@ -118,6 +119,10 @@ func adFormValuesFrom(a ad.Ad) uiads.AdFormValues {
 		d, ok := facet.Get(key)
 		if ok && d.Kind == facet.MultiEnum {
 			values.FacetMulti[key] = v.MultiEnumValues()
+			continue
+		}
+		if ok && d.Kind == facet.Flag {
+			values.FacetFlags[key] = v.FlagSet()
 			continue
 		}
 		if v.Num != nil {
