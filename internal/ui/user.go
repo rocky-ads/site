@@ -1044,6 +1044,14 @@ func AboutPage() []g.Node {
 						g.Text(config.GitHubRepoURL),
 					),
 				),
+				aboutItem(
+					"/images/money.svg",
+					"Donate",
+					"Donate",
+					"/donate",
+					false,
+					faqLink("/donate", "Help with operating costs"),
+				),
 			),
 			P(
 				Class("text-sm text-zinc-500 dark:text-zinc-400"),

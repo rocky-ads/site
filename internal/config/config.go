@@ -142,6 +142,9 @@ var (
 	ServerName   = getEnvWithDefault("APP_NAME", "Rocky Ads")
 	ContactEmail = getEnvWithDefault("CONTACT_EMAIL", "contact@rockyads.com")
 
+	// Public Bitcoin address for /donate (on-chain receive address).
+	BitcoinDonateAddress = getEnvWithDefault("BITCOIN_DONATE_ADDRESS", "")
+
 	// Test port - used when running tests to avoid conflicts with main server
 	TestPort = getEnvWithDefault("PORT_TEST", "10001")
 

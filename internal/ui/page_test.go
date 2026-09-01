@@ -40,6 +40,25 @@ func TestPageHomeSEO(t *testing.T) {
 	}
 }
 
+func TestPageDonateSEO(t *testing.T) {
+	prev := config.PublicSiteURL
+	config.PublicSiteURL = "https://rockyads.com"
+	t.Cleanup(func() { config.PublicSiteURL = prev })
+
+	html := renderPageHTML(t, "Donate", "/donate")
+	wants := []string{
+		"<title>Rocky Ads - Donate</title>",
+		`rel="canonical" href="https://rockyads.com/donate"`,
+		`name="description" content="Rocky Ads is publicly funded.`,
+		`name="robots" content="index, follow"`,
+	}
+	for _, want := range wants {
+		if !strings.Contains(html, want) {
+			t.Errorf("donate missing %q", want)
+		}
+	}
+}
+
 func TestPageLoginSEO(t *testing.T) {
 	prev := config.PublicSiteURL
 	config.PublicSiteURL = "https://rockyads.com"
@@ -93,5 +112,8 @@ func TestRobotsForPath(t *testing.T) {
 	}
 	if got := robotsForPath("/faq"); got != "index, follow" {
 		t.Fatalf("faq: %q", got)
+	}
+	if got := robotsForPath("/donate"); got != "index, follow" {
+		t.Fatalf("donate: %q", got)
 	}
 }

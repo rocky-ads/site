@@ -335,6 +335,10 @@ func AboutHandler(c *fiber.Ctx) error {
 	return renderPage(c, "About", ui.AboutPage())
 }
 
+func DonateHandler(c *fiber.Ctx) error {
+	return renderPage(c, "Donate", ui.DonatePage())
+}
+
 func PrivacyHandler(c *fiber.Ctx) error {
 	return renderPage(c, "Privacy Policy", ui.PrivacyPolicyPage())
 }

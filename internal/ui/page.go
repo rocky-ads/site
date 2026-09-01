@@ -23,6 +23,9 @@ func pageDescription(path string) string {
 	case path == "/about":
 		return name + " is classified ads for the Internet. Post with " +
 			"your phone number; it stays hidden."
+	case path == "/donate":
+		return name + " is publicly funded. The site runs on donations " +
+			"to cover hosting, SMS, and other operating costs."
 	case path == "/login":
 		return "Log in to " + name + " to post ads, message sellers, " +
 			"and manage your account."
