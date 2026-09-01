@@ -8,7 +8,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/config"
-	"github.com/rocky-ads/site/internal/ui"
 )
 
 func TestRobotsTxt(t *testing.T) {
@@ -22,6 +21,7 @@ func TestRobotsTxt(t *testing.T) {
 		"Disallow: /auth/",
 		"Disallow: /admin/",
 		"Disallow: /api/",
+		"Disallow: /u/",
 		"Sitemap: https://rockyads.com/sitemap.xml",
 	} {
 		if !strings.Contains(body, want) {
@@ -40,17 +40,15 @@ func TestSitemapXML(t *testing.T) {
 		"https://rockyads.com/",
 		"https://rockyads.com/about",
 		"https://rockyads.com/login",
-		"https://rockyads.com/faq",
-		"https://rockyads.com/privacy",
-		"https://rockyads.com/terms",
-		"https://rockyads.com/register",
-	}
-	for _, id := range ui.FAQSectionIDs() {
-		wants = append(wants, "https://rockyads.com/faq/"+id)
 	}
 	for _, want := range wants {
 		if !strings.Contains(body, "<loc>"+want+"</loc>") {
 			t.Errorf("sitemap missing %q\n%s", want, body)
+		}
+	}
+	for _, extra := range []string{"/faq", "/privacy", "/terms", "/register", "/u/"} {
+		if strings.Contains(body, extra) {
+			t.Errorf("sitemap should not include %q\n%s", extra, body)
 		}
 	}
 }

@@ -134,6 +134,9 @@ var (
 	// Pepper for name_hash / phone_hash HMAC lookups (not the encryption key)
 	DBHashPepper = getEncryptionKey("DB_HASH_PEPPER")
 
+	// AES-256 key for opaque /u/{token} profile share links
+	ShareSecret = getEncryptionKey("SHARE_SECRET")
+
 	// Server configuration
 	ServerPort   = getEnvWithDefault("PORT", "10000")
 	ServerName   = getEnvWithDefault("APP_NAME", "Rocky Ads")
@@ -286,6 +289,25 @@ func SecurityCheck() {
 			"error", "DB_HASH_PEPPER must differ from DB_ENCRYPTION_KEY")
 	}
 	logger.Info("DB hash pepper configured", "length", len(DBHashPepper))
+
+	shareStr := os.Getenv("SHARE_SECRET")
+	if shareStr == "" {
+		logger.Fatal("Security configuration error",
+			"error", "SHARE_SECRET environment variable is required but not set")
+	}
+	if len(ShareSecret) == 0 {
+		logger.Fatal("Security configuration error",
+			"error", "SHARE_SECRET is invalid base64 format")
+	}
+	if len(ShareSecret) != 32 {
+		logger.Fatal("SHARE_SECRET must be 32 bytes (256 bits)")
+	}
+	if bytes.Equal(ShareSecret, DBEncryptionKey) ||
+		bytes.Equal(ShareSecret, DBHashPepper) {
+		logger.Fatal("Security configuration error",
+			"error", "SHARE_SECRET must differ from DB_ENCRYPTION_KEY and DB_HASH_PEPPER")
+	}
+	logger.Info("Share secret configured", "length", len(ShareSecret))
 
 	if AllowTestRegistration {
 		logger.Warn("ALLOW_TEST_REGISTRATION is enabled: test phone signup skips SMS verification")

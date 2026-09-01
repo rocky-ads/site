@@ -15,6 +15,8 @@ type UserProfileData struct {
 	UserRockCount     int
 	HasAccountPicture bool
 	AccountPictureURL string
+	ShowShare         bool
+	AdsViewPathPrefix string
 }
 
 // AdHistoryEntry holds one edit-history block on the ad detail page.

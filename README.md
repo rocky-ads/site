@@ -87,6 +87,7 @@ Bot gate before OTP start (register / change-phone). Required at server start un
 - `DATABASE_URL` — PostgreSQL DSN. Default: `postgres://localhost:5432/rockyads?sslmode=disable`. With docker-compose Postgres: `postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disable`.
 - `DB_ENCRYPTION_KEY` — required. Base64-encoded 32-byte (256-bit) key for encrypting user name/phone.
 - `DB_HASH_PEPPER` — required. Base64-encoded 32-byte (256-bit) HMAC pepper for `name_hash` / `phone_hash` lookups. Must differ from `DB_ENCRYPTION_KEY`.
+- `SHARE_SECRET` — required. Base64-encoded 32-byte (256-bit) key for opaque `/u/…` profile share links. Must differ from `DB_ENCRYPTION_KEY` and `DB_HASH_PEPPER`.
 
 ### Redis
 
@@ -140,6 +141,7 @@ DATABASE_URL=postgres://postgres:postgres@localhost:5432/rockyads?sslmode=disabl
 REDIS_URL=redis://localhost:6379
 DB_ENCRYPTION_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
 DB_HASH_PEPPER=AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=
+SHARE_SECRET=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=
 JWT_SECRET=local-dev-jwt-secret-key-min-32-chars
 PUBLIC_SITE_URL=http://localhost:10000
 LOCAL_DEVELOPMENT=true

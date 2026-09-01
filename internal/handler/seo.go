@@ -5,7 +5,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/config"
-	"github.com/rocky-ads/site/internal/ui"
 )
 
 func RobotsHandler(c *fiber.Ctx) error {
@@ -24,21 +23,13 @@ func robotsTxt() string {
 		"Disallow: /auth/\n" +
 		"Disallow: /admin/\n" +
 		"Disallow: /api/\n" +
+		"Disallow: /u/\n" +
 		"\n" +
 		"Sitemap: " + config.CanonicalURL("/sitemap.xml") + "\n"
 }
 
 func sitemapPaths() []string {
-	paths := []string{"/", "/about", "/faq"}
-	for _, id := range ui.FAQSectionIDs() {
-		paths = append(paths, "/faq/"+id)
-	}
-	return append(paths,
-		"/login",
-		"/register",
-		"/privacy",
-		"/terms",
-	)
+	return []string{"/", "/about", "/login"}
 }
 
 func sitemapXML() string {

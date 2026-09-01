@@ -73,6 +73,8 @@ func setupApp() *fiber.App {
 	app.Get("/ad/:id", handler.AdHandler)
 	app.Get("/ad/:id/rock/:ordinal", handler.PublicAdRockOpinionHandler)
 	app.Get("/c/:category", handler.ShortCategoryHandler)
+	app.Get("/u/:token", handler.SharedUserProfileHandler)
+	app.Get("/u/:token/view/:view", handler.SharedUserProfileViewHandler)
 
 	// Auth routes
 
@@ -103,6 +105,7 @@ func setupApp() *fiber.App {
 	auth.Get("/ad/:id/rock/:ordinal", handler.AdRockConversationHandler)
 
 	auth.Get("/user/menu", handler.UserMenuHandler)
+	auth.Get("/user/share", handler.UserShareHandler)
 	auth.Get("/user/myads", handler.UserMyAdsHandler)
 	auth.Get("/user/myads/tab/:tab", handler.UserMyAdsTabHandler)
 	auth.Get("/user/myads/tab/:tab/view/:view", handler.UserMyAdsViewHandler)

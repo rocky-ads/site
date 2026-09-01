@@ -26,17 +26,6 @@ func pageDescription(path string) string {
 	case path == "/login":
 		return "Log in to " + name + " to post ads, message sellers, " +
 			"and manage your account."
-	case path == "/register":
-		return "Create a " + name + " account with your phone number. " +
-			"No email, no fees."
-	case path == "/faq" || strings.HasPrefix(path, "/faq/"):
-		return "Answers about rocks, phone numbers, account recovery, " +
-			"and SMS on " + name + "."
-	case path == "/privacy":
-		return "How " + name + " handles your account, phone number, " +
-			"and listing information."
-	case path == "/terms":
-		return "Terms of service for using " + name + "."
 	default:
 		return ""
 	}
@@ -46,6 +35,7 @@ func robotsForPath(path string) string {
 	switch {
 	case strings.HasPrefix(path, "/auth/"),
 		strings.HasPrefix(path, "/admin/"),
+		strings.HasPrefix(path, "/u/"),
 		path == "/recover",
 		path == "/error",
 		path == "/health",
@@ -112,7 +102,27 @@ func seoHead(docTitle, currentPath string) []g.Node {
 		nodes = append(nodes, homepageSocialMeta(docTitle, desc)...)
 		nodes = append(nodes, websiteJSONLD())
 	}
+	if strings.HasPrefix(currentPath, "/u/") {
+		nodes = append(nodes,
+			sharedProfileSocialMeta(docTitle, desc, currentPath)...)
+	}
 	return nodes
+}
+
+func sharedProfileSocialMeta(docTitle, desc, path string) []g.Node {
+	if desc == "" {
+		desc = docTitle
+	}
+	return []g.Node{
+		Meta(g.Attr("property", "og:title"), Content(docTitle)),
+		Meta(g.Attr("property", "og:description"), Content(desc)),
+		Meta(g.Attr("property", "og:type"), Content("profile")),
+		Meta(
+			g.Attr("property", "og:url"),
+			Content(config.CanonicalURL(path)),
+		),
+		Meta(g.Attr("property", "og:site_name"), Content(config.ServerName)),
+	}
 }
 
 func getUserInitial(userName string) string {

@@ -98,8 +98,16 @@ func UserSummaryFragment(d UserProfileData) g.Node {
 
 // UserProfilePage renders the user profile page body
 func UserProfilePage(d UserProfileData, view int, adNodes []g.Node) []g.Node {
+	title := pageTitle(d.Name)
+	if d.ShowShare {
+		title = Div(
+			Class("flex items-center justify-between gap-4"),
+			pageTitle(d.Name),
+			shareProfileButton(),
+		)
+	}
 	return []g.Node{
-		pageTitle(d.Name),
+		title,
 		Div(
 			Class("mt-8 space-y-4 max-w-md"),
 			Div(
@@ -115,8 +123,21 @@ func UserProfilePage(d UserProfileData, view int, adNodes []g.Node) []g.Node {
 			),
 		),
 		UserAccountPictureBanner(d),
-		UserProfileAds(d.ID, view, adNodes),
+		UserProfileAds(d.AdsViewPathPrefix, view, adNodes),
 	}
+}
+
+func shareProfileButton() g.Node {
+	return iconButton(buttonProps{
+		ImageSrc: "/images/share.svg",
+		Alt:      "Share profile",
+		Class:    "dark:invert dark:opacity-80",
+		Attrs: []g.Node{
+			hx.Get("/auth/user/share"),
+			hx.Target("body"),
+			hx.Swap("beforeend"),
+		},
+	})
 }
 
 // UserAccountPictureBanner shows the optional full-width account picture.
@@ -148,8 +169,7 @@ func UserAccountPictureBanner(d UserProfileData) g.Node {
 }
 
 // UserProfileAds is the active-ads list with grid/list toggles.
-func UserProfileAds(userID, view int, adNodes []g.Node) g.Node {
-	pathPrefix := fmt.Sprintf("/auth/user/%d/view/", userID)
+func UserProfileAds(pathPrefix string, view int, adNodes []g.Node) g.Node {
 	return Div(
 		ID("user-profile-ads"),
 		Class("space-y-4 mt-8"),
@@ -163,6 +183,53 @@ func UserProfileAds(userID, view int, adNodes []g.Node) g.Node {
 		),
 		AdsContent(view, adNodes),
 	)
+}
+
+func UserShareModal(path string) g.Node {
+	return g.Group([]g.Node{
+		modalBackdrop("user-share"),
+		Div(
+			ID("user-share-modal"),
+			Class("fixed inset-0 flex items-center justify-center z-50 p-8 pointer-events-none"),
+			Div(
+				Class("bg-white dark:bg-zinc-800 rounded-lg w-full max-w-md shadow-2xl border-2 border-zinc-300 dark:border-zinc-600 flex flex-col pointer-events-auto"),
+				Div(
+					Class("flex items-center justify-between p-6 border-b border-zinc-200 dark:border-zinc-700 flex-shrink-0"),
+					H3(Class("text-xl font-bold text-zinc-900 dark:text-zinc-200"),
+						g.Text("Share Profile")),
+					modalClose("user-share"),
+				),
+				Div(
+					Class("p-6 flex flex-col gap-4"),
+					Div(
+						Class("flex flex-col gap-2"),
+						Label(
+							Class("text-sm font-medium text-zinc-700 dark:text-zinc-300"),
+							For("user-link-input"),
+							g.Text("Profile Link"),
+						),
+						Div(
+							Class("flex items-center gap-2"),
+							Input(
+								ID("user-link-input"),
+								Type("text"),
+								Value(path),
+								g.Attr("readonly", ""),
+								g.Attr("onfocus", "this.select();"),
+								Class("flex-1 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-zinc-50 dark:bg-zinc-700 text-sm text-zinc-900 dark:text-zinc-200"),
+							),
+							copyButton(path, false),
+						),
+					),
+					P(
+						Class("text-sm text-zinc-600 dark:text-zinc-400"),
+						g.Text("Anyone with this link can see your "+
+							"public profile and active ads."),
+					),
+				),
+			),
+		),
+	})
 }
 
 func UserMenu(userName, memberSince string, userID int, isAdmin bool,

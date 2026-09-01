@@ -147,6 +147,9 @@ func TestRobotsAndSitemap(t *testing.T) {
 	if !strings.Contains(robots, "Disallow: /auth/") {
 		t.Errorf("robots.txt: %s", robots)
 	}
+	if !strings.Contains(robots, "Disallow: /u/") {
+		t.Errorf("robots.txt missing /u/: %s", robots)
+	}
 	if !strings.Contains(robots, "Sitemap:") {
 		t.Errorf("robots.txt missing Sitemap: %s", robots)
 	}
@@ -164,10 +167,13 @@ func TestRobotsAndSitemap(t *testing.T) {
 		t.Fatalf("sitemap.xml status %d", resp.StatusCode)
 	}
 	sm := string(body)
-	for _, path := range []string{"/about", "/login", "/faq", "/privacy"} {
+	for _, path := range []string{"/about", "/login"} {
 		if !strings.Contains(sm, path+"</loc>") {
 			t.Errorf("sitemap missing %s\n%s", path, sm)
 		}
+	}
+	if strings.Contains(sm, "/faq") {
+		t.Errorf("sitemap should not include /faq\n%s", sm)
 	}
 }
 

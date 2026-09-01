@@ -62,11 +62,36 @@ func TestPageLoginSEO(t *testing.T) {
 	}
 }
 
+func TestPageSharedProfileSEO(t *testing.T) {
+	prev := config.PublicSiteURL
+	config.PublicSiteURL = "https://rockyads.com"
+	t.Cleanup(func() { config.PublicSiteURL = prev })
+
+	html := renderPageHTML(t, "test", "/u/AAAAAAAAAAAAAAAAAAAAAA")
+	wants := []string{
+		`name="robots" content="noindex, nofollow"`,
+		`rel="canonical" href="https://rockyads.com/u/AAAAAAAAAAAAAAAAAAAAAA"`,
+		`property="og:url" content="https://rockyads.com/u/AAAAAAAAAAAAAAAAAAAAAA"`,
+		`property="og:type" content="profile"`,
+	}
+	for _, want := range wants {
+		if !strings.Contains(html, want) {
+			t.Errorf("shared profile missing %q", want)
+		}
+	}
+}
+
 func TestRobotsForPath(t *testing.T) {
 	if got := robotsForPath("/auth/user/settings"); got != "noindex, nofollow" {
 		t.Fatalf("auth: %q", got)
 	}
+	if got := robotsForPath("/u/abc"); got != "noindex, nofollow" {
+		t.Fatalf("share profile: %q", got)
+	}
 	if got := robotsForPath("/about"); got != "index, follow" {
 		t.Fatalf("about: %q", got)
+	}
+	if got := robotsForPath("/faq"); got != "index, follow" {
+		t.Fatalf("faq: %q", got)
 	}
 }
