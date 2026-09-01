@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/rocky-ads/site/internal/businesscard"
+	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/logger"
 )
 
@@ -17,7 +18,8 @@ func main() {
 		"",
 		"Path to ad-category.json (default: embedded list)",
 	)
-	host := flag.String("host", "rockyads.com", "Site hostname for QR URLs")
+	host := flag.String("host", config.PublicHost(),
+		"Site hostname for QR URLs")
 	outDir := flag.String("outdir", "cards", "Output directory")
 	imagesRoot := flag.String(
 		"images",

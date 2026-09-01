@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 
+	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/rock"
 	g "maragu.dev/gomponents"
 	hx "maragu.dev/gomponents-htmx"
@@ -407,7 +408,8 @@ func RockThrowPreviewModal(d RockThrowPreviewData) g.Node {
 		body = g.Group([]g.Node{
 			P(
 				Class("text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-3"),
-				g.Text("Provisional — not a Rocky Ads ruling"),
+				g.Textf("Provisional — not a %s ruling",
+					config.ServerName),
 			),
 			assessmentScaleSection(d.AssessmentScore, d.AssessmentDetail),
 			opinionSection("Summary", d.Summary),

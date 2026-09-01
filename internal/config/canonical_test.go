@@ -23,3 +23,43 @@ func TestCanonicalURL(t *testing.T) {
 		}
 	}
 }
+
+func TestPublicHost(t *testing.T) {
+	prev := PublicSiteURL
+	t.Cleanup(func() { PublicSiteURL = prev })
+
+	PublicSiteURL = "https://rockyads.com"
+	if got := PublicHost(); got != "rockyads.com" {
+		t.Errorf("PublicHost() = %q, want rockyads.com", got)
+	}
+
+	PublicSiteURL = "https://www.example.com:8443/path"
+	if got := PublicHost(); got != "www.example.com" {
+		t.Errorf("PublicHost() = %q, want www.example.com", got)
+	}
+
+	PublicSiteURL = ""
+	if got := PublicHost(); got != "" {
+		t.Errorf("PublicHost() = %q, want empty", got)
+	}
+}
+
+func TestDefaultContactEmail(t *testing.T) {
+	prev := PublicSiteURL
+	t.Cleanup(func() { PublicSiteURL = prev })
+
+	PublicSiteURL = "https://rockyads.com"
+	if got := defaultContactEmail(); got != "contact@rockyads.com" {
+		t.Errorf("defaultContactEmail() = %q", got)
+	}
+
+	PublicSiteURL = "https://www.example.com:8443/path"
+	if got := defaultContactEmail(); got != "contact@www.example.com" {
+		t.Errorf("defaultContactEmail() = %q", got)
+	}
+
+	PublicSiteURL = ""
+	if got := defaultContactEmail(); got != "" {
+		t.Errorf("defaultContactEmail() = %q, want empty", got)
+	}
+}

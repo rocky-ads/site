@@ -9,6 +9,7 @@ import (
 	"io"
 	"path/filepath"
 
+	"github.com/rocky-ads/site/internal/config"
 	"github.com/skip2/go-qrcode"
 )
 
@@ -65,7 +66,7 @@ func RenderPrintCard(opts PrintCardOptions) (*image.RGBA, error) {
 	trim := image.Rect(bleedPx, bleedPx, bleedPx+trimW, bleedPx+trimH)
 
 	// Match site homepage visual proportions: icon ink slightly taller than
-	// adjacent capitals (nav rock vs "Rocky Ads"; pill icon vs category).
+	// adjacent capitals (nav rock vs site title; pill icon vs category).
 	const cssScale = 3.0
 	px := func(cssPx float64) int {
 		return int(cssPx*cssScale + 0.5)
@@ -81,8 +82,8 @@ func RenderPrintCard(opts PrintCardOptions) (*image.RGBA, error) {
 	stackGap := px(10)
 	bodyGap := px(18)
 
+	titleText := config.ServerName
 	const (
-		titleText     = "Rocky Ads"
 		iconToText    = 1.35 // CSS boxes are larger than ink; bias icons up
 		titleHeavy    = 1    // light embolden for title
 		categoryHeavy = 0    // bold only for category
@@ -254,7 +255,8 @@ func RenderPrintCard(opts PrintCardOptions) (*image.RGBA, error) {
 	bodyTop := pillTop + pillH + bodyGap
 
 	aboutBlurb := "Remember classified ads? Post ad with your number and " +
-		"folks call you. Rocky Ads works the same way—except your " +
+		"folks call you. " + config.ServerName +
+		" works the same way—except your " +
 		"number stays hidden."
 	noItems := []string{
 		"No email",

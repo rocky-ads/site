@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -140,7 +141,7 @@ var (
 	// Server configuration
 	ServerPort   = getEnvWithDefault("PORT", "10000")
 	ServerName   = getEnvWithDefault("APP_NAME", "Rocky Ads")
-	ContactEmail = getEnvWithDefault("CONTACT_EMAIL", "contact@rockyads.com")
+	ContactEmail = getEnvWithDefault("CONTACT_EMAIL", defaultContactEmail())
 
 	// Public Bitcoin address for /donate (on-chain receive address).
 	BitcoinDonateAddress = getEnvWithDefault("BITCOIN_DONATE_ADDRESS", "")
@@ -217,6 +218,22 @@ func CanonicalURL(path string) string {
 		path = "/" + path
 	}
 	return PublicSiteURL + path
+}
+
+// PublicHost is the hostname from PublicSiteURL.
+func PublicHost() string {
+	u, err := url.Parse(PublicSiteURL)
+	if err != nil {
+		return ""
+	}
+	return u.Hostname()
+}
+
+func defaultContactEmail() string {
+	if host := PublicHost(); host != "" {
+		return "contact@" + host
+	}
+	return ""
 }
 
 // getEncryptionKey loads and decodes a base64-encoded encryption key from environment

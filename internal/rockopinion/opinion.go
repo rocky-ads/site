@@ -194,7 +194,7 @@ func generate(conv message.Conversation, throwerID int, reason string,
 
 	parts := buildGrokParts(userPrompt, a.ID, a.ImageCount, attachImages)
 	resp, err := grok.CallGrokConvParts(
-		opinionSystemPrompt, parts, rockOpinionConvID,
+		opinionSystemPrompt(), parts, rockOpinionConvID,
 	)
 	if err != nil {
 		logger.Warn("rock opinion: grok call failed",

@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/rocky-ads/site/internal/config"
 	"github.com/srwiley/oksvg"
 	"github.com/srwiley/rasterx"
 	xdraw "golang.org/x/image/draw"
@@ -153,8 +154,12 @@ func wrapLines(
 ) ([]string, error) {
 	// Keep multi-word brand phrases on one line when possible.
 	protected := []struct{ from, to string }{
-		{"Rocky Ads", "Rocky\u00a0Ads"},
 		{"phone number", "phone\u00a0number"},
+	}
+	if name := config.ServerName; name != "" {
+		protected = append(protected, struct{ from, to string }{
+			name, strings.ReplaceAll(name, " ", "\u00a0"),
+		})
 	}
 	for _, p := range protected {
 		text = strings.ReplaceAll(text, p.from, p.to)

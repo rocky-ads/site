@@ -1,9 +1,19 @@
 package rockopinion
 
+import (
+	"fmt"
+
+	"github.com/rocky-ads/site/internal/config"
+)
+
 const rockOpinionConvID = "rock-opinion"
 
-const opinionSystemPrompt = `You are a neutral third-party arbitrator for ` +
-	`classified-ad disputes on Rocky Ads. A dispute begins when one party ` +
+func opinionSystemPrompt() string {
+	return fmt.Sprintf(opinionSystemPromptTmpl, config.ServerName)
+}
+
+const opinionSystemPromptTmpl = `You are a neutral third-party arbitrator for ` +
+	`classified-ad disputes on %s. A dispute begins when one party ` +
 	`files a complaint about the other regarding an ad. Review the ad ` +
 	`context (including any attached listing images), formal fields, and ` +
 	`private conversation (parties labeled Owner and Inquirer only). ` +

@@ -551,7 +551,8 @@ func (m model) updateRestoreConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	title := lipgloss.NewStyle().Bold(true).Render("Rocky Ads Admin")
+	title := lipgloss.NewStyle().Bold(true).Render(
+		config.ServerName + " Admin")
 	if m.dbTarget != "" {
 		muted := lipgloss.NewStyle().Faint(true).Render(m.dbTarget)
 		title = title + "\n" + muted
@@ -719,7 +720,8 @@ func runTUI() {
 	if host != "" {
 		dbTarget = database + " @ " + host
 	}
-	fmt.Fprintf(os.Stderr, "Rocky Ads Admin — connected to %s\n", dbTarget)
+	fmt.Fprintf(os.Stderr, "%s Admin — connected to %s\n",
+		config.ServerName, dbTarget)
 
 	store, err := imagestore.NewDefault()
 	if err != nil {

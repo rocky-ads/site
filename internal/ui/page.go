@@ -78,7 +78,7 @@ func websiteJSONLD() g.Node {
 		"name":     config.ServerName,
 		"alternateName": []string{
 			config.ServerName + " - Classified Ads",
-			"rockyads.com",
+			config.PublicHost(),
 		},
 		"url": config.CanonicalURL("/"),
 	}
@@ -221,7 +221,7 @@ func introBanner() g.Node {
 				"hover:underline cursor-pointer"),
 			hx.Get("/api/intro-banner/dismiss?redirect=/about"),
 			hx.Swap("none"),
-			g.Text("What is Rocky Ads?"),
+			g.Textf("What is %s?", config.ServerName),
 		),
 		Button(
 			Type("button"),

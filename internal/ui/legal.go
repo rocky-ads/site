@@ -59,16 +59,17 @@ func legalIntro(kind string) []g.Node {
 
 func PrivacyPolicyPage() []g.Node {
 	name := config.ServerName
+	host := config.PublicHost()
 	nodes := legalIntro("Privacy Policy")
 	nodes = append(nodes,
 		Div(
 			Class("mt-10 space-y-10"),
 			legalSection("Who we are",
 				legalP(
-					g.Textf("%s (“we”) operates rockyads.com, a "+
+					g.Textf("%s (“we”) operates %s, a "+
 						"classifieds marketplace. This policy "+
 						"explains how we handle information when "+
-						"you use the site.", name),
+						"you use the site.", name, host),
 				),
 			),
 			legalSection("Information we collect",
@@ -249,14 +250,15 @@ func PrivacyPolicyPage() []g.Node {
 func TermsOfServicePage() []g.Node {
 	name := config.ServerName
 	email := config.ContactEmail
+	host := config.PublicHost()
 	nodes := legalIntro("Terms of Service")
 	nodes = append(nodes,
 		Div(
 			Class("mt-10 space-y-10"),
 			legalSection("Agreement",
 				legalP(
-					g.Text("By using rockyads.com you agree to these "+
-						"Terms and our "),
+					g.Textf("By using %s you agree to these "+
+						"Terms and our ", host),
 					faqLink("/privacy", "Privacy Policy"),
 					g.Text(". If you do not agree, do not use the "+
 						"service."),

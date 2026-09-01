@@ -11,7 +11,7 @@ import (
 //go:embed data/ad-category.json
 var embeddedCategoriesJSON []byte
 
-// Category describes one Rocky Ads listing category for card generation.
+// Category describes one listing category for card generation.
 type Category struct {
 	ID        int
 	Name      string
