@@ -3,7 +3,6 @@ package handler
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
-	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/local"
 	"github.com/rocky-ads/site/internal/ui"
@@ -22,7 +21,7 @@ func HomeHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return renderPage(c, config.ServerName,
+	return renderPage(c, "Classified Ads",
 		ui.HomePage(userID, view, searchState.Q, searchState.Expanded,
 			searchVisible(searchState), categoryOption(category),
 			filterFacetsForExpanded(category, searchState.Expanded),

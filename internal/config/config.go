@@ -199,6 +199,20 @@ func trimURLBase(raw string) string {
 	return strings.TrimRight(strings.TrimSpace(raw), "/")
 }
 
+// CanonicalURL is the absolute public URL for path (no query or fragment).
+func CanonicalURL(path string) string {
+	if i := strings.IndexAny(path, "?#"); i >= 0 {
+		path = path[:i]
+	}
+	if path == "" || path == "/" {
+		return PublicSiteURL + "/"
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	return PublicSiteURL + path
+}
+
 // getEncryptionKey loads and decodes a base64-encoded encryption key from environment
 // Returns empty slice if not set (validation happens in SecurityCheck)
 func getEncryptionKey(envKey string) []byte {

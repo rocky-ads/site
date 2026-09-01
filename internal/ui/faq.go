@@ -158,6 +158,10 @@ func ValidFAQSection(id string) bool {
 	return ok
 }
 
+func FAQSectionIDs() []string {
+	return append([]string(nil), faqOrder...)
+}
+
 func faqLink(href, text string) g.Node {
 	return A(
 		Href(href),

@@ -57,6 +57,8 @@ func setupApp() *fiber.App {
 	app.Static("/", "./static")
 
 	app.Get("/", handler.HomeHandler)
+	app.Get("/robots.txt", handler.RobotsHandler)
+	app.Get("/sitemap.xml", handler.SitemapHandler)
 	app.Get("/login", handler.LoginHandler)
 	app.Get("/logout", handler.LogoutHandler)
 	app.Get("/register", handler.RegisterHandler)

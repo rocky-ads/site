@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -105,6 +106,69 @@ func TestHomeHandler(t *testing.T) {
 			t.Error("Expected category cookie to be set when accessing home page without cookie")
 		}
 	})
+}
+
+func TestHomePageSEO(t *testing.T) {
+	resp, err := http.Get(baseURL + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	html := string(body)
+	if !strings.Contains(html, "<title>Rocky Ads - Classified Ads</title>") {
+		t.Error("expected homepage title Rocky Ads - Classified Ads")
+	}
+	if !strings.Contains(html, `rel="canonical"`) {
+		t.Error("expected canonical link")
+	}
+	if !strings.Contains(html, "application/ld+json") {
+		t.Error("expected WebSite JSON-LD")
+	}
+}
+
+func TestRobotsAndSitemap(t *testing.T) {
+	resp, err := http.Get(baseURL + "/robots.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("robots.txt status %d", resp.StatusCode)
+	}
+	robots := string(body)
+	if !strings.Contains(robots, "Disallow: /auth/") {
+		t.Errorf("robots.txt: %s", robots)
+	}
+	if !strings.Contains(robots, "Sitemap:") {
+		t.Errorf("robots.txt missing Sitemap: %s", robots)
+	}
+
+	resp, err = http.Get(baseURL + "/sitemap.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err = io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("sitemap.xml status %d", resp.StatusCode)
+	}
+	sm := string(body)
+	for _, path := range []string{"/about", "/login", "/faq", "/privacy"} {
+		if !strings.Contains(sm, path+"</loc>") {
+			t.Errorf("sitemap missing %s\n%s", path, sm)
+		}
+	}
 }
 
 func TestHomeHandlerSearchHiddenByDefault(t *testing.T) {

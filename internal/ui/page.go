@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -13,13 +14,50 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-// seoMetaTags returns SEO meta tags for the homepage
-func seoMetaTags() []g.Node {
+func pageDescription(path string) string {
+	name := config.ServerName
+	switch {
+	case path == "/":
+		return name + " - Classified Ads. Buy and sell vehicles, " +
+			"parts, jobs, pets, housing, and more."
+	case path == "/about":
+		return name + " is classified ads for the Internet. Post with " +
+			"your phone number; it stays hidden."
+	case path == "/login":
+		return "Log in to " + name + " to post ads, message sellers, " +
+			"and manage your account."
+	case path == "/register":
+		return "Create a " + name + " account with your phone number. " +
+			"No email, no fees."
+	case path == "/faq" || strings.HasPrefix(path, "/faq/"):
+		return "Answers about rocks, phone numbers, account recovery, " +
+			"and SMS on " + name + "."
+	case path == "/privacy":
+		return "How " + name + " handles your account, phone number, " +
+			"and listing information."
+	case path == "/terms":
+		return "Terms of service for using " + name + "."
+	default:
+		return ""
+	}
+}
+
+func robotsForPath(path string) string {
+	switch {
+	case strings.HasPrefix(path, "/auth/"),
+		strings.HasPrefix(path, "/admin/"),
+		path == "/recover",
+		path == "/error",
+		path == "/health",
+		path == "/logout":
+		return "noindex, nofollow"
+	default:
+		return "index, follow"
+	}
+}
+
+func homepageSocialMeta(docTitle, desc string) []g.Node {
 	return []g.Node{
-		Meta(
-			Name("description"),
-			Content(config.ServerName),
-		),
 		Meta(
 			Name("keywords"),
 			Content(
@@ -29,28 +67,52 @@ func seoMetaTags() []g.Node {
 			),
 		),
 		Meta(Name("author"), Content(config.ServerName)),
-		Meta(Name("robots"), Content("index, follow")),
-		Meta(g.Attr("property", "og:title"), Content(config.ServerName)),
-		Meta(
-			g.Attr("property", "og:description"),
-			Content(
-				config.ServerName+" - Classified ads without the newspaper. Buy and "+
-					"sell vehicles, parts, jobs, pets, housing, and more.",
-			),
-		),
+		Meta(g.Attr("property", "og:title"), Content(docTitle)),
+		Meta(g.Attr("property", "og:description"), Content(desc)),
 		Meta(g.Attr("property", "og:type"), Content("website")),
 		Meta(
 			g.Attr("property", "og:url"),
-			Content("https://rockyads.com/"),
+			Content(config.CanonicalURL("/")),
 		),
 		Meta(g.Attr("property", "og:site_name"), Content(config.ServerName)),
-		Meta(Name("twitter:card"), Content("summary")),
-		Meta(Name("twitter:title"), Content(config.ServerName)),
-		Meta(
-			Name("twitter:description"),
-			Content(config.ServerName),
-		),
 	}
+}
+
+func websiteJSONLD() g.Node {
+	payload := map[string]any{
+		"@context": "https://schema.org",
+		"@type":    "WebSite",
+		"name":     config.ServerName,
+		"alternateName": []string{
+			config.ServerName + " - Classified Ads",
+			"rockyads.com",
+		},
+		"url": config.CanonicalURL("/"),
+	}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return nil
+	}
+	return Script(
+		Type("application/ld+json"),
+		g.Raw(string(b)),
+	)
+}
+
+func seoHead(docTitle, currentPath string) []g.Node {
+	nodes := []g.Node{
+		Link(Rel("canonical"), Href(config.CanonicalURL(currentPath))),
+		Meta(Name("robots"), Content(robotsForPath(currentPath))),
+	}
+	desc := pageDescription(currentPath)
+	if desc != "" {
+		nodes = append(nodes, Meta(Name("description"), Content(desc)))
+	}
+	if currentPath == "/" {
+		nodes = append(nodes, homepageSocialMeta(docTitle, desc)...)
+		nodes = append(nodes, websiteJSONLD())
+	}
+	return nodes
 }
 
 func getUserInitial(userName string) string {
@@ -210,12 +272,13 @@ func SiteFooter() g.Node {
 
 func Page(userID int, hasUnread bool, userName, title, currentPath,
 	csrfToken string, showIntroBanner bool, body []g.Node) g.Node {
-	var headNodes []g.Node
-
-	// SEO meta tags for homepage
-	if currentPath == "/" {
-		headNodes = append(headNodes, g.Group(seoMetaTags()))
+	docTitle := config.ServerName
+	if title != "" {
+		docTitle = config.ServerName + " - " + title
 	}
+
+	var headNodes []g.Node
+	headNodes = append(headNodes, seoHead(docTitle, currentPath)...)
 
 	// Favicon
 	headNodes = append(headNodes,
@@ -278,11 +341,6 @@ func Page(userID int, hasUnread bool, userName, title, currentPath,
 				SiteFooter(),
 			),
 		),
-	}
-
-	docTitle := config.ServerName
-	if title != "" && title != config.ServerName {
-		docTitle = config.ServerName + " - " + title
 	}
 
 	return components.HTML5(components.HTML5Props{
