@@ -963,8 +963,9 @@ func AboutPage() []g.Node {
 					g.Textf(
 						"Remember classified ads? Easy, simple. "+
 							"Post an ad with your phone number and "+
-							"folks call you. %s works the same way, "+
-							"except your phone number stays hidden.",
+							"folks contact you. %s works the same "+
+							"way, except your phone number stays "+
+							"hidden.",
 						config.ServerName,
 					),
 				),

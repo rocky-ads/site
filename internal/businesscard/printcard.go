@@ -255,7 +255,7 @@ func RenderPrintCard(opts PrintCardOptions) (*image.RGBA, error) {
 	bodyTop := pillTop + pillH + bodyGap
 
 	aboutBlurb := "Remember classified ads? Post ad with your number and " +
-		"folks call you. " + config.ServerName +
+		"folks contact you. " + config.ServerName +
 		" works the same way—except your " +
 		"number stays hidden."
 	noItems := []string{

@@ -6,7 +6,7 @@
   <img src="static/images/classifieds.jpg" alt="Newspaper classifieds" height="500">
 </p>
 
-Remember classified ads? Easy, simple. Post an ad with your phone number and folks call you. Rocky Ads works the same way, except your phone number stays hidden.
+Remember classified ads? Easy, simple. Post an ad with your phone number and folks contact you. Rocky Ads works the same way, except your phone number stays hidden.
 
 &emsp;🚫 No email  
 &emsp;🚫 No Facebook friends  
