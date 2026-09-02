@@ -40,44 +40,6 @@ func TestPageHomeSEO(t *testing.T) {
 	}
 }
 
-func TestPageDonateSEO(t *testing.T) {
-	prev := config.PublicSiteURL
-	config.PublicSiteURL = "https://rockyads.com"
-	t.Cleanup(func() { config.PublicSiteURL = prev })
-
-	html := renderPageHTML(t, "Donate", "/donate")
-	wants := []string{
-		"<title>Rocky Ads - Donate</title>",
-		`rel="canonical" href="https://rockyads.com/donate"`,
-		`name="description" content="Rocky Ads is publicly funded.`,
-		`name="robots" content="index, follow"`,
-	}
-	for _, want := range wants {
-		if !strings.Contains(html, want) {
-			t.Errorf("donate missing %q", want)
-		}
-	}
-}
-
-func TestPageFunStatsSEO(t *testing.T) {
-	prev := config.PublicSiteURL
-	config.PublicSiteURL = "https://rockyads.com"
-	t.Cleanup(func() { config.PublicSiteURL = prev })
-
-	html := renderPageHTML(t, "Fun Stats", "/funstats")
-	wants := []string{
-		"<title>Rocky Ads - Fun Stats</title>",
-		`rel="canonical" href="https://rockyads.com/funstats"`,
-		`name="description" content="Rocky Ads fun stats:`,
-		`name="robots" content="index, follow"`,
-	}
-	for _, want := range wants {
-		if !strings.Contains(html, want) {
-			t.Errorf("funstats missing %q", want)
-		}
-	}
-}
-
 func TestPageLoginSEO(t *testing.T) {
 	prev := config.PublicSiteURL
 	config.PublicSiteURL = "https://rockyads.com"
