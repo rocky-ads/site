@@ -131,7 +131,7 @@ func paginationDiv(nextPage int) g.Node {
 
 func adCardMeta(location string) g.Node {
 	return Div(
-		Class("flex flex-wrap items-start justify-end gap-2 text-xs text-zinc-500"),
+		Class("text-xs text-zinc-500 whitespace-nowrap"),
 		g.Text(location),
 	)
 }
@@ -146,7 +146,8 @@ func adCardTitleWithBadge(title, facetLabel string, showNewBadge bool,
 		Class("min-w-0"),
 		g.Text(title),
 		g.If(facetLabel != "",
-			Span(Class("text-xs text-zinc-500"), g.Text(" · "+facetLabel))),
+			Span(Class("text-xs text-zinc-500 whitespace-nowrap"),
+				g.Text(" · "+facetLabel))),
 		g.If(showNewBadge && time.Since(createdAt) < 4*time.Hour,
 			Span(Class("ml-1"), newBadge())),
 	)
@@ -225,7 +226,7 @@ func AdListNode(userID, adID int, priceDisplay, title, location,
 			adCardTitleWithBadge(title, facetLabel, true, createdAt),
 		),
 		Div(
-			Class("max-w-[7.5rem] min-w-0 text-right"),
+			Class("text-right"),
 			adCardMeta(location),
 		),
 		Div(
