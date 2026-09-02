@@ -339,6 +339,24 @@ func DonateHandler(c *fiber.Ctx) error {
 	return renderPage(c, "Donate", ui.DonatePage())
 }
 
+func FunStatsHandler(c *fiber.Ctx) error {
+	rows, err := ad.MonthlyFunStats()
+	if err != nil {
+		return err
+	}
+	months := make([]ui.FunStatsMonth, len(rows))
+	for i, row := range rows {
+		months[i] = ui.FunStatsMonth{
+			Label:              row.Month.UTC().Format("Jan 2006"),
+			RegisteredUsers:    row.RegisteredUsers,
+			UsersWithActiveAds: row.UsersWithActiveAds,
+			ActiveAds:          row.ActiveAds,
+		}
+	}
+	return renderPage(c, "Fun Stats",
+		ui.FunStatsPage(ui.FunStatsData{Months: months}))
+}
+
 func PrivacyHandler(c *fiber.Ctx) error {
 	return renderPage(c, "Privacy Policy", ui.PrivacyPolicyPage())
 }

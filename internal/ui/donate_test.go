@@ -21,14 +21,21 @@ func renderNodes(t *testing.T, nodes []g.Node) string {
 func TestAboutPageDonateItem(t *testing.T) {
 	html := renderNodes(t, AboutPage())
 	idxSource := strings.Index(html, "Source code")
+	idxFunStats := strings.Index(html, "Fun Stats")
 	idxDonate := strings.Index(html, "Donate")
-	if idxSource < 0 || idxDonate < 0 {
-		t.Fatal("expected Source code and Donate on about page")
+	if idxSource < 0 || idxFunStats < 0 || idxDonate < 0 {
+		t.Fatal("expected Source code, Fun Stats, and Donate on about page")
 	}
-	if idxDonate < idxSource {
-		t.Fatal("Donate should follow Source code")
+	if idxFunStats < idxSource {
+		t.Fatal("Fun Stats should follow Source code")
+	}
+	if idxDonate < idxFunStats {
+		t.Fatal("Donate should follow Fun Stats")
 	}
 	for _, want := range []string{
+		`href="/funstats"`,
+		"/images/bar_chart.svg",
+		"Users and ads over time",
 		`href="/donate"`,
 		"/images/money.svg",
 		"Help with operating costs",

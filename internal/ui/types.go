@@ -248,3 +248,16 @@ type ClickImageRow struct {
 	Clicks     int
 	LastClick  string
 }
+
+// FunStatsMonth is one month on the public fun stats graphs.
+type FunStatsMonth struct {
+	Label              string
+	RegisteredUsers    int
+	UsersWithActiveAds int
+	ActiveAds          int
+}
+
+// FunStatsData holds presentation fields for /funstats.
+type FunStatsData struct {
+	Months []FunStatsMonth
+}

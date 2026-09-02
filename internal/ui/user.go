@@ -1045,6 +1045,14 @@ func AboutPage() []g.Node {
 					),
 				),
 				aboutItem(
+					"/images/bar_chart.svg",
+					"Fun Stats",
+					"Fun Stats",
+					"/funstats",
+					false,
+					faqLink("/funstats", "Users and ads over time"),
+				),
+				aboutItem(
 					"/images/money.svg",
 					"Donate",
 					"Donate",
