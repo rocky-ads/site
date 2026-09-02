@@ -21,7 +21,7 @@ func HomeHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return renderPage(c, "Classified Ads",
+	return renderPage(c, category.Name,
 		ui.HomePage(userID, view, searchState.Q, searchState.Expanded,
 			searchVisible(searchState), categoryOption(category),
 			filterFacetsForExpanded(category, searchState.Expanded),

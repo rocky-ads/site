@@ -26,6 +26,8 @@ func pageDescription(path string) string {
 	case path == "/login":
 		return "Log in to " + name + " to post ads, message sellers, " +
 			"and manage your account."
+	case strings.HasPrefix(path, "/c/"):
+		return name + " classified ads by category."
 	default:
 		return ""
 	}
@@ -46,7 +48,7 @@ func robotsForPath(path string) string {
 	}
 }
 
-func homepageSocialMeta(docTitle, desc string) []g.Node {
+func homepageSocialMeta(docTitle, desc, path string) []g.Node {
 	return []g.Node{
 		Meta(
 			Name("keywords"),
@@ -62,7 +64,7 @@ func homepageSocialMeta(docTitle, desc string) []g.Node {
 		Meta(g.Attr("property", "og:type"), Content("website")),
 		Meta(
 			g.Attr("property", "og:url"),
-			Content(config.CanonicalURL("/")),
+			Content(config.CanonicalURL(path)),
 		),
 		Meta(g.Attr("property", "og:site_name"), Content(config.ServerName)),
 	}
@@ -98,9 +100,11 @@ func seoHead(docTitle, currentPath string) []g.Node {
 	if desc != "" {
 		nodes = append(nodes, Meta(Name("description"), Content(desc)))
 	}
-	if currentPath == "/" {
-		nodes = append(nodes, homepageSocialMeta(docTitle, desc)...)
-		nodes = append(nodes, websiteJSONLD())
+	if currentPath == "/" || strings.HasPrefix(currentPath, "/c/") {
+		nodes = append(nodes, homepageSocialMeta(docTitle, desc, currentPath)...)
+		if currentPath == "/" {
+			nodes = append(nodes, websiteJSONLD())
+		}
 	}
 	if strings.HasPrefix(currentPath, "/u/") {
 		nodes = append(nodes,

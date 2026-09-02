@@ -18,6 +18,7 @@ func TestRobotsTxt(t *testing.T) {
 	body := robotsTxt()
 	for _, want := range []string{
 		"User-agent: *",
+		"Allow: /c/",
 		"Disallow: /auth/",
 		"Disallow: /admin/",
 		"Disallow: /api/",

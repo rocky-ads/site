@@ -92,6 +92,10 @@ func GetCategory(categoryID int) Category {
 	return categories[defaultCategory]
 }
 
+func DefaultCategoryID() int {
+	return defaultCategory
+}
+
 func GetCategoryImageFile(categoryID int) (string, error) {
 	category, ok := categories[categoryID]
 	if !ok {

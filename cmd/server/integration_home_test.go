@@ -119,8 +119,9 @@ func TestHomePageSEO(t *testing.T) {
 		t.Fatal(err)
 	}
 	html := string(body)
-	if !strings.Contains(html, "<title>Rocky Ads - Classified Ads</title>") {
-		t.Error("expected homepage title Rocky Ads - Classified Ads")
+	if !strings.Contains(html, "Rocky Ads - Car") ||
+		!strings.Contains(html, "Truck Parts") {
+		t.Error("expected homepage title Rocky Ads - Car & Truck Parts")
 	}
 	if !strings.Contains(html, `rel="canonical"`) {
 		t.Error("expected canonical link")
@@ -167,10 +168,13 @@ func TestRobotsAndSitemap(t *testing.T) {
 		t.Fatalf("sitemap.xml status %d", resp.StatusCode)
 	}
 	sm := string(body)
-	for _, path := range []string{"/about", "/login"} {
+	for _, path := range []string{"/about", "/login", "/c/6"} {
 		if !strings.Contains(sm, path+"</loc>") {
 			t.Errorf("sitemap missing %s\n%s", path, sm)
 		}
+	}
+	if strings.Contains(sm, "/c/5") {
+		t.Errorf("sitemap should not include default /c/5\n%s", sm)
 	}
 	if strings.Contains(sm, "/faq") {
 		t.Errorf("sitemap should not include /faq\n%s", sm)
@@ -385,12 +389,12 @@ func TestShortCategoryRoute(t *testing.T) {
 	}
 	jar.SetCookies(u, []*http.Cookie{{Name: "category", Value: "5"}})
 
-	resp, _ := getRequestWithCookies(t, client, baseURL+"/c/6")
-	if resp.StatusCode != http.StatusFound {
-		t.Fatalf("expected 302, got %d", resp.StatusCode)
+	resp, body := getRequestWithCookies(t, client, baseURL+"/c/6")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-	if got := resp.Header.Get("Location"); got != "/" {
-		t.Fatalf("expected redirect /, got %q", got)
+	if !strings.Contains(body, "Cars") || !strings.Contains(body, "Trucks") {
+		t.Fatalf("expected Cars & Trucks title, body snippet missing")
 	}
 
 	var categoryVal string

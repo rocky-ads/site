@@ -36,7 +36,10 @@ func ShortCategoryHandler(c *fiber.Ctx) error {
 	cookie.SetCategoryID(c, categoryID)
 	state := clearFacetFilters(cookie.GetSearchState(c), categoryID)
 	cookie.SetSearchState(c, state)
-	return c.Redirect("/", fiber.StatusFound)
+	if categoryID == ad.DefaultCategoryID() {
+		return c.Redirect("/", fiber.StatusMovedPermanently)
+	}
+	return HomeHandler(c)
 }
 
 func switchCategoryHome(c *fiber.Ctx, categoryID int) {

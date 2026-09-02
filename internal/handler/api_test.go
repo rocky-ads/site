@@ -93,8 +93,8 @@ func TestShortCategoryHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp.StatusCode != fiber.StatusFound {
-		t.Fatalf("status = %d, want 302", resp.StatusCode)
+	if resp.StatusCode != fiber.StatusMovedPermanently {
+		t.Fatalf("status = %d, want 301", resp.StatusCode)
 	}
 	if got := resp.Header.Get("Location"); got != "/" {
 		t.Fatalf("Location = %q, want /", got)

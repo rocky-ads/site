@@ -23,12 +23,12 @@ func TestPageHomeSEO(t *testing.T) {
 	config.PublicSiteURL = "https://rockyads.com"
 	t.Cleanup(func() { config.PublicSiteURL = prev })
 
-	html := renderPageHTML(t, "Classified Ads", "/")
+	html := renderPageHTML(t, "Car & Truck Parts", "/")
 	wants := []string{
-		"<title>Rocky Ads - Classified Ads</title>",
+		"<title>Rocky Ads - Car &amp; Truck Parts</title>",
 		`rel="canonical" href="https://rockyads.com/"`,
 		`name="description" content="Rocky Ads - Classified Ads.`,
-		`property="og:title" content="Rocky Ads - Classified Ads"`,
+		`property="og:title" content="Rocky Ads - Car &amp; Truck Parts"`,
 		`"@type":"WebSite"`,
 		`"url":"https://rockyads.com/"`,
 		`name="robots" content="index, follow"`,
@@ -59,6 +59,28 @@ func TestPageLoginSEO(t *testing.T) {
 	}
 	if strings.Contains(html, "application/ld+json") {
 		t.Error("WebSite JSON-LD should only be on the homepage")
+	}
+}
+
+func TestPageCategoryLandingSEO(t *testing.T) {
+	prev := config.PublicSiteURL
+	config.PublicSiteURL = "https://rockyads.com"
+	t.Cleanup(func() { config.PublicSiteURL = prev })
+
+	html := renderPageHTML(t, "Cars & Trucks", "/c/6")
+	wants := []string{
+		"<title>Rocky Ads - Cars &amp; Trucks</title>",
+		`rel="canonical" href="https://rockyads.com/c/6"`,
+		`property="og:url" content="https://rockyads.com/c/6"`,
+		`name="robots" content="index, follow"`,
+	}
+	for _, want := range wants {
+		if !strings.Contains(html, want) {
+			t.Errorf("category landing missing %q", want)
+		}
+	}
+	if strings.Contains(html, `"@type":"WebSite"`) {
+		t.Error("WebSite JSON-LD should only be on /")
 	}
 }
 
