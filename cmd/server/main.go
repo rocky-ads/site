@@ -50,6 +50,12 @@ func setupApp() *fiber.App {
 	app.Use(flogger.New(flogger.Config{
 		Output: logger.Writer(),
 		Format: "${status} | ${latency} | ${ip} | ${method} | ${path}\n",
+		CustomTags: map[string]flogger.LogFunc{
+			"ip": func(output flogger.Buffer, c *fiber.Ctx,
+				data *flogger.Data, extraParam string) (int, error) {
+				return output.WriteString(handler.VisitorIP(c))
+			},
+		},
 	}))
 
 	// Public routes
