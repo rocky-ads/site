@@ -439,14 +439,14 @@ func shareAdLinkSection(path string) g.Node {
 			g.Text("Ad Link"),
 		),
 		Div(
-			Class("flex items-center gap-2"),
+			Class("flex flex-wrap items-center gap-2"),
 			Input(
 				ID("ad-link-input"),
 				Type("text"),
 				Value(path),
 				g.Attr("readonly", ""),
 				g.Attr("onfocus", "this.select();"),
-				Class("flex-1 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-zinc-50 dark:bg-zinc-700 text-sm text-zinc-900 dark:text-zinc-200"),
+				Class("grow px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-zinc-50 dark:bg-zinc-700 text-sm text-zinc-900 dark:text-zinc-200"),
 			),
 			copyButton(path, false),
 		),

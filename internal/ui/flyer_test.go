@@ -24,6 +24,7 @@ func TestAdShareModalFlyer(t *testing.T) {
 		`href="/ad/7/flyer"`,
 		"Print flyer",
 		"max-w-md",
+		"flex-wrap",
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("share modal missing %q", want)
