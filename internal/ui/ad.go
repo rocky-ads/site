@@ -406,7 +406,7 @@ func CopyButtonCopied(path string) g.Node {
 	return copyButton(path, true)
 }
 
-func AdShareModal(path string) g.Node {
+func AdShareModal(path, flyerHref string) g.Node {
 	return g.Group([]g.Node{
 		modalBackdrop("ad-share"),
 		Div(
@@ -420,31 +420,59 @@ func AdShareModal(path string) g.Node {
 					modalClose("ad-share"),
 				),
 				Div(
-					Class("p-6 flex flex-col gap-4"),
-					Div(
-						Class("flex flex-col gap-2"),
-						Label(
-							Class("text-sm font-medium text-zinc-700 dark:text-zinc-300"),
-							For("ad-link-input"),
-							g.Text("Ad Link"),
-						),
-						Div(
-							Class("flex items-center gap-2"),
-							Input(
-								ID("ad-link-input"),
-								Type("text"),
-								Value(path),
-								g.Attr("readonly", ""),
-								g.Attr("onfocus", "this.select();"),
-								Class("flex-1 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-zinc-50 dark:bg-zinc-700 text-sm text-zinc-900 dark:text-zinc-200"),
-							),
-							copyButton(path, false),
-						),
-					),
+					Class("p-6 flex flex-col gap-6"),
+					shareAdLinkSection(path),
+					g.If(flyerHref != "",
+						shareFlyerSection(flyerHref)),
 				),
 			),
 		),
 	})
+}
+
+func shareAdLinkSection(path string) g.Node {
+	return Div(
+		Class("flex flex-col gap-2"),
+		Label(
+			Class("text-sm font-medium text-zinc-700 dark:text-zinc-300"),
+			For("ad-link-input"),
+			g.Text("Ad Link"),
+		),
+		Div(
+			Class("flex items-center gap-2"),
+			Input(
+				ID("ad-link-input"),
+				Type("text"),
+				Value(path),
+				g.Attr("readonly", ""),
+				g.Attr("onfocus", "this.select();"),
+				Class("flex-1 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-zinc-50 dark:bg-zinc-700 text-sm text-zinc-900 dark:text-zinc-200"),
+			),
+			copyButton(path, false),
+		),
+	)
+}
+
+func shareFlyerSection(href string) g.Node {
+	return Div(
+		Class("flex flex-col gap-2 pt-4 border-t border-zinc-200 "+
+			"dark:border-zinc-700"),
+		Div(
+			Class("text-sm font-medium text-zinc-700 dark:text-zinc-300"),
+			g.Text("Flyer"),
+		),
+		P(
+			Class("text-sm text-zinc-600 dark:text-zinc-400"),
+			g.Text("Print a one-page flyer with this ad's photos, "+
+				"details, and a QR code. Save as PDF from the print "+
+				"dialog if you prefer."),
+		),
+		standardButton(buttonProps{
+			Href:  href,
+			Text:  "Print flyer",
+			Class: "self-start",
+		}),
+	)
 }
 
 func Ad(d AdDetail, userID int, csrfToken string) []g.Node {

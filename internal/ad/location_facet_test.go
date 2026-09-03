@@ -1,6 +1,7 @@
 package ad
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/rocky-ads/site/internal/facet"
@@ -56,5 +57,29 @@ func TestAdLocationDisplayAddressPrivacy(t *testing.T) {
 	car := Category{FacetKeys: []string{"mileage", "price"}}
 	if got := locationDisplayForCategory(a, car, 0); got == "" {
 		t.Fatal("non-address category should still show city for logged-out viewers")
+	}
+}
+
+func TestAdFlyerLocationHidesLoginPrompt(t *testing.T) {
+	garage := Category{FacetKeys: []string{"address"}}
+	addr := "123 Main St, Portland, OR"
+	a := Ad{
+		City:      "Portland",
+		AdminArea: "OR",
+		Country:   "US",
+		Facets: map[string]facet.Value{
+			"address": {Text: &addr},
+		},
+	}
+
+	got := flyerLocationForCategory(a, garage, 0)
+	if got == addressLoginPrompt {
+		t.Fatal("guest flyer should not print login prompt")
+	}
+	if !strings.Contains(got, "Portland") {
+		t.Fatalf("guest flyer location %q, want city", got)
+	}
+	if got := flyerLocationForCategory(a, garage, 1); got != addr {
+		t.Fatalf("logged-in flyer = %q, want address", got)
 	}
 }

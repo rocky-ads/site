@@ -54,6 +54,21 @@ type AdDetail struct {
 	Tags                []string
 }
 
+// AdFlyerData holds presentation fields for the print-only ad flyer.
+type AdFlyerData struct {
+	ID           int
+	ImageCount   int
+	PriceDisplay string
+	HasPrice     bool
+	Title        string
+	Location     string
+	Description  string
+	FacetLabel   string
+	FacetDetails []string
+	Tags         []string
+	AdURL        string
+}
+
 // AdCard holds presentation fields for an ad in search or list views.
 type AdCard struct {
 	ID           int

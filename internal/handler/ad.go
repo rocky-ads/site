@@ -6,6 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/ad"
+	"github.com/rocky-ads/site/internal/config"
 	"github.com/rocky-ads/site/internal/cookie"
 	"github.com/rocky-ads/site/internal/currency"
 	"github.com/rocky-ads/site/internal/local"
@@ -176,13 +177,52 @@ func AdShareHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
 	}
 
-	protocol := "https"
-	if c.Protocol() == "http" {
-		protocol = "http"
+	path := config.CanonicalURL(fmt.Sprintf("/ad/%d", adID))
+	flyerHref := ""
+	if a.IsActive() {
+		flyerHref = fmt.Sprintf("/ad/%d/flyer", adID)
 	}
-	path := fmt.Sprintf("%s://%s/ad/%d", protocol, c.Hostname(), adID)
+	return render(c, ui.AdShareModal(path, flyerHref))
+}
 
-	return render(c, ui.AdShareModal(path))
+func AdFlyerHandler(c *fiber.Ctx) error {
+	adID, err := param.GetAdID(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid ad ID")
+	}
+
+	userID := local.GetUserID(c)
+	tz := cookie.GetTimezone(c)
+	a, err := ad.GetAd(userID, adID, tz)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
+	}
+	if !a.IsActive() {
+		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
+	}
+
+	if err := ad.LoadTags(&a); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	return render(c, ui.AdFlyerPage(adFlyerData(a, userID, adID)))
+}
+
+func adFlyerData(a ad.Ad, userID, adID int) ui.AdFlyerData {
+	d := adDetailFrom(a, userID, false, false)
+	return ui.AdFlyerData{
+		ID:           d.ID,
+		ImageCount:   d.ImageCount,
+		PriceDisplay: d.PriceDisplay,
+		HasPrice:     d.HasPrice,
+		Title:        d.Title,
+		Location:     ad.AdFlyerLocationDisplay(a, userID),
+		Description:  d.DescriptionOriginal,
+		FacetLabel:   d.FacetLabel,
+		FacetDetails: d.FacetDetails,
+		Tags:         d.Tags,
+		AdURL:        config.CanonicalURL(fmt.Sprintf("/ad/%d", adID)),
+	}
 }
 
 func AdShareCopyHandler(c *fiber.Ctx) error {

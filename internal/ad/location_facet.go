@@ -77,3 +77,19 @@ func locationDisplayForCategory(a Ad, cat Category, viewerUserID int) string {
 	}
 	return location.DisplayText(a.City, a.AdminArea, a.Country)
 }
+
+// AdFlyerLocationDisplay is the location line for a printable flyer.
+// Street addresses stay login-gated; guests get city-level text instead
+// of the on-site "log in to see address" prompt.
+func AdFlyerLocationDisplay(a Ad, viewerUserID int) string {
+	return flyerLocationForCategory(a, GetCategory(a.CategoryID),
+		viewerUserID)
+}
+
+func flyerLocationForCategory(a Ad, cat Category, viewerUserID int) string {
+	loc := locationDisplayForCategory(a, cat, viewerUserID)
+	if loc == addressLoginPrompt {
+		return location.DisplayText(a.City, a.AdminArea, a.Country)
+	}
+	return loc
+}

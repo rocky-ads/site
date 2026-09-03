@@ -1,11 +1,9 @@
 package ui
 
 import (
-	"encoding/base64"
 	"fmt"
 
 	"github.com/rocky-ads/site/internal/config"
-	"github.com/skip2/go-qrcode"
 	g "maragu.dev/gomponents"
 	. "maragu.dev/gomponents/html"
 )
@@ -115,10 +113,5 @@ func donateCopyButton(addr string) g.Node {
 }
 
 func bitcoinQRSrc(content string) string {
-	png, err := qrcode.Encode(content, qrcode.Medium, 192)
-	if err != nil {
-		return ""
-	}
-	return "data:image/png;base64," +
-		base64.StdEncoding.EncodeToString(png)
+	return qrPNGDataURI(content, 192)
 }

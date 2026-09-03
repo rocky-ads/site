@@ -73,6 +73,7 @@ func setupApp() *fiber.App {
 	app.Get("/faq", handler.FAQHandler)
 	app.Get("/faq/:section", handler.FAQHandler)
 	app.Get("/ad/:id", handler.AdHandler)
+	app.Get("/ad/:id/flyer", handler.AdFlyerHandler)
 	app.Get("/ad/:id/rock/:ordinal", handler.PublicAdRockOpinionHandler)
 	app.Get("/c/:category", handler.ShortCategoryHandler)
 	app.Get("/u/:token", handler.SharedUserProfileHandler)
