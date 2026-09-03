@@ -186,7 +186,7 @@ Request flow: **handler → domain → handler maps to UI inputs → `ui/` rende
 ### Data Patterns
 - **Normalized Database** - Users, categories, ads, locations, bookmarks, conversations
 - **Hard-filter search** - Category, price range, location + radius (bounding box on lat/lon); interim text match on title/description (`q`)
-- **Semantic search** - Postgres pgvector cosine similarity on ad embeddings; metadata filters via `vector_metadata` JSONB; query/user/site embedding modes for empty search box
+- **Semantic search** - Postgres pgvector cosine similarity on ad embeddings; metadata filters via `vector_metadata` JSONB; query/user/site embedding modes for empty search box. See [EMBEDDINGS.md](EMBEDDINGS.md).
 
 ### Security Patterns
 - **Encryption at Rest** - AES-GCM for sensitive user data

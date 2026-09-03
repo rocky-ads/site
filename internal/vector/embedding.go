@@ -59,7 +59,7 @@ func calculateSiteLevelVector(categoryID int, campaignKey string) ([]float32, er
 	if categoryID <= 0 {
 		return nil, fmt.Errorf("categoryID must be greater than 0")
 	}
-	limit := config.VectorSystemEmbeddingLimit
+	limit := config.VectorSiteEmbeddingLimit
 	activities, err := getSiteActivities(categoryID, campaignKey, limit)
 	if err != nil {
 		return nil, fmt.Errorf("fetch site activities: %w", err)

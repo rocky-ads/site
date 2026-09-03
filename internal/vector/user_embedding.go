@@ -6,6 +6,8 @@ import (
 	"github.com/rocky-ads/site/internal/db"
 )
 
+// Buyer signals only: listings the user posted would pull browse
+// ranking toward their own inventory.
 func getUserActivities(userID, categoryID, limit int) ([]AdActivity, error) {
 	query := `
 		SELECT COALESCE(
@@ -30,8 +32,6 @@ func getUserActivities(userID, categoryID, limit int) ([]AdActivity, error) {
 						0.7 * EXP(-(LN(2.0) / 30.0) * age_days)
 					WHEN 'image_click' THEN
 						0.4 * EXP(-(LN(2.0) / 20.0) * age_days)
-					WHEN 'ad_created' THEN
-						0.8 * EXP(-(LN(2.0) / 60.0) * age_days)
 				END AS weight
 			FROM (
 				SELECT ad_id, timestamp, embedding, activity_type,
@@ -67,17 +67,7 @@ func getUserActivities(userID, categoryID, limit int) ([]AdActivity, error) {
 					WHERE uaic.user_id = $1
 					  AND a.inactive_at IS NULL AND a.deleted_at IS NULL
 					  AND a.category_id = $2
-					  AND a.embedding IS NOT NULL
-
-					UNION ALL
-
-					SELECT a.id, a.created_at, a.embedding,
-						'ad_created' AS activity_type
-					FROM ads a
-					WHERE a.user_id = $1
-					  AND a.inactive_at IS NULL AND a.deleted_at IS NULL
-					  AND a.category_id = $2
-					  AND a.embedding IS NOT NULL
+					AND a.embedding IS NOT NULL
 				) combined
 			) with_age
 			ORDER BY weight DESC

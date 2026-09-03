@@ -29,7 +29,7 @@ func InspectUserActivities(userID, categoryID int) ([]ActivityInspect, error) {
 
 func InspectSiteActivities(categoryID int) ([]ActivityInspect, error) {
 	activities, err := getSiteActivities(
-		categoryID, "default", config.VectorSystemEmbeddingLimit,
+		categoryID, "default", config.VectorSiteEmbeddingLimit,
 	)
 	if err != nil {
 		return nil, err

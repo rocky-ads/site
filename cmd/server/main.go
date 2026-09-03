@@ -149,6 +149,8 @@ func setupApp() *fiber.App {
 	admin := app.Group("/admin", handler.AdminRequired)
 	admin.Get("/dashboard", handler.AdminDashboardHandler)
 	admin.Get("/tab/:tab", handler.AdminTabHandler)
+	admin.Get("/embeddings/user-activities", handler.AdminEmbeddingsUserActivitiesHandler)
+	admin.Get("/embeddings/site-activities", handler.AdminEmbeddingsSiteActivitiesHandler)
 	admin.Post("/embeddings/cache/query/clear", handler.AdminEmbeddingsClearQueryCacheHandler)
 	admin.Post("/embeddings/cache/user/clear", handler.AdminEmbeddingsClearUserCacheHandler)
 	admin.Post("/embeddings/cache/site/clear", handler.AdminEmbeddingsClearSiteCacheHandler)

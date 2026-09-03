@@ -40,7 +40,8 @@ const (
 	SearchPageSize             = 20  // Number of results per page for list/grid views
 	SearchThreshold            = 0.6 // Max cosine distance for vector search (pgvector <=>)
 	VectorProcessingQueueSize  = 100
-	VectorUserEmbeddingLimit   = 30
+	VectorUserEmbeddingLimit   = 8
+	VectorSiteEmbeddingLimit   = 8
 	VectorSystemEmbeddingLimit = 100
 
 	// Embedding cache TTL configuration

@@ -186,9 +186,18 @@ type EmbeddingAdminData struct {
 	Caches           []EmbeddingCachePanel
 	MissingAds       []MissingEmbeddingRow
 	CategoryID       int
+	SiteCategoryID   int
 	Categories       []CategoryOption
+	UserID           int
+	Users            []UserOption
 	UserActivities   []EmbeddingActivityRow
 	SiteActivities   []EmbeddingActivityRow
+}
+
+// UserOption holds presentation fields for an admin user picker item.
+type UserOption struct {
+	ID   int
+	Name string
 }
 
 // EmbeddingActivityRow holds one weighted activity used to build an embedding.
