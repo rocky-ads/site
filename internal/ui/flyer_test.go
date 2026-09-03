@@ -135,11 +135,11 @@ func TestAdFlyerPageCapsImages(t *testing.T) {
 	}
 }
 
-func TestAdFlyerPageThreeImagesTwoByTwo(t *testing.T) {
+func TestAdFlyerPageImageGrid(t *testing.T) {
 	d := AdFlyerData{
 		ID:         7,
-		ImageCount: 3,
-		Title:      "Three Photos",
+		ImageCount: 2,
+		Title:      "Two Photos",
 		AdURL:      "https://rockyads.com/ad/7",
 	}
 	var buf bytes.Buffer
@@ -147,10 +147,16 @@ func TestAdFlyerPageThreeImagesTwoByTwo(t *testing.T) {
 		t.Fatal(err)
 	}
 	html := buf.String()
-	if !strings.Contains(html, "repeat(2, minmax(0, 1fr))") {
-		t.Fatal("three images should use a 2-column grid")
+	if !strings.Contains(html, "grid-template-columns: 1fr 1fr") {
+		t.Fatal("flyer images should use a 2x2 grid")
 	}
-	if strings.Contains(html, "repeat(3,") {
-		t.Fatal("three images should not use a 3-column grid")
+	if !strings.Contains(html, "aspect-ratio: 4 / 3") {
+		t.Fatal("flyer image cells should be 4:3")
+	}
+	if strings.Count(html, `class="flyer-image"`) != 2 {
+		t.Fatal("two images should fill only the top row")
+	}
+	if strings.Contains(html, "flex: 1 1 0") {
+		t.Fatal("image grid should not stretch to fill leftover height")
 	}
 }

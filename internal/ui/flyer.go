@@ -23,16 +23,13 @@ const flyerSheetCSS = `
   box-sizing: border-box;
 }
 .flyer-images {
-  flex: 1 1 0;
-  min-height: 0;
-  overflow: hidden;
   display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
-  grid-auto-rows: 1fr;
 }
-.flyer-images > * {
+.flyer-image {
+  aspect-ratio: 4 / 3;
   min-width: 0;
-  min-height: 0;
   overflow: hidden;
 }
 .flyer-images img,
@@ -40,6 +37,7 @@ const flyerSheetCSS = `
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 .flyer-desc {
   overflow: hidden;
@@ -205,35 +203,25 @@ func flyerImages(adID, count int) g.Node {
 	if count > maxFlyerImages {
 		count = maxFlyerImages
 	}
-	cols := 1
-	if count > 1 {
-		cols = 2
-	}
-	imgs := make([]g.Node, 0, maxFlyerImages)
+	imgs := make([]g.Node, count)
 	for i := 1; i <= count; i++ {
-		imgs = append(imgs, flyerImg(adID, i))
+		imgs[i-1] = flyerImg(adID, i)
 	}
-	if count == 3 {
-		imgs = append(imgs, Div())
-	}
-	return Div(
-		Class("flyer-images"),
-		Style(fmt.Sprintf(
-			"grid-template-columns: repeat(%d, minmax(0, 1fr))",
-			cols)),
-		g.Group(imgs),
-	)
+	return Div(Class("flyer-images"), g.Group(imgs))
 }
 
 func flyerImg(adID, index int) g.Node {
 	class := "rounded border border-zinc-200"
 	src := AdImageSrc(adID, index, "480w")
+	var img g.Node
 	if src == "" {
-		return GenerateSVG(adID, index, "480w", class)
+		img = GenerateSVG(adID, index, "480w", class)
+	} else {
+		img = Img(
+			Class(class),
+			Src(src),
+			Alt(fmt.Sprintf("Ad image %d", index)),
+		)
 	}
-	return Img(
-		Class(class),
-		Src(src),
-		Alt(fmt.Sprintf("Ad image %d", index)),
-	)
+	return Div(Class("flyer-image"), img)
 }
