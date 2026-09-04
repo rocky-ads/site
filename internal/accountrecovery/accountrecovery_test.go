@@ -122,6 +122,9 @@ func TestStartStatusCompleteReset(t *testing.T) {
 	if st.Kind != StatusPending {
 		t.Fatalf("want pending, got %v", st.Kind)
 	}
+	if st.ExpiresAt.IsZero() {
+		t.Fatal("pending ExpiresAt")
+	}
 
 	err = CompleteFromSMS(phone, "RECOVER "+session.Code)
 	if err != nil {

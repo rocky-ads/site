@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/accountrecovery"
@@ -15,6 +16,30 @@ func setNoStore(c *fiber.Ctx) {
 	c.Set("Cache-Control", "no-store")
 }
 
+func reusableRecoverSession(c *fiber.Ctx) (code string, expiresAt time.Time,
+	ok bool) {
+	token := cookie.GetRecoverSession(c)
+	code = cookie.GetRecoverCode(c)
+	if token == "" || len(code) != accountrecovery.CodeLength {
+		return "", time.Time{}, false
+	}
+	st, err := accountrecovery.GetStatus(token)
+	if err != nil {
+		return "", time.Time{}, false
+	}
+	switch st.Kind {
+	case accountrecovery.StatusPending,
+		accountrecovery.StatusVerified,
+		accountrecovery.StatusFailed:
+		if st.ExpiresAt.IsZero() {
+			return "", time.Time{}, false
+		}
+		return code, st.ExpiresAt, true
+	default:
+		return "", time.Time{}, false
+	}
+}
+
 func RecoverHandler(c *fiber.Ctx) error {
 	setNoStore(c)
 
@@ -22,8 +47,12 @@ func RecoverHandler(c *fiber.Ctx) error {
 		return renderPage(c, "Recover account", ui.RecoverUnavailablePage())
 	}
 
-	prev := cookie.GetRecoverSession(c)
-	if prev != "" {
+	if code, exp, ok := reusableRecoverSession(c); ok {
+		return renderPage(c, "Recover account",
+			ui.RecoverPage(code, config.TwilioFromNumber, exp))
+	}
+
+	if prev := cookie.GetRecoverSession(c); prev != "" {
 		_ = accountrecovery.Cancel(prev)
 		cookie.ClearRecoverSession(c)
 	}
@@ -35,7 +64,7 @@ func RecoverHandler(c *fiber.Ctx) error {
 			"Unable to start account recovery. Please try again.")
 	}
 
-	cookie.SetRecoverSession(c, session.Token)
+	cookie.SetRecoverSession(c, session.Token, session.Code)
 	return renderPage(c, "Recover account",
 		ui.RecoverPage(session.Code, config.TwilioFromNumber, session.ExpiresAt))
 }

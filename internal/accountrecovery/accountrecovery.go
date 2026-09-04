@@ -59,9 +59,10 @@ const (
 
 // Status is the current state of a recovery session for the browser.
 type Status struct {
-	Kind     StatusKind
-	Username string // set when Kind == StatusVerified
-	Message  string // set when Kind == StatusFailed
+	Kind      StatusKind
+	Username  string // set when Kind == StatusVerified
+	Message   string // set when Kind == StatusFailed
+	ExpiresAt time.Time
 }
 
 func hashValue(plaintext string) string {
@@ -292,13 +293,14 @@ func GetStatus(sessionToken string) (Status, error) {
 
 	if failure.Valid && failure.String != "" {
 		return Status{
-			Kind:    StatusFailed,
-			Message: failureMessage(failure.String),
+			Kind:      StatusFailed,
+			Message:   failureMessage(failure.String),
+			ExpiresAt: expiresAt,
 		}, nil
 	}
 
 	if !userID.Valid {
-		return Status{Kind: StatusPending}, nil
+		return Status{Kind: StatusPending, ExpiresAt: expiresAt}, nil
 	}
 
 	u, err := user.GetByID(int(userID.Int64))
@@ -307,7 +309,11 @@ func GetStatus(sessionToken string) (Status, error) {
 		return Status{Kind: StatusExpired}, nil
 	}
 
-	return Status{Kind: StatusVerified, Username: u.Name}, nil
+	return Status{
+		Kind:      StatusVerified,
+		Username:  u.Name,
+		ExpiresAt: expiresAt,
+	}, nil
 }
 
 // ResetPassword updates the verified user's password and consumes the session.

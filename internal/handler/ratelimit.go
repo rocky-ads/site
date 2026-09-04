@@ -25,7 +25,7 @@ func InitRateLimiters(store fiber.Storage) {
 		Expiration: config.RegistrationRateLimitExp,
 		Storage:    store,
 		KeyGenerator: func(c *fiber.Ctx) string {
-			return "reg:" + c.IP()
+			return "reg:" + VisitorIP(c)
 		},
 		LimitReached: func(c *fiber.Ctx) error {
 			minutes := int(config.RegistrationRateLimitExp.Minutes())
@@ -39,8 +39,12 @@ func InitRateLimiters(store fiber.Storage) {
 		Max:        config.EffectiveRecoveryRateLimitMax(),
 		Expiration: config.RecoveryRateLimitExp,
 		Storage:    store,
+		Next: func(c *fiber.Ctx) bool {
+			_, _, ok := reusableRecoverSession(c)
+			return ok
+		},
 		KeyGenerator: func(c *fiber.Ctx) string {
-			return "rec:" + c.IP()
+			return "rec:" + VisitorIP(c)
 		},
 		LimitReached: func(c *fiber.Ctx) error {
 			minutes := int(config.RecoveryRateLimitExp.Minutes())
@@ -55,7 +59,7 @@ func InitRateLimiters(store fiber.Storage) {
 		Expiration: config.LoginRateLimitExp,
 		Storage:    store,
 		KeyGenerator: func(c *fiber.Ctx) string {
-			return "login:" + c.IP()
+			return "login:" + VisitorIP(c)
 		},
 		LimitReached: func(c *fiber.Ctx) error {
 			return showError(c, loginTooManyAttempts)

@@ -40,7 +40,7 @@ func setupApp() *fiber.App {
 		Expiration: config.ServerRateLimitExp,
 		Storage:    kv.Storage(),
 		KeyGenerator: func(c *fiber.Ctx) string {
-			return "srv:" + c.IP()
+			return "srv:" + handler.VisitorIP(c)
 		},
 	}))
 

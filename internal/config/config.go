@@ -18,9 +18,9 @@ const (
 	ServerBodyLimit          = 150 * 1024 * 1024 // 150 MB total request body (for multiple files + form data)
 	ServerRateLimitMax       = 600
 	ServerRateLimitExp       = 1 * time.Minute
-	RegistrationRateLimitMax = 3                // Allow 3 registration attempts per IP
+	RegistrationRateLimitMax = 20               // Registration attempts per IP
 	RegistrationRateLimitExp = 15 * time.Minute // Within 15 minutes
-	RecoveryRateLimitMax     = 3                // Allow 3 recovery starts per IP
+	RecoveryRateLimitMax     = 20               // New recovery starts per IP
 	RecoveryRateLimitExp     = 15 * time.Minute // Within 15 minutes
 	LoginRateLimitMax        = 20               // Allow 20 login POSTs per IP
 	LoginRateLimitExp        = 15 * time.Minute // Within 15 minutes

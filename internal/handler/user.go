@@ -220,8 +220,9 @@ func ChangePhoneRequestHandler(c *fiber.Ctx) error {
 		return render(c, ui.ChangePhoneVerifySection(phoneE64))
 	}
 
-	if err := turnstile.Verify(c.FormValue("cf-turnstile-response"), c.IP()); err != nil {
-		logger.Warn("Turnstile failed on change-phone", "error", err, "ip", c.IP())
+	ip := VisitorIP(c)
+	if err := turnstile.Verify(c.FormValue("cf-turnstile-response"), ip); err != nil {
+		logger.Warn("Turnstile failed on change-phone", "error", err, "ip", ip)
 		return showErrorTo(c, ui.SettingsChangePhoneErrorID,
 			"Please complete the verification challenge and try again.")
 	}

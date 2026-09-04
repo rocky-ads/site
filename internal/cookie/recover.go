@@ -1,16 +1,18 @@
 package cookie
 
 import (
+	"strings"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/rocky-ads/site/internal/config"
 )
 
 const recoverSessionCookie = "recover_session"
 
-func SetRecoverSession(c *fiber.Ctx, token string) {
+func SetRecoverSession(c *fiber.Ctx, token, code string) {
 	c.Cookie(&fiber.Cookie{
 		Name:     recoverSessionCookie,
-		Value:    token,
+		Value:    token + ":" + code,
 		HTTPOnly: true,
 		Secure:   config.CookieSecure,
 		Path:     "/",
@@ -32,5 +34,14 @@ func ClearRecoverSession(c *fiber.Ctx) {
 }
 
 func GetRecoverSession(c *fiber.Ctx) string {
-	return c.Cookies(recoverSessionCookie)
+	token, _, _ := strings.Cut(c.Cookies(recoverSessionCookie), ":")
+	return token
+}
+
+func GetRecoverCode(c *fiber.Ctx) string {
+	_, code, ok := strings.Cut(c.Cookies(recoverSessionCookie), ":")
+	if !ok {
+		return ""
+	}
+	return code
 }

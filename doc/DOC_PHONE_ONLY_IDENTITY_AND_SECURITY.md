@@ -153,7 +153,7 @@ Rocky Ads is not relying on obscurity alone. Relevant controls in the current st
 - **JWT session cookies** (HttpOnly, SameSite=Strict, Secure outside local development), with password-salt binding so password changes invalidate tokens.
 - **CSRF** protection (double-submit), with a deliberate exemption for the Twilio webhook path.
 - **Helmet / CSP** and related browser hardening headers.
-- **Redis-backed rate limits:** registration IP (3 / 15 min), recovery start IP (3 / 15 min), login IP (20 / 15 min), per-username login failures (10 / 15 min, cleared on success), per-phone OTP starts (1 / 60s and max 5 / hour); shared across app instances via `REDIS_URL`.
+- **Redis-backed rate limits:** registration IP (20 / 15 min), recovery start IP (20 / 15 min; reloads of an active session do not count), login IP (20 / 15 min), per-username login failures (10 / 15 min, cleared on success), per-phone OTP starts (1 / 60s and max 5 / hour); shared across app instances via `REDIS_URL`.
 - **Twilio Verify** for register/change-phone OTP (Fraud Guard + Console geo), then a signed HttpOnly **`reg_ticket` cookie** for step 3 so the password form never round-trips the raw OTP.
 - **Cloudflare Turnstile** before OTP start (register and change-phone).
 - **Recovery secrets** stored as HMAC digests rather than raw tokens.

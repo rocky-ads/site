@@ -176,8 +176,9 @@ func RegisterStep1Handler(c *fiber.Ctx) error {
 		return render(c, ui.RegisterPassword(username, phoneE64))
 	}
 
-	if err := turnstile.Verify(c.FormValue("cf-turnstile-response"), c.IP()); err != nil {
-		logger.Warn("Turnstile failed on register", "error", err, "ip", c.IP())
+	ip := VisitorIP(c)
+	if err := turnstile.Verify(c.FormValue("cf-turnstile-response"), ip); err != nil {
+		logger.Warn("Turnstile failed on register", "error", err, "ip", ip)
 		return showError(c, "Please complete the verification challenge and try again.")
 	}
 

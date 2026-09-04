@@ -83,7 +83,7 @@ only; `REDIS_URL` is always required).
 
 ### OTP start rate limits (code constants)
 
-- Per IP: registration limiter (3 / 15 min; relaxed under test allow).
+- Per IP: registration limiter (20 / 15 min; relaxed under test allow).
 - Per phone: 1 OTP start / 60s and max 5 / hour (register and change-phone).
 
 Counters live in **Redis** (`REDIS_URL`) so limits are shared across app

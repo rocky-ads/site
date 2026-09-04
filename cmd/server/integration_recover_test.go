@@ -57,6 +57,21 @@ func TestRecoverAccountFlow(t *testing.T) {
 		t.Fatalf("recovery code not found in page: %s", snippet)
 	}
 	code := m[1]
+	reload, err := client.Get(baseURL + "/recover")
+	if err != nil {
+		t.Fatalf("GET /recover reload: %v", err)
+	}
+	reloadBody, _ := io.ReadAll(reload.Body)
+	reload.Body.Close()
+	storeHTTPCookies(jar, baseParsed, reload.Cookies())
+	if reload.StatusCode != http.StatusOK {
+		t.Fatalf("GET /recover reload status %d", reload.StatusCode)
+	}
+	reloadCode := re.FindStringSubmatch(string(reloadBody))
+	if reloadCode == nil || reloadCode[1] != code {
+		t.Fatalf("reload should reuse code %s, got %q",
+			code, string(reloadBody))
+	}
 	if !strings.Contains(html, "Text exactly") {
 		t.Fatal("recover page should emphasize exact message to text")
 	}
