@@ -19,7 +19,9 @@ func NewAdHandler(c *fiber.Ctx) error {
 	category := ad.GetCategory(cookie.GetCategoryID(c))
 	fieldsNode := uiads.NewAdFieldsPartial(category.Facets(), newAdFormDefaults(c))
 
-	return renderPage(c, "New Ad", ui.NewAd(categoryOption(category), fieldsNode))
+	return renderPage(c, "New Ad",
+		ui.NewAd(categoryOption(category), allCategoryOptions(),
+			fieldsNode))
 }
 
 func CopyAdHandler(c *fiber.Ctx) error {
@@ -53,7 +55,9 @@ func CopyAdHandler(c *fiber.Ctx) error {
 	cfg := uiads.NewFormConfigWithValues(newAdFormDefaults(c), values)
 	fieldsNode := uiads.AdFieldsPartial(cfg, category.Facets())
 
-	return renderPage(c, "New Ad", ui.NewAd(categoryOption(category), fieldsNode))
+	return renderPage(c, "New Ad",
+		ui.NewAd(categoryOption(category), allCategoryOptions(),
+			fieldsNode))
 }
 
 func NewAdPriceFieldHandler(c *fiber.Ctx) error {

@@ -24,6 +24,7 @@ func HomeHandler(c *fiber.Ctx) error {
 	return renderPage(c, category.Name,
 		ui.HomePage(userID, view, searchState.Q, searchState.Expanded,
 			searchVisible(searchState), categoryOption(category),
+			allCategoryOptions(),
 			filterFacetsForExpanded(category, searchState.Expanded),
 			searchStateToFilters(searchState, distanceUnit),
 			results))

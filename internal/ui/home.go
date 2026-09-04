@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"net/url"
 
 	"github.com/rocky-ads/site/internal/facet"
 	"github.com/rocky-ads/site/internal/local"
@@ -13,19 +12,23 @@ import (
 )
 
 func HomePage(userID, view int, q string, filtersExpanded, searchVisible bool,
-	category CategoryOption, filterFacets []facet.Def, filters uiads.SearchFilters,
+	category CategoryOption, categories []CategoryOption,
+	filterFacets []facet.Def, filters uiads.SearchFilters,
 	results []g.Node) []g.Node {
-	return []g.Node{SearchContainer(userID, view, q, filtersExpanded, searchVisible, category, filterFacets, filters, results)}
+	return []g.Node{SearchContainer(userID, view, q, filtersExpanded,
+		searchVisible, category, categories, filterFacets, filters, results)}
 }
 
 func SearchContainer(userID, view int, q string, filtersExpanded,
-	searchVisible bool, category CategoryOption, filterFacets []facet.Def,
-	filters uiads.SearchFilters, results []g.Node) g.Node {
+	searchVisible bool, category CategoryOption, categories []CategoryOption,
+	filterFacets []facet.Def, filters uiads.SearchFilters,
+	results []g.Node) g.Node {
 	return Div(
 		ID("search-container"),
 		Div(
 			Class("flex flex-col gap-4"),
-			categorySearchRow(userID, category, "/", searchVisible),
+			categorySearchRow(userID, category, categories, "/",
+				searchVisible),
 			SearchWidget(userID, view, q, filtersExpanded, searchVisible, category, filterFacets, filters, results),
 		),
 	)
@@ -97,29 +100,11 @@ func searchArea(q string, expanded bool, filterFacets []facet.Def,
 	return Div(attrs...)
 }
 
-func categoryButton(category CategoryOption, returnParam string) g.Node {
-	imagePath := "/images/category/" + category.ImageFile
-
-	return Button(
-		Type("button"),
-		Class("py-2 px-5 flex items-center gap-2 rounded-full border-2 border-blue-500 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 dark:border-blue-400"),
-		hx.Get("/api/category-select?return="+url.QueryEscape(returnParam)),
-		hx.Target("body"),
-		hx.Swap("beforeend"),
-		Img(
-			Src(imagePath),
-			Alt("Category icon"),
-			Class("w-6 h-6 dark:invert dark:opacity-80"),
-		),
-		Span(g.Text(category.Name)),
-	)
-}
-
-func categorySearchRow(userID int, category CategoryOption, returnParam string,
-	searchVisible bool) g.Node {
+func categorySearchRow(userID int, category CategoryOption,
+	categories []CategoryOption, returnParam string, searchVisible bool) g.Node {
 	return Div(
 		Class("flex items-center gap-2 justify-between"),
-		categoryButton(category, returnParam),
+		CategorySelect(category, categories, returnParam),
 		Div(
 			Class("flex items-center gap-2 shrink-0"),
 			g.Iff(local.IsLoggedIn(userID), func() g.Node { return newAdLink() }),

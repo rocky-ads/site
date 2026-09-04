@@ -181,18 +181,6 @@ func userOptions(users []user.User) []ui.UserOption {
 	return out
 }
 
-func categoryOptions(categories []ad.Category) []ui.CategoryOption {
-	out := make([]ui.CategoryOption, len(categories))
-	for i, cat := range categories {
-		out[i] = ui.CategoryOption{
-			ID:        cat.ID,
-			Name:      cat.Name,
-			ImageFile: cat.ImageFile,
-		}
-	}
-	return out
-}
-
 func embeddingActivityRows(rows []vector.ActivityInspect,
 	loc *time.Location) []ui.EmbeddingActivityRow {
 	out := make([]ui.EmbeddingActivityRow, len(rows))

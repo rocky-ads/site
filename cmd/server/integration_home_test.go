@@ -199,8 +199,18 @@ func TestHomeHandlerSearchHiddenByDefault(t *testing.T) {
 	if !strings.Contains(body, `id="search-area" class="flex flex-col hidden"`) {
 		t.Error("Expected hidden #search-area on fresh home page")
 	}
-	if strings.Contains(body, `id="category-modal-backdrop"`) {
-		t.Error("home page should not embed category modal stub elements")
+	if strings.Contains(body, `id="category-modal"`) ||
+		strings.Contains(body, `id="category-modal-backdrop"`) {
+		t.Error("home page should not embed category modal")
+	}
+	if !strings.Contains(body, `aria-haspopup="listbox"`) {
+		t.Error("expected category picker to be a listbox dropdown")
+	}
+	if !strings.Contains(body, "category-select-dismiss") {
+		t.Error("expected category picker outside-click dismiss")
+	}
+	if !strings.Contains(body, "Bicycles") {
+		t.Error("expected category dropdown to list other categories")
 	}
 	if strings.Contains(body, `/images/post_add.svg`) {
 		t.Error("new ad link should not appear when logged out")
@@ -653,75 +663,4 @@ func TestHideFiltersHandler(t *testing.T) {
 	if !strings.Contains(body, `id="search-results"`) {
 		t.Error("hide-filters should OOB-swap search results")
 	}
-}
-
-func TestCategorySelectHandler(t *testing.T) {
-	tests := []struct {
-		name           string
-		categoryID     int
-		expectedStatus int
-	}{
-		{"Valid category", 6, 200},
-		{"Another valid category", 5, 200},
-		{"Invalid category", 999, 200},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client, err := getClientWithCategoryCookie(tt.categoryID)
-			if err != nil {
-				t.Fatalf("Failed to create client: %v", err)
-			}
-
-			resp, body := getRequestWithCookies(t, client, baseURL+"/api/category-select")
-
-			if resp.StatusCode != tt.expectedStatus {
-				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
-				if len(body) > 500 {
-					t.Logf("Response body (truncated): %s...", body[:500])
-				} else {
-					t.Logf("Response body: %s", body)
-				}
-			}
-
-			if tt.expectedStatus == 200 {
-				contentType := resp.Header.Get("Content-Type")
-				if contentType != "text/html" && contentType != "text/html; charset=utf-8" {
-					t.Errorf("Expected Content-Type text/html, got %s", contentType)
-				}
-				if len(body) == 0 {
-					t.Error("Expected non-empty HTML response")
-				}
-
-				if tt.categoryID == 999 {
-					if !strings.Contains(body, "Car &amp; Truck Parts") && !strings.Contains(body, "Car & Truck Parts") {
-						t.Errorf("Expected HTML to contain default category name 'Car & Truck Parts' (or HTML entity version)")
-					}
-				}
-			}
-		})
-	}
-
-	t.Run("No category cookie", func(t *testing.T) {
-		resp, err := http.Get(baseURL + "/api/category-select")
-		if err != nil {
-			t.Fatalf("Failed to make request: %v", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			t.Errorf("Expected status 200 without category cookie (should default to default category), got %d", resp.StatusCode)
-		}
-
-		hasCategoryCookie := false
-		for _, cookie := range resp.Cookies() {
-			if cookie.Name == "category" {
-				hasCategoryCookie = true
-				break
-			}
-		}
-		if !hasCategoryCookie {
-			t.Error("Expected category cookie to be set when accessing category select without cookie")
-		}
-	})
 }

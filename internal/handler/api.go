@@ -23,9 +23,14 @@ func SwitchCategoryHandler(c *fiber.Ctx) error {
 
 	if c.Get("HX-Request") == "true" {
 		c.Set("HX-Redirect", redirect)
-		return render(c, g.Group(ui.RemoveModal("category")))
+		return c.SendStatus(fiber.StatusOK)
 	}
 	return c.Redirect(redirect, fiber.StatusFound)
+}
+
+func ModalRemoveHandler(c *fiber.Ctx) error {
+	name := c.Params("name")
+	return render(c, g.Group(ui.RemoveModal(name)))
 }
 
 // ShortCategoryHandler handles QR / deep links (/c/:id). Always switches to

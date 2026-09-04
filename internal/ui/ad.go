@@ -1004,9 +1004,11 @@ func adForm(cfg uiads.AdFormConfig, fields g.Node) g.Node {
 	return Form(append(formAttrs, g.Group(children))...)
 }
 
-func NewAd(category CategoryOption, fields g.Node) []g.Node {
+func NewAd(category CategoryOption, categories []CategoryOption,
+	fields g.Node) []g.Node {
 	return []g.Node{
-		Div(Class("mb-4"), categoryButton(category, "/auth/ad/new")),
+		Div(Class("mb-4"),
+			CategorySelect(category, categories, "/auth/ad/new")),
 		pageTitle("Create New Ad"),
 		newAdForm(fields),
 	}

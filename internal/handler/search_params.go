@@ -50,6 +50,19 @@ func categoryOption(cat ad.Category) ui.CategoryOption {
 	return ui.CategoryOption{ID: cat.ID, Name: cat.Name, ImageFile: cat.ImageFile}
 }
 
+func categoryOptions(categories []ad.Category) []ui.CategoryOption {
+	out := make([]ui.CategoryOption, len(categories))
+	for i, cat := range categories {
+		out[i] = categoryOption(cat)
+	}
+	return out
+}
+
+func allCategoryOptions() []ui.CategoryOption {
+	cats, _ := ad.GetCategories()
+	return categoryOptions(cats)
+}
+
 func filterableFacets(cat ad.Category) []facet.Def {
 	defs := cat.Facets()
 	out := make([]facet.Def, 0, len(defs))
