@@ -11,7 +11,7 @@ import (
 func TestAdShareModalFlyer(t *testing.T) {
 	path := "https://rockyads.com/ad/7"
 	var buf bytes.Buffer
-	if err := AdShareModal(path, "/ad/7/flyer").Render(&buf); err != nil {
+	if err := AdShareModal(path, "/auth/ad/7/flyer").Render(&buf); err != nil {
 		t.Fatal(err)
 	}
 	html := buf.String()
@@ -21,7 +21,7 @@ func TestAdShareModalFlyer(t *testing.T) {
 		"Copy",
 		"Flyer",
 		"one-page flyer",
-		`href="/ad/7/flyer"`,
+		`href="/auth/ad/7/flyer"`,
 		"Print flyer",
 		"max-w-md",
 		"flex-wrap",
@@ -40,7 +40,7 @@ func TestAdShareModalFlyer(t *testing.T) {
 	}
 	html = buf.String()
 	if strings.Contains(html, "/flyer") {
-		t.Fatal("inactive share modal should not include flyer")
+		t.Fatal("share modal without flyer href should omit flyer")
 	}
 }
 

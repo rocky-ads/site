@@ -179,8 +179,9 @@ func AdShareHandler(c *fiber.Ctx) error {
 
 	path := config.CanonicalURL(fmt.Sprintf("/ad/%d", adID))
 	flyerHref := ""
-	if a.IsActive() {
-		flyerHref = fmt.Sprintf("/ad/%d/flyer", adID)
+	if a.IsActive() && local.IsLoggedIn(userID) &&
+		a.UserID == userID {
+		flyerHref = fmt.Sprintf("/auth/ad/%d/flyer", adID)
 	}
 	return render(c, ui.AdShareModal(path, flyerHref))
 }
@@ -199,6 +200,10 @@ func AdFlyerHandler(c *fiber.Ctx) error {
 	}
 	if !a.IsActive() {
 		return fiber.NewError(fiber.StatusNotFound, "Ad not found")
+	}
+	if !local.IsLoggedIn(userID) || a.UserID != userID {
+		return fiber.NewError(fiber.StatusForbidden,
+			"You are not the owner of this ad")
 	}
 
 	if err := ad.LoadTags(&a); err != nil {
