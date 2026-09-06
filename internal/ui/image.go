@@ -201,12 +201,12 @@ func ImageNode(adID, count, current int, size, heightClass string,
 			hx.Get(fmt.Sprintf("/api/image-full/%d?index=%d&count=%d&size=%s", adID, current, count, size)),
 			hx.Target("body"),
 			hx.Swap("beforeend"),
-			Class(fmt.Sprintf("cursor-pointer bg-zinc-100 dark:bg-zinc-700 w-full overflow-hidden %s", heightClass)),
+			Class(fmt.Sprintf("cursor-pointer bg-zinc-100 dark:bg-zinc-700 w-full overflow-hidden rounded-md %s", heightClass)),
 			imgElement,
 		)
 	} else {
 		imageWrapper = Div(
-			Class(fmt.Sprintf("bg-zinc-100 dark:bg-zinc-700 w-full overflow-hidden %s", heightClass)),
+			Class(fmt.Sprintf("bg-zinc-100 dark:bg-zinc-700 w-full overflow-hidden rounded-md %s", heightClass)),
 			imgElement,
 		)
 	}
