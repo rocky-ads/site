@@ -36,7 +36,7 @@ projects:
       name: minio
       runtime: image
       image:
-        url: docker.io/minio/minio:latest
+        url: cgr.dev/chainguard/minio:latest
       plan: starter
       envVars:
       - fromGroup: MINIO
@@ -48,7 +48,8 @@ projects:
         value: "off"
       region: oregon
       healthCheckPath: /minio/health/live
-      dockerCommand: minio server /data --address $HOST:$PORT
+      # ENTRYPOINT is /usr/bin/minio; this overrides CMD only.
+      dockerCommand: server /data --address $HOST:$PORT
       disk:
         name: disk
         mountPath: /data

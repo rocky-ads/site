@@ -83,6 +83,7 @@ func setupApp() *fiber.App {
 	app.Get("/c/:category", handler.ShortCategoryHandler)
 	app.Get("/u/:token", handler.SharedUserProfileHandler)
 	app.Get("/u/:token/view/:view", handler.SharedUserProfileViewHandler)
+	app.Get("/media/ad/:id/:index/:size", handler.MediaAdImageHandler)
 
 	// Auth routes
 
