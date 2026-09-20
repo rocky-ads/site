@@ -45,7 +45,7 @@ Menu:
 | `DB_HASH_PEPPER` | HMAC pepper for `name_hash` / `phone_hash` (must differ from encryption key) |
 | `BACKUP_DB_ENCRYPTION_KEY` | Decrypt archive user fields when restoring from another env (prompted in TUI; empty uses `DB_ENCRYPTION_KEY`) |
 
-Backup verify-decrypts users with `DB_ENCRYPTION_KEY` and stores ciphertext in the archive. Restore re-keys users to the target `DB_ENCRYPTION_KEY`, recomputes peppered lookup hashes with `DB_HASH_PEPPER`, and seals conversation journals. Restore resets the DB like init (schema + categories) before import. Ad embeddings and `vector_metadata` are included in the archive (base64 pgvector binary on each ad) so search works without recomputing after restore. Older archives without embeddings still restore; those ads get vectors from the server backfill on startup.
+Backup verify-decrypts users with `DB_ENCRYPTION_KEY` and stores ciphertext in the archive. Restore re-keys users to the target `DB_ENCRYPTION_KEY`, recomputes peppered lookup hashes with `DB_HASH_PEPPER`, and seals conversation journals. Restore resets the DB like init (schema + categories) before import. Ad embeddings and `vector_metadata` are included in the archive (base64 pgvector binary on each ad) so search works without recomputing after restore. Older archives without embeddings still restore; those ads get vectors from the server backfill on startup. Account pictures (`users/{id}/account.jpg`) are stored under `user_accounts/{name_hash}/` and re-uploaded to the restored user IDs. Older archives without that directory still restore; users keep `has_account_picture` and restore logs a warning for each missing file.
 
 ## Ad images
 

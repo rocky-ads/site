@@ -304,9 +304,15 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 				logger.Info("Would backup image", "ad_ref", ref, "count", len(refs))
 			}
 		}
+		accountCount, err := backupUserAccounts(
+			"", store, userDB, true, verbose)
+		if err != nil {
+			return err
+		}
 		logger.Info("Dry run complete",
 			"ads", len(ads), "users", len(users),
-			"conversations", len(conversations), "images", imageCount)
+			"conversations", len(conversations), "images", imageCount,
+			"account_pictures", accountCount)
 		return nil
 	}
 
@@ -347,6 +353,12 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 		}
 	}
 
+	accountCount, err := backupUserAccounts(
+		outDir, store, userDB, false, verbose)
+	if err != nil {
+		return err
+	}
+
 	manifest := Manifest{
 		CreatedAt: time.Now().UTC(),
 		Counts: Counts{
@@ -361,6 +373,7 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 			Messages:          len(messages),
 			RockOpinions:      len(opinions),
 			Images:            imageCount,
+			AccountPictures:   accountCount,
 			Embeddings:        embeddingCount,
 		},
 	}
@@ -387,8 +400,56 @@ func runBackup(outDir string, store imagestore.Store, dryRun, verbose bool) erro
 		}
 	}
 
-	logger.Info("Backup staged", "dir", outDir, "ads", len(ads), "images", imageCount)
+	logger.Info("Backup staged",
+		"dir", outDir, "ads", len(ads), "images", imageCount,
+		"account_pictures", accountCount)
 	return nil
+}
+
+func backupUserAccounts(outDir string, store imagestore.Store,
+	users []userDBRow, dryRun, verbose bool) (int, error) {
+	count := 0
+	for _, u := range users {
+		if u.HasAccountPicture == 0 {
+			continue
+		}
+		ok, err := store.StatUserAccount(u.ID)
+		if err != nil {
+			return 0, fmt.Errorf(
+				"stat account picture user %d: %w", u.ID, err)
+		}
+		if !ok {
+			logger.Warn("Account picture missing", "user_id", u.ID)
+			continue
+		}
+		if dryRun {
+			count++
+			if verbose {
+				logger.Info("Would backup account picture",
+					"user_id", u.ID)
+			}
+			continue
+		}
+		data, err := store.GetUserAccount(u.ID)
+		if err != nil {
+			return 0, fmt.Errorf(
+				"get account picture user %d: %w", u.ID, err)
+		}
+		dir := filepath.Join(outDir, dirUserAccounts, u.NameHash)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return 0, fmt.Errorf("create user account dir: %w", err)
+		}
+		path := filepath.Join(dir, "account.jpg")
+		if err := os.WriteFile(path, data, 0644); err != nil {
+			return 0, fmt.Errorf("write %s: %w", path, err)
+		}
+		count++
+		if verbose {
+			logger.Info("Backed up account picture",
+				"user_id", u.ID, "path", path)
+		}
+	}
+	return count, nil
 }
 
 func writeJSON(path string, v any) error {

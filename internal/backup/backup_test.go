@@ -160,6 +160,12 @@ func TestBackupRestoreCrossKey(t *testing.T) {
 	if err := store.Put(adID, 1, "480w", imageData); err != nil {
 		t.Fatalf("put image: %v", err)
 	}
+	if err := store.PutUserAccount(alice.ID, imageData); err != nil {
+		t.Fatalf("put account picture: %v", err)
+	}
+	if err := user.ConfirmAccountPicture(alice.ID); err != nil {
+		t.Fatalf("confirm account picture: %v", err)
+	}
 
 	outDir := t.TempDir()
 	archive := filepath.Join(outDir, "cross.tar.gz")
@@ -231,6 +237,16 @@ func TestBackupRestoreCrossKey(t *testing.T) {
 	}
 	if restoredAlice.Name != "alice" {
 		t.Fatalf("alice name = %q", restoredAlice.Name)
+	}
+	if !restoredAlice.HasAccountPicture {
+		t.Fatal("expected restored alice account picture flag")
+	}
+	restoredAccount, err := restoreStore.GetUserAccount(restoredAlice.ID)
+	if err != nil {
+		t.Fatalf("get restored account picture: %v", err)
+	}
+	if string(restoredAccount) != string(imageData) {
+		t.Fatal("restored account picture mismatch")
 	}
 
 	// Seed admin has no ads; backup must still include all users.

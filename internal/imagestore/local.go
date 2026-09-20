@@ -137,6 +137,14 @@ func (s *LocalStore) PutUserAccount(userID int, data []byte) error {
 	return nil
 }
 
+func (s *LocalStore) GetUserAccount(userID int) ([]byte, error) {
+	data, err := os.ReadFile(s.userAccountPath(userID))
+	if err != nil {
+		return nil, fmt.Errorf("read user account image: %w", err)
+	}
+	return data, nil
+}
+
 func (s *LocalStore) StatUserAccount(userID int) (bool, error) {
 	_, err := os.Stat(s.userAccountPath(userID))
 	if err != nil {

@@ -29,6 +29,7 @@ type Store interface {
 		expiry time.Duration) (string, error)
 
 	PutUserAccount(userID int, data []byte) error
+	GetUserAccount(userID int) ([]byte, error)
 	StatUserAccount(userID int) (bool, error)
 	DeleteUserAccount(userID int) error
 	PresignPutUserAccount(userID int, expiry time.Duration) (string, error)

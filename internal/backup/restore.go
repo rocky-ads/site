@@ -77,7 +77,8 @@ func runRestore(fromDir string, store imagestore.Store, backupKey []byte,
 		logger.Info("Dry run restore",
 			"users", len(users), "locations", len(locations),
 			"ads", len(ads), "conversations", len(conversations),
-			"images", manifest.Counts.Images)
+			"images", manifest.Counts.Images,
+			"account_pictures", manifest.Counts.AccountPictures)
 		return nil
 	}
 
@@ -396,8 +397,15 @@ func runRestore(fromDir string, store imagestore.Store, backupKey []byte,
 		}
 	}
 
+	uploadedAccounts, err := restoreUserAccountPictures(
+		fromDir, store, userHashToID, users, verbose)
+	if err != nil {
+		return err
+	}
+
 	logger.Info("Restore complete",
-		"dir", fromDir, "ads", len(ads), "images", uploaded)
+		"dir", fromDir, "ads", len(ads), "images", uploaded,
+		"account_pictures", uploadedAccounts)
 	return nil
 }
 
@@ -536,4 +544,81 @@ func parseRestoreImagePath(rel string) (adRef, index int, suffix string, ok bool
 		return 0, 0, "", false
 	}
 	return adRef, index, matches[2], true
+}
+
+var restoreUserAccountHash = regexp.MustCompile(`^[0-9a-f]{64}$`)
+
+func restoreUserAccountPictures(fromDir string, store imagestore.Store,
+	userHashToID map[string]int, users []UserRow, verbose bool) (int, error) {
+	accountDir := filepath.Join(fromDir, dirUserAccounts)
+	uploaded := 0
+	restored := make(map[string]bool)
+	if _, err := os.Stat(accountDir); err == nil {
+		err = filepath.WalkDir(accountDir, func(
+			path string, d os.DirEntry, walkErr error,
+		) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if d.IsDir() {
+				return nil
+			}
+			rel, err := filepath.Rel(accountDir, path)
+			if err != nil {
+				return err
+			}
+			nameHash, ok := parseRestoreUserAccountPath(
+				filepath.ToSlash(rel))
+			if !ok {
+				logger.Warn("Skipping unrecognized account picture",
+					"path", rel)
+				return nil
+			}
+			userID, ok := userHashToID[nameHash]
+			if !ok {
+				return fmt.Errorf(
+					"unknown user hash for account picture %s", rel)
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return fmt.Errorf("read %s: %w", path, err)
+			}
+			data, err = imgconv.ToJPEG(data, imgconv.DefaultQuality)
+			if err != nil {
+				return fmt.Errorf("convert %s: %w", rel, err)
+			}
+			if err := store.PutUserAccount(userID, data); err != nil {
+				return fmt.Errorf("upload %s: %w", rel, err)
+			}
+			restored[nameHash] = true
+			uploaded++
+			if verbose {
+				logger.Info("Restored account picture",
+					"user_id", userID, "name_hash", nameHash)
+			}
+			return nil
+		})
+		if err != nil {
+			return 0, err
+		}
+	}
+	for _, u := range users {
+		if u.HasAccountPicture == 0 || restored[u.NameHash] {
+			continue
+		}
+		logger.Warn("Account picture missing in archive",
+			"name_hash", u.NameHash)
+	}
+	return uploaded, nil
+}
+
+func parseRestoreUserAccountPath(rel string) (nameHash string, ok bool) {
+	parts := strings.Split(rel, "/")
+	if len(parts) != 2 || parts[1] != "account.jpg" {
+		return "", false
+	}
+	if !restoreUserAccountHash.MatchString(parts[0]) {
+		return "", false
+	}
+	return parts[0], true
 }

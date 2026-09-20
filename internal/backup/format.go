@@ -23,6 +23,7 @@ const (
 	fileMessages          = "messages.json"
 	fileRockOpinions      = "rock_opinions.json"
 	dirImages             = "images"
+	dirUserAccounts       = "user_accounts"
 )
 
 type Manifest struct {
@@ -42,6 +43,7 @@ type Counts struct {
 	Messages          int `json:"messages"`
 	RockOpinions      int `json:"rock_opinions"`
 	Images            int `json:"images"`
+	AccountPictures   int `json:"account_pictures"`
 	Embeddings        int `json:"embeddings"`
 }
 

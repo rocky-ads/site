@@ -252,6 +252,15 @@ func (s *MinioStore) PutUserAccount(userID int, data []byte) error {
 	return nil
 }
 
+func (s *MinioStore) GetUserAccount(userID int) ([]byte, error) {
+	key := userAccountObjectKey(userID)
+	data, err := s.getObject(key)
+	if err != nil {
+		return nil, fmt.Errorf("get user account image: %w", err)
+	}
+	return data, nil
+}
+
 func (s *MinioStore) StatUserAccount(userID int) (bool, error) {
 	return s.statKey(userAccountObjectKey(userID))
 }

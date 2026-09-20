@@ -52,6 +52,10 @@ func TestLocalStoreAccountPicture(t *testing.T) {
 	if err := s.PutUserAccount(9, data); err != nil {
 		t.Fatal(err)
 	}
+	got, err := s.GetUserAccount(9)
+	if err != nil || string(got) != string(data) {
+		t.Fatalf("get: %v %q", err, got)
+	}
 	ok, err := s.StatUserAccount(9)
 	if err != nil || !ok {
 		t.Fatalf("stat: ok=%v err=%v", ok, err)
