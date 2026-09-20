@@ -37,13 +37,15 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_BROWSER: "on"
+      MINIO_SERVER_URL: http://127.0.0.1:9000
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
       - rockyads_minio_data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      test: ["CMD", "bash", "-c", "echo >/dev/tcp/127.0.0.1/9000"]
       interval: 5s
       timeout: 5s
       retries: 5

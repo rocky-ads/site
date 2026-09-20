@@ -1,7 +1,7 @@
 # Dockerfile for MinIO server
-# Uses official MinIO image and configures via environment variables
+# MinIO no longer publishes community images; Chainguard builds from source.
 
-FROM minio/minio:latest
+FROM cgr.dev/chainguard/minio:latest
 
 # Expose MinIO API port (default: 9000)
 EXPOSE 9000

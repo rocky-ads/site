@@ -93,6 +93,8 @@ This document outlines the technologies, frameworks, and tools used in the Rocky
 
 ### Object Storage
 - **MinIO** - S3-compatible object storage for ad images
+  (`cgr.dev/chainguard/minio:latest`; community `minio/minio` images
+  are no longer published)
   - `MINIO_API_URL` — server-side S3 API (private network in production)
   - `MINIO_PUBLIC_URL` — host embedded in browser-facing presigned URLs
   - **PUT:** short-lived (~15m) presigned uploads from the browser after create/edit; client encodes 160/480/1200 JPEG derivatives

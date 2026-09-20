@@ -55,6 +55,9 @@ func minioClientFromURL(raw string) (*minio.Client, error) {
 		Creds: credentials.NewStaticV4(
 			config.MinIORootUser, config.MinIORootPassword, ""),
 		Secure: endpointURL.Scheme == "https",
+		// Skip GetBucketLocation; newer MinIO can stall on it.
+		Region:       "us-east-1",
+		BucketLookup: minio.BucketLookupPath,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("initialize MinIO client: %w", err)
@@ -134,7 +137,8 @@ func (s *MinioStore) getObject(key string) ([]byte, error) {
 }
 
 func (s *MinioStore) statKey(key string) (bool, error) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 	_, err := s.client.StatObject(ctx, s.bucket, key,
 		minio.StatObjectOptions{})
 	if err != nil {
